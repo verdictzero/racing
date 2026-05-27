@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nested RACI Matrix</title>
+<style>
+:root {
+  --bg: #1a1b1e;
+  --bg-2: #25262b;
+  --bg-3: #2c2e33;
+  --bg-4: #373a40;
+  --border: #373a40;
+  --text: #c1c2c5;
+  --text-dim: #909296;
+  --r: #4dabf7;
+  --a: #fa5252;
+  --c: #fcc419;
+  --i: #868e96;
+  --accent: #51cf66;
+  --err: #fa5252;
+  --warn: #fcc419;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  gap: 14px;
+  flex-shrink: 0;
+}
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  min-width: 200px;
+}
+h1:focus, h1:hover { border-color: var(--border); background: var(--bg-3); }
+
+.tabs { display: flex; gap: 2px; background: var(--bg-3); padding: 2px; border-radius: 5px; }
+.tabs button {
+  background: transparent;
+  border: none;
+  padding: 5px 14px;
+  font-size: 12px;
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+.tabs button.active { background: var(--bg); color: var(--text); font-weight: 600; }
+
+.actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+button {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+button:hover { background: var(--bg-4); }
+
+main { display: flex; flex: 1; overflow: hidden; }
+
+.view-wrap { flex: 1; overflow: auto; position: relative; }
+.view-wrap.hidden { display: none; }
+
+table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+th, td { padding: 0; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg); }
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-2);
+  z-index: 2;
+  font-weight: 600;
+  text-align: left;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+/* ===== Matrix view ===== */
+th.tier-header-col { z-index: 3; min-width: 220px; padding: 10px 12px; }
+th.area-col {
+  padding: 10px 10px;
+  min-width: 150px;
+  max-width: 220px;
+  text-align: left;
+  position: relative;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+th.area-col [contenteditable] {
+  outline: none; padding: 2px 4px; border-radius: 3px;
+  display: inline-block;
+}
+th.area-col [contenteditable]:focus { background: var(--bg-3); }
+th.area-col .del-area {
+  position: absolute; top: 4px; right: 4px;
+  background: transparent; border: none; color: var(--text-dim);
+  opacity: 0; font-size: 12px; padding: 1px 5px;
+}
+th.area-col:hover .del-area { opacity: 1; }
+.del-area:hover { color: var(--err); }
+
+td.tier-label {
+  position: sticky;
+  left: 0;
+  background: var(--bg-2);
+  z-index: 1;
+  min-width: 220px;
+  max-width: 260px;
+  padding: 12px 14px 12px 14px;
+  vertical-align: top;
+  border-right: 2px solid var(--bg-4);
+}
+.tier-name {
+  font-weight: 800;
+  font-size: 13px;
+  outline: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.tier-name:focus { background: var(--bg-3); }
+.tier-accountable {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.tier-accountable .acc-label {
+  font-weight: 800;
+  color: #fff;
+  background: var(--a);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.tier-accountable .acc-text {
+  outline: none; padding: 1px 3px; border-radius: 2px;
+  flex: 1; min-width: 30px;
+}
+.tier-accountable .acc-text:focus { background: var(--bg-3); color: var(--text); }
+.tier-actions {
+  margin-top: 6px;
+  display: flex; gap: 4px;
+  opacity: 0;
+}
+td.tier-label:hover .tier-actions { opacity: 1; }
+.tier-actions button {
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-dim);
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.tier-actions button:hover { border-color: var(--border); color: var(--text); background: var(--bg-3); }
+.tier-actions button.del:hover { color: var(--err); border-color: var(--err); }
+
+td.cell {
+  cursor: pointer;
+  vertical-align: top;
+  min-height: 70px;
+  min-width: 150px;
+  max-width: 220px;
+  padding: 4px 0;
+  position: relative;
+}
+td.cell:hover { background: var(--bg-3); outline: 2px solid var(--accent); outline-offset: -2px; }
+.cell-empty {
+  padding: 14px 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+}
+.cell-group {
+  display: flex; gap: 6px; padding: 2px 8px;
+  font-size: 11px; line-height: 1.35;
+  align-items: flex-start;
+}
+.cell-group .role {
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  width: 16px;
+  text-align: center;
+}
+.cell-group.R .role { background: var(--r); color: #000; }
+.cell-group.A .role { background: var(--a); color: #fff; }
+.cell-group.C .role { background: var(--c); color: #000; }
+.cell-group.I .role { background: var(--i); color: #fff; }
+.cell-group .names { word-break: break-word; font-size: 11px; }
+.cell-group .name-chip { display: inline-block; margin-right: 4px; }
+.cell-group .name-chip.inherited {
+  font-style: italic;
+  opacity: 0.75;
+  color: var(--text-dim);
+}
+.cell-group .name-chip.inherited::before {
+  content: '↑';
+  margin-right: 1px;
+  font-style: normal;
+  font-weight: 700;
+  opacity: 0.7;
+}
+.cell-group.dimmed { opacity: 0.25; }
+
+/* ===== Roster view ===== */
+.roster-cell {
+  display: block; padding: 6px 8px; outline: none; min-height: 28px; width: 100%;
+  background: transparent; color: var(--text);
+  border: 1px solid transparent; font: inherit; border-radius: 0;
+}
+.roster-cell:focus { background: var(--bg-3); border-color: var(--accent); }
+.roster-cell.select { padding: 0; }
+.roster-cell select {
+  background: transparent; color: var(--text); border: none;
+  padding: 6px 8px; width: 100%; font: inherit; outline: none;
+}
+.roster-cell select:focus { background: var(--bg-3); }
+
+/* ===== Hierarchical roster ===== */
+#roster-view { padding: 0; }
+#roster-content { padding: 0; }
+
+.roster-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.roster-toolbar .stat {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-left: auto;
+}
+.roster-toolbar .stat strong { color: var(--text); }
+.roster-toolbar .btn-primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.roster-toolbar .btn-primary:hover { background: #6bd87d; }
+
+.org-tree { padding: 0 0 40px; }
+
+.org-group {
+  margin: 0;
+}
+.org-group > .org-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.org-group > .org-header .org-toggle {
+  font-size: 10px;
+  color: var(--text-dim);
+  width: 14px;
+  display: inline-block;
+  text-align: center;
+  flex-shrink: 0;
+}
+.org-group > .org-header .org-label {
+  font-weight: 700;
+}
+.org-group > .org-header .org-count {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: normal;
+}
+.org-group > .org-header .org-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+}
+.org-group > .org-header:hover .org-actions { opacity: 1; }
+.org-group > .org-header .org-actions button {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 3px 9px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.org-group > .org-header .org-actions button:hover { background: var(--bg-4); }
+.org-group > .org-header .org-actions button.danger:hover { background: var(--err); border-color: var(--err); color: #fff; }
+.org-group.collapsed > .org-body { display: none; }
+.org-group.collapsed > .org-header .org-toggle { transform: rotate(-90deg); }
+
+/* Directorate (level 0) */
+.org-group.lvl-dir > .org-header {
+  background: var(--bg-3);
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.org-group.lvl-dir > .org-header .org-label {
+  font-size: 16px;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+.org-group.lvl-dir > .org-header .org-count { font-size: 12px; }
+.org-group.lvl-dir > .org-body { background: var(--bg); }
+
+/* Division (level 1) */
+.org-group.lvl-div > .org-header {
+  background: rgba(255,255,255,0.025);
+  padding: 9px 18px 9px 36px;
+  border-bottom: 1px solid var(--border);
+}
+.org-group.lvl-div > .org-header .org-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Branch (level 2) */
+.org-group.lvl-br > .org-header {
+  background: transparent;
+  padding: 7px 18px 7px 56px;
+  border-bottom: 1px solid var(--border);
+}
+.org-group.lvl-br > .org-header .org-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+}
+
+.org-group.lvl-br > .org-body { padding: 6px 18px 14px 56px; }
+
+/* People grid within a branch */
+.branch-people {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 4px;
+}
+.branch-people th {
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.branch-people td {
+  padding: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  vertical-align: middle;
+  background: rgba(255,255,255,0.012);
+}
+.branch-people tr:hover td { background: rgba(255,255,255,0.04); }
+.branch-people .roster-cell { padding: 5px 8px; min-height: 26px; font-size: 12px; }
+.branch-people .del-person {
+  font-size: 12px; padding: 3px 8px;
+  background: transparent; color: var(--text-dim); border: 1px solid transparent;
+}
+.branch-people .del-person:hover { color: var(--err); border-color: var(--err); }
+.branch-people .gov-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  width: 100%;
+}
+.branch-people .roster-cell.select { padding: 0; }
+
+.org-empty {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+  padding: 12px 0 6px;
+}
+
+/* ===== Mass-import modal ===== */
+dialog#import-modal {
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  width: 720px;
+  max-width: 94vw;
+  max-height: 88vh;
+}
+dialog#import-modal[open] { display: flex; flex-direction: column; }
+dialog#import-modal::backdrop { background: rgba(0,0,0,0.65); }
+.import-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.import-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.import-close {
+  font-size: 22px; padding: 0 8px;
+  background: transparent; border: none; color: var(--text-dim);
+  line-height: 1; cursor: pointer;
+}
+.import-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+.import-spec {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.import-spec strong { color: var(--text); }
+.import-spec code {
+  font-family: ui-monospace, monospace;
+  background: var(--bg-3);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  color: var(--text);
+}
+.import-spec pre {
+  margin: 8px 0 0;
+  background: var(--bg-3);
+  padding: 10px 12px;
+  border-radius: 3px;
+  font-size: 11px;
+  overflow-x: auto;
+  color: var(--text);
+}
+#import-textarea {
+  width: 100%;
+  min-height: 180px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font: inherit;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+#import-textarea:focus { border-color: var(--accent); outline: none; }
+.import-preview {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.import-preview .prev-summary { font-weight: 700; margin-bottom: 6px; }
+.import-preview .prev-summary.ok { color: var(--accent); }
+.import-preview .prev-summary.err { color: var(--err); }
+.import-preview .prev-row {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  padding: 2px 0;
+  color: var(--text-dim);
+}
+.import-preview .prev-row strong { color: var(--text); }
+.import-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: center;
+}
+.import-footer .spacer { flex: 1; }
+.import-footer .primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+.import-footer .primary:disabled { background: var(--bg-3); color: var(--text-dim); border-color: var(--border); cursor: not-allowed; }
+
+#sidebar {
+  width: 320px;
+  background: var(--bg-2);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 0;
+  flex-shrink: 0;
+}
+#sidebar section {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+}
+#sidebar section:last-child { border-bottom: none; }
+#sidebar h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--text);
+  margin: 0 0 14px;
+  font-weight: 800;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+  line-height: 1.2;
+}
+
+.legend-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px;
+  padding: 6px 0;
+  line-height: 1.4;
+}
+.legend-swatch {
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; border-radius: 4px; flex-shrink: 0;
+  font-size: 13px;
+}
+.legend-swatch.R { background: var(--r); color: #000; }
+.legend-swatch.A { background: var(--a); color: #fff; }
+.legend-swatch.C { background: var(--c); color: #000; }
+.legend-swatch.I { background: var(--i); color: #fff; }
+
+.hint {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 14px;
+  line-height: 1.7;
+  padding: 12px 14px;
+  background: var(--bg);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+.hint strong { color: #fff; font-weight: 700; }
+.hint em { color: var(--text-dim); font-style: italic; }
+.hint kbd {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text);
+  display: inline-block;
+  line-height: 1;
+}
+.hint p { margin: 0 0 10px; }
+.hint p:last-child { margin-bottom: 0; }
+.hint .divider {
+  height: 1px;
+  background: var(--border);
+  margin: 10px -14px;
+}
+
+.role-stat {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; padding: 5px 0;
+  border-bottom: 1px solid var(--border); gap: 8px;
+}
+.role-stat .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-stat .counts { display: flex; gap: 3px; flex-shrink: 0; }
+.role-stat .count {
+  font-weight: 700; padding: 1px 6px; border-radius: 2px;
+  font-size: 10px; min-width: 22px; text-align: center;
+}
+.count.R { background: var(--r); color: #000; }
+.count.A { background: var(--a); color: #fff; }
+.count.C { background: var(--c); color: #000; }
+.count.I { background: var(--i); color: #fff; }
+.count.zero { opacity: 0.35; }
+
+input[type=file] { display: none; }
+
+/* ===== Cell editor modal ===== */
+dialog#cell-modal {
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  width: 640px;
+  max-width: 92vw;
+  max-height: 84vh;
+}
+dialog#cell-modal[open] { display: flex; flex-direction: column; }
+dialog#cell-modal::backdrop { background: rgba(0,0,0,0.65); }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 14px 18px; border-bottom: 1px solid var(--border); gap: 14px;
+  flex-shrink: 0;
+}
+.modal-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+#modal-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  display: flex; align-items: center; gap: 6px;
+}
+#modal-subtitle .acc-label {
+  font-weight: 800;
+  color: #fff;
+  background: var(--a);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+#modal-close {
+  font-size: 22px; padding: 0 8px;
+  background: transparent; border: none; color: var(--text-dim);
+  line-height: 1; cursor: pointer;
+}
+#modal-close:hover { color: var(--text); }
+.modal-body { padding: 12px 18px 14px; overflow-y: auto; flex: 1; }
+#modal-inheritance:not(:empty) {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.inh-header {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 700;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inh-header::before { content: '↑'; font-weight: 700; color: var(--accent); }
+.inh-row .pname .label { font-style: italic; }
+.inh-row .pname .meta::before { content: 'structural A · '; opacity: 0.6; }
+#modal-search {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font: inherit;
+}
+#modal-list { display: flex; flex-direction: column; gap: 2px; }
+.person-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+}
+.person-row:hover { background: var(--bg-3); }
+.person-row .pname {
+  flex: 1; font-size: 13px;
+  overflow: hidden;
+}
+.person-row .pname .label { font-weight: 600; }
+.person-row .pname .meta { color: var(--text-dim); font-size: 11px; margin-left: 6px; }
+.role-seg { display: flex; flex-shrink: 0; }
+.role-seg button {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  padding: 4px 11px;
+  font-weight: 700; font-size: 12px;
+  border-radius: 0; border-left-width: 0;
+  color: var(--text);
+  min-width: 32px;
+}
+.role-seg button:first-child { border-radius: 3px 0 0 3px; border-left-width: 1px; }
+.role-seg button:last-child { border-radius: 0 3px 3px 0; }
+.role-seg button.active.R { background: var(--r); color: #000; border-color: var(--r); }
+.role-seg button.active.A { background: var(--a); color: #fff; border-color: var(--a); }
+.role-seg button.active.C { background: var(--c); color: #000; border-color: var(--c); }
+.role-seg button.active.I { background: var(--i); color: #fff; border-color: var(--i); }
+.role-seg button.active.none { background: var(--bg-4); }
+.modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+  flex-shrink: 0;
+}
+.modal-footer .primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+.modal-footer .spacer { flex: 1; }
+
+@media print {
+  header, #sidebar { display: none; }
+  body { background: white; color: black; }
+  td.cell { background: white !important; }
+  .cell-group.R .role { background: #cce5ff !important; -webkit-print-color-adjust: exact; }
+  .cell-group.A .role { background: #f8d7da !important; -webkit-print-color-adjust: exact; }
+  .cell-group.C .role { background: #fff3cd !important; -webkit-print-color-adjust: exact; }
+  .cell-group.I .role { background: #e2e3e5 !important; -webkit-print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 contenteditable spellcheck="false" id="title">Untitled RACI</h1>
+  <div class="tabs">
+    <button id="tab-matrix" class="active">Matrix</button>
+    <button id="tab-roster">Roster</button>
+  </div>
+  <div class="actions">
+    <button id="btn-add-tier">+ Tier</button>
+    <button id="btn-add-area">+ Process Area</button>
+    <button id="btn-add-person">+ Person</button>
+    <button id="btn-export">Export JSON</button>
+    <button id="btn-export-csv">Export CSV</button>
+    <button id="btn-import">Import JSON</button>
+    <input type="file" id="file-input" accept=".json,application/json">
+    <button id="btn-print">Print</button>
+    <button id="btn-reset" title="Reset to default seed">Reset</button>
+  </div>
+</header>
+<main>
+  <div id="matrix-view" class="view-wrap">
+    <table id="matrix"></table>
+  </div>
+  <div id="roster-view" class="view-wrap hidden">
+    <div id="roster-content"></div>
+  </div>
+  <aside id="sidebar">
+    <section>
+      <h2>Methodology</h2>
+      <div class="hint">
+        <p>Read this as a matrix: <strong>4 echelons × 6 process areas = up to 24 discrete RACIs</strong>.</p>
+        <p>Each cell defines who is <strong>R / A / C / I</strong> for that specific decision or handoff.</p>
+        <div class="divider"></div>
+        <p>The Portfolio RACI sets the ceiling; lower echelons <em>decompose</em> accountability without relitigating it — which is why the tier above's structural <span style="background:var(--a);color:#fff;padding:1px 5px;border-radius:2px;font-weight:800;font-size:10px">A</span> inherits down as <span style="background:var(--i);color:#fff;padding:1px 5px;border-radius:2px;font-weight:800;font-size:10px">I</span> by default.</p>
+      </div>
+    </section>
+    <section>
+      <h2>Legend</h2>
+      <div class="legend-item"><span class="legend-swatch R">R</span> <span><strong>Responsible</strong> — does the work</span></div>
+      <div class="legend-item"><span class="legend-swatch A">A</span> <span><strong>Accountable</strong> — owns the outcome</span></div>
+      <div class="legend-item"><span class="legend-swatch C">C</span> <span><strong>Consulted</strong> — two-way input</span></div>
+      <div class="legend-item"><span class="legend-swatch I">I</span> <span><strong>Informed</strong> — one-way update</span></div>
+    </section>
+    <section>
+      <h2>How to use</h2>
+      <div class="hint">
+        <p>Each cell is one mini-RACI (a tier × a process area).</p>
+        <p><kbd>click</kbd> a cell to open the people editor.</p>
+        <div class="divider"></div>
+        <p>Every tier carries a structural <span style="background:var(--a);color:#fff;padding:1px 5px;border-radius:2px;font-weight:800;font-size:10px">A</span> shown in the row header.</p>
+        <p><strong>Inheritance:</strong> a tier's structural A auto-appears as <span style="background:var(--i);color:#fff;padding:1px 5px;border-radius:2px;font-weight:800;font-size:10px">I</span> in the tier immediately below it (italic, prefixed ↑). Override per cell to <span style="background:var(--c);color:#000;padding:1px 5px;border-radius:2px;font-weight:800;font-size:10px">C</span> or exclude from the editor.</p>
+        <div class="divider"></div>
+        <p><em>Autosaves to browser storage.</em></p>
+      </div>
+    </section>
+    <section>
+      <h2>Workload (R/A/C/I)</h2>
+      <div id="workload"></div>
+    </section>
+  </aside>
+</main>
+
+<dialog id="cell-modal">
+  <header class="modal-header">
+    <div>
+      <h3 id="modal-title">—</h3>
+      <div id="modal-subtitle"></div>
+    </div>
+    <button id="modal-close" aria-label="Close">×</button>
+  </header>
+  <div class="modal-body">
+    <div id="modal-inheritance"></div>
+    <input type="text" id="modal-search" placeholder="Filter people by name, title, office, branch…">
+    <div id="modal-list"></div>
+  </div>
+  <footer class="modal-footer">
+    <button id="modal-clear">Clear cell</button>
+    <span class="spacer"></span>
+    <button id="modal-done" class="primary">Done</button>
+  </footer>
+</dialog>
+
+<dialog id="import-modal">
+  <header class="import-header">
+    <h3>Mass-import people</h3>
+    <button id="import-close" class="import-close" aria-label="Close">×</button>
+  </header>
+  <div class="import-body">
+    <div class="import-spec">
+      <strong>Format:</strong> tab-separated <em>or</em> comma-separated values with a header row.<br>
+      <strong>Recognized column names</strong> (case-insensitive, any order; extra columns ignored):<br>
+      <code>LAST NAME</code> <code>FIRST NAME</code> <code>TITLE</code> <code>GOV/CTR</code>
+      <code>DIRECTORATE</code> <code>DIVISION</code> <code>BRANCH</code>
+      <code>OFFICE SYMBOL</code> <code>BLDG</code> <code>POD</code>
+      <code>DUTY LOCATION</code> <code>NOTES</code>
+      <br><br>
+      <strong>GOV/CTR</strong> values normalize to: MIL · GOV · CTR · CIV.<br>
+      Tip: paste directly from Excel — that yields tab-separated rows automatically.
+      <pre>LAST NAME&#9;FIRST NAME&#9;TITLE&#9;GOV/CTR&#9;DIRECTORATE&#9;DIVISION&#9;BRANCH&#9;OFFICE SYMBOL&#9;BLDG&#9;POD&#9;DUTY LOCATION&#9;NOTES
+DOE&#9;John&#9;Col&#9;MIL&#9;A2&#9;A2X&#9;Operations&#9;AFICA/A2&#9;1500&#9;3&#9;JBSA-Lackland&#9;
+SMITH&#9;Jane&#9;Maj&#9;MIL&#9;A6&#9;A6C&#9;Cyber&#9;AFICA/A6C&#9;1602&#9;2&#9;JBSA-Lackland&#9;</pre>
+    </div>
+    <textarea id="import-textarea" placeholder="Paste rows here (with header row)…" spellcheck="false"></textarea>
+    <div class="import-preview" id="import-preview"></div>
+  </div>
+  <footer class="import-footer">
+    <label style="font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text-dim)">
+      <input type="checkbox" id="import-replace"> Replace existing roster (otherwise append)
+    </label>
+    <span class="spacer"></span>
+    <button id="import-cancel">Cancel</button>
+    <button id="import-confirm" class="primary" disabled>Import</button>
+  </footer>
+</dialog>
+
+<script>
+const STORAGE_KEY = 'raci-matrix-v3';
+const LEGACY_KEYS = ['raci-matrix-v2', 'raci-matrix-v1'];
+const ROLES = ['R', 'A', 'C', 'I'];
+
+const PERSON_FIELDS = [
+  { key: 'dutyLocation', label: 'DUTY LOCATION', width: 150 },
+  { key: 'govCtr',       label: 'GOV / CTR',     width: 80,  type: 'select', options: ['', 'MIL', 'GOV', 'CTR', 'CIV'] },
+  { key: 'title',        label: 'TITLE',         width: 80 },
+  { key: 'lastName',     label: 'LAST NAME',     width: 120 },
+  { key: 'firstName',    label: 'FIRST NAME',    width: 120 },
+  { key: 'directorate',  label: 'DIRECTORATE',   width: 110 },
+  { key: 'division',     label: 'DIVISION',      width: 110 },
+  { key: 'branch',       label: 'BRANCH',        width: 110 },
+  { key: 'officeSymbol', label: 'OFFICE SYMBOL', width: 120 },
+  { key: 'bldg',         label: 'BLDG',          width: 70 },
+  { key: 'pod',          label: 'POD',           width: 60 },
+  { key: 'notes',        label: 'NOTES',         width: 220 }
+];
+let state = loadState() || defaultState();
+let view = 'matrix';
+let currentCell = null;
+let rosterCollapsed = new Set();
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function makePerson(data = {}) {
+  const p = { id: data.id || uid() };
+  for (const f of PERSON_FIELDS) p[f.key] = data[f.key] || '';
+  return p;
+}
+
+function defaultState() {
+  const people = [
+    makePerson({ title: 'Col',    lastName: 'DOE',    firstName: 'John',  govCtr: 'MIL', directorate: 'A2', division: 'A2X', branch: 'Operations', officeSymbol: 'AFICA/A2',  bldg: '1500', pod: '3', dutyLocation: 'JBSA-Lackland' }),
+    makePerson({ title: 'Lt Col', lastName: 'ROE',    firstName: 'Mary',  govCtr: 'MIL', directorate: 'A2', division: 'A2X', branch: 'Operations', officeSymbol: 'AFICA/A2X', bldg: '1500', pod: '3', dutyLocation: 'JBSA-Lackland' }),
+    makePerson({ title: 'Mr',     lastName: 'SMITH',  firstName: 'James', govCtr: 'GOV', directorate: 'A2', division: 'A2Y', branch: 'Analysis',   officeSymbol: 'AFICA/A2Y', bldg: '1500', pod: '4', dutyLocation: 'JBSA-Lackland' }),
+    makePerson({ title: 'Ms',     lastName: 'KIM',    firstName: 'Sarah', govCtr: 'CTR', directorate: 'A2', division: 'A2Y', branch: 'Analysis',   officeSymbol: 'AFICA/A2Y', bldg: '1500', pod: '4', dutyLocation: 'JBSA-Lackland' }),
+    makePerson({ title: 'TSgt',   lastName: 'NGUYEN', firstName: 'Linh',  govCtr: 'MIL', directorate: 'A6', division: 'A6C', branch: 'Cyber',      officeSymbol: 'AFICA/A6C', bldg: '1602', pod: '2', dutyLocation: 'JBSA-Lackland' }),
+    makePerson({ title: 'Mr',     lastName: 'PATEL',  firstName: 'Raj',   govCtr: 'CTR', directorate: 'A6', division: 'A6C', branch: 'Cyber',      officeSymbol: 'AFICA/A6C', bldg: '1602', pod: '2', dutyLocation: 'JBSA-Lackland' })
+  ];
+  const tiers = [
+    { id: uid(), name: 'Portfolio RACI',  accountableRole: 'HQ / Chief of Staff' },
+    { id: uid(), name: 'Program RACI',    accountableRole: 'Cross-Directorate Lead' },
+    { id: uid(), name: 'Project RACI',    accountableRole: 'PM / PD / PL' },
+    { id: uid(), name: 'Task / Team RACI', accountableRole: 'Team Lead / Product Owner' }
+  ];
+  const processAreas = [
+    { id: uid(), name: 'Planning' },
+    { id: uid(), name: 'Design' },
+    { id: uid(), name: 'Execution' },
+    { id: uid(), name: 'Validation' },
+    { id: uid(), name: 'Delivery' },
+    { id: uid(), name: 'Improvement' }
+  ];
+  return {
+    title: 'Hierarchical RACI — Portfolio → Program → Project → Task',
+    tiers, processAreas, cells: {}, people
+  };
+}
+
+function loadState() {
+  try {
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) for (const k of LEGACY_KEYS) { raw = localStorage.getItem(k); if (raw) break; }
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+
+    // Migrate legacy formats: keep people, reset matrix structure to defaults.
+    if (!s.tiers || !s.processAreas) {
+      const ds = defaultState();
+      if (s.roles && !s.people) {
+        s.people = s.roles.map(r => makePerson({ id: r.id, lastName: r.name }));
+      }
+      if (s.people) ds.people = s.people;
+      ds.title = s.title || ds.title;
+      return ds;
+    }
+    if (!s.cells) s.cells = {};
+    if (!s.people) s.people = [];
+    for (const p of s.people) for (const f of PERSON_FIELDS) if (!(f.key in p)) p[f.key] = '';
+    return s;
+  } catch { return null; }
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+function getCell(tierId, areaId) {
+  if (!state.cells[tierId]) state.cells[tierId] = {};
+  if (!state.cells[tierId][areaId]) state.cells[tierId][areaId] = { R: [], A: [], C: [], I: [], inheritOverrides: {} };
+  if (!state.cells[tierId][areaId].inheritOverrides) state.cells[tierId][areaId].inheritOverrides = {};
+  return state.cells[tierId][areaId];
+}
+
+// Inheritance is one-step: only the tier immediately above contributes.
+// Default is I; per-cell override can flip to C or exclude ('none').
+// Inherited entries are role labels, not roster people, so they don't count
+// toward person workload.
+function getInheritedForCell(tierId, areaId) {
+  const idx = state.tiers.findIndex(t => t.id === tierId);
+  if (idx <= 0) return [];
+  const upper = state.tiers[idx - 1];
+  if (!upper.accountableRole || !upper.accountableRole.trim()) return [];
+  const cell = getCell(tierId, areaId);
+  const effective = (cell.inheritOverrides || {})[upper.id] || 'I';
+  if (effective === 'none') return [];
+  return [{
+    sourceTierId: upper.id,
+    sourceTierName: upper.name,
+    label: upper.accountableRole,
+    role: effective
+  }];
+}
+function setInheritOverride(tierId, areaId, sourceTierId, value) {
+  const cell = getCell(tierId, areaId);
+  if (!cell.inheritOverrides) cell.inheritOverrides = {};
+  if (value === 'I') delete cell.inheritOverrides[sourceTierId];
+  else cell.inheritOverrides[sourceTierId] = value;
+}
+function setPersonRole(tierId, areaId, personId, role) {
+  const cell = getCell(tierId, areaId);
+  for (const r of ROLES) cell[r] = cell[r].filter(id => id !== personId);
+  if (role) cell[role].push(personId);
+}
+function getPersonRole(tierId, areaId, personId) {
+  const cell = getCell(tierId, areaId);
+  for (const r of ROLES) if (cell[r].includes(personId)) return r;
+  return '';
+}
+
+function personLabel(p) {
+  const last = p.lastName || 'Unnamed';
+  const f = p.firstName ? `, ${p.firstName[0]}.` : '';
+  return last + f;
+}
+function personMeta(p) {
+  const bits = [];
+  if (p.title) bits.push(p.title);
+  if (p.govCtr) bits.push(p.govCtr);
+  if (p.officeSymbol) bits.push(p.officeSymbol);
+  else if (p.branch) bits.push(p.branch);
+  return bits.join(' · ');
+}
+function personTooltip(p) {
+  const parts = [];
+  const name = `${p.title ? p.title + ' ' : ''}${p.lastName || ''}${p.firstName ? ', ' + p.firstName : ''}`.trim();
+  if (name) parts.push(name);
+  if (p.govCtr) parts.push('[' + p.govCtr + ']');
+  const org = [p.directorate, p.division, p.branch].filter(Boolean).join(' / ');
+  if (org) parts.push(org);
+  if (p.officeSymbol) parts.push('Sym: ' + p.officeSymbol);
+  const loc = [p.bldg && 'Bldg ' + p.bldg, p.pod && 'POD ' + p.pod].filter(Boolean).join(' · ');
+  if (loc) parts.push(loc);
+  if (p.dutyLocation) parts.push(p.dutyLocation);
+  if (p.notes) parts.push('— ' + p.notes);
+  return parts.join('\n');
+}
+function visiblePeople() { return state.people; }
+
+// ---------- Render ----------
+function render() {
+  if (view === 'matrix') renderMatrix();
+  else renderRoster();
+  renderWorkload();
+  saveState();
+}
+
+function renderMatrix() {
+  const table = document.getElementById('matrix');
+  const tiers = state.tiers;
+  const areas = state.processAreas;
+
+  let html = '<thead><tr><th class="tier-header-col">Tier / Scope</th>';
+  for (const a of areas) {
+    html += `<th class="area-col" data-area-th="${a.id}"><span contenteditable spellcheck="false" data-area-name="${a.id}">${escapeHtml(a.name)}</span><button class="del-area" data-del-area="${a.id}" title="Delete column">×</button></th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const tier of tiers) {
+    html += `<tr data-tier="${tier.id}">`;
+    html += `<td class="tier-label">`;
+    html += `  <div class="tier-name" contenteditable spellcheck="false" data-tier-name="${tier.id}">${escapeHtml(tier.name)}</div>`;
+    html += `  <div class="tier-accountable"><span class="acc-label">A</span><span class="acc-text" contenteditable spellcheck="false" data-tier-acc="${tier.id}">${escapeHtml(tier.accountableRole)}</span></div>`;
+    html += `  <div class="tier-actions"><button data-move-tier-up="${tier.id}" title="Move up">▲</button><button data-move-tier-down="${tier.id}" title="Move down">▼</button><button class="del" data-del-tier="${tier.id}" title="Delete tier">Delete</button></div>`;
+    html += `</td>`;
+
+    for (const a of areas) {
+      const cell = getCell(tier.id, a.id);
+      const inherited = getInheritedForCell(tier.id, a.id);
+      const groups = { R: [], A: [], C: [], I: [] };
+      for (const r of ROLES) {
+        for (const pid of cell[r]) {
+          const p = state.people.find(x => x.id === pid);
+          if (p) groups[r].push({ kind: 'person', person: p, pid });
+        }
+      }
+      for (const inh of inherited) {
+        groups[inh.role].push({ kind: 'inherited', label: inh.label, source: inh.sourceTierName });
+      }
+      const totalAssigned = ROLES.reduce((n, r) => n + groups[r].length, 0);
+      html += `<td class="cell" data-tier-cell="${tier.id}" data-area-cell="${a.id}">`;
+      if (totalAssigned === 0) {
+        html += `<div class="cell-empty">Click to assign</div>`;
+      } else {
+        for (const r of ROLES) {
+          if (groups[r].length === 0) continue;
+          const items = groups[r].map(it => {
+            if (it.kind === 'person') {
+              return `<span class="name-chip" title="${escapeHtml(personTooltip(it.person))}">${escapeHtml(it.person.lastName || '?')}</span>`;
+            }
+            const tt = `${it.label} — inherited structural A from ${it.source}`;
+            return `<span class="name-chip inherited" title="${escapeHtml(tt)}">${escapeHtml(it.label)}</span>`;
+          }).join('');
+          html += `<div class="cell-group ${r}"><span class="role">${r}</span><span class="names">${items}</span></div>`;
+        }
+      }
+      html += `</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+// Compact field set shown inside each branch (dir/div/branch implied by group)
+const BRANCH_FIELDS = [
+  { key: 'title',        label: 'Title',  width: 70 },
+  { key: 'lastName',     label: 'Last',   width: 110, bold: true },
+  { key: 'firstName',    label: 'First',  width: 110 },
+  { key: 'govCtr',       label: 'Gov/Ctr', width: 80, type: 'select', options: ['', 'MIL', 'GOV', 'CTR', 'CIV'] },
+  { key: 'officeSymbol', label: 'Office Sym', width: 120 },
+  { key: 'bldg',         label: 'Bldg',   width: 60 },
+  { key: 'pod',          label: 'POD',    width: 50 },
+  { key: 'dutyLocation', label: 'Duty Location', width: 140 },
+  { key: 'notes',        label: 'Notes',  width: 200 }
+];
+const UNASSIGNED = '— Unassigned —';
+const NO_VALUE = '—';
+
+function buildOrgTree() {
+  const tree = {};
+  for (const p of state.people) {
+    const dir = (p.directorate && p.directorate.trim()) || UNASSIGNED;
+    const div = (p.division && p.division.trim()) || NO_VALUE;
+    const br  = (p.branch && p.branch.trim()) || NO_VALUE;
+    if (!tree[dir]) tree[dir] = {};
+    if (!tree[dir][div]) tree[dir][div] = {};
+    if (!tree[dir][div][br]) tree[dir][div][br] = [];
+    tree[dir][div][br].push(p);
+  }
+  return tree;
+}
+
+function countPeople(node) {
+  // Node could be branch (array), division (obj of arrays), or directorate (obj of obj of arrays)
+  if (Array.isArray(node)) return node.length;
+  let n = 0;
+  for (const k in node) n += countPeople(node[k]);
+  return n;
+}
+
+function renderRoster() {
+  const wrap = document.getElementById('roster-content');
+  const tree = buildOrgTree();
+  const total = state.people.length;
+
+  let html = `
+    <div class="roster-toolbar">
+      <button id="btn-roster-add-person">+ Add Person</button>
+      <button id="btn-roster-import" class="btn-primary">Mass Import…</button>
+      <button id="btn-roster-export-csv">Export Roster CSV</button>
+      <span class="stat"><strong>${total}</strong> ${total === 1 ? 'person' : 'people'} across <strong>${Object.keys(tree).length}</strong> directorate${Object.keys(tree).length === 1 ? '' : 's'}</span>
+    </div>
+    <div class="org-tree">`;
+
+  // Sort: Unassigned last, otherwise alphabetical
+  const dirNames = Object.keys(tree).sort((a, b) => {
+    if (a === UNASSIGNED) return 1;
+    if (b === UNASSIGNED) return -1;
+    return a.localeCompare(b);
+  });
+
+  if (dirNames.length === 0) {
+    html += `<div style="padding:40px;text-align:center;color:var(--text-dim)">No people yet. Click <strong>+ Add Person</strong> or <strong>Mass Import</strong>.</div>`;
+  }
+
+  for (const dirName of dirNames) {
+    const divs = tree[dirName];
+    const dirKey = dirName;
+    const dirCollapsed = rosterCollapsed.has(dirKey);
+    html += `<div class="org-group lvl-dir ${dirCollapsed ? 'collapsed' : ''}" data-org-key="${escapeHtml(dirKey)}">
+      <div class="org-header" data-toggle-org="${escapeHtml(dirKey)}">
+        <span class="org-toggle">▼</span>
+        <span class="org-label">${escapeHtml(dirName)}</span>
+        <span class="org-count">${countPeople(divs)} ${countPeople(divs) === 1 ? 'person' : 'people'} · ${Object.keys(divs).length} division${Object.keys(divs).length === 1 ? '' : 's'}</span>
+      </div>
+      <div class="org-body">`;
+
+    const divNames = Object.keys(divs).sort((a, b) => a === NO_VALUE ? 1 : b === NO_VALUE ? -1 : a.localeCompare(b));
+    for (const divName of divNames) {
+      const branches = divs[divName];
+      const divKey = `${dirKey}/${divName}`;
+      const divCollapsed = rosterCollapsed.has(divKey);
+      html += `<div class="org-group lvl-div ${divCollapsed ? 'collapsed' : ''}" data-org-key="${escapeHtml(divKey)}">
+        <div class="org-header" data-toggle-org="${escapeHtml(divKey)}">
+          <span class="org-toggle">▼</span>
+          <span class="org-label">${escapeHtml(divName)}</span>
+          <span class="org-count">${countPeople(branches)} · ${Object.keys(branches).length} branch${Object.keys(branches).length === 1 ? '' : 'es'}</span>
+        </div>
+        <div class="org-body">`;
+
+      const brNames = Object.keys(branches).sort((a, b) => a === NO_VALUE ? 1 : b === NO_VALUE ? -1 : a.localeCompare(b));
+      for (const brName of brNames) {
+        const people = branches[brName];
+        const brKey = `${divKey}/${brName}`;
+        const brCollapsed = rosterCollapsed.has(brKey);
+        const addCtx = dirName === UNASSIGNED ? '' : `${dirName}|${divName === NO_VALUE ? '' : divName}|${brName === NO_VALUE ? '' : brName}`;
+        html += `<div class="org-group lvl-br ${brCollapsed ? 'collapsed' : ''}" data-org-key="${escapeHtml(brKey)}">
+          <div class="org-header" data-toggle-org="${escapeHtml(brKey)}">
+            <span class="org-toggle">▼</span>
+            <span class="org-label">${escapeHtml(brName)}</span>
+            <span class="org-count">${people.length} ${people.length === 1 ? 'person' : 'people'}</span>
+            <div class="org-actions">
+              <button data-add-to-branch="${escapeHtml(addCtx)}">+ Person</button>
+            </div>
+          </div>
+          <div class="org-body">`;
+        html += renderBranchPeopleTable(people);
+        html += `</div></div>`;
+      }
+      html += `</div></div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+function renderBranchPeopleTable(people) {
+  let html = '<table class="branch-people"><thead><tr>';
+  for (const f of BRANCH_FIELDS) html += `<th style="min-width:${f.width}px">${escapeHtml(f.label)}</th>`;
+  html += '<th style="width:36px"></th></tr></thead><tbody>';
+  for (const p of people) {
+    html += `<tr data-person="${p.id}">`;
+    for (const f of BRANCH_FIELDS) {
+      const val = p[f.key] || '';
+      if (f.type === 'select') {
+        const govClass = val ? `gov-${val}` : '';
+        html += `<td class="roster-cell select"><select data-field="${f.key}" data-person="${p.id}" class="${govClass}">`;
+        for (const opt of f.options) html += `<option value="${escapeHtml(opt)}" ${opt === val ? 'selected' : ''}>${escapeHtml(opt || '—')}</option>`;
+        html += `</select></td>`;
+      } else {
+        const bold = f.bold ? 'style="font-weight:700"' : '';
+        html += `<td><span class="roster-cell" ${bold} contenteditable spellcheck="false" data-field="${f.key}" data-person="${p.id}">${escapeHtml(val)}</span></td>`;
+      }
+    }
+    html += `<td style="text-align:center"><button class="del-person" data-del-person="${p.id}" title="Delete person">×</button></td></tr>`;
+  }
+  if (people.length === 0) {
+    html += `<tr><td colspan="${BRANCH_FIELDS.length + 1}" class="org-empty">No people in this branch yet.</td></tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function raciName(v) {
+  return { R: 'Responsible', A: 'Accountable', C: 'Consulted', I: 'Informed' }[v] || '';
+}
+
+function renderWorkload() {
+  const wrap = document.getElementById('workload');
+  const people = visiblePeople();
+  const counts = {};
+  for (const p of people) counts[p.id] = { R: 0, A: 0, C: 0, I: 0 };
+  for (const tier of state.tiers) {
+    for (const area of state.processAreas) {
+      const cell = getCell(tier.id, area.id);
+      for (const r of ROLES) for (const pid of cell[r]) if (counts[pid]) counts[pid][r]++;
+    }
+  }
+  wrap.innerHTML = people.map(p => {
+    const c = counts[p.id];
+    const cell = (k) => `<span class="count ${k} ${c[k] === 0 ? 'zero' : ''}" title="${raciName(k)}">${c[k]}</span>`;
+    return `<div class="role-stat"><span class="name" title="${escapeHtml(personTooltip(p))}">${escapeHtml(personLabel(p))}</span><span class="counts">${cell('R')}${cell('A')}${cell('C')}${cell('I')}</span></div>`;
+  }).join('');
+  if (people.length === 0) wrap.innerHTML = '<p class="hint" style="margin:0">No people match filters.</p>';
+}
+
+// ---------- View toggling ----------
+function setView(v) {
+  view = v;
+  document.getElementById('tab-matrix').classList.toggle('active', v === 'matrix');
+  document.getElementById('tab-roster').classList.toggle('active', v === 'roster');
+  document.getElementById('matrix-view').classList.toggle('hidden', v !== 'matrix');
+  document.getElementById('roster-view').classList.toggle('hidden', v !== 'roster');
+  render();
+}
+
+// ---------- Cell editor modal ----------
+function openCellEditor(tierId, areaId) {
+  currentCell = { tierId, areaId };
+  const tier = state.tiers.find(t => t.id === tierId);
+  const area = state.processAreas.find(a => a.id === areaId);
+  document.getElementById('modal-title').textContent = `${tier.name} — ${area.name}`;
+  const sub = document.getElementById('modal-subtitle');
+  if (tier.accountableRole) {
+    sub.innerHTML = `<span class="acc-label">A</span> Structural Accountable: <strong>${escapeHtml(tier.accountableRole)}</strong>`;
+  } else {
+    sub.innerHTML = '';
+  }
+  document.getElementById('modal-search').value = '';
+  renderModalInheritance();
+  renderModalList('');
+  const dlg = document.getElementById('cell-modal');
+  dlg.showModal();
+}
+function renderModalInheritance() {
+  const wrap = document.getElementById('modal-inheritance');
+  const idx = state.tiers.findIndex(t => t.id === currentCell.tierId);
+  if (idx <= 0) { wrap.innerHTML = ''; return; }
+  const u = state.tiers[idx - 1];
+  if (!u.accountableRole || !u.accountableRole.trim()) { wrap.innerHTML = ''; return; }
+  const cell = getCell(currentCell.tierId, currentCell.areaId);
+  const overrides = cell.inheritOverrides || {};
+  const effective = overrides[u.id] || 'I';
+  const btn = (label, value) => {
+    const active = (effective === value) ? 'active ' + (value === 'none' ? 'none' : value) : '';
+    return `<button data-inh-source="${u.id}" data-inh-role="${value}" class="${active}">${label}</button>`;
+  };
+  wrap.innerHTML = `<div class="inh-header">Inherited from tier above (default: Informed)</div>
+    <div class="person-row inh-row">
+      <div class="pname"><span class="label">${escapeHtml(u.accountableRole)}</span><span class="meta">${escapeHtml(u.name)}</span></div>
+      <div class="role-seg">${btn('—', 'none')}${btn('C', 'C')}${btn('I', 'I')}</div>
+    </div>`;
+}
+function renderModalList(filter) {
+  const wrap = document.getElementById('modal-list');
+  const f = (filter || '').toLowerCase().trim();
+  const people = visiblePeople().filter(p => {
+    if (!f) return true;
+    const hay = [p.lastName, p.firstName, p.title, p.officeSymbol, p.branch, p.division, p.directorate, p.govCtr, p.dutyLocation].join(' ').toLowerCase();
+    return hay.includes(f);
+  });
+  if (people.length === 0) {
+    wrap.innerHTML = '<p class="hint" style="text-align:center;padding:12px">No matching people.</p>';
+    return;
+  }
+  wrap.innerHTML = people.map(p => {
+    const role = getPersonRole(currentCell.tierId, currentCell.areaId, p.id);
+    const btn = (r) => {
+      const label = r || '—';
+      const cls = role === r ? `active ${r || 'none'}` : '';
+      return `<button data-role="${r}" class="${cls}">${label}</button>`;
+    };
+    return `<div class="person-row" data-person="${p.id}">
+      <div class="pname"><span class="label">${escapeHtml(personLabel(p))}</span><span class="meta">${escapeHtml(personMeta(p))}</span></div>
+      <div class="role-seg">${btn('')}${btn('R')}${btn('A')}${btn('C')}${btn('I')}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('modal-list').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-role]');
+  if (!btn) return;
+  const personId = btn.closest('.person-row').dataset.person;
+  setPersonRole(currentCell.tierId, currentCell.areaId, personId, btn.dataset.role);
+  renderModalList(document.getElementById('modal-search').value);
+  saveState();
+});
+document.getElementById('modal-inheritance').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-inh-source]');
+  if (!btn) return;
+  setInheritOverride(currentCell.tierId, currentCell.areaId, btn.dataset.inhSource, btn.dataset.inhRole);
+  renderModalInheritance();
+  saveState();
+});
+document.getElementById('modal-search').addEventListener('input', e => {
+  renderModalList(e.target.value);
+});
+document.getElementById('modal-close').onclick = () => document.getElementById('cell-modal').close();
+document.getElementById('modal-done').onclick = () => document.getElementById('cell-modal').close();
+document.getElementById('modal-clear').onclick = () => {
+  const cell = getCell(currentCell.tierId, currentCell.areaId);
+  for (const r of ROLES) cell[r] = [];
+  renderModalList(document.getElementById('modal-search').value);
+  saveState();
+};
+document.getElementById('cell-modal').addEventListener('close', () => {
+  currentCell = null;
+  render();
+});
+
+// ---------- Events ----------
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.id === 'tab-matrix') setView('matrix');
+  else if (t.id === 'tab-roster') setView('roster');
+  else if (t.matches('[data-del-area]')) {
+    const a = state.processAreas.find(x => x.id === t.dataset.delArea);
+    if (a && confirm(`Delete column "${a.name}" and all its assignments?`)) {
+      state.processAreas = state.processAreas.filter(x => x.id !== a.id);
+      for (const tid in state.cells) delete state.cells[tid][a.id];
+      render();
+    }
+  } else if (t.matches('[data-del-tier]')) {
+    const tier = state.tiers.find(x => x.id === t.dataset.delTier);
+    if (tier && confirm(`Delete tier "${tier.name}" and all its assignments?`)) {
+      state.tiers = state.tiers.filter(x => x.id !== tier.id);
+      delete state.cells[tier.id];
+      render();
+    }
+  } else if (t.matches('[data-move-tier-up]') || t.matches('[data-move-tier-down]')) {
+    const dir = t.matches('[data-move-tier-up]') ? -1 : 1;
+    const id = t.dataset.moveTierUp || t.dataset.moveTierDown;
+    const idx = state.tiers.findIndex(x => x.id === id);
+    const ni = idx + dir;
+    if (idx >= 0 && ni >= 0 && ni < state.tiers.length) {
+      [state.tiers[idx], state.tiers[ni]] = [state.tiers[ni], state.tiers[idx]];
+      render();
+    }
+  } else if (t.matches('[data-del-person]')) {
+    const p = state.people.find(x => x.id === t.dataset.delPerson);
+    if (p && confirm(`Delete ${personLabel(p)} and all their RACI assignments?`)) {
+      const pid = p.id;
+      state.people = state.people.filter(x => x.id !== pid);
+      for (const tid in state.cells) {
+        for (const aid in state.cells[tid]) {
+          const c = state.cells[tid][aid];
+          for (const r of ROLES) c[r] = c[r].filter(id => id !== pid);
+        }
+      }
+      render();
+    }
+  } else if (t.id === 'btn-roster-add-person') {
+    state.people.push(makePerson({ lastName: 'NEW' }));
+    saveState();
+    renderRoster();
+  } else if (t.id === 'btn-roster-import') {
+    openImportModal();
+  } else if (t.id === 'btn-roster-export-csv') {
+    exportRosterCSV();
+  } else if (t.matches('[data-add-to-branch]')) {
+    const ctx = t.dataset.addToBranch;
+    const [dir, div, br] = ctx.split('|');
+    state.people.push(makePerson({ lastName: 'NEW', directorate: dir || '', division: div || '', branch: br || '' }));
+    saveState();
+    renderRoster();
+  } else if (t.closest('[data-toggle-org]')) {
+    const header = t.closest('[data-toggle-org]');
+    if (t.closest('.org-actions')) return;
+    const key = header.dataset.toggleOrg;
+    if (rosterCollapsed.has(key)) rosterCollapsed.delete(key);
+    else rosterCollapsed.add(key);
+    const group = header.closest('.org-group');
+    if (group) group.classList.toggle('collapsed');
+  } else {
+    const cellEl = t.closest('td.cell');
+    if (cellEl && !t.closest('button')) {
+      openCellEditor(cellEl.dataset.tierCell, cellEl.dataset.areaCell);
+    }
+  }
+});
+
+document.addEventListener('blur', e => {
+  const t = e.target;
+  if (t.matches('[data-tier-name]')) {
+    const tier = state.tiers.find(x => x.id === t.dataset.tierName);
+    if (tier) {
+      const v = t.textContent.trim() || 'Untitled tier';
+      if (tier.name !== v) { tier.name = v; saveState(); }
+    }
+  } else if (t.matches('[data-tier-acc]')) {
+    const tier = state.tiers.find(x => x.id === t.dataset.tierAcc);
+    if (tier) {
+      const v = t.textContent.trim();
+      if (tier.accountableRole !== v) { tier.accountableRole = v; saveState(); }
+    }
+  } else if (t.matches('[data-area-name]')) {
+    const area = state.processAreas.find(x => x.id === t.dataset.areaName);
+    if (area) {
+      const v = t.textContent.trim() || 'Untitled';
+      if (area.name !== v) { area.name = v; saveState(); }
+    }
+  } else if (t.matches('.roster-cell[contenteditable]')) {
+    const p = state.people.find(x => x.id === t.dataset.person);
+    if (p) {
+      const v = t.textContent.trim();
+      if (p[t.dataset.field] !== v) { p[t.dataset.field] = v; saveState(); }
+    }
+  } else if (t.id === 'title') {
+    const v = t.textContent.trim() || 'Untitled RACI';
+    state.title = v;
+    document.title = v;
+    saveState();
+  }
+}, true);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement && document.activeElement.matches('[contenteditable]')) {
+    e.preventDefault();
+    document.activeElement.blur();
+  }
+});
+
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('select[data-field][data-person]')) {
+    const p = state.people.find(x => x.id === t.dataset.person);
+    if (p) {
+      p[t.dataset.field] = t.value;
+      saveState();
+      if (view === 'matrix') renderMatrix();
+    }
+  }
+});
+
+// ---------- Toolbar ----------
+document.getElementById('btn-add-tier').onclick = () => {
+  state.tiers.push({ id: uid(), name: 'New Tier RACI', accountableRole: '' });
+  render();
+};
+document.getElementById('btn-add-area').onclick = () => {
+  state.processAreas.push({ id: uid(), name: 'New Process Area' });
+  render();
+};
+document.getElementById('btn-add-person').onclick = () => {
+  state.people.push(makePerson({ lastName: 'NEW' }));
+  setView('roster');
+};
+document.getElementById('btn-export').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (state.title || 'raci').replace(/[^\w\-]+/g, '_') + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('btn-export-csv').onclick = () => {
+  // Wide format: one row per person, one column per (tier × area), value = role letter
+  const pcols = ['DUTY LOCATION', 'GOV/CTR', 'TITLE', 'LAST NAME', 'FIRST NAME', 'DIRECTORATE', 'DIVISION', 'BRANCH', 'OFFICE SYMBOL', 'BLDG', 'POD', 'NOTES'];
+  const headers = [...pcols];
+  const cellRefs = [];
+  for (const tier of state.tiers) {
+    for (const area of state.processAreas) {
+      headers.push(`${tier.name} / ${area.name}`);
+      cellRefs.push({ tierId: tier.id, areaId: area.id });
+    }
+  }
+  const rows = [headers];
+  for (const p of state.people) {
+    const row = [p.dutyLocation, p.govCtr, p.title, p.lastName, p.firstName, p.directorate, p.division, p.branch, p.officeSymbol, p.bldg, p.pod, p.notes];
+    for (const ref of cellRefs) row.push(getPersonRole(ref.tierId, ref.areaId, p.id));
+    rows.push(row);
+  }
+  const csv = rows.map(r => r.map(c => {
+    const s = String(c ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (state.title || 'raci').replace(/[^\w\-]+/g, '_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('btn-import').onclick = () => document.getElementById('file-input').click();
+document.getElementById('file-input').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const s = JSON.parse(r.result);
+      if (!s.tiers || !s.processAreas) {
+        if (!confirm('This file looks like an older format. Import it and reset matrix structure (keeping roster)?')) return;
+        const ds = defaultState();
+        if (s.people) ds.people = s.people;
+        if (s.roles && !s.people) ds.people = s.roles.map(r => makePerson({ id: r.id, lastName: r.name }));
+        ds.title = s.title || ds.title;
+        state = ds;
+      } else {
+        if (!s.cells) s.cells = {};
+        if (!s.people) s.people = [];
+        for (const p of s.people) for (const f of PERSON_FIELDS) if (!(f.key in p)) p[f.key] = '';
+        state = s;
+      }
+      document.getElementById('title').textContent = state.title || 'Untitled RACI';
+      document.title = state.title || 'Untitled RACI';
+      render();
+    } catch (err) { alert('Invalid RACI JSON: ' + err.message); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+};
+document.getElementById('btn-print').onclick = () => window.print();
+document.getElementById('btn-reset').onclick = () => {
+  if (confirm('Reset to the default seed (4 governance tiers × 6 process areas, sample roster)? Your current work will be lost.')) {
+    state = defaultState();
+    document.getElementById('title').textContent = state.title;
+    document.title = state.title;
+    render();
+  }
+};
+
+// ===== Mass import =====
+const IMPORT_HEADER_MAP = {
+  'LAST NAME': 'lastName', 'LASTNAME': 'lastName', 'LAST': 'lastName', 'SURNAME': 'lastName',
+  'FIRST NAME': 'firstName', 'FIRSTNAME': 'firstName', 'FIRST': 'firstName', 'GIVEN NAME': 'firstName',
+  'TITLE': 'title', 'RANK': 'title', 'GRADE': 'title',
+  'GOV/CTR': 'govCtr', 'GOV / CTR': 'govCtr', 'GOVCTR': 'govCtr', 'GOV-CTR': 'govCtr', 'CATEGORY': 'govCtr',
+  'DIRECTORATE': 'directorate', 'DIR': 'directorate',
+  'DIVISION': 'division', 'DIV': 'division',
+  'BRANCH': 'branch', 'BR': 'branch',
+  'OFFICE SYMBOL': 'officeSymbol', 'OFFICE_SYMBOL': 'officeSymbol', 'OFC SYMBOL': 'officeSymbol', 'SYMBOL': 'officeSymbol',
+  'BLDG': 'bldg', 'BUILDING': 'bldg',
+  'POD': 'pod',
+  'DUTY LOCATION': 'dutyLocation', 'DUTYLOCATION': 'dutyLocation', 'LOCATION': 'dutyLocation', 'BASE': 'dutyLocation',
+  'NOTES': 'notes', 'NOTE': 'notes', 'COMMENTS': 'notes'
+};
+const GOV_NORMALIZE = {
+  'MIL': 'MIL', 'MILITARY': 'MIL', 'M': 'MIL',
+  'GOV': 'GOV', 'GOVT': 'GOV', 'GOVERNMENT': 'GOV', 'CIVILIAN GOV': 'GOV', 'DAFC': 'GOV', 'GS': 'GOV',
+  'CTR': 'CTR', 'CONTRACTOR': 'CTR', 'CONTRACT': 'CTR', 'KTR': 'CTR',
+  'CIV': 'CIV', 'CIVILIAN': 'CIV'
+};
+
+function parseCSVLine(line, sep) {
+  if (sep === '\t') return line.split('\t').map(s => s.trim());
+  const out = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === sep) { out.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function parseImportText(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length === 0) return { headers: [], rows: [], errors: [], sep: null };
+  const firstLine = lines[0];
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const sep = tabCount >= commaCount ? '\t' : ',';
+
+  const headerCells = parseCSVLine(firstLine, sep);
+  const headers = headerCells.map(h => IMPORT_HEADER_MAP[h.toUpperCase().trim()] || null);
+  const errors = [];
+  if (!headers.includes('lastName')) errors.push('Missing required column: LAST NAME');
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseCSVLine(lines[i], sep);
+    const rec = {};
+    for (let j = 0; j < headers.length; j++) {
+      if (!headers[j]) continue;
+      let v = (cells[j] || '').trim();
+      if (headers[j] === 'govCtr' && v) v = GOV_NORMALIZE[v.toUpperCase()] || v.toUpperCase();
+      if (v) rec[headers[j]] = v;
+    }
+    if (rec.lastName) rows.push(rec);
+  }
+  return { headers, rows, errors, sep };
+}
+
+function refreshImportPreview() {
+  const text = document.getElementById('import-textarea').value;
+  const wrap = document.getElementById('import-preview');
+  const btn = document.getElementById('import-confirm');
+  if (!text.trim()) {
+    wrap.innerHTML = '<div class="prev-summary" style="color:var(--text-dim)">Paste data above to see a preview.</div>';
+    btn.disabled = true;
+    return;
+  }
+  const parsed = parseImportText(text);
+  if (parsed.errors.length) {
+    wrap.innerHTML = `<div class="prev-summary err">⚠ ${escapeHtml(parsed.errors.join(' · '))}</div>`;
+    btn.disabled = true;
+    return;
+  }
+  if (parsed.rows.length === 0) {
+    wrap.innerHTML = `<div class="prev-summary err">⚠ No valid data rows found.</div>`;
+    btn.disabled = true;
+    return;
+  }
+  const mappedCols = parsed.headers.filter(Boolean);
+  const previewRows = parsed.rows.slice(0, 5).map(r => {
+    const parts = [];
+    if (r.title) parts.push(r.title);
+    parts.push(`<strong>${escapeHtml(r.lastName || '')}</strong>${r.firstName ? ', ' + escapeHtml(r.firstName) : ''}`);
+    const loc = [r.directorate, r.division, r.branch].filter(Boolean).join('/');
+    if (loc) parts.push(loc);
+    if (r.govCtr) parts.push(`[${escapeHtml(r.govCtr)}]`);
+    return `<div class="prev-row">${parts.join(' · ')}</div>`;
+  }).join('');
+  const more = parsed.rows.length > 5 ? `<div class="prev-row">…and ${parsed.rows.length - 5} more</div>` : '';
+  wrap.innerHTML = `
+    <div class="prev-summary ok">✓ ${parsed.rows.length} ${parsed.rows.length === 1 ? 'person' : 'people'} ready · separator: ${parsed.sep === '\t' ? 'tab' : 'comma'} · columns mapped: ${mappedCols.length}/${parsed.headers.length}</div>
+    ${previewRows}${more}
+  `;
+  btn.disabled = false;
+}
+
+function openImportModal() {
+  document.getElementById('import-textarea').value = '';
+  document.getElementById('import-replace').checked = false;
+  refreshImportPreview();
+  document.getElementById('import-modal').showModal();
+  setTimeout(() => document.getElementById('import-textarea').focus(), 0);
+}
+
+document.getElementById('import-textarea').addEventListener('input', refreshImportPreview);
+document.getElementById('import-textarea').addEventListener('paste', () => setTimeout(refreshImportPreview, 0));
+document.getElementById('import-close').onclick = () => document.getElementById('import-modal').close();
+document.getElementById('import-cancel').onclick = () => document.getElementById('import-modal').close();
+document.getElementById('import-confirm').onclick = () => {
+  const text = document.getElementById('import-textarea').value;
+  const parsed = parseImportText(text);
+  if (parsed.errors.length || parsed.rows.length === 0) return;
+  const replace = document.getElementById('import-replace').checked;
+  if (replace && state.people.length > 0) {
+    if (!confirm(`Replace the current roster (${state.people.length} people) with ${parsed.rows.length} new entries? This also clears their RACI assignments.`)) return;
+    // Clear any existing person references from cells
+    const ids = new Set(state.people.map(p => p.id));
+    for (const tid in state.cells) {
+      for (const aid in state.cells[tid]) {
+        const c = state.cells[tid][aid];
+        for (const r of ROLES) c[r] = c[r].filter(id => !ids.has(id));
+      }
+    }
+    state.people = [];
+  }
+  for (const r of parsed.rows) state.people.push(makePerson(r));
+  saveState();
+  document.getElementById('import-modal').close();
+  if (view !== 'roster') setView('roster'); else renderRoster();
+};
+
+function exportRosterCSV() {
+  const headers = ['LAST NAME', 'FIRST NAME', 'TITLE', 'GOV/CTR', 'DIRECTORATE', 'DIVISION', 'BRANCH', 'OFFICE SYMBOL', 'BLDG', 'POD', 'DUTY LOCATION', 'NOTES'];
+  const keys = ['lastName', 'firstName', 'title', 'govCtr', 'directorate', 'division', 'branch', 'officeSymbol', 'bldg', 'pod', 'dutyLocation', 'notes'];
+  const rows = [headers];
+  for (const p of state.people) rows.push(keys.map(k => p[k] || ''));
+  const csv = rows.map(r => r.map(c => {
+    const s = String(c ?? '');
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'roster.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Init
+document.getElementById('title').textContent = state.title;
+document.title = state.title;
+render();
+</script>
+</body>
+</html>
