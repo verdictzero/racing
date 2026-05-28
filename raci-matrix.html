@@ -113,6 +113,25 @@ main { display: flex; flex: 1; overflow: hidden; }
 }
 #ws-list li:hover { background: var(--bg-3); }
 #ws-list li.active { background: var(--bg-3); border-color: var(--accent); }
+#ws-list li.dim { opacity: 0.4; }
+#ws-list li .ws-match-count {
+  background: var(--accent);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  min-width: 18px;
+  text-align: center;
+}
+#ws-list li.dim .ws-match-count { background: var(--bg-4); color: var(--text-dim); }
+
+.filter-hint {
+  color: var(--accent);
+  font-size: 12px;
+  font-style: italic;
+  margin-left: auto;
+}
 #ws-list li .ws-name {
   flex: 1;
   outline: none;
@@ -440,9 +459,267 @@ input[type="file"] { display: none; }
 }
 .view-tabs button.active { background: var(--bg); color: var(--text); font-weight: 600; }
 
-/* ===== Roster view ===== */
+/* ===== Directorate Lens view ===== */
+.lens-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.lens-header h2 { font-size: 18px; margin: 0; font-weight: 600; }
+.lens-select {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.lens-stats { color: var(--text-dim); font-size: 12px; display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.lens-stats .raci-chip { width: 18px; height: 18px; font-size: 10px; margin-left: 6px; }
+.lens-body {
+  padding: 14px 18px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.lens-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.lens-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+}
+.lens-section-header h3 { margin: 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+.lens-section-desc { color: var(--text-dim); font-size: 11px; }
+.lens-section-count {
+  margin-left: auto;
+  background: var(--bg-4);
+  color: var(--text);
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.lens-section-body {
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lens-empty { color: var(--text-dim); font-style: italic; padding: 8px 4px; }
+.lens-row {
+  background: var(--bg-cell);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.lens-row:hover { border-color: var(--accent); background: var(--bg-3); }
+.lens-row-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.lens-ws { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.lens-sep { color: var(--text-dim); }
+.lens-name { font-weight: 700; font-size: 13px; }
+.lens-other-roles { color: var(--text-dim); font-size: 11px; margin-left: auto; display: inline-flex; gap: 3px; align-items: center; }
+.lens-other-roles .raci-chip { width: 16px; height: 16px; font-size: 10px; }
+.lens-def { color: var(--text-dim); font-size: 12px; margin-top: 4px; line-height: 1.4; }
+.lens-note {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, #4a3815 0%, #382a0d 100%);
+  border: 1px solid #c9a635;
+  border-radius: 5px;
+  color: #f5c842;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.lens-meta { margin-top: 6px; color: var(--text-dim); font-size: 11px; line-height: 1.4; }
+.lens-meta-label { color: var(--text); font-weight: 600; }
+
+/* Health */
+.health-stat.red { color: var(--err); font-weight: 700; }
+.health-stat.amber { color: var(--warn); font-weight: 700; }
+.health-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.health-dot.red { background: var(--err); box-shadow: 0 0 6px rgba(250, 82, 82, 0.6); }
+.health-dot.amber { background: var(--warn); box-shadow: 0 0 6px rgba(252, 196, 25, 0.5); }
+.lens-section.health-section.red { border-color: rgba(250, 82, 82, 0.5); }
+.lens-section.health-section.amber { border-color: rgba(252, 196, 25, 0.4); }
+.health-flag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+.health-flag.red { background: var(--err); color: #000; }
+.health-flag.amber { background: var(--warn); color: #000; }
+.health-involved {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+.health-actor { display: inline-flex; gap: 4px; align-items: center; font-size: 11px; color: var(--text-dim); }
+.health-actor-label { font-weight: 600; }
+.health-actor .raci-chip { width: 16px; height: 16px; font-size: 10px; }
+
+/* Heatmap */
+.heatmap-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin-bottom: 18px;
+}
+.heatmap-table th, .heatmap-table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12px;
+}
+.heatmap-table thead th {
+  background: var(--bg-2);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.heatmap-table th.hm-corner { background: var(--bg-3); text-align: left; }
+.heatmap-table th.hm-row-label {
+  background: var(--bg-2);
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.heatmap-table td.heatmap-cell {
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+  cursor: default;
+}
+.heatmap-table td.heatmap-cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+.heatmap-table .hm-zero { color: var(--text-dim); opacity: 0.5; }
+.heatmap-table .hm-total {
+  background: var(--bg-2);
+  font-weight: 700;
+  color: var(--text);
+}
+.heatmap-table .hm-total.hm-grand { background: var(--bg-3); color: var(--accent); }
+.heatmap-table tfoot th, .heatmap-table tfoot td { border-top: 2px solid var(--border); }
+
+.hm-scale-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.hm-scale-grad {
+  display: inline-block;
+  width: 160px;
+  height: 12px;
+  border-radius: 3px;
+  background: linear-gradient(to right, hsl(132, 20%, 14%), hsl(132, 70%, 44%));
+  border: 1px solid var(--border);
+}
+.hm-scale-label { color: var(--text-dim); font-size: 11px; }
+
+/* A-Map */
+.amap-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.amap-table th, .amap-table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 12px;
+  background: var(--bg-cell);
+}
+.amap-table thead th {
+  background: var(--bg-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-dim);
+}
+.amap-table th.amap-actor { text-align: center; min-width: 90px; }
+.amap-table td.amap-cell { text-align: center; }
+.amap-table .amap-ws { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+.amap-table .amap-name { font-weight: 600; color: var(--text); }
+.amap-table tr.gap td:first-child { border-left: 3px solid var(--err); }
+.amap-table tr.conflict td:first-child { border-left: 3px solid var(--warn); }
+.amap-table tr:hover td { background: var(--bg-3); cursor: pointer; }
+.amap-table th.amap-flag, .amap-table td.amap-flag { width: 32px; text-align: center; padding: 8px 6px; }
+.amap-flag-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.amap-flag-dot.red { background: var(--err); box-shadow: 0 0 6px rgba(250, 82, 82, 0.6); }
+.amap-flag-dot.amber { background: var(--warn); box-shadow: 0 0 6px rgba(252, 196, 25, 0.5); }
+
+/* ===== View-mode side-rail visibility ===== */
 body[data-view="roster"] #ws-sidebar,
-body[data-view="roster"] #legend { display: none; }
+body[data-view="roster"] #legend,
+body[data-view="directorate"] #ws-sidebar,
+body[data-view="health"] #ws-sidebar,
+body[data-view="heatmap"] #ws-sidebar,
+body[data-view="heatmap"] #legend,
+body[data-view="amap"] #ws-sidebar { display: none; }
+
+body:not([data-view="matrix"]) #search-input { display: none; }
+
+#search-input {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  margin-left: 12px;
+  width: 240px;
+  outline: none;
+}
+#search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+#search-input::placeholder { color: var(--text-dim); }
+#search-input::-webkit-search-cancel-button { cursor: pointer; }
 
 .roster-header {
   position: sticky;
@@ -712,8 +989,13 @@ body[data-view="roster"] #legend { display: none; }
   <h1 contenteditable="true" id="doc-title" spellcheck="false"></h1>
   <div class="view-tabs" id="view-tabs">
     <button data-view="matrix">Matrix</button>
+    <button data-view="directorate">Directorate</button>
+    <button data-view="health">Health</button>
+    <button data-view="heatmap">Heatmap</button>
+    <button data-view="amap">A-Map</button>
     <button data-view="roster">Roster</button>
   </div>
+  <input type="search" id="search-input" placeholder="Filter activities…" autocomplete="off" spellcheck="false">
   <div class="actions">
     <button id="btn-export">Export JSON</button>
     <button id="btn-export-csv">Export CSV</button>
@@ -809,9 +1091,12 @@ function defaultState() {
     activeWorkstreamId: ws.id,
     directorates: emptyDirectorates(),
     viewMode: 'matrix',
-    collapsedDirectorates: {}
+    collapsedDirectorates: {},
+    lensDirectorate: 'ocio',
+    searchQuery: ''
   };
 }
+const ALL_VIEW_MODES = ['matrix','roster','directorate','health','heatmap','amap'];
 function migrateState(s) {
   if (!s || typeof s !== 'object') return defaultState();
   if (!Array.isArray(s.workstreams) || s.workstreams.length === 0) return defaultState();
@@ -863,9 +1148,11 @@ function migrateState(s) {
     });
     s.directorates[k] = d;
   });
-  s.viewMode = s.viewMode === 'roster' ? 'roster' : 'matrix';
+  s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'matrix';
   s.collapsedDirectorates = s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object'
     ? s.collapsedDirectorates : {};
+  s.lensDirectorate = ACTORS.includes(s.lensDirectorate) ? s.lensDirectorate : 'ocio';
+  s.searchQuery = typeof s.searchQuery === 'string' ? s.searchQuery : '';
   return s;
 }
 function loadState() {
@@ -905,16 +1192,55 @@ function findActivity(activityId) {
   return null;
 }
 
+// ---------- analytical helpers ----------
+function allActivities() {
+  const out = [];
+  state.workstreams.forEach(ws => ws.activities.forEach(a => out.push({ ws, activity: a })));
+  return out;
+}
+function rolesForActor(activity, actor) {
+  return normalizeRaci(activity.raci && activity.raci[actor] || '');
+}
+function accountabilityFor(activity) {
+  return ACTORS.filter(k => rolesForActor(activity, k).includes('A'));
+}
+function responsibilityFor(activity) {
+  return ACTORS.filter(k => rolesForActor(activity, k).includes('R'));
+}
+function activityHealth(activity) {
+  const A = accountabilityFor(activity), R = responsibilityFor(activity);
+  return { noA: A.length === 0, multipleA: A.length > 1, noR: R.length === 0, A, R };
+}
+function weightForCell(letters) {
+  const n = normalizeRaci(letters);
+  return (n.includes('A')?4:0) + (n.includes('R')?3:0) + (n.includes('C')?2:0) + (n.includes('I')?1:0);
+}
+function matchesQuery(ws, activity, q) {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  const parts = [ws.name, activity.name, activity.definition, activity.outputs, activity.comments];
+  for (const p of parts) { if (p && p.toLowerCase().includes(needle)) return true; }
+  for (const k of ACTORS) {
+    const note = activity.notes && activity.notes[k];
+    if (note && note.toLowerCase().includes(needle)) return true;
+  }
+  return false;
+}
+
 // ---------- render ----------
 function render() {
   document.getElementById('doc-title').textContent = state.title || '';
   document.body.dataset.view = state.viewMode;
   updateViewTabs();
-  if (state.viewMode === 'roster') {
-    renderRoster();
-  } else {
-    renderSidebar();
-    renderMain();
+  updateSearchInput();
+  switch (state.viewMode) {
+    case 'roster':      renderRoster(); break;
+    case 'directorate': renderDirectorateLens(); break;
+    case 'health':      renderHealth(); break;
+    case 'heatmap':     renderHeatmap(); break;
+    case 'amap':        renderAccountabilityMap(); break;
+    case 'matrix':
+    default:            renderSidebar(); renderMain();
   }
 }
 function updateViewTabs() {
@@ -922,20 +1248,29 @@ function updateViewTabs() {
     b.classList.toggle('active', b.dataset.view === state.viewMode);
   });
 }
+function updateSearchInput() {
+  const el = document.getElementById('search-input');
+  if (el && el.value !== state.searchQuery) el.value = state.searchQuery || '';
+}
 
 function renderSidebar() {
   const ul = document.getElementById('ws-list');
   const activeId = state.activeWorkstreamId;
-  ul.innerHTML = state.workstreams.map(ws => `
-    <li data-ws-id="${ws.id}" class="${ws.id === activeId ? 'active' : ''}">
+  const q = state.searchQuery || '';
+  ul.innerHTML = state.workstreams.map(ws => {
+    const matchCount = q ? ws.activities.filter(a => matchesQuery(ws, a, q)).length : ws.activities.length;
+    const dim = q && matchCount === 0;
+    return `
+    <li data-ws-id="${ws.id}" class="${ws.id === activeId ? 'active' : ''}${dim ? ' dim' : ''}">
       <span class="ws-name"
             contenteditable="true"
             spellcheck="false"
             data-ws-id="${ws.id}"
             data-field="name">${escapeHtml(ws.name)}</span>
+      ${q ? `<span class="ws-match-count">${matchCount}</span>` : ''}
       <button class="ws-del" data-ws-del="${ws.id}" title="Delete workstream">×</button>
-    </li>
-  `).join('');
+    </li>`;
+  }).join('');
 }
 
 function renderMain() {
@@ -956,7 +1291,12 @@ function renderMain() {
     <th class="col-comments">Comments</th>
     <th></th>
   `;
-  const rows = ws.activities.map(a => renderActivityRow(a)).join('');
+  const q = state.searchQuery || '';
+  const visibleActivities = q ? ws.activities.filter(a => matchesQuery(ws, a, q)) : ws.activities;
+  const rows = visibleActivities.map(a => renderActivityRow(a)).join('');
+  const filterHint = q
+    ? `<span class="filter-hint">Showing ${visibleActivities.length} of ${ws.activities.length} matching "${escapeHtml(q)}"</span>`
+    : '';
   main.innerHTML = `
     <div class="ws-header">
       <h2 class="ws-title ${ws.name ? '' : 'empty'}"
@@ -965,13 +1305,14 @@ function renderMain() {
           data-ws-id="${ws.id}"
           data-field="name">${escapeHtml(ws.name)}</h2>
       <span class="ws-meta">${ws.activities.length} activit${ws.activities.length === 1 ? 'y' : 'ies'}</span>
+      ${filterHint}
     </div>
     <div class="table-wrap">
       <table class="activities">
         <thead><tr>${headerCols}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <button class="add-activity" id="btn-add-activity">+ Add activity</button>
+      ${q ? '' : '<button class="add-activity" id="btn-add-activity">+ Add activity</button>'}
     </div>
   `;
 }
@@ -1000,6 +1341,258 @@ function renderActivityRow(a) {
       ${textCell('comments', 'Comments')}
       <td class="row-del"><button data-activity-del="${a.id}" title="Delete row">×</button></td>
     </tr>
+  `;
+}
+
+// ========== Accountability Map ==========
+function renderAccountabilityMap() {
+  const main = document.getElementById('ws-main');
+  const all = allActivities();
+  const gaps = all.filter(({activity}) => accountabilityFor(activity).length === 0).length;
+  const conflicts = all.filter(({activity}) => accountabilityFor(activity).length > 1).length;
+  main.innerHTML = `
+    <div class="lens-header">
+      <h2>Accountability Map</h2>
+      <span class="lens-stats">${all.length} activit${all.length === 1 ? 'y' : 'ies'} · <span class="health-stat red">${gaps} gaps</span> · <span class="health-stat amber">${conflicts} conflicts</span> · Showing only <span class="raci-chip A">A</span> assignments.</span>
+    </div>
+    <div class="lens-body">
+      <table class="amap-table">
+        <thead>
+          <tr>
+            <th class="amap-col-ws">Workstream</th>
+            <th class="amap-col-name">Activity</th>
+            ${ACTORS.map(k => `<th class="amap-actor">${escapeHtml(ACTOR_LABELS[k])}</th>`).join('')}
+            <th class="amap-flag"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${all.map(({ws, activity}) => renderAmapRow(ws, activity)).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderAmapRow(ws, activity) {
+  const A = accountabilityFor(activity);
+  const tone = A.length === 0 ? 'gap' : (A.length > 1 ? 'conflict' : '');
+  const flag = A.length === 0 ? '<span class="amap-flag-dot red" title="No Accountable"></span>'
+            : A.length > 1 ? '<span class="amap-flag-dot amber" title="Multiple Accountable"></span>'
+            : '';
+  return `
+    <tr class="${tone}" data-jump-activity="${activity.id}">
+      <td class="amap-ws">${escapeHtml(ws.name || 'Untitled')}</td>
+      <td class="amap-name">${escapeHtml(activity.name || '(untitled)')}</td>
+      ${ACTORS.map(k => `<td class="amap-cell">${rolesForActor(activity, k).includes('A') ? '<span class="raci-chip A">A</span>' : ''}</td>`).join('')}
+      <td class="amap-flag">${flag}</td>
+    </tr>
+  `;
+}
+
+// ========== Workload Heatmap ==========
+function renderHeatmap() {
+  const main = document.getElementById('ws-main');
+  const wss = state.workstreams;
+  // grid[wsIdx][actorIdx] = { score, A, R, C, I }
+  const grid = wss.map(ws => ACTORS.map(actor => {
+    let A=0, R=0, C=0, I=0, score=0;
+    ws.activities.forEach(a => {
+      const letters = rolesForActor(a, actor);
+      if (letters.includes('A')) { A++; score += 4; }
+      if (letters.includes('R')) { R++; score += 3; }
+      if (letters.includes('C')) { C++; score += 2; }
+      if (letters.includes('I')) { I++; score += 1; }
+    });
+    return { score, A, R, C, I };
+  }));
+  let maxScore = 0;
+  grid.forEach(row => row.forEach(c => { if (c.score > maxScore) maxScore = c.score; }));
+  const colTotals = ACTORS.map((_, j) => grid.reduce((sum, row) => sum + row[j].score, 0));
+  const rowTotals = grid.map(row => row.reduce((sum, c) => sum + c.score, 0));
+  const grandTotal = colTotals.reduce((a, b) => a + b, 0);
+  function heatColor(score) {
+    if (maxScore === 0 || score === 0) return 'var(--bg-cell)';
+    const t = score / maxScore;
+    // hsl: from bg-cell to accent (greenish #51cf66 ~ hsl(132, 56%, 56%))
+    const hue = 132;
+    const sat = Math.round(20 + t * 50);  // 20 -> 70
+    const light = Math.round(14 + t * 30); // 14 -> 44
+    return `hsl(${hue}, ${sat}%, ${light}%)`;
+  }
+  const cellText = c => c.score === 0 ? '<span class="hm-zero">·</span>' : c.score;
+  const cellTip = c => `A:${c.A}  R:${c.R}  C:${c.C}  I:${c.I}  → ${c.score}`;
+  main.innerHTML = `
+    <div class="lens-header">
+      <h2>Workload Heatmap</h2>
+      <span class="lens-stats">Weighted score per (workstream × directorate). A=4 · R=3 · C=2 · I=1. Max cell: ${maxScore}.</span>
+      <span class="hm-scale-strip">
+        <span class="hm-scale-label">low</span>
+        <span class="hm-scale-grad"></span>
+        <span class="hm-scale-label">high</span>
+      </span>
+    </div>
+    <div class="lens-body">
+      <table class="heatmap-table">
+        <thead>
+          <tr>
+            <th class="hm-corner">Workstream \\ Directorate</th>
+            ${ACTORS.map(k => `<th class="hm-col">${escapeHtml(ACTOR_LABELS[k])}</th>`).join('')}
+            <th class="hm-total-col">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${wss.map((ws, i) => `
+            <tr>
+              <th class="hm-row-label">${escapeHtml(ws.name || 'Untitled')}</th>
+              ${grid[i].map(c => `<td class="heatmap-cell" style="background: ${heatColor(c.score)}" title="${cellTip(c)}">${cellText(c)}</td>`).join('')}
+              <td class="hm-total">${rowTotals[i] || '·'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th class="hm-row-label">Total</th>
+            ${colTotals.map(s => `<td class="hm-total">${s || '·'}</td>`).join('')}
+            <td class="hm-total hm-grand">${grandTotal}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+}
+
+// ========== Governance Health ==========
+function renderHealth() {
+  const main = document.getElementById('ws-main');
+  const all = allActivities();
+  const healthRows = all.map(r => ({ ...r, health: activityHealth(r.activity) }));
+  const noA = healthRows.filter(r => r.health.noA);
+  const multiA = healthRows.filter(r => r.health.multipleA);
+  const noR = healthRows.filter(r => r.health.noR);
+  const sections = [
+    { id: 'noA', label: 'No Accountable', desc: 'Activity has nobody marked A — accountability gap.', tone: 'red', rows: noA },
+    { id: 'multiA', label: 'Multiple Accountable', desc: 'More than one directorate is A — RACI says only one should be.', tone: 'amber', rows: multiA },
+    { id: 'noR', label: 'No Responsible', desc: 'Nobody is doing the work.', tone: 'amber', rows: noR }
+  ];
+  main.innerHTML = `
+    <div class="lens-header">
+      <h2>Governance Health</h2>
+      <span class="lens-stats">${all.length} activit${all.length === 1 ? 'y' : 'ies'} reviewed · <span class="health-stat red">${noA.length} gaps</span> · <span class="health-stat amber">${multiA.length} conflicts</span> · <span class="health-stat amber">${noR.length} missing R</span></span>
+    </div>
+    <div class="lens-body">
+      ${sections.map(renderHealthSection).join('')}
+    </div>
+  `;
+}
+
+function renderHealthSection(section) {
+  const rowsHtml = section.rows.length
+    ? section.rows.map(({ws, activity, health}) => renderHealthRow(section, ws, activity, health)).join('')
+    : `<div class="lens-empty">(none — 🎉)</div>`;
+  return `
+    <section class="lens-section health-section ${section.tone}">
+      <header class="lens-section-header">
+        <span class="health-dot ${section.tone}"></span>
+        <h3>${section.label}</h3>
+        <span class="lens-section-desc">${section.desc}</span>
+        <span class="lens-section-count">${section.rows.length}</span>
+      </header>
+      <div class="lens-section-body">${rowsHtml}</div>
+    </section>
+  `;
+}
+
+function renderHealthRow(section, ws, activity, health) {
+  const involved = ACTORS.filter(k => rolesForActor(activity, k).length > 0);
+  return `
+    <div class="lens-row health-row" data-jump-activity="${activity.id}">
+      <div class="lens-row-head">
+        <span class="lens-ws">${escapeHtml(ws.name || 'Untitled')}</span>
+        <span class="lens-sep">/</span>
+        <span class="lens-name">${escapeHtml(activity.name || '(untitled activity)')}</span>
+        <span class="health-flag ${section.tone}">${section.label}</span>
+      </div>
+      ${activity.definition ? `<div class="lens-def">${escapeHtml(activity.definition)}</div>` : ''}
+      <div class="health-involved">
+        ${involved.length
+          ? involved.map(k => `<span class="health-actor"><span class="health-actor-label">${escapeHtml(ACTOR_LABELS[k])}</span> ${rolesForActor(activity, k).split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>`).join('')
+          : '<span class="lens-empty">no actors assigned</span>'}
+      </div>
+    </div>
+  `;
+}
+
+// ========== Directorate Lens ==========
+function renderDirectorateLens() {
+  const main = document.getElementById('ws-main');
+  const actor = state.lensDirectorate || 'ocio';
+  const all = allActivities();
+  const involvedRows = all.filter(({activity}) => rolesForActor(activity, actor).length > 0);
+  const involvedWsIds = new Set(involvedRows.map(r => r.ws.id));
+  const counts = { R: 0, A: 0, C: 0, I: 0 };
+  involvedRows.forEach(({activity}) => {
+    const letters = rolesForActor(activity, actor);
+    ROLES.forEach(r => { if (letters.includes(r)) counts[r]++; });
+  });
+  const sections = [
+    { role: 'A', label: 'Accountable', desc: 'Owns the outcome' },
+    { role: 'R', label: 'Responsible', desc: 'Does the work' },
+    { role: 'C', label: 'Consulted',   desc: 'Two-way input' },
+    { role: 'I', label: 'Informed',    desc: 'Kept in the loop' }
+  ];
+  main.innerHTML = `
+    <div class="lens-header">
+      <h2>Directorate Lens</h2>
+      <select id="lens-select" class="lens-select">
+        ${ACTORS.map(k => `<option value="${k}"${k === actor ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[k])}</option>`).join('')}
+      </select>
+      <span class="lens-stats">${involvedRows.length} activit${involvedRows.length === 1 ? 'y' : 'ies'} · ${involvedWsIds.size} workstream${involvedWsIds.size === 1 ? '' : 's'} · <span class="raci-chip A">A</span> ${counts.A} <span class="raci-chip R">R</span> ${counts.R} <span class="raci-chip C">C</span> ${counts.C} <span class="raci-chip I">I</span> ${counts.I}</span>
+    </div>
+    <div class="lens-body">
+      ${sections.map(s => renderLensSection(actor, s)).join('')}
+    </div>
+  `;
+}
+
+function renderLensSection(actor, section) {
+  const rows = allActivities().filter(({activity}) => rolesForActor(activity, actor).includes(section.role));
+  const rowsHtml = rows.length
+    ? rows.map(({ws, activity}) => renderLensRow(actor, ws, activity, section.role)).join('')
+    : `<div class="lens-empty">(none)</div>`;
+  return `
+    <section class="lens-section">
+      <header class="lens-section-header">
+        <span class="raci-chip ${section.role}">${section.role}</span>
+        <h3>${section.label}</h3>
+        <span class="lens-section-desc">${section.desc}</span>
+        <span class="lens-section-count">${rows.length}</span>
+      </header>
+      <div class="lens-section-body">${rowsHtml}</div>
+    </section>
+  `;
+}
+
+function renderLensRow(actor, ws, activity, role) {
+  const note = (activity.notes && activity.notes[actor]) || '';
+  const allLetters = rolesForActor(activity, actor);
+  const otherLetters = allLetters.replace(role, '');
+  return `
+    <div class="lens-row" data-jump-activity="${activity.id}">
+      <div class="lens-row-head">
+        <span class="lens-ws">${escapeHtml(ws.name || 'Untitled')}</span>
+        <span class="lens-sep">/</span>
+        <span class="lens-name">${escapeHtml(activity.name || '(untitled activity)')}</span>
+        ${otherLetters ? `<span class="lens-other-roles">also ${otherLetters.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>` : ''}
+      </div>
+      ${activity.definition ? `<div class="lens-def">${escapeHtml(activity.definition)}</div>` : ''}
+      ${note ? `<div class="lens-note">${escapeHtml(note)}</div>` : ''}
+      ${activity.outputs || activity.comments ? `
+        <div class="lens-meta">
+          ${activity.outputs ? `<div><span class="lens-meta-label">Outputs:</span> ${escapeHtml(activity.outputs)}</div>` : ''}
+          ${activity.comments ? `<div><span class="lens-meta-label">Comments:</span> ${escapeHtml(activity.comments)}</div>` : ''}
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -1411,9 +2004,34 @@ function openRaciPopover(activityId, actor, anchorEl) {
 }
 
 // ---------- event wiring ----------
+document.addEventListener('change', e => {
+  if (e.target.id === 'lens-select') {
+    state.lensDirectorate = e.target.value;
+    saveState();
+    renderDirectorateLens();
+  }
+});
+
 document.addEventListener('click', e => {
   const viewTab = e.target.closest('#view-tabs button');
   if (viewTab) { setViewMode(viewTab.dataset.view); return; }
+
+  const jump = e.target.closest('[data-jump-activity]');
+  if (jump) {
+    const id = jump.dataset.jumpActivity;
+    const f = findActivity(id);
+    if (f) {
+      state.activeWorkstreamId = f.ws.id;
+      state.viewMode = 'matrix';
+      saveState();
+      render();
+      setTimeout(() => {
+        const row = document.querySelector(`tr[data-activity-id="${id}"]`);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    }
+    return;
+  }
 
   // ---- Roster mode handlers ----
   const dirToggle = e.target.closest('[data-toggle-dir]');
@@ -1563,6 +2181,32 @@ function importJSON(file) {
     }
   };
   reader.readAsText(file);
+}
+
+// search input
+let searchDebounce = null;
+const searchEl = document.getElementById('search-input');
+if (searchEl) {
+  searchEl.addEventListener('input', e => {
+    const val = e.target.value;
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      state.searchQuery = val;
+      saveState();
+      if (state.viewMode === 'matrix') {
+        renderSidebar();
+        renderMain();
+      }
+    }, 120);
+  });
+  searchEl.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      e.target.value = '';
+      state.searchQuery = '';
+      saveState();
+      if (state.viewMode === 'matrix') { renderSidebar(); renderMain(); }
+    }
+  });
 }
 
 document.getElementById('btn-export').addEventListener('click', exportJSON);
