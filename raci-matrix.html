@@ -75,23 +75,53 @@ main { display: flex; flex: 1; overflow: hidden; }
 
 /* ===== Workstream sidebar (left) ===== */
 #ws-sidebar {
-  width: 240px;
+  width: 300px;
   flex-shrink: 0;
   background: var(--bg-2);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.15s ease;
+}
+.ws-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 10px 8px 14px;
 }
 #ws-sidebar h2 {
   margin: 0;
-  padding: 12px 14px 8px;
-  font-size: 11px;
+  padding: 0;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-dim);
 }
+.sidebar-toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sidebar-toggle:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
+/* collapsed sidebar -> thin rail with just the expand control */
+body.sidebar-collapsed #ws-sidebar { width: 44px; }
+body.sidebar-collapsed #ws-sidebar h2,
+body.sidebar-collapsed #ws-sidebar #ws-list,
+body.sidebar-collapsed #ws-sidebar .ws-add { display: none; }
+body.sidebar-collapsed .ws-sidebar-head { justify-content: center; padding: 11px 0 8px; }
+body.sidebar-collapsed .sidebar-toggle { transform: rotate(180deg); }
 #ws-list {
   list-style: none;
   margin: 0;
@@ -112,7 +142,13 @@ main { display: flex; flex: 1; overflow: hidden; }
   position: relative;
 }
 #ws-list li:hover { background: var(--bg-3); }
-#ws-list li.active { background: var(--bg-3); border-color: var(--accent); }
+#ws-list li.active {
+  background: var(--bg-3);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(81, 207, 102, 0.25), 0 0 14px -2px rgba(81, 207, 102, 0.45);
+}
+#ws-list li .ws-name { cursor: pointer; }
+#ws-list li .ws-name[contenteditable="true"] { cursor: text; }
 #ws-list li.dim { opacity: 0.4; }
 #ws-list li .ws-match-count {
   background: var(--accent);
@@ -241,6 +277,24 @@ table.activities thead th {
 }
 table.activities thead th.actor { text-align: center; min-width: 130px; }
 table.activities thead th.actor.wide { min-width: 160px; }
+th.actor .col-name-label { display: block; }
+.col-tier-pill {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+.col-tier-pill.tier-0 { color: #b9c6ff; border-color: hsla(225, 60%, 60%, 0.5); }
+.col-tier-pill.tier-1 { color: #9ad9ff; border-color: hsla(200, 70%, 60%, 0.5); }
+.col-tier-pill.tier-2 { color: #ffd59a; border-color: hsla(35,  80%, 60%, 0.5); }
+.col-tier-pill.tier-3 { color: #c4f59a; border-color: hsla(95,  60%, 60%, 0.5); }
 table.activities th:first-child, table.activities td:first-child {
   border-left: 1px solid var(--border);
 }
@@ -277,11 +331,6 @@ td.actor-cell {
   vertical-align: top;
 }
 td.actor-cell:hover { background: var(--bg-3); outline: 2px solid var(--accent); outline-offset: -2px; }
-td.actor-cell .cell-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 td.actor-cell .cell-chips {
   display: flex;
   flex-wrap: wrap;
@@ -296,6 +345,70 @@ td.actor-cell .cell-chips.empty {
   align-items: center;
   line-height: 26px;
 }
+td.row-toggle, th.col-toggle {
+  width: 28px;
+  padding: 0;
+  text-align: center;
+}
+.row-chevron {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+  border-radius: 3px;
+  line-height: 1;
+  font-family: inherit;
+}
+.row-chevron:hover { background: var(--bg-3); color: var(--text); }
+
+/* drill chevron + hinge highlight */
+.row-chevron.has-child { color: var(--accent); }
+tr.drilled > td.row-toggle .row-chevron { color: var(--accent); }
+td.actor-cell.hinge { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* breadcrumb + owner / health tags */
+.breadcrumb { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
+.breadcrumb .crumb {
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.breadcrumb .crumb:hover { background: var(--bg-4); color: var(--text); border-color: var(--text-dim); }
+.breadcrumb .crumb.current { color: #000; background: var(--accent); border-color: var(--accent); cursor: default; font-weight: 700; }
+.breadcrumb .crumb.current:hover { background: var(--accent); color: #000; }
+.crumb-sep { color: var(--text-dim); font-weight: 400; }
+.owner-tag { color: var(--text-dim); font-size: 12px; }
+.owner-tag b { color: var(--text); }
+.via-tag {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 3px;
+  padding: 1px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; margin-left: 4px;
+}
+.warn-badge {
+  background: var(--warn); color: #000; font-size: 10px; font-weight: 800;
+  padding: 2px 7px; border-radius: 3px; margin-left: 8px; cursor: help;
+}
+.empty-roster-notice {
+  background: linear-gradient(180deg, #4a3815 0%, #382a0d 100%);
+  border: 1px solid #c9a635; border-radius: 6px; padding: 10px 14px;
+  color: #f5c842; font-size: 13px; margin-bottom: 12px; line-height: 1.5;
+}
+.link-btn {
+  background: transparent; border: none; color: var(--accent);
+  cursor: pointer; font: inherit; text-decoration: underline; padding: 0 2px;
+}
+.row-flags { display: inline-flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.row-flag {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px; cursor: help;
+}
+.row-flag.err { background: var(--err); color: #fff; }
+.row-flag.warn { background: var(--warn); color: #000; }
+
 td.actor-cell .cell-note {
   display: block;
   background: var(--bg-3);
@@ -375,13 +488,14 @@ td.row-del button:hover { background: var(--err); color: #fff; }
 
 /* ===== Legend (right) ===== */
 #legend {
-  width: 200px;
+  width: 220px;
   flex-shrink: 0;
   background: var(--bg-2);
   border-left: 1px solid var(--border);
   padding: 14px;
   overflow-y: auto;
   font-size: 12px;
+  display: none; /* hidden by default; toggled via the Legend button (matrix view only) */
 }
 #legend h3 {
   margin: 0 0 10px;
@@ -488,10 +602,47 @@ input[type="file"] { display: none; }
   padding: 14px 18px 60px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: 14px;
 }
+.lens-body.lens-cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+@media (max-width: 1200px) {
+  .lens-body.lens-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .lens-body.lens-cols { grid-template-columns: 1fr; }
+}
+.lens-body.lens-centered {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Directorate Lens subheader (directorate name + stats) */
+.lens-subheader {
+  position: sticky;
+  top: 56px;
+  z-index: 4;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 24px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.lens-actor-name {
+  font-size: 30px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+.lens-subheader .lens-stats { margin-left: auto; font-size: 13px; }
+.lens-subheader .lens-stats .raci-chip { width: 20px; height: 20px; font-size: 11px; margin-left: 8px; }
 .lens-section {
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -541,7 +692,7 @@ input[type="file"] { display: none; }
 .lens-ws { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 .lens-sep { color: var(--text-dim); }
 .lens-name { font-weight: 700; font-size: 13px; }
-.lens-other-roles { color: var(--text-dim); font-size: 11px; margin-left: auto; display: inline-flex; gap: 3px; align-items: center; }
+.lens-other-roles { color: var(--text-dim); font-size: 10px; width: 100%; margin-top: 2px; display: inline-flex; gap: 3px; align-items: center; flex-wrap: wrap; }
 .lens-other-roles .raci-chip { width: 16px; height: 16px; font-size: 10px; }
 .lens-def { color: var(--text-dim); font-size: 12px; margin-top: 4px; line-height: 1.4; }
 .lens-note {
@@ -591,6 +742,20 @@ input[type="file"] { display: none; }
 .health-actor-label { font-weight: 600; }
 .health-actor .raci-chip { width: 16px; height: 16px; font-size: 10px; }
 
+/* Health: bigger section cards */
+.health-body .lens-section-header { padding: 14px 20px; }
+.health-body .lens-section-header h3 { font-size: 15px; }
+.health-body .lens-section-desc { font-size: 12px; }
+.health-body .lens-section-count { font-size: 12px; padding: 3px 11px; }
+.health-body .lens-section-body { padding: 14px 20px 16px; gap: 10px; }
+.health-body .lens-row { padding: 12px 16px; }
+.health-body .lens-row .lens-name { font-size: 15px; }
+.health-body .lens-row .lens-ws { font-size: 12px; }
+.health-body .lens-row .lens-def { font-size: 13px; margin-top: 6px; }
+.health-body .health-flag { font-size: 10px; padding: 3px 9px; }
+.health-body .health-involved { gap: 16px; margin-top: 10px; }
+.health-body .health-actor { font-size: 12px; }
+
 /* Heatmap */
 .heatmap-table {
   border-collapse: separate;
@@ -601,33 +766,37 @@ input[type="file"] { display: none; }
 .heatmap-table th, .heatmap-table td {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 10px 12px;
+  padding: 18px 20px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 .heatmap-table thead th {
   background: var(--bg-2);
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  padding: 14px 18px;
 }
 .heatmap-table th.hm-corner { background: var(--bg-3); text-align: left; }
 .heatmap-table th.hm-row-label {
   background: var(--bg-2);
   text-align: left;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 15px;
   color: var(--text);
   white-space: nowrap;
+  padding: 18px 22px;
 }
+.heatmap-table .hm-total { font-size: 16px; }
 .heatmap-table td.heatmap-cell {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 22px;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0,0,0,0.4);
   cursor: default;
+  min-width: 110px;
 }
 .heatmap-table td.heatmap-cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
 .heatmap-table .hm-zero { color: var(--text-dim); opacity: 0.5; }
@@ -697,6 +866,8 @@ input[type="file"] { display: none; }
 /* ===== View-mode side-rail visibility ===== */
 body[data-view="roster"] #ws-sidebar,
 body[data-view="roster"] #legend,
+body[data-view="tree"] #ws-sidebar,
+body[data-view="tree"] #legend,
 body[data-view="directorate"] #ws-sidebar,
 body[data-view="health"] #ws-sidebar,
 body[data-view="heatmap"] #ws-sidebar,
@@ -704,6 +875,11 @@ body[data-view="heatmap"] #legend,
 body[data-view="amap"] #ws-sidebar { display: none; }
 
 body:not([data-view="matrix"]) #search-input { display: none; }
+
+/* Legend is opt-in (matrix view only) via the header Legend button */
+body.show-legend[data-view="matrix"] #legend { display: block; }
+body:not([data-view="matrix"]) #btn-legend { display: none; }
+body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); border-color: var(--text-dim); }
 
 #search-input {
   background: var(--bg-3);
@@ -783,6 +959,16 @@ body:not([data-view="matrix"]) #search-input { display: none; }
   margin: 0;
   color: var(--text);
 }
+.dir-name-edit {
+  outline: none;
+  border-radius: 4px;
+  padding: 2px 7px;
+  cursor: text;
+  user-select: text;
+  border: 1px solid transparent;
+}
+.dir-name-edit:hover { background: var(--bg-2); border-color: var(--border); }
+.dir-name-edit:focus { background: var(--bg); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .dir-stats { color: var(--text-dim); font-size: 11px; margin-left: auto; }
 .dir-body {
   padding: 12px 16px 14px;
@@ -845,6 +1031,37 @@ body:not([data-view="matrix"]) #search-input { display: none; }
 }
 .branch-name:hover, .branch-name:focus { background: var(--bg-3); }
 .branch-name:empty::before { content: 'Branch name'; color: var(--text-dim); font-style: italic; }
+.branch-body {
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.team {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.team-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.team-name {
+  outline: none;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 60px;
+}
+.team-name:hover, .team-name:focus { background: var(--bg-3); }
+.team-name:empty::before { content: 'Team name'; color: var(--text-dim); font-style: italic; }
 .people {
   padding: 4px 10px 6px;
   display: flex;
@@ -884,7 +1101,7 @@ body:not([data-view="matrix"]) #search-input { display: none; }
   font-style: italic;
 }
 
-.add-division, .add-branch, .add-person {
+.add-division, .add-branch, .add-team, .add-person {
   background: transparent;
   border: 1px dashed var(--border);
   color: var(--text-dim);
@@ -894,7 +1111,7 @@ body:not([data-view="matrix"]) #search-input { display: none; }
   align-self: flex-start;
 }
 .add-division { padding: 8px 12px; font-size: 12px; }
-.add-division:hover, .add-branch:hover, .add-person:hover {
+.add-division:hover, .add-branch:hover, .add-team:hover, .add-person:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--bg-3);
@@ -971,8 +1188,137 @@ body:not([data-view="matrix"]) #search-input { display: none; }
 }
 .division:hover > .div-header > .del-icon,
 .branch:hover > .branch-header > .del-icon,
+.team:hover > .team-header > .del-icon,
 .person:hover > .del-icon { visibility: visible; }
 .del-icon:hover { color: #fff; background: var(--err); }
+
+/* ===== Org Lens extras ===== */
+.lens-subheader .lens-unit-group {
+  color: var(--text-dim); font-size: 13px; font-weight: 500;
+  align-self: center; margin-left: -6px;
+}
+.lens-header #lens-level { font-weight: 600; }
+
+/* ===== Tree (single pane of glass) ===== */
+.tree-body { padding: 8px 14px 60px; }
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  min-height: 40px;
+}
+.tree-row.tt-0 { min-height: 46px; padding-top: 11px; padding-bottom: 11px; }
+.tree-row:hover { background: var(--bg-2); }
+/* Coordinated subtle background per directorate (tints every nested subtree it owns) */
+.tree-row.dir-ocio    { background: hsla(210, 70%, 52%, 0.085); box-shadow: inset 3px 0 0 hsla(210, 80%, 62%, 0.55); }
+.tree-row.dir-mission { background: hsla(270, 60%, 58%, 0.090); box-shadow: inset 3px 0 0 hsla(270, 70%, 68%, 0.55); }
+.tree-row.dir-infra   { background: hsla(35,  80%, 52%, 0.085); box-shadow: inset 3px 0 0 hsla(35,  85%, 60%, 0.55); }
+.tree-row.dir-cyber   { background: hsla(330, 65%, 56%, 0.090); box-shadow: inset 3px 0 0 hsla(330, 75%, 64%, 0.55); }
+.tree-row.dir-sw      { background: hsla(150, 55%, 46%, 0.090); box-shadow: inset 3px 0 0 hsla(150, 65%, 56%, 0.55); }
+.tree-row.dir-vendor  { background: hsla(190, 60%, 50%, 0.090); box-shadow: inset 3px 0 0 hsla(190, 70%, 60%, 0.55); }
+.tree-row.dir-ocio:hover    { background: hsla(210, 70%, 52%, 0.17); }
+.tree-row.dir-mission:hover { background: hsla(270, 60%, 58%, 0.18); }
+.tree-row.dir-infra:hover   { background: hsla(35,  80%, 52%, 0.17); }
+.tree-row.dir-cyber:hover   { background: hsla(330, 65%, 56%, 0.18); }
+.tree-row.dir-sw:hover      { background: hsla(150, 55%, 46%, 0.18); }
+.tree-row.dir-vendor:hover  { background: hsla(190, 60%, 50%, 0.18); }
+.tree-row.tree-ws {
+  background: var(--bg-3);
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  margin-top: 14px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  border-radius: 5px 5px 0 0;
+  border-bottom: 1px solid var(--accent);
+}
+.tree-caret {
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.tree-caret.has-child { cursor: pointer; color: var(--accent); }
+.tree-caret.has-child:hover { color: #69db7c; }
+.tree-tier {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  width: 92px;
+  text-align: center;
+}
+.tree-row.tt-0 .tree-tier { font-size: 11px; padding: 4px 9px; width: 104px; }
+.tree-tier.tier-0 { color: #b9c6ff; }
+.tree-tier.tier-1 { color: #9ad9ff; }
+.tree-tier.tier-2 { color: #ffd59a; }
+.tree-tier.tier-3 { color: #c4f59a; }
+.tree-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  flex-shrink: 0;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-row.tt-0 .tree-name { font-size: 16px; font-weight: 700; }
+.tree-name.tree-open { cursor: pointer; }
+.tree-name.tree-open:hover { color: var(--accent); text-decoration: underline; }
+.tree-ws .tree-name { max-width: none; }
+.tree-meta { color: var(--text-dim); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.tree-none { color: var(--text-dim); font-style: italic; font-size: 12px; opacity: 0.6; }
+
+/* activity heading rows */
+.tree-row.tree-act { background: rgba(255, 255, 255, 0.018); }
+.tree-act .tree-name { font-size: 15px; font-weight: 700; max-width: 620px; }
+.tree-row.tt-0.tree-act .tree-name { font-size: 17px; }
+
+/* org-unit rows (directorate / division / branch / team) — names stand out */
+.tree-row.tree-unit { min-height: 34px; }
+.tree-unit-pill {
+  flex-shrink: 0;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text-dim); background: var(--bg-3);
+  border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; width: 92px; text-align: center;
+}
+.tree-unit-pill.tier-0 { color: #b9c6ff; border-color: hsla(225, 60%, 60%, 0.5); }
+.tree-unit-pill.tier-1 { color: #9ad9ff; border-color: hsla(200, 70%, 60%, 0.5); }
+.tree-unit-pill.tier-2 { color: #ffd59a; border-color: hsla(35,  80%, 60%, 0.5); }
+.tree-unit-pill.tier-3 { color: #c4f59a; border-color: hsla(95,  60%, 60%, 0.5); }
+.tree-unit-name { font-weight: 700; font-size: 14px; color: var(--text); letter-spacing: 0.2px; }
+.tree-row.tu-0 .tree-unit-name { font-size: 15px; }
+.tree-unit-chips { display: inline-flex; gap: 5px; align-items: center; }
+.tree-unit-chips .raci-chip { width: 20px; height: 20px; font-size: 11px; }
+.tree-row.tu-0 .tree-unit-chips .raci-chip { width: 22px; height: 22px; font-size: 12px; }
+.tree-unit-owner { margin-left: auto; color: var(--accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.tree-row.tree-unit.is-owner .tree-unit-name { color: var(--accent); }
+/* org units with no R/A/C/I — greyed out with a dark-grey / light-grey hatch */
+.tree-row.tree-unit-empty {
+  background-color: #16171b;
+  background-image: repeating-linear-gradient(45deg,
+    rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px, transparent 7px);
+  opacity: 0.7;
+}
+.tree-row.tree-unit-empty:hover { opacity: 0.92; }
+.tree-unit-empty .tree-unit-name { color: var(--text-dim); font-weight: 600; }
+.tree-unit-empty .tree-unit-pill { opacity: 0.5; }
+.tree-unit-none { color: var(--text-dim); font-style: italic; font-size: 11px; opacity: 0.7; }
 
 @media print {
   body { background: #fff; color: #000; overflow: visible; }
@@ -989,7 +1335,8 @@ body:not([data-view="matrix"]) #search-input { display: none; }
   <h1 contenteditable="true" id="doc-title" spellcheck="false"></h1>
   <div class="view-tabs" id="view-tabs">
     <button data-view="matrix">Matrix</button>
-    <button data-view="directorate">Directorate</button>
+    <button data-view="tree">Tree</button>
+    <button data-view="directorate">Lens</button>
     <button data-view="health">Health</button>
     <button data-view="heatmap">Heatmap</button>
     <button data-view="amap">A-Map</button>
@@ -997,6 +1344,7 @@ body:not([data-view="matrix"]) #search-input { display: none; }
   </div>
   <input type="search" id="search-input" placeholder="Filter activities…" autocomplete="off" spellcheck="false">
   <div class="actions">
+    <button id="btn-legend" title="Show/hide RACI legend">Legend</button>
     <button id="btn-export">Export JSON</button>
     <button id="btn-export-csv">Export CSV</button>
     <button id="btn-import">Import JSON</button>
@@ -1006,7 +1354,10 @@ body:not([data-view="matrix"]) #search-input { display: none; }
 </header>
 <main>
   <aside id="ws-sidebar">
-    <h2>Workstreams</h2>
+    <div class="ws-sidebar-head">
+      <h2>Workstreams</h2>
+      <button id="btn-toggle-sidebar" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar">«</button>
+    </div>
     <ul id="ws-list"></ul>
     <button class="ws-add" id="btn-add-ws">+ Add workstream</button>
   </aside>
@@ -1018,17 +1369,19 @@ body:not([data-view="matrix"]) #search-input { display: none; }
     <div class="legend-row"><span class="raci-chip C">C</span><div><div class="label">Consulted</div><div class="desc">Two-way input</div></div></div>
     <div class="legend-row"><span class="raci-chip I">I</span><div><div class="label">Informed</div><div class="desc">Kept in the loop</div></div></div>
     <p>Click any actor cell to toggle R / A / C / I for that activity. A cell can hold none, one, or any combination.</p>
+    <p>Use the <b>▸</b> chevron on a row to break an activity down into a nested sub-matrix one org-tier deeper (Directorate → Division → Branch → Team). The child's columns come from the Roster; its owner defaults to the row's <span class="raci-chip A">A</span>-holder. Follow the breadcrumb to climb back up.</p>
+    <p>Analytical views (Directorate, Health, Heatmap, A-Map) and CSV export summarize the top (Directorate) tier only.</p>
   </aside>
 </main>
 
 <script>
 'use strict';
 
-const STORAGE_KEY = 'raci-matrix-v4';
-const LEGACY_KEY = 'raci-matrix-v3';
+const STORAGE_KEY = 'raci-matrix-v5';
+const LEGACY_KEY = 'raci-matrix-v4';
 
 const ACTORS = ['ocio','mission','infra','cyber','sw','vendor'];
-const ACTOR_LABELS = {
+const ACTOR_LABELS_DEFAULT = {
   ocio: 'OCIO',
   mission: 'MISSION MANAGEMENT',
   infra: 'INFRASTRUCTURE',
@@ -1036,6 +1389,11 @@ const ACTOR_LABELS = {
   sw: 'SOFTWARE SUPPORT AND SERVICES',
   vendor: 'VENDOR'
 };
+// Working copy — editable at runtime; synced from state.actorLabels via applyActorLabels().
+const ACTOR_LABELS = { ...ACTOR_LABELS_DEFAULT };
+function applyActorLabels() {
+  ACTORS.forEach(k => { ACTOR_LABELS[k] = (state.actorLabels && state.actorLabels[k]) || ACTOR_LABELS_DEFAULT[k]; });
+}
 const ACTOR_WIDE = new Set(['mission','sw']);
 const ROLES = ['R','A','C','I'];
 
@@ -1053,22 +1411,46 @@ function normalizeRaci(s) {
 }
 
 // ---------- state ----------
-function makeActivity() {
+function emptyRoleNotes() { return { R:'', A:'', C:'', I:'' }; }
+function makeActivity(colKeys = ACTORS) {
+  const raci = {}, notes = {};
+  colKeys.forEach(k => { raci[k] = ''; notes[k] = emptyRoleNotes(); });
   return {
     id: uid(),
     name: '',
     definition: '',
     outputs: '',
     comments: '',
-    raci: { ocio:'', mission:'', infra:'', cyber:'', sw:'', vendor:'' },
-    notes: { ocio:'', mission:'', infra:'', cyber:'', sw:'', vendor:'' }
+    raci,
+    notes,
+    child: null
   };
+}
+function normalizeActorNotes(noteVal, raci) {
+  if (typeof noteVal === 'string') {
+    const out = emptyRoleNotes();
+    if (noteVal) {
+      const letters = normalizeRaci(raci || '');
+      out[letters[0] || 'R'] = noteVal;
+    }
+    return out;
+  }
+  if (noteVal && typeof noteVal === 'object') {
+    return {
+      R: typeof noteVal.R === 'string' ? noteVal.R : '',
+      A: typeof noteVal.A === 'string' ? noteVal.A : '',
+      C: typeof noteVal.C === 'string' ? noteVal.C : '',
+      I: typeof noteVal.I === 'string' ? noteVal.I : ''
+    };
+  }
+  return emptyRoleNotes();
 }
 function makeWorkstream(name) {
   return { id: uid(), name: name || 'New workstream', activities: [makeActivity()] };
 }
 function makeDivision(name) { return { id: uid(), name: name || '', chief: null, branches: [] }; }
-function makeBranch(name) { return { id: uid(), name: name || '', chief: null, people: [] }; }
+function makeBranch(name) { return { id: uid(), name: name || '', chief: null, teams: [] }; }
+function makeTeam(name) { return { id: uid(), name: name || '', chief: null, people: [] }; }
 function makePerson() { return { id: uid(), name: '', title: '' }; }
 function makeLead() { return { id: uid(), name: '' }; }
 function emptyDirectorates() {
@@ -1089,14 +1471,52 @@ function defaultState() {
     title: 'Workstream RACI',
     workstreams: [ws],
     activeWorkstreamId: ws.id,
+    actorLabels: { ...ACTOR_LABELS_DEFAULT },
     directorates: emptyDirectorates(),
     viewMode: 'matrix',
     collapsedDirectorates: {},
     lensDirectorate: 'ocio',
-    searchQuery: ''
+    lensLevel: 0,
+    lensUnit: 'ocio',
+    searchQuery: '',
+    expandedActivities: [],
+    nav: { path: [] },
+    treeCollapsed: {},
+    sidebarCollapsed: false,
+    showLegend: false
   };
 }
-const ALL_VIEW_MODES = ['matrix','roster','directorate','health','heatmap','amap'];
+const ALL_VIEW_MODES = ['matrix','tree','roster','directorate','health','heatmap','amap'];
+// Normalize an activity (root or nested) over a column-key set, recursing into child matrices.
+// colKeys = ACTORS for tier-0; null = derive from the activity's own existing raci/notes keys.
+function normalizeActivity(a, colKeys) {
+  a.id = a.id || uid();
+  a.name = a.name || '';
+  a.definition = a.definition || '';
+  a.outputs = a.outputs || '';
+  a.comments = a.comments || '';
+  a.raci = a.raci && typeof a.raci === 'object' ? a.raci : {};
+  a.notes = a.notes && typeof a.notes === 'object' ? a.notes : {};
+  const keys = colKeys || Array.from(new Set([...Object.keys(a.raci), ...Object.keys(a.notes)]));
+  keys.forEach(k => {
+    a.raci[k] = normalizeRaci(a.raci[k]);
+    a.notes[k] = normalizeActorNotes(a.notes[k], a.raci[k]);
+  });
+  a.child = normalizeChildMatrix(a.child);
+}
+function normalizeChildMatrix(child) {
+  if (!child || typeof child !== 'object' || !child.owner || typeof child.owner !== 'object') return null;
+  child.id = child.id || uid();
+  const o = child.owner;
+  o.tier = (o.tier === 1 || o.tier === 2 || o.tier === 3) ? o.tier : 1;
+  o.actor = ACTORS.includes(o.actor) ? o.actor : ACTORS[0];
+  if (o.divisionId != null && typeof o.divisionId !== 'string') o.divisionId = String(o.divisionId);
+  if (o.branchId != null && typeof o.branchId !== 'string') o.branchId = String(o.branchId);
+  child.via = (child.via === 'A' || child.via === 'R') ? child.via : 'A';
+  if (!Array.isArray(child.activities)) child.activities = [];
+  child.activities.forEach(ca => normalizeActivity(ca, null));
+  return child;
+}
 function migrateState(s) {
   if (!s || typeof s !== 'object') return defaultState();
   if (!Array.isArray(s.workstreams) || s.workstreams.length === 0) return defaultState();
@@ -1105,19 +1525,7 @@ function migrateState(s) {
     ws.id = ws.id || uid();
     ws.name = typeof ws.name === 'string' ? ws.name : '';
     if (!Array.isArray(ws.activities)) ws.activities = [];
-    ws.activities.forEach(a => {
-      a.id = a.id || uid();
-      a.name = a.name || '';
-      a.definition = a.definition || '';
-      a.outputs = a.outputs || '';
-      a.comments = a.comments || '';
-      a.raci = a.raci && typeof a.raci === 'object' ? a.raci : {};
-      a.notes = a.notes && typeof a.notes === 'object' ? a.notes : {};
-      ACTORS.forEach(k => {
-        a.raci[k] = normalizeRaci(a.raci[k]);
-        if (typeof a.notes[k] !== 'string') a.notes[k] = '';
-      });
-    });
+    ws.activities.forEach(a => normalizeActivity(a, ACTORS));
   });
   if (!s.workstreams.find(w => w.id === s.activeWorkstreamId)) {
     s.activeWorkstreamId = s.workstreams[0].id;
@@ -1138,11 +1546,24 @@ function migrateState(s) {
         br.id = br.id || uid();
         br.name = typeof br.name === 'string' ? br.name : '';
         br.chief = normalizeLead(br.chief);
-        if (!Array.isArray(br.people)) br.people = [];
-        br.people.forEach(p => {
-          p.id = p.id || uid();
-          p.name = typeof p.name === 'string' ? p.name : '';
-          p.title = typeof p.title === 'string' ? p.title : '';
+        // v4 -> v5: legacy branch.people become one default team per branch
+        if (Array.isArray(br.people) && !Array.isArray(br.teams)) {
+          br.teams = br.people.length
+            ? [{ id: uid(), name: '', chief: null, people: br.people }]
+            : [];
+        }
+        delete br.people;
+        if (!Array.isArray(br.teams)) br.teams = [];
+        br.teams.forEach(tm => {
+          tm.id = tm.id || uid();
+          tm.name = typeof tm.name === 'string' ? tm.name : '';
+          tm.chief = normalizeLead(tm.chief);
+          if (!Array.isArray(tm.people)) tm.people = [];
+          tm.people.forEach(p => {
+            p.id = p.id || uid();
+            p.name = typeof p.name === 'string' ? p.name : '';
+            p.title = typeof p.title === 'string' ? p.title : '';
+          });
         });
       });
     });
@@ -1152,7 +1573,17 @@ function migrateState(s) {
   s.collapsedDirectorates = s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object'
     ? s.collapsedDirectorates : {};
   s.lensDirectorate = ACTORS.includes(s.lensDirectorate) ? s.lensDirectorate : 'ocio';
+  s.lensLevel = [0,1,2,3].includes(s.lensLevel) ? s.lensLevel : 0;
+  s.lensUnit = typeof s.lensUnit === 'string' ? s.lensUnit : s.lensDirectorate;
+  s.treeCollapsed = (s.treeCollapsed && typeof s.treeCollapsed === 'object') ? s.treeCollapsed : {};
+  s.sidebarCollapsed = !!s.sidebarCollapsed;
+  s.showLegend = !!s.showLegend;
+  s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
+  ACTORS.forEach(k => { if (typeof s.actorLabels[k] !== 'string' || !s.actorLabels[k].trim()) s.actorLabels[k] = ACTOR_LABELS_DEFAULT[k]; });
   s.searchQuery = typeof s.searchQuery === 'string' ? s.searchQuery : '';
+  s.expandedActivities = Array.isArray(s.expandedActivities) ? s.expandedActivities : [];
+  s.nav = (s.nav && typeof s.nav === 'object') ? s.nav : {};
+  s.nav.path = Array.isArray(s.nav.path) ? s.nav.path.filter(x => typeof x === 'string') : [];
   return s;
 }
 function loadState() {
@@ -1171,6 +1602,7 @@ function loadState() {
   return defaultState();
 }
 let state = loadState();
+applyActorLabels();
 let saveTimer = null;
 function saveState() {
   clearTimeout(saveTimer);
@@ -1185,12 +1617,144 @@ function activeWs() {
   return state.workstreams.find(w => w.id === state.activeWorkstreamId) || state.workstreams[0];
 }
 function findActivity(activityId) {
+  function walk(activities, ws, chain) {
+    for (const a of activities) {
+      if (a.id === activityId) return { ws, activity: a, chain: [...chain, a] };
+      if (a.child && Array.isArray(a.child.activities)) {
+        const r = walk(a.child.activities, ws, [...chain, a]);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
   for (const ws of state.workstreams) {
-    const a = ws.activities.find(x => x.id === activityId);
-    if (a) return { ws, activity: a };
+    const r = walk(ws.activities, ws, []);
+    if (r) return r;
   }
   return null;
 }
+
+// ---------- nesting / navigation ----------
+// Tier index = the org-level of THIS matrix's COLUMNS.
+const TIER_LABELS = ['Directorate', 'Division', 'Branch', 'Team'];
+
+// Columns for a matrix at a given tier. Root (tier 0) = the 6 fixed directorates;
+// deeper tiers derive columns from the owner org-unit's roster sub-units.
+function matrixColumns(tier, owner) {
+  if (tier === 0 || !owner) {
+    return ACTORS.map(k => ({ key: k, label: ACTOR_LABELS[k], wide: ACTOR_WIDE.has(k) }));
+  }
+  if (owner.tier === 1) {
+    const d = state.directorates[owner.actor];
+    return (d ? d.divisions : []).map(div => ({ key: div.id, label: div.name || 'Untitled division' }));
+  }
+  if (owner.tier === 2) {
+    const div = findDivision(owner.actor, owner.divisionId);
+    return (div ? div.branches : []).map(b => ({ key: b.id, label: b.name || 'Untitled branch' }));
+  }
+  if (owner.tier === 3) {
+    const br = findBranch(owner.actor, owner.divisionId, owner.branchId);
+    return (br ? br.teams : []).map(t => ({ key: t.id, label: t.name || 'Untitled team' }));
+  }
+  return [];
+}
+// The parent-matrix column key that an owner ref hangs off of (the hinge cell column).
+function ownerColumnKey(owner) {
+  if (!owner) return null;
+  if (owner.tier === 1) return owner.actor;
+  if (owner.tier === 2) return owner.divisionId;
+  if (owner.tier === 3) return owner.branchId;
+  return null;
+}
+// Human label for an owner org-unit.
+function ownerLabel(owner) {
+  if (!owner) return '';
+  if (owner.tier === 1) return ACTOR_LABELS[owner.actor] || owner.actor;
+  if (owner.tier === 2) { const d = findDivision(owner.actor, owner.divisionId); return (d && d.name) || 'Untitled division'; }
+  if (owner.tier === 3) { const b = findBranch(owner.actor, owner.divisionId, owner.branchId); return (b && b.name) || 'Untitled branch'; }
+  return '';
+}
+// Build the owner ref for the CHILD produced by drilling column `colKey` in a parent matrix.
+function ownerRefFor(parentTier, parentOwner, colKey) {
+  if (parentTier === 0) return { tier: 1, actor: colKey };
+  if (parentTier === 1) return { tier: 2, actor: parentOwner.actor, divisionId: colKey };
+  if (parentTier === 2) return { tier: 3, actor: parentOwner.actor, divisionId: parentOwner.divisionId, branchId: colKey };
+  return null; // tier 3 is the deepest "for now"
+}
+// Walk the active workstream down state.nav.path, resolving the matrix on screen.
+// Stops (and truncates the path) at the first id that no longer resolves.
+function resolveCurrentMatrix() {
+  const ws = activeWs();
+  const path = (state.nav && Array.isArray(state.nav.path)) ? state.nav.path : [];
+  let activities = ws.activities, tier = 0, owner = null, parentActivity = null, via = null;
+  const crumbs = [{ label: ws.name || 'Untitled', kind: 'ws', depth: 0 }];
+  const validPath = [];
+  for (const aid of path) {
+    const a = activities.find(x => x.id === aid);
+    if (!a || !a.child) break;
+    parentActivity = a;
+    owner = a.child.owner;
+    via = a.child.via;
+    activities = a.child.activities;
+    tier = owner.tier;
+    validPath.push(aid);
+    crumbs.push({ label: a.name || '(untitled activity)', kind: 'activity', depth: validPath.length });
+  }
+  if (validPath.length !== path.length) { state.nav.path = validPath; }
+  return { ws, tier, owner, via, parentActivity, activities,
+           columns: matrixColumns(tier, owner), crumbs, path: validPath };
+}
+// Lazily build a child matrix for activity `a` in `node`. Owner defaults to the
+// A-holder column, else R-holder, else the first column (warn-only — always succeeds).
+function makeChildMatrix(node, a) {
+  const cols = node.columns;
+  if (!cols.length) return null;
+  let ownerCol = cols.find(c => normalizeRaci(a.raci[c.key] || '').includes('A'));
+  let via = 'A';
+  if (!ownerCol) { ownerCol = cols.find(c => normalizeRaci(a.raci[c.key] || '').includes('R')); if (ownerCol) via = 'R'; }
+  if (!ownerCol) { ownerCol = cols[0]; via = 'A'; }
+  const owner = ownerRefFor(node.tier, node.owner, ownerCol.key);
+  if (!owner) return null;
+  const childCols = matrixColumns(owner.tier, owner);
+  return { id: uid(), owner, via, activities: [makeActivity(childCols.map(c => c.key))] };
+}
+
+// Walk the entire forest (all workstreams + every nested matrix). Returns one entry
+// per activity at any tier, with its matrix context (tier, owner, columns) and trail.
+function allActivitiesDeep() {
+  const out = [];
+  function walk(activities, ws, tier, owner, path, trail) {
+    const columns = matrixColumns(tier, owner);
+    activities.forEach(a => {
+      out.push({ ws, activity: a, tier, owner, columns, path, trail });
+      if (a.child) {
+        walk(a.child.activities, ws, a.child.owner.tier, a.child.owner,
+             [...path, a.id], [...trail, a.name || '(untitled)']);
+      }
+    });
+  }
+  state.workstreams.forEach(ws => walk(ws.activities, ws, 0, null, [], [ws.name || 'Untitled']));
+  return out;
+}
+// Org units selectable in the Lens at a given level (0=Directorate … 3=Team).
+function orgUnitsAtLevel(level) {
+  if (level === 0) return ACTORS.map(k => ({ key: k, label: ACTOR_LABELS[k], group: '' }));
+  const out = [];
+  ACTORS.forEach(actor => {
+    const d = state.directorates[actor];
+    (d ? d.divisions : []).forEach(div => {
+      if (level === 1) { out.push({ key: div.id, label: div.name || 'Untitled division', group: ACTOR_LABELS[actor] }); return; }
+      (div.branches || []).forEach(br => {
+        if (level === 2) { out.push({ key: br.id, label: br.name || 'Untitled branch', group: `${ACTOR_LABELS[actor]} › ${div.name || '—'}` }); return; }
+        (br.teams || []).forEach(t => {
+          if (level === 3) out.push({ key: t.id, label: t.name || 'Untitled team', group: `${div.name || '—'} › ${br.name || '—'}` });
+        });
+      });
+    });
+  });
+  return out;
+}
+const LEVEL_LABELS = ['Directorate', 'Division', 'Branch', 'Team'];
 
 // ---------- analytical helpers ----------
 function allActivities() {
@@ -1220,9 +1784,14 @@ function matchesQuery(ws, activity, q) {
   const needle = q.toLowerCase();
   const parts = [ws.name, activity.name, activity.definition, activity.outputs, activity.comments];
   for (const p of parts) { if (p && p.toLowerCase().includes(needle)) return true; }
-  for (const k of ACTORS) {
-    const note = activity.notes && activity.notes[k];
-    if (note && note.toLowerCase().includes(needle)) return true;
+  const notes = activity.notes || {};
+  for (const k of Object.keys(notes)) {
+    const n = notes[k];
+    if (!n) continue;
+    if (typeof n === 'string') { if (n.toLowerCase().includes(needle)) return true; continue; }
+    for (const r of ROLES) {
+      if (n[r] && n[r].toLowerCase().includes(needle)) return true;
+    }
   }
   return false;
 }
@@ -1231,9 +1800,14 @@ function matchesQuery(ws, activity, q) {
 function render() {
   document.getElementById('doc-title').textContent = state.title || '';
   document.body.dataset.view = state.viewMode;
+  document.body.classList.toggle('sidebar-collapsed', !!state.sidebarCollapsed);
+  document.body.classList.toggle('show-legend', !!state.showLegend);
+  const sbToggle = document.getElementById('btn-toggle-sidebar');
+  if (sbToggle) sbToggle.title = state.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
   updateViewTabs();
   updateSearchInput();
   switch (state.viewMode) {
+    case 'tree':        renderTree(); break;
     case 'roster':      renderRoster(); break;
     case 'directorate': renderDirectorateLens(); break;
     case 'health':      renderHealth(); break;
@@ -1263,10 +1837,11 @@ function renderSidebar() {
     return `
     <li data-ws-id="${ws.id}" class="${ws.id === activeId ? 'active' : ''}${dim ? ' dim' : ''}">
       <span class="ws-name"
-            contenteditable="true"
+            contenteditable="false"
             spellcheck="false"
             data-ws-id="${ws.id}"
-            data-field="name">${escapeHtml(ws.name)}</span>
+            data-field="name"
+            title="Double-click to rename">${escapeHtml(ws.name)}</span>
       ${q ? `<span class="ws-match-count">${matchCount}</span>` : ''}
       <button class="ws-del" data-ws-del="${ws.id}" title="Delete workstream">×</button>
     </li>`;
@@ -1283,31 +1858,57 @@ function renderMain() {
     </div>`;
     return;
   }
+  const node = resolveCurrentMatrix();
+  const { columns, activities, tier, owner } = node;
+
+  // breadcrumb
+  const crumbsHtml = node.crumbs.map((c, i) => {
+    const sep = i > 0 ? '<span class="crumb-sep">›</span>' : '';
+    const cur = i === node.crumbs.length - 1 ? ' current' : '';
+    return `${sep}<span class="crumb${cur}" data-crumb-depth="${c.depth}" title="Go to ${escapeHtml(c.label)}">${escapeHtml(c.label)}</span>`;
+  }).join('');
+
+  // owner / tier tag + warn-only health badges
+  const tierLabel = TIER_LABELS[tier] || 'Sub';
+  const drift = ownerDrift(node);
+  const ownerHtml = owner
+    ? `<span class="owner-tag">${tierLabel} matrix · owned by <b>${escapeHtml(ownerLabel(owner))}</b> <span class="via-tag">via ${node.via}</span></span>${drift ? `<span class="warn-badge" title="${escapeHtml(drift)}">⚠ A-drift</span>` : ''}`
+    : `<span class="owner-tag">${tierLabel}-level matrix</span>`;
+
+  const q = state.searchQuery || '';
+  const visibleActivities = q ? activities.filter(a => matchesQuery(ws, a, q)) : activities;
+  const filterHint = q
+    ? `<span class="filter-hint">Showing ${visibleActivities.length} of ${activities.length} matching "${escapeHtml(q)}"</span>`
+    : '';
+
+  // empty-roster notice (a child whose owner has no sub-units yet)
+  const emptyRoster = (tier > 0 && columns.length === 0)
+    ? `<div class="empty-roster-notice">
+         <b>${escapeHtml(ownerLabel(owner))}</b> has no ${TIER_LABELS[tier].toLowerCase()}s yet — add them in the
+         <button class="link-btn" data-goto-roster="1">Roster</button> to populate this matrix's columns.
+       </div>`
+    : '';
+
   const headerCols = `
+    <th class="col-toggle"></th>
     <th class="col-name">Activity</th>
     <th class="col-def">Definition</th>
-    ${ACTORS.map(k => `<th class="actor ${ACTOR_WIDE.has(k) ? 'wide' : ''}">${escapeHtml(ACTOR_LABELS[k])}</th>`).join('')}
+    ${columns.map(c => `<th class="actor ${c.wide ? 'wide' : ''}"><span class="col-name-label">${escapeHtml(c.label)}</span><span class="col-tier-pill tier-${tier}">${TIER_LABELS[tier]}</span></th>`).join('')}
     <th class="col-outputs">Typical Outputs / Artifacts</th>
     <th class="col-comments">Comments</th>
     <th></th>
   `;
-  const q = state.searchQuery || '';
-  const visibleActivities = q ? ws.activities.filter(a => matchesQuery(ws, a, q)) : ws.activities;
-  const rows = visibleActivities.map(a => renderActivityRow(a)).join('');
-  const filterHint = q
-    ? `<span class="filter-hint">Showing ${visibleActivities.length} of ${ws.activities.length} matching "${escapeHtml(q)}"</span>`
-    : '';
+  const rows = visibleActivities.map(a => renderActivityRow(a, columns, tier, owner)).join('');
+
   main.innerHTML = `
     <div class="ws-header">
-      <h2 class="ws-title ${ws.name ? '' : 'empty'}"
-          contenteditable="true"
-          spellcheck="false"
-          data-ws-id="${ws.id}"
-          data-field="name">${escapeHtml(ws.name)}</h2>
-      <span class="ws-meta">${ws.activities.length} activit${ws.activities.length === 1 ? 'y' : 'ies'}</span>
+      <div class="breadcrumb">${crumbsHtml}</div>
+      ${ownerHtml}
+      <span class="ws-meta">${activities.length} activit${activities.length === 1 ? 'y' : 'ies'}</span>
       ${filterHint}
     </div>
     <div class="table-wrap">
+      ${emptyRoster}
       <table class="activities">
         <thead><tr>${headerCols}</tr></thead>
         <tbody>${rows}</tbody>
@@ -1317,7 +1918,49 @@ function renderMain() {
   `;
 }
 
-function renderActivityRow(a) {
+// A-drift: the current child's owner column no longer holds its `via` letter (or any A/R) on the parent activity.
+function ownerDrift(node) {
+  if (!node.owner || !node.parentActivity) return null;
+  const key = ownerColumnKey(node.owner);
+  const letters = normalizeRaci(node.parentActivity.raci[key] || '');
+  if (letters.includes(node.via)) return null;
+  if (!letters.includes('A') && !letters.includes('R')) {
+    return `Owner "${ownerLabel(node.owner)}" is no longer Accountable/Responsible on the parent activity.`;
+  }
+  return `Owner "${ownerLabel(node.owner)}" no longer holds ${node.via} (was ${node.via}-via) on the parent activity.`;
+}
+
+// Column-aware per-row RACI health (warn-only): exactly-one-A and at-least-one-R.
+function rowHealth(a, columns) {
+  let A = 0, R = 0;
+  columns.forEach(c => {
+    const L = normalizeRaci(a.raci[c.key] || '');
+    if (L.includes('A')) A++;
+    if (L.includes('R')) R++;
+  });
+  return { noA: A === 0, multiA: A > 1, noR: R === 0 };
+}
+function rowFlagsHtml(a, columns) {
+  if (!columns.length) return '';
+  const h = rowHealth(a, columns);
+  const flags = [];
+  if (h.noA)    flags.push('<span class="row-flag err" title="No Accountable — nobody owns this activity">no A</span>');
+  if (h.multiA) flags.push('<span class="row-flag warn" title="Multiple Accountable — only one role should be A">multi A</span>');
+  if (h.noR)    flags.push('<span class="row-flag warn" title="No Responsible — nobody is doing the work">no R</span>');
+  return flags.length ? `<span class="row-flags">${flags.join('')}</span>` : '';
+}
+
+function renderActivityRow(a, columns, tier, owner) {
+  const nameCell = `
+    <td class="text-cell">
+      <div class="edit"
+           contenteditable="true"
+           spellcheck="false"
+           data-activity-id="${a.id}"
+           data-field="name"
+           data-placeholder="Activity name">${escapeHtml(a.name)}</div>
+      ${rowFlagsHtml(a, columns)}
+    </td>`;
   const textCell = (field, ph) => `
     <td class="text-cell">
       <div class="edit"
@@ -1327,14 +1970,21 @@ function renderActivityRow(a) {
            data-field="${field}"
            data-placeholder="${escapeHtml(ph)}">${escapeHtml(a[field])}</div>
     </td>`;
-  const actorCells = ACTORS.map(k => `
-    <td class="actor-cell"
+  const hinge = a.child ? ownerColumnKey(a.child.owner) : null;
+  const actorCells = columns.map(c => `
+    <td class="actor-cell${c.key === hinge ? ' hinge' : ''}"
         data-activity-id="${a.id}"
-        data-actor="${k}">${renderActorCellInner(a, k)}</td>
+        data-actor="${c.key}">${renderActorCellInner(a, c.key)}</td>
   `).join('');
+  const canDrill = tier < 3 && columns.length > 0;
+  const hasChild = !!a.child;
+  const chevron = canDrill
+    ? `<button class="row-chevron${hasChild ? ' has-child' : ''}" data-drill-activity="${a.id}" title="${hasChild ? 'Open breakdown' : 'Break down into a sub-matrix'}">▸</button>`
+    : '';
   return `
-    <tr data-activity-id="${a.id}">
-      ${textCell('name', 'Activity name')}
+    <tr data-activity-id="${a.id}"${hasChild ? ' class="drilled"' : ''}>
+      <td class="row-toggle">${chevron}</td>
+      ${nameCell}
       ${textCell('definition', 'Definition')}
       ${actorCells}
       ${textCell('outputs', 'Outputs / artifacts')}
@@ -1342,6 +1992,98 @@ function renderActivityRow(a) {
       <td class="row-del"><button data-activity-del="${a.id}" title="Delete row">×</button></td>
     </tr>
   `;
+}
+
+// ========== Tree (single pane of glass) ==========
+function countTreeActivities(activities) {
+  let n = 0;
+  activities.forEach(a => { n++; if (a.child) n += countTreeActivities(a.child.activities); });
+  return n;
+}
+function walkTree(activities, ws, tier, owner, depth, path, rows) {
+  const cols = matrixColumns(tier, owner);
+  const collapsed = state.treeCollapsed || {};
+  const matrixDir = tier === 0 ? null : (owner && owner.actor);
+  activities.forEach(a => {
+    const isCol = !!collapsed[a.id];
+    const hasAny = cols.some(c => normalizeRaci(a.raci[c.key] || ''));
+    const canToggle = cols.length > 0 || !!a.child;
+    const caret = canToggle ? (isCol ? '▸' : '▾') : '·';
+    const actDirClass = matrixDir ? ` dir-${matrixDir}` : '';
+    // --- activity heading ---
+    rows.push(`
+      <div class="tree-row tree-act tt-${tier}${actDirClass}" style="padding-left:${depth * 22}px" data-activity-id="${a.id}">
+        <span class="tree-caret${canToggle ? ' has-child' : ''}"${canToggle ? ` data-tree-toggle="${a.id}"` : ''}>${caret}</span>
+        <span class="tree-name tree-open" data-tree-open="${ws.id}|${path.join(',')}" data-open-activity="${a.id}" title="Open in Matrix">${escapeHtml(a.name || '(untitled activity)')}</span>
+        ${hasAny ? '' : '<span class="tree-none">no assignments</span>'}
+      </div>`);
+    if (isCol) return;
+    // --- org-unit rows under the activity (every unit; uninvolved ones are greyed/hatched) ---
+    const hingeKey = a.child ? ownerColumnKey(a.child.owner) : null;
+    cols.forEach(c => {
+      const letters = normalizeRaci(a.raci[c.key] || '');
+      const empty = !letters;
+      const isOwner = a.child && c.key === hingeKey;
+      const unitDir = tier === 0 ? c.key : matrixDir;
+      const cls = empty ? ' tree-unit-empty' : (unitDir ? ` dir-${unitDir}` : '');
+      rows.push(`
+        <div class="tree-row tree-unit tu-${tier}${cls}${isOwner ? ' is-owner' : ''}" style="padding-left:${(depth + 1) * 22}px">
+          <span class="tree-caret">·</span>
+          <span class="tree-unit-pill tier-${tier}">${TIER_LABELS[tier]}</span>
+          <span class="tree-unit-name">${escapeHtml(c.label)}</span>
+          <span class="tree-unit-chips">${empty
+            ? '<span class="tree-unit-none">no responsibility</span>'
+            : letters.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>
+          ${isOwner ? `<span class="tree-unit-owner">owns ${LEVEL_LABELS[a.child.owner.tier]} breakdown ↴</span>` : ''}
+        </div>`);
+    });
+    // then the owner's breakdown, nested one level deeper (recurses the same pattern)
+    if (a.child) {
+      walkTree(a.child.activities, ws, a.child.owner.tier, a.child.owner, depth + 2, [...path, a.id], rows);
+    }
+  });
+}
+function renderTree() {
+  const main = document.getElementById('ws-main');
+  const collapsed = state.treeCollapsed || {};
+  const rows = [];
+  state.workstreams.forEach(ws => {
+    const wsCollapsed = !!collapsed[ws.id];
+    const total = countTreeActivities(ws.activities);
+    rows.push(`
+      <div class="tree-row tree-ws" data-tree-toggle="${ws.id}">
+        <span class="tree-caret has-child">${wsCollapsed ? '▸' : '▾'}</span>
+        <span class="tree-name">${escapeHtml(ws.name || 'Untitled')}</span>
+        <span class="tree-meta">${total} activit${total === 1 ? 'y' : 'ies'}</span>
+      </div>`);
+    if (!wsCollapsed) walkTree(ws.activities, ws, 0, null, 1, [], rows);
+  });
+  main.innerHTML = `
+    <div class="lens-header">
+      <h2>Tree</h2>
+      <span class="lens-stats">Every activity across all tiers, in one pane. Caret folds a branch; click a name to open it in the Matrix. The owner tag shows the accountability cascade.</span>
+      <span class="hm-scale-strip">
+        <button id="tree-expand-all">Expand all</button>
+        <button id="tree-collapse-all">Collapse all</button>
+      </span>
+    </div>
+    <div class="tree-body">${rows.join('') || '<div class="lens-empty">No workstreams.</div>'}</div>
+  `;
+}
+function toggleTreeNode(id) {
+  state.treeCollapsed = state.treeCollapsed || {};
+  if (state.treeCollapsed[id]) delete state.treeCollapsed[id];
+  else state.treeCollapsed[id] = true;
+  saveState();
+  renderTree();
+}
+function collapseAllTree() {
+  const c = {};
+  state.workstreams.forEach(ws => {
+    c[ws.id] = true;
+    (function rec(acts) { acts.forEach(a => { if (a.child) { c[a.id] = true; rec(a.child.activities); } }); })(ws.activities);
+  });
+  state.treeCollapsed = c;
 }
 
 // ========== Accountability Map ==========
@@ -1431,7 +2173,7 @@ function renderHeatmap() {
         <span class="hm-scale-label">high</span>
       </span>
     </div>
-    <div class="lens-body">
+    <div class="lens-body lens-centered heatmap-body">
       <table class="heatmap-table">
         <thead>
           <tr>
@@ -1479,7 +2221,7 @@ function renderHealth() {
       <h2>Governance Health</h2>
       <span class="lens-stats">${all.length} activit${all.length === 1 ? 'y' : 'ies'} reviewed · <span class="health-stat red">${noA.length} gaps</span> · <span class="health-stat amber">${multiA.length} conflicts</span> · <span class="health-stat amber">${noR.length} missing R</span></span>
     </div>
-    <div class="lens-body">
+    <div class="lens-body lens-centered health-body">
       ${sections.map(renderHealthSection).join('')}
     </div>
   `;
@@ -1523,41 +2265,62 @@ function renderHealthRow(section, ws, activity, health) {
 }
 
 // ========== Directorate Lens ==========
+function lensUnitOptions(units, selectedKey) {
+  const order = [];
+  const byGroup = {};
+  units.forEach(u => { const g = u.group || ''; if (!(g in byGroup)) { byGroup[g] = []; order.push(g); } byGroup[g].push(u); });
+  return order.map(g => {
+    const opts = byGroup[g].map(u =>
+      `<option value="${u.key}"${u.key === selectedKey ? ' selected' : ''}>${escapeHtml(u.label)}</option>`).join('');
+    return g ? `<optgroup label="${escapeHtml(g)}">${opts}</optgroup>` : opts;
+  }).join('');
+}
+const LENS_SECTIONS = [
+  { role: 'R', label: 'Responsible', desc: 'Does the work' },
+  { role: 'A', label: 'Accountable', desc: 'Owns the outcome' },
+  { role: 'C', label: 'Consulted',   desc: 'Two-way input' },
+  { role: 'I', label: 'Informed',    desc: 'Kept in the loop' }
+];
 function renderDirectorateLens() {
   const main = document.getElementById('ws-main');
-  const actor = state.lensDirectorate || 'ocio';
-  const all = allActivities();
-  const involvedRows = all.filter(({activity}) => rolesForActor(activity, actor).length > 0);
-  const involvedWsIds = new Set(involvedRows.map(r => r.ws.id));
+  const level = state.lensLevel || 0;
+  const units = orgUnitsAtLevel(level);
+  let unit = units.find(u => u.key === state.lensUnit);
+  if (!unit) { unit = units[0]; state.lensUnit = unit ? unit.key : null; }
+  const unitKey = state.lensUnit;
+  const deep = allActivitiesDeep().filter(r => r.tier === level);
+  const involved = unitKey ? deep.filter(r => normalizeRaci(r.activity.raci[unitKey] || '')) : [];
+  const involvedWsIds = new Set(involved.map(r => r.ws.id));
   const counts = { R: 0, A: 0, C: 0, I: 0 };
-  involvedRows.forEach(({activity}) => {
-    const letters = rolesForActor(activity, actor);
-    ROLES.forEach(r => { if (letters.includes(r)) counts[r]++; });
-  });
-  const sections = [
-    { role: 'A', label: 'Accountable', desc: 'Owns the outcome' },
-    { role: 'R', label: 'Responsible', desc: 'Does the work' },
-    { role: 'C', label: 'Consulted',   desc: 'Two-way input' },
-    { role: 'I', label: 'Informed',    desc: 'Kept in the loop' }
-  ];
+  involved.forEach(r => { const L = normalizeRaci(r.activity.raci[unitKey] || ''); ROLES.forEach(x => { if (L.includes(x)) counts[x]++; }); });
+  const groupLine = unit && unit.group ? `<span class="lens-unit-group">${escapeHtml(unit.group)}</span>` : '';
   main.innerHTML = `
     <div class="lens-header">
-      <h2>Directorate Lens</h2>
-      <select id="lens-select" class="lens-select">
-        ${ACTORS.map(k => `<option value="${k}"${k === actor ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[k])}</option>`).join('')}
+      <h2>Org Lens</h2>
+      <select id="lens-level" class="lens-select">
+        ${LEVEL_LABELS.map((lab, i) => `<option value="${i}"${i === level ? ' selected' : ''}>${lab}</option>`).join('')}
       </select>
-      <span class="lens-stats">${involvedRows.length} activit${involvedRows.length === 1 ? 'y' : 'ies'} · ${involvedWsIds.size} workstream${involvedWsIds.size === 1 ? '' : 's'} · <span class="raci-chip A">A</span> ${counts.A} <span class="raci-chip R">R</span> ${counts.R} <span class="raci-chip C">C</span> ${counts.C} <span class="raci-chip I">I</span> ${counts.I}</span>
+      <select id="lens-unit" class="lens-select">
+        ${unitKey ? lensUnitOptions(units, unitKey) : '<option>(none)</option>'}
+      </select>
     </div>
-    <div class="lens-body">
-      ${sections.map(s => renderLensSection(actor, s)).join('')}
+    <div class="lens-subheader">
+      <h1 class="lens-actor-name">${escapeHtml(unit ? unit.label : '(no unit)')}</h1>
+      ${groupLine}
+      <span class="lens-stats">${LEVEL_LABELS[level]} lens · ${involved.length} activit${involved.length === 1 ? 'y' : 'ies'} · ${involvedWsIds.size} workstream${involvedWsIds.size === 1 ? '' : 's'} · <span class="raci-chip R">R</span> ${counts.R} <span class="raci-chip A">A</span> ${counts.A} <span class="raci-chip C">C</span> ${counts.C} <span class="raci-chip I">I</span> ${counts.I}</span>
+    </div>
+    <div class="lens-body lens-cols">
+      ${unitKey
+        ? LENS_SECTIONS.map(s => renderLensSection(deep, unitKey, s)).join('')
+        : `<div class="lens-empty">No ${LEVEL_LABELS[level].toLowerCase()}s in the roster yet — add them in the Roster view.</div>`}
     </div>
   `;
 }
 
-function renderLensSection(actor, section) {
-  const rows = allActivities().filter(({activity}) => rolesForActor(activity, actor).includes(section.role));
+function renderLensSection(deep, unitKey, section) {
+  const rows = deep.filter(r => normalizeRaci(r.activity.raci[unitKey] || '').includes(section.role));
   const rowsHtml = rows.length
-    ? rows.map(({ws, activity}) => renderLensRow(actor, ws, activity, section.role)).join('')
+    ? rows.map(r => renderLensRow(r, unitKey, section.role)).join('')
     : `<div class="lens-empty">(none)</div>`;
   return `
     <section class="lens-section">
@@ -1572,24 +2335,26 @@ function renderLensSection(actor, section) {
   `;
 }
 
-function renderLensRow(actor, ws, activity, role) {
-  const note = (activity.notes && activity.notes[actor]) || '';
-  const allLetters = rolesForActor(activity, actor);
+function renderLensRow(r, unitKey, role) {
+  const a = r.activity;
+  const notesObj = (a.notes && a.notes[unitKey]) || {};
+  const note = (typeof notesObj === 'string' ? notesObj : notesObj[role]) || '';
+  const allLetters = normalizeRaci(a.raci[unitKey] || '');
   const otherLetters = allLetters.replace(role, '');
   return `
-    <div class="lens-row" data-jump-activity="${activity.id}">
+    <div class="lens-row tree-open" data-tree-open="${r.ws.id}|${r.path.join(',')}" data-open-activity="${a.id}" title="Open in Matrix">
       <div class="lens-row-head">
-        <span class="lens-ws">${escapeHtml(ws.name || 'Untitled')}</span>
+        <span class="lens-ws">${escapeHtml(r.trail.join(' › '))}</span>
         <span class="lens-sep">/</span>
-        <span class="lens-name">${escapeHtml(activity.name || '(untitled activity)')}</span>
+        <span class="lens-name">${escapeHtml(a.name || '(untitled activity)')}</span>
         ${otherLetters ? `<span class="lens-other-roles">also ${otherLetters.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>` : ''}
       </div>
-      ${activity.definition ? `<div class="lens-def">${escapeHtml(activity.definition)}</div>` : ''}
+      ${a.definition ? `<div class="lens-def">${escapeHtml(a.definition)}</div>` : ''}
       ${note ? `<div class="lens-note">${escapeHtml(note)}</div>` : ''}
-      ${activity.outputs || activity.comments ? `
+      ${a.outputs || a.comments ? `
         <div class="lens-meta">
-          ${activity.outputs ? `<div><span class="lens-meta-label">Outputs:</span> ${escapeHtml(activity.outputs)}</div>` : ''}
-          ${activity.comments ? `<div><span class="lens-meta-label">Comments:</span> ${escapeHtml(activity.comments)}</div>` : ''}
+          ${a.outputs ? `<div><span class="lens-meta-label">Outputs:</span> ${escapeHtml(a.outputs)}</div>` : ''}
+          ${a.comments ? `<div><span class="lens-meta-label">Comments:</span> ${escapeHtml(a.comments)}</div>` : ''}
         </div>
       ` : ''}
     </div>
@@ -1613,27 +2378,32 @@ function countOrgUnits(d) {
   // d is a directorate { lead, divisions }
   const divisions = d.divisions.length;
   let branches = 0;
+  let teams = 0;
   let people = d.lead ? 1 : 0;
   d.divisions.forEach(div => {
     if (div.chief) people++;
     branches += div.branches.length;
     div.branches.forEach(b => {
       if (b.chief) people++;
-      people += b.people.length;
+      teams += b.teams.length;
+      b.teams.forEach(t => {
+        if (t.chief) people++;
+        people += t.people.length;
+      });
     });
   });
-  return { divisions, branches, people };
+  return { divisions, branches, teams, people };
 }
 
-const ROLE_LABELS = { AD: 'Associate Director', DC: 'Division Chief', BC: 'Branch Chief' };
-const ROLE_ADD_LABELS = { AD: '+ Set Associate Director', DC: '+ Set Division Chief', BC: '+ Set Branch Chief' };
+const ROLE_LABELS = { AD: 'Associate Director', DC: 'Division Chief', BC: 'Branch Chief', TL: 'Team Lead' };
+const ROLE_ADD_LABELS = { AD: '+ Set Associate Director', DC: '+ Set Division Chief', BC: '+ Set Branch Chief', TL: '+ Set Team Lead' };
 
-function renderLeadSlot(actor, divId, brId, role, lead) {
-  const scope = `${actor}|${divId || ''}|${brId || ''}|${role}`;
+function renderLeadSlot(actor, divId, brId, teamId, role, lead) {
+  const scope = `${actor}|${divId || ''}|${brId || ''}|${teamId || ''}|${role}`;
   if (!lead) {
     return `<button class="add-lead" data-add-lead="${scope}">${ROLE_ADD_LABELS[role]}</button>`;
   }
-  const idAttrs = `data-actor="${actor}"${divId ? ` data-division-id="${divId}"` : ''}${brId ? ` data-branch-id="${brId}"` : ''} data-role="${role}"`;
+  const idAttrs = `data-actor="${actor}"${divId ? ` data-division-id="${divId}"` : ''}${brId ? ` data-branch-id="${brId}"` : ''}${teamId ? ` data-team-id="${teamId}"` : ''} data-role="${role}"`;
   return `
     <div class="lead-card" data-role="${role}">
       <span class="lead-badge">${ROLE_LABELS[role]}</span>
@@ -1651,11 +2421,11 @@ function renderDirectoratePanel(actor) {
     <section class="directorate ${collapsed ? 'collapsed' : ''}" data-actor="${actor}">
       <header class="dir-header" data-toggle-dir="${actor}">
         <span class="caret">▼</span>
-        <h3>${escapeHtml(ACTOR_LABELS[actor])}</h3>
-        <span class="dir-stats">${totals.divisions} division${totals.divisions === 1 ? '' : 's'} · ${totals.branches} branch${totals.branches === 1 ? '' : 'es'} · ${totals.people} ${totals.people === 1 ? 'person' : 'people'}</span>
+        <h3 class="dir-name-edit" contenteditable="true" spellcheck="false" data-actor="${actor}" data-field="dir-name" title="Click to rename this directorate">${escapeHtml(ACTOR_LABELS[actor])}</h3>
+        <span class="dir-stats">${totals.divisions} division${totals.divisions === 1 ? '' : 's'} · ${totals.branches} branch${totals.branches === 1 ? '' : 'es'} · ${totals.teams} team${totals.teams === 1 ? '' : 's'} · ${totals.people} ${totals.people === 1 ? 'person' : 'people'}</span>
       </header>
       <div class="dir-body">
-        ${renderLeadSlot(actor, null, null, 'AD', d.lead)}
+        ${renderLeadSlot(actor, null, null, null, 'AD', d.lead)}
         ${d.divisions.map(div => renderDivisionPanel(actor, div)).join('')}
         <button class="add-division" data-add-division="${actor}">+ Add division</button>
       </div>
@@ -1676,7 +2446,7 @@ function renderDivisionPanel(actor, div) {
         <button class="del-icon" data-del-division="${actor}|${div.id}" title="Delete division">×</button>
       </div>
       <div class="div-body">
-        ${renderLeadSlot(actor, div.id, null, 'DC', div.chief)}
+        ${renderLeadSlot(actor, div.id, null, null, 'DC', div.chief)}
         ${div.branches.map(b => renderBranchPanel(actor, div.id, b)).join('')}
         <button class="add-branch" data-add-branch="${actor}|${div.id}">+ Add branch</button>
       </div>
@@ -1697,22 +2467,45 @@ function renderBranchPanel(actor, divId, br) {
               data-field="branch-name">${escapeHtml(br.name)}</span>
         <button class="del-icon" data-del-branch="${actor}|${divId}|${br.id}" title="Delete branch">×</button>
       </div>
-      <div class="people">
-        ${renderLeadSlot(actor, divId, br.id, 'BC', br.chief)}
-        ${br.people.map(p => renderPersonRow(actor, divId, br.id, p)).join('')}
-        <button class="add-person" data-add-person="${actor}|${divId}|${br.id}">+ Add person</button>
+      <div class="branch-body">
+        ${renderLeadSlot(actor, divId, br.id, null, 'BC', br.chief)}
+        ${br.teams.map(t => renderTeamPanel(actor, divId, br.id, t)).join('')}
+        <button class="add-team" data-add-team="${actor}|${divId}|${br.id}">+ Add team</button>
       </div>
     </div>
   `;
 }
 
-function renderPersonRow(actor, divId, brId, p) {
-  const dAttrs = `data-actor="${actor}" data-division-id="${divId}" data-branch-id="${brId}" data-person-id="${p.id}"`;
+function renderTeamPanel(actor, divId, brId, team) {
+  return `
+    <div class="team" data-team-id="${team.id}">
+      <div class="team-header">
+        <span class="team-name"
+              contenteditable="true"
+              spellcheck="false"
+              data-actor="${actor}"
+              data-division-id="${divId}"
+              data-branch-id="${brId}"
+              data-team-id="${team.id}"
+              data-field="team-name">${escapeHtml(team.name)}</span>
+        <button class="del-icon" data-del-team="${actor}|${divId}|${brId}|${team.id}" title="Delete team">×</button>
+      </div>
+      <div class="people">
+        ${renderLeadSlot(actor, divId, brId, team.id, 'TL', team.chief)}
+        ${team.people.map(p => renderPersonRow(actor, divId, brId, team.id, p)).join('')}
+        <button class="add-person" data-add-person="${actor}|${divId}|${brId}|${team.id}">+ Add person</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderPersonRow(actor, divId, brId, teamId, p) {
+  const dAttrs = `data-actor="${actor}" data-division-id="${divId}" data-branch-id="${brId}" data-team-id="${teamId}" data-person-id="${p.id}"`;
   return `
     <div class="person" data-person-id="${p.id}">
       <span class="p-name" contenteditable="true" spellcheck="false" ${dAttrs} data-field="p-name" data-placeholder="Name">${escapeHtml(p.name)}</span>
       <span class="p-title" contenteditable="true" spellcheck="false" ${dAttrs} data-field="p-title" data-placeholder="Title (optional)">${escapeHtml(p.title)}</span>
-      <button class="del-icon" data-del-person="${actor}|${divId}|${brId}|${p.id}" title="Delete person">×</button>
+      <button class="del-icon" data-del-person="${actor}|${divId}|${brId}|${teamId}|${p.id}" title="Delete person">×</button>
     </div>
   `;
 }
@@ -1722,9 +2515,8 @@ function renderChipsHtml(letters) {
   if (!norm) return `<div class="cell-chips empty">·</div>`;
   return `<div class="cell-chips">${norm.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</div>`;
 }
-function renderActorCellInner(a, actor) {
-  const note = escapeHtml(a.notes && a.notes[actor] || '');
-  return `<div class="cell-inner">${renderChipsHtml(a.raci[actor] || '')}<div class="cell-note" contenteditable="true" spellcheck="false" data-activity-id="${a.id}" data-actor="${actor}" data-field="note">${note}</div></div>`;
+function renderActorCellInner(a, colKey) {
+  return renderChipsHtml(a.raci[colKey] || '');
 }
 
 // ---------- mutations ----------
@@ -1770,18 +2562,41 @@ function renameWorkstream(id, name) {
 function setActiveWorkstream(id) {
   if (state.activeWorkstreamId === id) return;
   state.activeWorkstreamId = id;
+  state.nav = { path: [] };
   saveState();
   render();
 }
 function addActivity() {
-  const ws = activeWs();
-  ws.activities.push(makeActivity());
+  const node = resolveCurrentMatrix();
+  node.activities.push(makeActivity(node.columns.map(c => c.key)));
+  saveState();
+  renderMain();
+}
+function deleteActivity(id) {
+  const node = resolveCurrentMatrix();
+  const idx = node.activities.findIndex(a => a.id === id);
+  if (idx < 0) return;
+  node.activities.splice(idx, 1);
+  saveState();
+  renderMain();
+}
+function drillInto(activityId) {
+  const node = resolveCurrentMatrix();
+  if (node.tier >= 3) return; // team tier is the deepest "for now"
+  const a = node.activities.find(x => x.id === activityId);
+  if (!a) return;
+  if (!a.child) {
+    const child = makeChildMatrix(node, a);
+    if (!child) return;
+    a.child = child;
+  }
+  state.nav.path = [...node.path, activityId];
   saveState();
   render();
 }
-function deleteActivity(id) {
-  const ws = activeWs();
-  ws.activities = ws.activities.filter(a => a.id !== id);
+function navigateToDepth(depth) {
+  state.nav = state.nav || { path: [] };
+  state.nav.path = (state.nav.path || []).slice(0, depth);
   saveState();
   render();
 }
@@ -1819,13 +2634,6 @@ function clearRaciCell(activityId, actor) {
   replaceChipsInCell(activityId, actor, '');
   refreshPopoverButtons(activityId, actor, '');
 }
-function setActivityNote(activityId, actor, value) {
-  const f = findActivity(activityId);
-  if (!f) return;
-  if (!f.activity.notes) f.activity.notes = {};
-  f.activity.notes[actor] = value;
-  saveState();
-}
 
 // ---------- roster mutations ----------
 function findDivision(actor, divId) {
@@ -1836,9 +2644,13 @@ function findBranch(actor, divId, brId) {
   const d = findDivision(actor, divId);
   return d && d.branches.find(b => b.id === brId);
 }
-function findPerson(actor, divId, brId, pId) {
+function findTeam(actor, divId, brId, teamId) {
   const b = findBranch(actor, divId, brId);
-  return b && b.people.find(p => p.id === pId);
+  return b && b.teams.find(t => t.id === teamId);
+}
+function findPerson(actor, divId, brId, teamId, pId) {
+  const t = findTeam(actor, divId, brId, teamId);
+  return t && t.people.find(p => p.id === pId);
 }
 function setViewMode(mode) {
   if (state.viewMode === mode) return;
@@ -1866,18 +2678,20 @@ function deleteDivision(actor, divId) {
   saveState();
   renderRoster();
 }
-function setLead(actor, divId, brId, role) {
+function setLead(actor, divId, brId, teamId, role) {
   const lead = makeLead();
   if (role === 'AD') state.directorates[actor].lead = lead;
   else if (role === 'DC') { const d = findDivision(actor, divId); if (d) d.chief = lead; }
   else if (role === 'BC') { const b = findBranch(actor, divId, brId); if (b) b.chief = lead; }
+  else if (role === 'TL') { const t = findTeam(actor, divId, brId, teamId); if (t) t.chief = lead; }
   saveState();
   renderRoster();
 }
-function removeLead(actor, divId, brId, role) {
+function removeLead(actor, divId, brId, teamId, role) {
   if (role === 'AD') state.directorates[actor].lead = null;
   else if (role === 'DC') { const d = findDivision(actor, divId); if (d) d.chief = null; }
   else if (role === 'BC') { const b = findBranch(actor, divId, brId); if (b) b.chief = null; }
+  else if (role === 'TL') { const t = findTeam(actor, divId, brId, teamId); if (t) t.chief = null; }
   saveState();
   renderRoster();
 }
@@ -1885,6 +2699,7 @@ function commitLeadEdit(target) {
   const a = target.dataset.actor;
   const divId = target.dataset.divisionId;
   const brId = target.dataset.branchId;
+  const teamId = target.dataset.teamId;
   const role = target.dataset.role;
   const field = target.dataset.field;
   const value = target.textContent.trim();
@@ -1892,6 +2707,7 @@ function commitLeadEdit(target) {
   if (role === 'AD') lead = state.directorates[a].lead;
   else if (role === 'DC') { const d = findDivision(a, divId); lead = d && d.chief; }
   else if (role === 'BC') { const b = findBranch(a, divId, brId); lead = b && b.chief; }
+  else if (role === 'TL') { const t = findTeam(a, divId, brId, teamId); lead = t && t.chief; }
   if (!lead) return;
   if (field === 'lead-name') lead.name = value;
   saveState();
@@ -1912,17 +2728,32 @@ function deleteBranch(actor, divId, brId) {
   saveState();
   renderRoster();
 }
-function addPerson(actor, divId, brId) {
+function addTeam(actor, divId, brId) {
   const b = findBranch(actor, divId, brId);
   if (!b) return;
-  b.people.push(makePerson());
+  b.teams.push(makeTeam(`Team ${b.teams.length + 1}`));
   saveState();
   renderRoster();
 }
-function deletePerson(actor, divId, brId, pId) {
+function deleteTeam(actor, divId, brId, teamId) {
+  if (!confirm('Delete this team and all its people?')) return;
   const b = findBranch(actor, divId, brId);
   if (!b) return;
-  b.people = b.people.filter(p => p.id !== pId);
+  b.teams = b.teams.filter(t => t.id !== teamId);
+  saveState();
+  renderRoster();
+}
+function addPerson(actor, divId, brId, teamId) {
+  const t = findTeam(actor, divId, brId, teamId);
+  if (!t) return;
+  t.people.push(makePerson());
+  saveState();
+  renderRoster();
+}
+function deletePerson(actor, divId, brId, teamId, pId) {
+  const t = findTeam(actor, divId, brId, teamId);
+  if (!t) return;
+  t.people = t.people.filter(p => p.id !== pId);
   saveState();
   renderRoster();
 }
@@ -1930,6 +2761,7 @@ function commitRosterEdit(target) {
   const a = target.dataset.actor;
   const divId = target.dataset.divisionId;
   const brId = target.dataset.branchId;
+  const teamId = target.dataset.teamId;
   const pId = target.dataset.personId;
   const field = target.dataset.field;
   const value = target.textContent.trim();
@@ -1939,12 +2771,24 @@ function commitRosterEdit(target) {
   } else if (field === 'branch-name') {
     const b = findBranch(a, divId, brId);
     if (b) b.name = value;
+  } else if (field === 'team-name') {
+    const t = findTeam(a, divId, brId, teamId);
+    if (t) t.name = value;
   } else if (field === 'p-name' || field === 'p-title') {
-    const p = findPerson(a, divId, brId, pId);
+    const p = findPerson(a, divId, brId, teamId, pId);
     if (p) p[field === 'p-name' ? 'name' : 'title'] = value;
   }
   saveState();
   updateDirectorateStats(a);
+}
+function commitDirectorateName(actor, name) {
+  if (!ACTORS.includes(actor)) return;
+  const v = name || ACTOR_LABELS_DEFAULT[actor];
+  if (!state.actorLabels) state.actorLabels = {};
+  state.actorLabels[actor] = v;
+  ACTOR_LABELS[actor] = v;
+  saveState();
+  renderRoster();
 }
 function updateDirectorateStats(actor) {
   const d = state.directorates[actor];
@@ -1952,7 +2796,7 @@ function updateDirectorateStats(actor) {
   const totals = countOrgUnits(d);
   const stats = document.querySelector(`.directorate[data-actor="${actor}"] .dir-stats`);
   if (stats) {
-    stats.textContent = `${totals.divisions} division${totals.divisions === 1 ? '' : 's'} · ${totals.branches} branch${totals.branches === 1 ? '' : 'es'} · ${totals.people} ${totals.people === 1 ? 'person' : 'people'}`;
+    stats.textContent = `${totals.divisions} division${totals.divisions === 1 ? '' : 's'} · ${totals.branches} branch${totals.branches === 1 ? '' : 'es'} · ${totals.teams} team${totals.teams === 1 ? '' : 's'} · ${totals.people} ${totals.people === 1 ? 'person' : 'people'}`;
   }
 }
 
@@ -2005,16 +2849,70 @@ function openRaciPopover(activityId, actor, anchorEl) {
 
 // ---------- event wiring ----------
 document.addEventListener('change', e => {
-  if (e.target.id === 'lens-select') {
-    state.lensDirectorate = e.target.value;
+  if (e.target.id === 'lens-level') {
+    state.lensLevel = parseInt(e.target.value, 10) || 0;
+    const units = orgUnitsAtLevel(state.lensLevel);
+    state.lensUnit = units[0] ? units[0].key : null;
+    saveState();
+    renderDirectorateLens();
+  } else if (e.target.id === 'lens-unit') {
+    state.lensUnit = e.target.value;
     saveState();
     renderDirectorateLens();
   }
 });
 
+document.addEventListener('dblclick', e => {
+  const name = e.target.closest('#ws-list .ws-name');
+  if (!name) return;
+  name.contentEditable = 'true';
+  name.focus();
+  const range = document.createRange();
+  range.selectNodeContents(name);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+});
+
 document.addEventListener('click', e => {
   const viewTab = e.target.closest('#view-tabs button');
   if (viewTab) { setViewMode(viewTab.dataset.view); return; }
+
+  if (e.target.closest('#btn-toggle-sidebar')) {
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    saveState();
+    document.body.classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
+    const b = document.getElementById('btn-toggle-sidebar');
+    if (b) b.title = state.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    return;
+  }
+  if (e.target.closest('#btn-legend')) {
+    state.showLegend = !state.showLegend;
+    saveState();
+    document.body.classList.toggle('show-legend', state.showLegend);
+    return;
+  }
+
+  // ---- Tree / Lens navigation ----
+  if (e.target.closest('#tree-expand-all')) { state.treeCollapsed = {}; saveState(); renderTree(); return; }
+  if (e.target.closest('#tree-collapse-all')) { collapseAllTree(); saveState(); renderTree(); return; }
+  const treeToggle = e.target.closest('[data-tree-toggle]');
+  if (treeToggle) { toggleTreeNode(treeToggle.dataset.treeToggle); return; }
+  const treeOpen = e.target.closest('[data-tree-open]');
+  if (treeOpen) {
+    const [wsId, pathCsv] = treeOpen.dataset.treeOpen.split('|');
+    const actId = treeOpen.dataset.openActivity;
+    state.activeWorkstreamId = wsId;
+    state.nav = { path: pathCsv ? pathCsv.split(',') : [] };
+    state.viewMode = 'matrix';
+    saveState();
+    render();
+    setTimeout(() => {
+      const row = document.querySelector(`tr[data-activity-id="${actId}"]`);
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+    return;
+  }
 
   const jump = e.target.closest('[data-jump-activity]');
   if (jump) {
@@ -2023,6 +2921,7 @@ document.addEventListener('click', e => {
     if (f) {
       state.activeWorkstreamId = f.ws.id;
       state.viewMode = 'matrix';
+      state.nav = { path: [] };
       saveState();
       render();
       setTimeout(() => {
@@ -2035,7 +2934,7 @@ document.addEventListener('click', e => {
 
   // ---- Roster mode handlers ----
   const dirToggle = e.target.closest('[data-toggle-dir]');
-  if (dirToggle && !e.target.closest('button')) {
+  if (dirToggle && !e.target.closest('button') && !e.target.closest('.dir-name-edit')) {
     toggleDirectorate(dirToggle.dataset.toggleDir); return;
   }
   const addDiv = e.target.closest('[data-add-division]');
@@ -2046,24 +2945,31 @@ document.addEventListener('click', e => {
   if (addBr) { const [a, d] = addBr.dataset.addBranch.split('|'); addBranch(a, d); return; }
   const delBr = e.target.closest('[data-del-branch]');
   if (delBr) { const [a, d, b] = delBr.dataset.delBranch.split('|'); deleteBranch(a, d, b); return; }
+  const addTm = e.target.closest('[data-add-team]');
+  if (addTm) { const [a, d, b] = addTm.dataset.addTeam.split('|'); addTeam(a, d, b); return; }
+  const delTm = e.target.closest('[data-del-team]');
+  if (delTm) { const [a, d, b, t] = delTm.dataset.delTeam.split('|'); deleteTeam(a, d, b, t); return; }
   const addP = e.target.closest('[data-add-person]');
-  if (addP) { const [a, d, b] = addP.dataset.addPerson.split('|'); addPerson(a, d, b); return; }
+  if (addP) { const [a, d, b, t] = addP.dataset.addPerson.split('|'); addPerson(a, d, b, t); return; }
   const delP = e.target.closest('[data-del-person]');
-  if (delP) { const [a, d, b, p] = delP.dataset.delPerson.split('|'); deletePerson(a, d, b, p); return; }
+  if (delP) { const [a, d, b, t, p] = delP.dataset.delPerson.split('|'); deletePerson(a, d, b, t, p); return; }
   const addLead = e.target.closest('[data-add-lead]');
   if (addLead) {
-    const [a, d, b, role] = addLead.dataset.addLead.split('|');
-    setLead(a, d || null, b || null, role); return;
+    const [a, d, b, t, role] = addLead.dataset.addLead.split('|');
+    setLead(a, d || null, b || null, t || null, role); return;
   }
   const delLead = e.target.closest('[data-del-lead]');
   if (delLead) {
-    const [a, d, b, role] = delLead.dataset.delLead.split('|');
-    removeLead(a, d || null, b || null, role); return;
+    const [a, d, b, t, role] = delLead.dataset.delLead.split('|');
+    removeLead(a, d || null, b || null, t || null, role); return;
   }
 
   // ---- Matrix mode handlers ----
   const wsLi = e.target.closest('#ws-list li');
-  if (wsLi && !e.target.closest('.ws-name') && !e.target.closest('.ws-del')) {
+  if (wsLi && !e.target.closest('.ws-del')) {
+    // If the user is mid-edit (already enabled via dblclick), don't re-select
+    const editing = e.target.closest('.ws-name[contenteditable="true"]');
+    if (editing) return;
     setActiveWorkstream(wsLi.dataset.wsId);
     return;
   }
@@ -2073,10 +2979,15 @@ document.addEventListener('click', e => {
     addWorkstream(); return;
   }
   if (e.target.closest('#btn-add-activity')) { addActivity(); return; }
+  if (e.target.closest('[data-goto-roster]')) { setViewMode('roster'); return; }
+  const drill = e.target.closest('[data-drill-activity]');
+  if (drill) { drillInto(drill.dataset.drillActivity); return; }
+  const crumb = e.target.closest('[data-crumb-depth]');
+  if (crumb) { navigateToDepth(parseInt(crumb.dataset.crumbDepth, 10) || 0); return; }
   const actDel = e.target.closest('[data-activity-del]');
   if (actDel) { deleteActivity(actDel.dataset.activityDel); return; }
   const actorCell = e.target.closest('td.actor-cell');
-  if (actorCell && !e.target.closest('.cell-note')) {
+  if (actorCell) {
     openRaciPopover(actorCell.dataset.activityId, actorCell.dataset.actor, actorCell);
     return;
   }
@@ -2104,17 +3015,18 @@ document.addEventListener('blur', e => {
   }
   if (el.dataset.wsId && el.dataset.field === 'name') {
     renameWorkstream(el.dataset.wsId, el.textContent.trim());
-    return;
-  }
-  if (el.dataset.activityId && el.dataset.actor && el.dataset.field === 'note') {
-    setActivityNote(el.dataset.activityId, el.dataset.actor, el.textContent);
+    if (el.classList.contains('ws-name')) el.contentEditable = 'false';
     return;
   }
   if (el.dataset.activityId && el.dataset.field) {
     setActivityField(el.dataset.activityId, el.dataset.field, el.textContent);
     return;
   }
-  const rosterFields = ['div-name','branch-name','p-name','p-title'];
+  if (el.dataset.field === 'dir-name' && el.dataset.actor) {
+    commitDirectorateName(el.dataset.actor, el.textContent.trim());
+    return;
+  }
+  const rosterFields = ['div-name','branch-name','team-name','p-name','p-title'];
   if (rosterFields.includes(el.dataset.field) && el.dataset.actor) {
     commitRosterEdit(el);
     return;
@@ -2153,9 +3065,11 @@ function exportCSV() {
         ws.name, a.name, a.definition,
         ...ACTORS.map(k => {
           const L = normalizeRaci(a.raci[k] || '');
-          const N = (a.notes && a.notes[k] || '').trim();
-          if (L && N) return `${L} — ${N}`;
-          return L || N;
+          const n = (a.notes && a.notes[k]) || {};
+          const pieces = [];
+          if (L) pieces.push(L);
+          ROLES.forEach(r => { if (n[r] && n[r].trim()) pieces.push(`${r}: ${n[r].trim()}`); });
+          return pieces.join(' — ');
         }),
         a.outputs, a.comments
       ]);
@@ -2170,10 +3084,11 @@ function importJSON(file) {
     try {
       const parsed = JSON.parse(ev.target.result);
       if (!parsed || !Array.isArray(parsed.workstreams)) {
-        alert('Not a valid v4 Workstream RACI file (no workstreams array).');
+        alert('Not a valid Workstream RACI file (no workstreams array).');
         return;
       }
       state = migrateState(parsed);
+      applyActorLabels();
       saveState();
       render();
     } catch (err) {
@@ -2222,6 +3137,7 @@ document.getElementById('file-import').addEventListener('change', e => {
 document.getElementById('btn-reset').addEventListener('click', () => {
   if (!confirm('Reset to a blank workstream? Current data will be replaced.')) return;
   state = defaultState();
+  applyActorLabels();
   saveState();
   render();
 });

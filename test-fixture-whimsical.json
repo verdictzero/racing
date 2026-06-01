@@ -16,7 +16,14 @@
           "definition": "Re-align the seventeen lenses of the institutional pudding telescope before the next viewing of the Great Custard Eclipse. Bring a soft cloth and an open mind.",
           "outputs": "Calibration certificate (signed in jam)",
           "comments": "Last calibrated during the Pancake Equinox of 2024 — drift is suspected near the third meridian.",
-          "raci": { "ocio": "A", "mission": "C", "infra": "R", "cyber": "I", "sw": "", "vendor": "R" },
+          "raci": {
+            "ocio": "A",
+            "mission": "C",
+            "infra": "R",
+            "cyber": "I",
+            "sw": "",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Issue formal pudding directive #2027-PUD-042 before tea.",
             "mission": "Validate alignment against the official Custard Doctrine (Vol. III, Appendix Q).",
@@ -24,6 +31,219 @@
             "cyber": "Notify Command if the pudding becomes self-aware (signs: humming, blinking).",
             "sw": "",
             "vendor": "OmniWhisk Inc. provides the recalibration arms (model PUD-X9)."
+          },
+          "child": {
+            "id": "m-ocio-divisions",
+            "owner": {
+              "tier": 1,
+              "actor": "ocio"
+            },
+            "via": "A",
+            "activities": [
+              {
+                "id": "n-almost-threshold",
+                "name": "Standardize the almost-truth threshold",
+                "definition": "Set the official cutoff at which a claim becomes almost true.",
+                "outputs": "",
+                "comments": "",
+                "raci": {
+                  "div-almost-true": "A",
+                  "div-aesthetic": "R"
+                },
+                "notes": {
+                  "div-almost-true": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  },
+                  "div-aesthetic": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  }
+                },
+                "child": {
+                  "id": "m-ocio-almosttrue-branches",
+                  "owner": {
+                    "tier": 2,
+                    "actor": "ocio",
+                    "divisionId": "div-almost-true"
+                  },
+                  "via": "A",
+                  "activities": [
+                    {
+                      "id": "n-prelunch-preapprove",
+                      "name": "Pre-approve tomorrow's lunch today",
+                      "definition": "Issue provisional lunch approvals 24h ahead, pending custard clearance.",
+                      "outputs": "",
+                      "comments": "",
+                      "raci": {
+                        "br-prelunch": "A",
+                        "br-improbable": "R"
+                      },
+                      "notes": {
+                        "br-prelunch": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        },
+                        "br-improbable": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        }
+                      },
+                      "child": {
+                        "id": "m-ocio-prelunch-teams",
+                        "owner": {
+                          "tier": 3,
+                          "actor": "ocio",
+                          "divisionId": "div-almost-true",
+                          "branchId": "br-prelunch"
+                        },
+                        "via": "A",
+                        "activities": [
+                          {
+                            "id": "n-custard-backlog",
+                            "name": "Clear the morning custard backlog",
+                            "definition": "Drain the overnight custard queue before the 11:00 wobble inspection.",
+                            "outputs": "",
+                            "comments": "",
+                            "raci": {
+                              "team-custard-clearance": "A",
+                              "team-spoon-audit": "R"
+                            },
+                            "notes": {
+                              "team-custard-clearance": {
+                                "R": "",
+                                "A": "Owns the backlog burndown",
+                                "C": "",
+                                "I": ""
+                              },
+                              "team-spoon-audit": {
+                                "R": "Lends two spoons and a steady hand",
+                                "A": "",
+                                "C": "",
+                                "I": ""
+                              }
+                            },
+                            "child": null
+                          },
+                          {
+                            "id": "n-spoon-inventory",
+                            "name": "Inventory the ceremonial spoons",
+                            "definition": "Reconcile the ceremonial spoon ledger against the velvet drawer.",
+                            "outputs": "",
+                            "comments": "",
+                            "raci": {
+                              "team-spoon-audit": "A",
+                              "team-custard-clearance": "R"
+                            },
+                            "notes": {
+                              "team-spoon-audit": {
+                                "R": "",
+                                "A": "",
+                                "C": "",
+                                "I": ""
+                              },
+                              "team-custard-clearance": {
+                                "R": "",
+                                "A": "",
+                                "C": "",
+                                "I": ""
+                              }
+                            },
+                            "child": null
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "n-improbable-reconcile",
+                      "name": "Reconcile improbable edge cases",
+                      "definition": "Resolve approvals that are simultaneously granted and denied.",
+                      "outputs": "",
+                      "comments": "",
+                      "raci": {
+                        "br-improbable": "A",
+                        "br-prelunch": "R"
+                      },
+                      "notes": {
+                        "br-improbable": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        },
+                        "br-prelunch": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        }
+                      },
+                      "child": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "n-aesthetic-posters",
+                "name": "Commission tasteful disaster posters",
+                "definition": "Produce motivational posters about failures that have not happened yet.",
+                "outputs": "",
+                "comments": "",
+                "raci": {
+                  "div-aesthetic": "A",
+                  "div-almost-true": "R"
+                },
+                "notes": {
+                  "div-aesthetic": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  },
+                  "div-almost-true": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  }
+                },
+                "child": null
+              },
+              {
+                "id": "n-plausibility-roundtable",
+                "name": "Host the quarterly plausibility roundtable",
+                "definition": "Convene both divisions to rank this quarter’s most believable rumors.",
+                "outputs": "",
+                "comments": "",
+                "raci": {
+                  "div-almost-true": "A",
+                  "div-aesthetic": "R"
+                },
+                "notes": {
+                  "div-almost-true": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  },
+                  "div-aesthetic": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  }
+                },
+                "child": null
+              }
+            ]
           }
         },
         {
@@ -32,7 +252,14 @@
           "definition": "Re-open trade discussions with the elusive Madagascar Vanilla Syndicate regarding wholesale pricing of Tier-S bean varietals. They prefer evening tea.",
           "outputs": "Signed memorandum, possibly written in pod-ink",
           "comments": "Do not bring decaf. It has ended past negotiations badly.",
-          "raci": { "ocio": "A", "mission": "AR", "infra": "", "cyber": "C", "sw": "", "vendor": "R" },
+          "raci": {
+            "ocio": "A",
+            "mission": "AR",
+            "infra": "",
+            "cyber": "C",
+            "sw": "",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Final pricing approval rests here.",
             "mission": "Lead the delegation; co-accountable for the relationship.",
@@ -48,7 +275,14 @@
           "definition": "Produce evacuation diagrams for all caramel-zone facilities, accounting for slow viscous flow and stickiness coefficients.",
           "outputs": "12 evacuation posters, laminated against drippage",
           "comments": "Caramel viscosity index updated quarterly by the Sugar Service.",
-          "raci": { "ocio": "", "mission": "A", "infra": "RC", "cyber": "", "sw": "R", "vendor": "I" },
+          "raci": {
+            "ocio": "",
+            "mission": "A",
+            "infra": "RC",
+            "cyber": "",
+            "sw": "R",
+            "vendor": "I"
+          },
           "notes": {
             "ocio": "",
             "mission": "Owns the evacuation plan approval and final sign-off.",
@@ -64,7 +298,14 @@
           "definition": "Hire seven (7) qualified whisk technicians from accessible parallel dimensions. Must own own whisk.",
           "outputs": "Signed contracts on inter-dimensional vellum",
           "comments": "",
-          "raci": { "ocio": "I", "mission": "C", "infra": "", "cyber": "C", "sw": "R", "vendor": "" },
+          "raci": {
+            "ocio": "I",
+            "mission": "C",
+            "infra": "",
+            "cyber": "C",
+            "sw": "R",
+            "vendor": ""
+          },
           "notes": {
             "ocio": "Receive resume scrolls. Do not read aloud.",
             "mission": "Provide cultural orientation re: this dimension's tea customs.",
@@ -80,7 +321,14 @@
           "definition": "Verify integrity, volume, and jiggle-factor of the national flan stockpile held at the Reserve Custard Facility.",
           "outputs": "Flan audit report; jiggle measurements in standard wobble-units (sw)",
           "comments": "Reserve quietly increased by 14% last quarter. No public statement issued.",
-          "raci": { "ocio": "A", "mission": "I", "infra": "R", "cyber": "I", "sw": "R", "vendor": "" },
+          "raci": {
+            "ocio": "A",
+            "mission": "I",
+            "infra": "R",
+            "cyber": "I",
+            "sw": "R",
+            "vendor": ""
+          },
           "notes": {
             "ocio": "Sign-off auditor; reads jiggle summary in private session.",
             "mission": "Receives the jiggle summary, files in vault.",
@@ -96,7 +344,14 @@
           "definition": "Issue diplomatic regrets to the Federation of Whipped Stakeholders regarding the unfortunate incident at last year's Egg Foam Forum.",
           "outputs": "Apology letter, peaks stiff but contrite",
           "comments": "",
-          "raci": { "ocio": "A", "mission": "C", "infra": "", "cyber": "", "sw": "C", "vendor": "I" },
+          "raci": {
+            "ocio": "A",
+            "mission": "C",
+            "infra": "",
+            "cyber": "",
+            "sw": "C",
+            "vendor": "I"
+          },
           "notes": {
             "ocio": "Signs the letter on official Custard letterhead.",
             "mission": "Workshop the wording with the Diplomatic Pâtisserie.",
@@ -118,7 +373,14 @@
           "definition": "Quarterly mood assessment of the 14,000-strong migrant hippo collective ahead of the spring move. Includes wallow satisfaction surveys.",
           "outputs": "Hippo Vibes Index (HVI) report, with sub-indices for grumpiness and hunger",
           "comments": "Last quarter: 'cautiously optimistic, prefers Tuesdays, somewhat suspicious of birds'",
-          "raci": { "ocio": "C", "mission": "A", "infra": "I", "cyber": "", "sw": "R", "vendor": "C" },
+          "raci": {
+            "ocio": "C",
+            "mission": "A",
+            "infra": "I",
+            "cyber": "",
+            "sw": "R",
+            "vendor": "C"
+          },
           "notes": {
             "ocio": "Review HVI methodology; suggest improvements without offending the hippos.",
             "mission": "Hippo Wellbeing Lead — owns the entire vibe portfolio.",
@@ -126,6 +388,116 @@
             "cyber": "",
             "sw": "Run the HVI app on the field tablets.",
             "vendor": "Hippo whisperer consultancy provides edge cases."
+          },
+          "child": {
+            "id": "m-mission-divisions",
+            "owner": {
+              "tier": 1,
+              "actor": "mission"
+            },
+            "via": "A",
+            "activities": [
+              {
+                "id": "n-whisper-charter",
+                "name": "Charter the whisper escalation ladder",
+                "definition": "Establish who gets whispered to first when a hippo is moody.",
+                "outputs": "",
+                "comments": "",
+                "raci": {
+                  "div-whispers": "A",
+                  "div-cabbage-strategy": "R"
+                },
+                "notes": {
+                  "div-whispers": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  },
+                  "div-cabbage-strategy": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  }
+                },
+                "child": {
+                  "id": "m-mission-whispers-branches",
+                  "owner": {
+                    "tier": 2,
+                    "actor": "mission",
+                    "divisionId": "div-whispers"
+                  },
+                  "via": "A",
+                  "activities": [
+                    {
+                      "id": "n-hushed-protocol",
+                      "name": "Draft the hushed coordination protocol",
+                      "definition": "Define how to coordinate loudly important things very quietly.",
+                      "outputs": "",
+                      "comments": "",
+                      "raci": {
+                        "br-hushed": "AR"
+                      },
+                      "notes": {
+                        "br-hushed": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        }
+                      },
+                      "child": null
+                    },
+                    {
+                      "id": "n-silent-drill",
+                      "name": "Run a silent communication drill",
+                      "definition": "Rehearse a full migration briefing using only eyebrows.",
+                      "outputs": "",
+                      "comments": "",
+                      "raci": {
+                        "br-hushed": "AR"
+                      },
+                      "notes": {
+                        "br-hushed": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        }
+                      },
+                      "child": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "n-cabbage-doctrine",
+                "name": "Ratify cabbage strategy doctrine",
+                "definition": "Adopt the leafy-but-firm posture for cross-vegetable relations.",
+                "outputs": "",
+                "comments": "",
+                "raci": {
+                  "div-cabbage-strategy": "A",
+                  "div-whispers": "R"
+                },
+                "notes": {
+                  "div-cabbage-strategy": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  },
+                  "div-whispers": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  }
+                },
+                "child": null
+              }
+            ]
           }
         },
         {
@@ -134,7 +506,14 @@
           "definition": "Acquire 47 (forty-seven) small inflatable wading pools to serve as portable mud-staging areas during the long march.",
           "outputs": "Lease agreements, pool inflation logs, mud levels",
           "comments": "47 was a compromise. The hippos wanted 53.",
-          "raci": { "ocio": "I", "mission": "A", "infra": "R", "cyber": "", "sw": "", "vendor": "R" },
+          "raci": {
+            "ocio": "I",
+            "mission": "A",
+            "infra": "R",
+            "cyber": "",
+            "sw": "",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Informed of leased counts and any pool defections.",
             "mission": "Pool budget approver; absorbs hippo complaints.",
@@ -150,7 +529,14 @@
           "definition": "Develop a translation matrix from internet aquatic-meme vernacular into the Hippopotamish dialect, preserving wetness and dignity.",
           "outputs": "Meme phrasebook; YouTube channel with hippo-friendly captions",
           "comments": "",
-          "raci": { "ocio": "A", "mission": "A", "infra": "", "cyber": "C", "sw": "R", "vendor": "" },
+          "raci": {
+            "ocio": "A",
+            "mission": "A",
+            "infra": "",
+            "cyber": "C",
+            "sw": "R",
+            "vendor": ""
+          },
           "notes": {
             "ocio": "Final approval of meme dignity standards.",
             "mission": "Cultural lead; co-accountable for tone and reception.",
@@ -166,7 +552,14 @@
           "definition": "Design a passport document for migrating hippos including bio page, watermark, chew-resistant cover, and emergency mud allotment.",
           "outputs": "Approved passport design; manufacturing spec; pilot run of 12 passports",
           "comments": "",
-          "raci": { "ocio": "A", "mission": "C", "infra": "", "cyber": "C", "sw": "R", "vendor": "R" },
+          "raci": {
+            "ocio": "A",
+            "mission": "C",
+            "infra": "",
+            "cyber": "C",
+            "sw": "R",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Final design sign-off; will not approve glossy finish.",
             "mission": "Specify ID fields: name, tusk count, wallow preference.",
@@ -182,7 +575,14 @@
           "definition": "Conduct a small-scale controlled rehearsal stampede to test signage, fences, announcer enthusiasm, and post-event mud cleanup.",
           "outputs": "After-action report, possibly hoofprint-stained",
           "comments": "Please notify nearby cafés in advance. They prefer 48 hours.",
-          "raci": { "ocio": "", "mission": "", "infra": "RC", "cyber": "C", "sw": "I", "vendor": "R" },
+          "raci": {
+            "ocio": "",
+            "mission": "",
+            "infra": "RC",
+            "cyber": "C",
+            "sw": "I",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "",
             "mission": "",
@@ -204,7 +604,14 @@
           "definition": "Apply standard quantum entanglement protocol (Brassica variant) to a leafy cabbage and its hypothetical twin in superposition.",
           "outputs": "Verified entanglement certificate; one (1) cabbage, possibly two",
           "comments": "Do not observe the cabbage directly. It collapses into coleslaw.",
-          "raci": { "ocio": "I", "mission": "C", "infra": "R", "cyber": "", "sw": "A", "vendor": "R" },
+          "raci": {
+            "ocio": "I",
+            "mission": "C",
+            "infra": "R",
+            "cyber": "",
+            "sw": "A",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Informed of cabbage state but not its quantum amplitude.",
             "mission": "Cabbage governance board sets entanglement ethics.",
@@ -212,6 +619,94 @@
             "cyber": "",
             "sw": "Owns the measurement code; do not deploy on Friday.",
             "vendor": "Supplies entangled cabbage seeds (NurseryX, batch Q-17)."
+          },
+          "child": {
+            "id": "m-sw-divisions",
+            "owner": {
+              "tier": 1,
+              "actor": "sw"
+            },
+            "via": "A",
+            "activities": [
+              {
+                "id": "n-ticket-singularity",
+                "name": "Approach the self-resolving ticket singularity",
+                "definition": "Tune the queue until tickets resolve fractionally before being filed.",
+                "outputs": "",
+                "comments": "",
+                "raci": {
+                  "div-service-service": "AR"
+                },
+                "notes": {
+                  "div-service-service": {
+                    "R": "",
+                    "A": "",
+                    "C": "",
+                    "I": ""
+                  }
+                },
+                "child": {
+                  "id": "m-sw-serviceservice-branches",
+                  "owner": {
+                    "tier": 2,
+                    "actor": "sw",
+                    "divisionId": "div-service-service"
+                  },
+                  "via": "A",
+                  "activities": [
+                    {
+                      "id": "n-ghost-triage",
+                      "name": "Triage tickets that already closed themselves",
+                      "definition": "Sort the spontaneously-resolved tickets by spookiness.",
+                      "outputs": "",
+                      "comments": "",
+                      "raci": {
+                        "br-self-resolve": "AR"
+                      },
+                      "notes": {
+                        "br-self-resolve": {
+                          "R": "",
+                          "A": "",
+                          "C": "",
+                          "I": ""
+                        }
+                      },
+                      "child": {
+                        "id": "m-sw-selfresolve-teams",
+                        "owner": {
+                          "tier": 3,
+                          "actor": "sw",
+                          "divisionId": "div-service-service",
+                          "branchId": "br-self-resolve"
+                        },
+                        "via": "A",
+                        "activities": [
+                          {
+                            "id": "n-poltergeist-postmortem",
+                            "name": "Conduct poltergeist postmortems",
+                            "definition": "Document why each ticket closed itself, for the haunting record.",
+                            "outputs": "",
+                            "comments": "",
+                            "raci": {
+                              "team-ghost-tickets": "AR"
+                            },
+                            "notes": {
+                              "team-ghost-tickets": {
+                                "R": "",
+                                "A": "",
+                                "C": "",
+                                "I": ""
+                              }
+                            },
+                            "child": null
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
         },
         {
@@ -220,7 +715,14 @@
           "definition": "Author and submit a peer-reviewed paper articulating the Leafy Uncertainty Principle for the Journal of Improbable Vegetables.",
           "outputs": "Published paper; plus tofu-flavored peer reviews",
           "comments": "",
-          "raci": { "ocio": "C", "mission": "A", "infra": "", "cyber": "I", "sw": "R", "vendor": "" },
+          "raci": {
+            "ocio": "C",
+            "mission": "A",
+            "infra": "",
+            "cyber": "I",
+            "sw": "R",
+            "vendor": ""
+          },
           "notes": {
             "ocio": "Comment on tone; advise against the phrase 'leafy chaos.'",
             "mission": "Authorship lead; first byline, last word.",
@@ -236,7 +738,14 @@
           "definition": "Erect and commission a 12-meter telescope dedicated to surveilling cabbage fields under moonlight for nocturnal leaf activity.",
           "outputs": "Live observatory; cabbage-feed dashboard with nightly highlights",
           "comments": "",
-          "raci": { "ocio": "A", "mission": "C", "infra": "", "cyber": "I", "sw": "C", "vendor": "A" },
+          "raci": {
+            "ocio": "A",
+            "mission": "C",
+            "infra": "",
+            "cyber": "I",
+            "sw": "C",
+            "vendor": "A"
+          },
           "notes": {
             "ocio": "Approves construction milestones and lens choice.",
             "mission": "Defines what constitutes a 'cabbage event' for the feed.",
@@ -252,7 +761,14 @@
           "definition": "Locate and contain the radish prototype that wandered off during last summer's experiment. Approach with calm and a leafy demeanor.",
           "outputs": "Containment report; possibly radish (alive)",
           "comments": "Last seen near the lettuce greenhouse, allegedly fraternizing.",
-          "raci": { "ocio": "", "mission": "I", "infra": "R", "cyber": "AC", "sw": "", "vendor": "C" },
+          "raci": {
+            "ocio": "",
+            "mission": "I",
+            "infra": "R",
+            "cyber": "AC",
+            "sw": "",
+            "vendor": "C"
+          },
           "notes": {
             "ocio": "",
             "mission": "Informed of containment; no comment requested.",
@@ -274,7 +790,14 @@
           "definition": "Maintain a comprehensive registry of every umbrella sighted on a Tuesday across all five districts, updated weekly with photos and parasol metadata.",
           "outputs": "Tuesday Umbrella Catalog (TUC), version 41",
           "comments": "",
-          "raci": { "ocio": "C", "mission": "A", "infra": "", "cyber": "C", "sw": "R", "vendor": "R" },
+          "raci": {
+            "ocio": "C",
+            "mission": "A",
+            "infra": "",
+            "cyber": "C",
+            "sw": "R",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Approve catalog schema, especially the 'handle ornamentation' field.",
             "mission": "Owns the registry and its integrity.",
@@ -290,7 +813,14 @@
           "definition": "Conduct polite-but-firm interviews with the local Mary Poppins enthusiast society regarding recent levitation reports near the Council Building.",
           "outputs": "Interview summaries; possible tea consumption notes",
           "comments": "Bring sugar cubes. Declined biscuits will be offensive.",
-          "raci": { "ocio": "", "mission": "A", "infra": "I", "cyber": "R", "sw": "", "vendor": "" },
+          "raci": {
+            "ocio": "",
+            "mission": "A",
+            "infra": "I",
+            "cyber": "R",
+            "sw": "",
+            "vendor": ""
+          },
           "notes": {
             "ocio": "",
             "mission": "Lead interrogations from a position of polite curiosity.",
@@ -306,7 +836,14 @@
           "definition": "Acquire 12 (twelve) gross of certified regulation rain for use in the simulation chambers during quarterly umbrella stress testing.",
           "outputs": "Delivery confirmation; rain receipts; certified humidity logs",
           "comments": "",
-          "raci": { "ocio": "", "mission": "C", "infra": "R", "cyber": "", "sw": "", "vendor": "R" },
+          "raci": {
+            "ocio": "",
+            "mission": "C",
+            "infra": "R",
+            "cyber": "",
+            "sw": "",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "",
             "mission": "Consult on rain blend (light drizzle vs. proper downpour).",
@@ -322,7 +859,14 @@
           "definition": "Cross-reference statements submitted by registered umbrellas regarding their whereabouts during the Great Drip Event of last March.",
           "outputs": "Alibi verification matrix; list of umbrellas of interest",
           "comments": "",
-          "raci": { "ocio": "I", "mission": "A", "infra": "", "cyber": "RC", "sw": "C", "vendor": "" },
+          "raci": {
+            "ocio": "I",
+            "mission": "A",
+            "infra": "",
+            "cyber": "RC",
+            "sw": "C",
+            "vendor": ""
+          },
           "notes": {
             "ocio": "Informed of final disposition; will not comment publicly.",
             "mission": "Verify alibis; pursue inconsistencies politely.",
@@ -344,7 +888,14 @@
           "definition": "Recalibrate all 8 reverberation chambers to the new whisper-grade specifications adopted by the Acoustic Council in February.",
           "outputs": "Tuning report; resonant frequency table; one (1) very tired engineer",
           "comments": "Whispers below 30 dB now considered non-detectable per the new code.",
-          "raci": { "ocio": "A", "mission": "C", "infra": "R", "cyber": "C", "sw": "R", "vendor": "C" },
+          "raci": {
+            "ocio": "A",
+            "mission": "C",
+            "infra": "R",
+            "cyber": "C",
+            "sw": "R",
+            "vendor": "C"
+          },
           "notes": {
             "ocio": "Approve final tuning parameters in writing.",
             "mission": "Consult on which whispers count as 'official.'",
@@ -360,7 +911,14 @@
           "definition": "Engage an independent contractor with experience taming wild echoes and managing herds of reverb cattle in field conditions.",
           "outputs": "Signed SOW; wrangler bio; reference recordings",
           "comments": "Comfort with both classical reverb and modern feedback is essential.",
-          "raci": { "ocio": "A", "mission": "I", "infra": "", "cyber": "", "sw": "C", "vendor": "R" },
+          "raci": {
+            "ocio": "A",
+            "mission": "I",
+            "infra": "",
+            "cyber": "",
+            "sw": "C",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Approves contract terms including the 'lasso clause.'",
             "mission": "Informed of selection only.",
@@ -376,7 +934,14 @@
           "definition": "Install the new wall-mounted Acoustic Apology Panels (AAPs) in all 23 conference rooms to absorb both echo and regret in equal measure.",
           "outputs": "Installation receipts; reduced regret index; signed acceptance form",
           "comments": "",
-          "raci": { "ocio": "C", "mission": "A", "infra": "R", "cyber": "", "sw": "", "vendor": "R" },
+          "raci": {
+            "ocio": "C",
+            "mission": "A",
+            "infra": "R",
+            "cyber": "",
+            "sw": "",
+            "vendor": "R"
+          },
           "notes": {
             "ocio": "Consult on signage near each panel.",
             "mission": "Apology program owner; defines apology vocabulary list.",
@@ -391,30 +956,89 @@
   ],
   "directorates": {
     "ocio": {
-      "lead": { "id": "lead-ocio", "name": "Zephyrina Marmalade-Quibble" },
+      "lead": {
+        "id": "lead-ocio",
+        "name": "Zephyrina Marmalade-Quibble"
+      },
       "divisions": [
         {
           "id": "div-almost-true",
           "name": "Department of Things That Are Almost True",
-          "chief": { "id": "chief-snorkelweather", "name": "Bartholomew Snorkelweather" },
+          "chief": {
+            "id": "chief-snorkelweather",
+            "name": "Bartholomew Snorkelweather"
+          },
           "branches": [
             {
               "id": "br-prelunch",
               "name": "Pre-Lunchtime Approvals",
-              "chief": { "id": "bc-kazoo", "name": "Mildred Kazoo" },
-              "people": [
-                { "id": "p-thistleflange", "name": "Norbert Thistleflange", "title": "Senior Approver of Almost Approvals" },
-                { "id": "p-whifflewig",   "name": "Phyllis Whifflewig",    "title": "Junior Skeptic" },
-                { "id": "p-quanderbobble","name": "Octavius Quanderbobble","title": "Tea Coordinator" }
+              "chief": {
+                "id": "bc-kazoo",
+                "name": "Mildred Kazoo"
+              },
+              "teams": [
+                {
+                  "id": "team-custard-clearance",
+                  "name": "Custard Clearance Squad",
+                  "chief": {
+                    "id": "tl-team-custard-clearance",
+                    "name": "Brigadier Snufflewax"
+                  },
+                  "people": [
+                    {
+                      "id": "p-thistleflange",
+                      "name": "Norbert Thistleflange",
+                      "title": "Senior Approver of Almost Approvals"
+                    },
+                    {
+                      "id": "p-whifflewig",
+                      "name": "Phyllis Whifflewig",
+                      "title": "Junior Skeptic"
+                    }
+                  ]
+                },
+                {
+                  "id": "team-spoon-audit",
+                  "name": "Ceremonial Spoon Audit Cell",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-quanderbobble",
+                      "name": "Octavius Quanderbobble",
+                      "title": "Tea Coordinator"
+                    }
+                  ]
+                }
               ]
             },
             {
               "id": "br-improbable",
               "name": "Compliance With Improbable Rules",
-              "chief": { "id": "bc-frunk", "name": "Cornelius Bartleby Frunk III" },
-              "people": [
-                { "id": "p-pemberton", "name": "Eustace Pemberton-Slade", "title": "Senior Improbability Auditor" },
-                { "id": "p-tweep",     "name": "Rosalind Tweep",          "title": "" }
+              "chief": {
+                "id": "bc-frunk",
+                "name": "Cornelius Bartleby Frunk III"
+              },
+              "teams": [
+                {
+                  "id": "team-rulebending",
+                  "name": "Rule-Bending Working Group",
+                  "chief": {
+                    "id": "tl-team-rulebending",
+                    "name": "Wilhelmina Crumb"
+                  },
+                  "people": [
+                    {
+                      "id": "p-pemberton",
+                      "name": "Eustace Pemberton-Slade",
+                      "title": "Senior Improbability Auditor"
+                    },
+                    {
+                      "id": "p-tweep",
+                      "name": "Rosalind Tweep",
+                      "title": ""
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -422,15 +1046,36 @@
         {
           "id": "div-aesthetic",
           "name": "Office of Aesthetic Misfortune",
-          "chief": { "id": "chief-whuglebottom", "name": "Persephone Whuglebottom" },
+          "chief": {
+            "id": "chief-whuglebottom",
+            "name": "Persephone Whuglebottom"
+          },
           "branches": [
             {
               "id": "br-vibes",
               "name": "Department of Vibes",
-              "chief": { "id": "bc-plinkwich", "name": "Theodoric Plinkwich" },
-              "people": [
-                { "id": "p-caprellabrandt", "name": "Marjorie Caprellabrandt", "title": "Vibe Steward" },
-                { "id": "p-glunch",         "name": "Felix Glunch",            "title": "" }
+              "chief": {
+                "id": "bc-plinkwich",
+                "name": "Theodoric Plinkwich"
+              },
+              "teams": [
+                {
+                  "id": "team-ambient-dread",
+                  "name": "Ambient Dread Unit",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-caprellabrandt",
+                      "name": "Marjorie Caprellabrandt",
+                      "title": "Vibe Steward"
+                    },
+                    {
+                      "id": "p-glunch",
+                      "name": "Felix Glunch",
+                      "title": ""
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -438,20 +1083,47 @@
       ]
     },
     "mission": {
-      "lead": { "id": "lead-mission", "name": "Field Marshal Plumphunk" },
+      "lead": {
+        "id": "lead-mission",
+        "name": "Field Marshal Plumphunk"
+      },
       "divisions": [
         {
           "id": "div-whispers",
           "name": "Bureau of Important Whispers",
-          "chief": { "id": "chief-vonpickle", "name": "Esmerelda von Pickle" },
+          "chief": {
+            "id": "chief-vonpickle",
+            "name": "Esmerelda von Pickle"
+          },
           "branches": [
             {
               "id": "br-hushed",
               "name": "Hushed Coordination Group",
-              "chief": { "id": "bc-quibsworth", "name": "Wendell Quibsworth" },
-              "people": [
-                { "id": "p-boop",            "name": "Lavinia Boop",          "title": "Whisper Analyst" },
-                { "id": "p-mittenswallow",   "name": "Geraldo Mittenswallow", "title": "Shhh Officer" }
+              "chief": {
+                "id": "bc-quibsworth",
+                "name": "Wendell Quibsworth"
+              },
+              "teams": [
+                {
+                  "id": "team-whisper-ops",
+                  "name": "Whisper Operations Cell",
+                  "chief": {
+                    "id": "tl-team-whisper-ops",
+                    "name": "Major Hushington"
+                  },
+                  "people": [
+                    {
+                      "id": "p-boop",
+                      "name": "Lavinia Boop",
+                      "title": "Whisper Analyst"
+                    },
+                    {
+                      "id": "p-mittenswallow",
+                      "name": "Geraldo Mittenswallow",
+                      "title": "Shhh Officer"
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -465,8 +1137,19 @@
               "id": "br-leafy",
               "name": "Leafy Affairs Bureau",
               "chief": null,
-              "people": [
-                { "id": "p-glabnipper", "name": "Petunia Glabnipper", "title": "Cabbage Liaison" }
+              "teams": [
+                {
+                  "id": "team-coleslaw",
+                  "name": "Coleslaw Contingency Team",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-glabnipper",
+                      "name": "Petunia Glabnipper",
+                      "title": "Cabbage Liaison"
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -474,28 +1157,63 @@
       ]
     },
     "infra": {
-      "lead": { "id": "lead-infra", "name": "Architrave Bumble" },
+      "lead": {
+        "id": "lead-infra",
+        "name": "Architrave Bumble"
+      },
       "divisions": [
         {
           "id": "div-loud-pipes",
           "name": "Department of Loud Pipes",
-          "chief": { "id": "chief-bibblesworth", "name": "Hortense Bibblesworth" },
+          "chief": {
+            "id": "chief-bibblesworth",
+            "name": "Hortense Bibblesworth"
+          },
           "branches": [
             {
               "id": "br-plumbing-ci",
               "name": "Plumbing Counterintelligence",
-              "chief": { "id": "bc-frunkleworm", "name": "Doris Frunkleworm" },
-              "people": [
-                { "id": "p-wishpit", "name": "Captain Stephan Wishpit", "title": "Pipe Whisperer" }
+              "chief": {
+                "id": "bc-frunkleworm",
+                "name": "Doris Frunkleworm"
+              },
+              "teams": [
+                {
+                  "id": "team-drip-recon",
+                  "name": "Drip Reconnaissance Team",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-wishpit",
+                      "name": "Captain Stephan Wishpit",
+                      "title": "Pipe Whisperer"
+                    }
+                  ]
+                }
               ]
             },
             {
               "id": "br-wires-worry",
               "name": "Wires And Worry",
               "chief": null,
-              "people": [
-                { "id": "p-pondersnatch", "name": "Gladys Pondersnatch", "title": "Wire Auditor" },
-                { "id": "p-snorgleby",    "name": "Henrik Snorgleby",    "title": "Apprentice Worrier" }
+              "teams": [
+                {
+                  "id": "team-tangle",
+                  "name": "Tangle Management Team",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-pondersnatch",
+                      "name": "Gladys Pondersnatch",
+                      "title": "Wire Auditor"
+                    },
+                    {
+                      "id": "p-snorgleby",
+                      "name": "Henrik Snorgleby",
+                      "title": "Apprentice Worrier"
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -503,20 +1221,44 @@
       ]
     },
     "cyber": {
-      "lead": { "id": "lead-cyber", "name": "Captain Glitch-Furcula" },
+      "lead": {
+        "id": "lead-cyber",
+        "name": "Captain Glitch-Furcula"
+      },
       "divisions": [
         {
           "id": "div-tickling",
           "name": "Office of Unauthorized Tickling",
-          "chief": { "id": "chief-spinkblaster", "name": "Vivienne Spinkblaster" },
+          "chief": {
+            "id": "chief-spinkblaster",
+            "name": "Vivienne Spinkblaster"
+          },
           "branches": [
             {
               "id": "br-counter-yawn",
               "name": "Counter-Yawn Team",
-              "chief": { "id": "bc-furplaster", "name": "Reginald Furplaster" },
-              "people": [
-                { "id": "p-pumple", "name": "Maximilian Pumple", "title": "Yawn Disruption Engineer" },
-                { "id": "p-snoot",  "name": "Rebecca Snoot",     "title": "" }
+              "chief": {
+                "id": "bc-furplaster",
+                "name": "Reginald Furplaster"
+              },
+              "teams": [
+                {
+                  "id": "team-drowsiness",
+                  "name": "Drowsiness Defense Cell",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-pumple",
+                      "name": "Maximilian Pumple",
+                      "title": "Yawn Disruption Engineer"
+                    },
+                    {
+                      "id": "p-snoot",
+                      "name": "Rebecca Snoot",
+                      "title": ""
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -524,20 +1266,44 @@
       ]
     },
     "sw": {
-      "lead": { "id": "lead-sw", "name": "Mortimer Beeswax-Underwood" },
+      "lead": {
+        "id": "lead-sw",
+        "name": "Mortimer Beeswax-Underwood"
+      },
       "divisions": [
         {
           "id": "div-service-service",
           "name": "Service Department Department",
-          "chief": { "id": "chief-whiffleframp", "name": "Petronella Whiffleframp" },
+          "chief": {
+            "id": "chief-whiffleframp",
+            "name": "Petronella Whiffleframp"
+          },
           "branches": [
             {
               "id": "br-self-resolve",
               "name": "Tickets That Resolve Themselves Group",
               "chief": null,
-              "people": [
-                { "id": "p-wobsnaglump", "name": "Cordelia Wobsnaglump", "title": "Triage Mystic" },
-                { "id": "p-pudge",       "name": "Algernon Pudge",       "title": "Resolution Hopeful" }
+              "teams": [
+                {
+                  "id": "team-ghost-tickets",
+                  "name": "Ghost Ticket Triage Team",
+                  "chief": {
+                    "id": "tl-team-ghost-tickets",
+                    "name": "Phantasm Underbridge"
+                  },
+                  "people": [
+                    {
+                      "id": "p-wobsnaglump",
+                      "name": "Cordelia Wobsnaglump",
+                      "title": "Triage Mystic"
+                    },
+                    {
+                      "id": "p-pudge",
+                      "name": "Algernon Pudge",
+                      "title": "Resolution Hopeful"
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -545,24 +1311,47 @@
       ]
     },
     "vendor": {
-      "lead": { "id": "lead-vendor", "name": "Madame Petra Furblicket" },
+      "lead": {
+        "id": "lead-vendor",
+        "name": "Madame Petra Furblicket"
+      },
       "divisions": [
         {
           "id": "div-external-wizardry",
           "name": "External Wizardry Co.",
-          "chief": { "id": "chief-trumblesnap", "name": "Sir Geoffrey Trumblesnap" },
+          "chief": {
+            "id": "chief-trumblesnap",
+            "name": "Sir Geoffrey Trumblesnap"
+          },
           "branches": [
             {
               "id": "br-subcontractor-council",
               "name": "Subcontractor Alliance Council",
-              "chief": { "id": "bc-yark", "name": "Wilhelmina Yark" },
-              "people": [
-                { "id": "p-snibblesnatch", "name": "Bartleby Snibblesnatch", "title": "Contract Conjurer" }
+              "chief": {
+                "id": "bc-yark",
+                "name": "Wilhelmina Yark"
+              },
+              "teams": [
+                {
+                  "id": "team-handshake",
+                  "name": "Handshake Ratification Team",
+                  "chief": null,
+                  "people": [
+                    {
+                      "id": "p-snibblesnatch",
+                      "name": "Bartleby Snibblesnatch",
+                      "title": "Contract Conjurer"
+                    }
+                  ]
+                }
               ]
             }
           ]
         }
       ]
     }
+  },
+  "nav": {
+    "path": []
   }
 }
