@@ -864,6 +864,8 @@ input[type="file"] { display: none; }
 .amap-flag-dot.amber { background: var(--warn); box-shadow: 0 0 6px rgba(252, 196, 25, 0.5); }
 
 /* ===== View-mode side-rail visibility ===== */
+body[data-view="structure"] #ws-sidebar,
+body[data-view="structure"] #legend,
 body[data-view="roster"] #ws-sidebar,
 body[data-view="roster"] #legend,
 body[data-view="tree"] #ws-sidebar,
@@ -1320,6 +1322,139 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 .tree-unit-empty .tree-unit-pill { opacity: 0.5; }
 .tree-unit-none { color: var(--text-dim); font-style: italic; font-size: 11px; opacity: 0.7; }
 
+/* ===== Cascade chart (Portfolio → Program → Project → Task) ===== */
+.cascade { position: relative; padding: 18px 26px 140px; }
+.cascade-svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 40; overflow: visible; }
+
+.chart-block {
+  position: relative;
+  width: fit-content;
+  min-width: 560px;
+  max-width: 100%;
+  margin: 0 0 30px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: opacity 0.15s ease;
+}
+.chart-block.faded {
+  /* opacity is set inline per depth (further back = more faded); this adds the vertical fade-out */
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000 48%, #000 100%);
+          mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000 48%, #000 100%);
+}
+.chart-block.focus { opacity: 1; }
+
+.chart-head {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 14px;
+  color: var(--text);
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.chart-block.focus .chart-head { border-bottom-color: var(--accent); }
+.ch-inbound { color: var(--accent); font-weight: 800; margin-right: 2px; }
+.ch-sep { color: var(--text-dim); font-weight: 400; }
+
+table.chart { border-collapse: separate; border-spacing: 0; width: 100%; }
+table.chart th, table.chart td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 9px;
+  font-size: 12px;
+  text-align: center;
+  vertical-align: middle;
+  background: var(--bg-cell);
+}
+table.chart th:first-child, table.chart td:first-child { border-left: 1px solid var(--border); }
+table.chart thead th {
+  background: var(--bg-2);
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+table.chart th.ch-name, table.chart td.ch-name { text-align: left; min-width: 220px; }
+table.chart th.ch-col { min-width: 72px; cursor: help; }
+.chart-cell { cursor: pointer; }
+.chart-cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--bg-3); }
+.chart-cell .cell-chips { justify-content: center; gap: 3px; min-height: 22px; }
+/* inherited-A chip (entity was R one tier up) — dashed ring marks it as cascaded, not manual */
+.raci-chip.inherited { outline: 2px dashed rgba(255,255,255,0.6); outline-offset: -3px; opacity: 0.82; cursor: help; }
+.ch-toggle { width: 32px; padding: 0; }
+.ch-caret {
+  background: transparent; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 12px; padding: 5px; border-radius: 3px; font-family: inherit; line-height: 1;
+}
+.ch-caret.open { color: var(--accent); }
+.ch-caret:hover { background: var(--bg-3); color: var(--text); }
+.ch-caret.leaf { color: var(--text-dim); opacity: 0.4; }
+.chart-row.open > td { background: var(--bg-3); }
+.chart-row.open > td.ch-toggle { box-shadow: inset 3px 0 0 var(--accent); }
+.ch-name-edit { outline: none; display: block; padding: 2px 5px; border-radius: 3px; min-height: 18px; }
+.ch-name-edit:focus { background: var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+.ch-name-edit:empty::before { content: attr(data-placeholder); color: var(--text-dim); font-style: italic; opacity: 0.6; }
+.ch-del { width: 32px; }
+.ch-del button {
+  visibility: hidden; background: transparent; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 14px; border-radius: 3px; line-height: 1; padding: 2px 6px;
+}
+.chart-row:hover .ch-del button { visibility: visible; }
+.ch-del button:hover { background: var(--err); color: #fff; }
+.ch-empty-row td { color: var(--text-dim); font-style: italic; text-align: left; }
+
+/* roster assignment badges under an activity name */
+.org-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.org-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600; line-height: 1.4;
+  padding: 2px 8px; border-radius: 10px;
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--text-dim);
+  cursor: default; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+}
+.org-badge .ob-ico { font-size: 9px; opacity: 0.85; }
+.org-badge.editable { cursor: pointer; }
+.org-badge.editable:hover { border-color: var(--accent); color: var(--text); background: var(--bg-4); }
+.org-badge.empty { font-style: italic; opacity: 0.7; }
+.org-badge.inherited { background: transparent; border-style: dashed; color: var(--text-dim); }
+
+/* roster-assignment picker popover */
+.org-popover {
+  position: absolute; background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  z-index: 100; max-height: 340px; overflow-y: auto; min-width: 240px; max-width: 360px;
+}
+.org-popover .op-group {
+  color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px;
+  padding: 7px 9px 3px; font-weight: 700;
+}
+.org-popover .op-item {
+  display: block; width: 100%; text-align: left; padding: 6px 10px; border-radius: 4px;
+  background: transparent; border: none; color: var(--text); font-size: 12px; font-family: inherit; cursor: pointer;
+}
+.org-popover .op-item:hover { background: var(--bg-3); }
+.org-popover .op-item.on { color: var(--accent); font-weight: 700; }
+.org-popover .op-clear { color: var(--err); border-top: 1px solid var(--border); margin-top: 4px; border-radius: 0 0 4px 4px; }
+.org-popover .op-empty { color: var(--text-dim); font-style: italic; padding: 8px 10px; font-size: 12px; }
+.ch-add {
+  display: block; margin: 0; width: 100%;
+  background: transparent; border: none; border-top: 1px dashed var(--border);
+  color: var(--text-dim); padding: 9px 12px; font-size: 12px; border-radius: 0 0 8px 8px; cursor: pointer;
+}
+.ch-add:hover { color: var(--accent); background: var(--bg-3); }
+
+/* Legend is opt-in (chart view only) via the header Legend button */
+#legend { display: none; }
+body.show-legend[data-view="chart"] #legend { display: block; }
+body[data-view="chart"] #btn-legend { display: inline-block; }
+body[data-view="chart"] #ws-main { padding: 0; }
+body[data-view="roster"] #legend { display: none; }
+
 @media print {
   body { background: #fff; color: #000; overflow: visible; }
   header, #ws-sidebar, #legend, .ws-add, .add-activity, td.row-del, .actions { display: none !important; }
@@ -1334,33 +1469,19 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 <header>
   <h1 contenteditable="true" id="doc-title" spellcheck="false"></h1>
   <div class="view-tabs" id="view-tabs">
-    <button data-view="matrix">Matrix</button>
-    <button data-view="tree">Tree</button>
-    <button data-view="directorate">Lens</button>
-    <button data-view="health">Health</button>
-    <button data-view="heatmap">Heatmap</button>
-    <button data-view="amap">A-Map</button>
+    <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
   </div>
-  <input type="search" id="search-input" placeholder="Filter activities…" autocomplete="off" spellcheck="false">
   <div class="actions">
     <button id="btn-legend" title="Show/hide RACI legend">Legend</button>
     <button id="btn-export">Export JSON</button>
-    <button id="btn-export-csv">Export CSV</button>
+    <button id="btn-export-xlsx">Export Excel</button>
     <button id="btn-import">Import JSON</button>
     <input type="file" id="file-import" accept=".json,application/json">
     <button id="btn-reset" class="danger">Reset</button>
   </div>
 </header>
 <main>
-  <aside id="ws-sidebar">
-    <div class="ws-sidebar-head">
-      <h2>Workstreams</h2>
-      <button id="btn-toggle-sidebar" class="sidebar-toggle" title="Collapse sidebar" aria-label="Collapse sidebar">«</button>
-    </div>
-    <ul id="ws-list"></ul>
-    <button class="ws-add" id="btn-add-ws">+ Add workstream</button>
-  </aside>
   <section id="ws-main"></section>
   <aside id="legend">
     <h3>RACI Legend</h3>
@@ -1368,17 +1489,15 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
     <div class="legend-row"><span class="raci-chip A">A</span><div><div class="label">Accountable</div><div class="desc">Owns the outcome</div></div></div>
     <div class="legend-row"><span class="raci-chip C">C</span><div><div class="label">Consulted</div><div class="desc">Two-way input</div></div></div>
     <div class="legend-row"><span class="raci-chip I">I</span><div><div class="label">Informed</div><div class="desc">Kept in the loop</div></div></div>
-    <p>Click any actor cell to toggle R / A / C / I for that activity. A cell can hold none, one, or any combination.</p>
-    <p>Use the <b>▸</b> chevron on a row to break an activity down into a nested sub-matrix one org-tier deeper (Directorate → Division → Branch → Team). The child's columns come from the Roster; its owner defaults to the row's <span class="raci-chip A">A</span>-holder. Follow the breadcrumb to climb back up.</p>
-    <p>Analytical views (Directorate, Health, Heatmap, A-Map) and CSV export summarize the top (Directorate) tier only.</p>
+    <p>Click any column cell to toggle R / A / C / I for that activity. A cell can hold none, one, or any combination.</p>
+    <p>Use the <b>▸</b> drill control on a row to break a Portfolio activity down into its Programs, then Projects, then Tasks. Each breakdown opens as a new chart below, stemming from the row you clicked; the parent chart recedes and fades. Click the open row's <b>▾</b> again to collapse.</p>
   </aside>
 </main>
-
 <script>
 'use strict';
 
-const STORAGE_KEY = 'raci-matrix-v5';
-const LEGACY_KEY = 'raci-matrix-v4';
+const STORAGE_KEY = 'raci-matrix-v6';
+const ACCENT = '#51cf66';
 
 const ACTORS = ['ocio','mission','infra','cyber','sw','vendor'];
 const ACTOR_LABELS_DEFAULT = {
@@ -1397,6 +1516,25 @@ function applyActorLabels() {
 const ACTOR_WIDE = new Set(['mission','sw']);
 const ROLES = ['R','A','C','I'];
 
+// ---- RACI chart columns (same at every tier for now; lower tiers may differ later) ----
+const COLS = ['hq','cos','mission','infra','cyber','sw','contacts'];
+const COL_LABELS = {
+  hq: 'Director HQ',
+  cos: 'Chief of Staff (HR/Fin)',
+  mission: 'Mission Management Dir.',
+  infra: 'Infrastructure Dir.',
+  cyber: 'Cyber & EW Dir.',
+  sw: 'Software and Support Dir.',
+  contacts: 'Contacts'
+};
+const COL_SHORT = {
+  hq: 'DIR HQ', cos: 'COS', mission: 'MISSION', infra: 'INFRA',
+  cyber: 'CYBER/EW', sw: 'SW', contacts: 'CONTACTS'
+};
+const TIER_LABELS = ['Portfolio','Program','Project','Task'];
+const MAX_TIER = TIER_LABELS.length - 1;
+function columnsForTier(tier) { return COLS; } // hook: lower tiers may differ later
+
 // ---------- utils ----------
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function escapeHtml(s) {
@@ -1411,42 +1549,11 @@ function normalizeRaci(s) {
 }
 
 // ---------- state ----------
-function emptyRoleNotes() { return { R:'', A:'', C:'', I:'' }; }
-function makeActivity(colKeys = ACTORS) {
-  const raci = {}, notes = {};
-  colKeys.forEach(k => { raci[k] = ''; notes[k] = emptyRoleNotes(); });
-  return {
-    id: uid(),
-    name: '',
-    definition: '',
-    outputs: '',
-    comments: '',
-    raci,
-    notes,
-    child: null
-  };
-}
-function normalizeActorNotes(noteVal, raci) {
-  if (typeof noteVal === 'string') {
-    const out = emptyRoleNotes();
-    if (noteVal) {
-      const letters = normalizeRaci(raci || '');
-      out[letters[0] || 'R'] = noteVal;
-    }
-    return out;
-  }
-  if (noteVal && typeof noteVal === 'object') {
-    return {
-      R: typeof noteVal.R === 'string' ? noteVal.R : '',
-      A: typeof noteVal.A === 'string' ? noteVal.A : '',
-      C: typeof noteVal.C === 'string' ? noteVal.C : '',
-      I: typeof noteVal.I === 'string' ? noteVal.I : ''
-    };
-  }
-  return emptyRoleNotes();
-}
-function makeWorkstream(name) {
-  return { id: uid(), name: name || 'New workstream', activities: [makeActivity()] };
+// An activity node. Tier (Portfolio/Program/Project/Task) is implied by depth in the tree.
+function makeNode(name) {
+  const raci = {};
+  COLS.forEach(k => { raci[k] = ''; });
+  return { id: uid(), name: name || '', raci, children: [] };
 }
 function makeDivision(name) { return { id: uid(), name: name || '', chief: null, branches: [] }; }
 function makeBranch(name) { return { id: uid(), name: name || '', chief: null, teams: [] }; }
@@ -1465,71 +1572,144 @@ function normalizeLead(x) {
     name: typeof x.name === 'string' ? x.name : ''
   };
 }
+
+// ---- sample data generation (professional / generic) ----
+const SEED_NAMES = ['A. Reyes','J. Calloway','M. Okafor','S. Lindqvist','T. Nakamura','R. Delgado',
+  'K. Abernathy','P. Sørensen','D. Whitfield','L. Castellano','N. Bhattacharya','E. Fontaine',
+  'C. Yamamoto','H. Eriksson','B. Montgomery','V. Andersson','G. Holloway','O. Nwosu',
+  'F. Petrova','W. Castellanos','I. Aaltonen','Q. Stratford','Z. Vandenberg','Y. Castellano'];
+const SEED_TITLES = ['Program Lead','Senior Engineer','Systems Architect','Operations Manager',
+  'Analyst','Project Officer','Technical Lead','Specialist','Coordinator','Subject Matter Expert'];
+let _seedNameI = 0, _seedTitleI = 0;
+function _nm() { return SEED_NAMES[(_seedNameI++) % SEED_NAMES.length]; }
+function _tt() { return SEED_TITLES[(_seedTitleI++) % SEED_TITLES.length]; }
+function _lead() { return { id: uid(), name: _nm() }; }
+
+const ROSTER_PLAN = {
+  ocio:    [['Strategy & Policy', ['Governance','Enterprise Architecture']], ['Resource Management', ['Budget & Finance','Acquisition']]],
+  mission: [['Operations', ['Current Operations','Future Operations']], ['Analysis', ['Targeting','Assessment']]],
+  infra:   [['Network', ['Transport','Edge Services']], ['Compute', ['Data Center','Cloud Services']], ['Facilities', ['Power & Cooling','Physical Security']]],
+  cyber:   [['Defensive Cyber', ['Threat Hunt','Security Operations']], ['Electronic Warfare', ['Spectrum','Signals']]],
+  sw:      [['Platforms', ['DevSecOps','Data Services']], ['Applications', ['Mission Apps','Enterprise Apps']]],
+  vendor:  [['Prime Contractors', ['Integration','Sustainment']], ['Specialty', ['Research & Development','Logistics']]]
+};
+function seedRoster() {
+  const dirs = emptyDirectorates();
+  ACTORS.forEach(actor => {
+    const plan = ROSTER_PLAN[actor] || [];
+    dirs[actor].lead = _lead();
+    plan.forEach(([divName, branchNames], di) => {
+      const div = makeDivision(divName); div.chief = _lead();
+      branchNames.forEach((bn, bi) => {
+        const br = makeBranch(bn); br.chief = _lead();
+        const team = makeTeam(bn + ' Team'); team.chief = _lead();
+        const np = 2 + ((di + bi) % 3);
+        for (let i = 0; i < np; i++) { const p = makePerson(); p.name = _nm(); p.title = _tt(); team.people.push(p); }
+        br.teams.push(team);
+        div.branches.push(br);
+      });
+      dirs[actor].divisions.push(div);
+    });
+  });
+  return dirs;
+}
+// Deterministic-ish RACI spread over the 7 columns: one A, one or two R, a C and an I.
+function seedRaci(s) {
+  const raci = {}; COLS.forEach(k => raci[k] = '');
+  const put = (k, l) => { raci[k] = normalizeRaci((raci[k] || '') + l); };
+  put(COLS[s % COLS.length], 'A');
+  put(COLS[(s + 2) % COLS.length], 'R');
+  if (s % 2 === 0) put(COLS[(s + 3) % COLS.length], 'R');
+  put(COLS[(s + 4) % COLS.length], 'C');
+  put(COLS[(s + 5) % COLS.length], 'I');
+  return raci;
+}
+const SEED_PORTFOLIOS = [
+  ['Enterprise Cloud Modernization', ['Cloud Foundation','Application Migration','Cloud Operations']],
+  ['Mission Command & Control',      ['C2 Modernization','Sensor Integration','Decision Support']],
+  ['Cybersecurity & Resilience',     ['Zero Trust Implementation','Threat Defense','Continuity & Recovery']],
+  ['Data & Analytics Platform',      ['Data Fabric','Advanced Analytics','Data Governance']],
+  ['Network Transport Modernization',['Backbone Upgrade','Edge Connectivity','Spectrum Operations']],
+  ['Workforce & Talent',             ['Recruiting & Hiring','Training & Certification','Retention & Culture']],
+  ['Acquisition & Vendor Management',['Contract Strategy','Vendor Performance','Supply Chain Risk']]
+];
+const SEED_PROJ_SUFFIX = ['Increment A','Increment B','Pilot','Scale-Up'];
+const SEED_TASKS = ['Requirements analysis','Solution design','Design review','Prototype build',
+  'Implementation','Integration testing','Security accreditation (ATO)','Performance tuning',
+  'Deployment','User training','Documentation','O&M transition','Risk assessment','Stakeholder review'];
+function seedData() {
+  _seedNameI = 0; _seedTitleI = 0;
+  const dirs = seedRoster();
+  // flat list of divisions with their branch refs, to assign to programs/projects
+  const divisions = [];
+  ACTORS.forEach(a => (dirs[a].divisions || []).forEach(div => {
+    divisions.push({ ref: { actor: a, divisionId: div.id },
+                     branches: (div.branches || []).map(br => ({ actor: a, divisionId: div.id, branchId: br.id })) });
+  }));
+  let s = 0, gp = 0;
+  const activities = SEED_PORTFOLIOS.map(([pfName, programs]) => {
+    const pf = makeNode(pfName); pf.raci = seedRaci(s++);
+    pf.children = programs.map((progName, pri) => {
+      const prog = makeNode(progName); prog.raci = seedRaci(s++);
+      const division = divisions[gp++ % divisions.length];
+      prog.org = division.ref;
+      const nproj = 2 + (pri % 2);
+      prog.children = [];
+      for (let j = 0; j < nproj; j++) {
+        const proj = makeNode(`${progName} — ${SEED_PROJ_SUFFIX[j % SEED_PROJ_SUFFIX.length]}`); proj.raci = seedRaci(s++);
+        if (division.branches.length) proj.org = division.branches[j % division.branches.length];
+        const ntask = 3 + (j % 2);
+        proj.children = [];
+        for (let t = 0; t < ntask; t++) {
+          const task = makeNode(SEED_TASKS[(s + t) % SEED_TASKS.length]); task.raci = seedRaci(s++);
+          proj.children.push(task);
+        }
+        prog.children.push(proj);
+      }
+      return prog;
+    });
+    return pf;
+  });
+  return { activities, directorates: dirs };
+}
 function defaultState() {
-  const ws = makeWorkstream('Workstream 1');
+  const d = seedData();
   return {
-    title: 'Workstream RACI',
-    workstreams: [ws],
-    activeWorkstreamId: ws.id,
+    title: 'Portfolio RACI',
+    activities: d.activities,
+    drillPath: [],
     actorLabels: { ...ACTOR_LABELS_DEFAULT },
-    directorates: emptyDirectorates(),
-    viewMode: 'matrix',
+    directorates: d.directorates,
     collapsedDirectorates: {},
-    lensDirectorate: 'ocio',
-    lensLevel: 0,
-    lensUnit: 'ocio',
-    searchQuery: '',
-    expandedActivities: [],
-    nav: { path: [] },
-    treeCollapsed: {},
-    sidebarCollapsed: false,
+    viewMode: 'chart',
     showLegend: false
   };
 }
-const ALL_VIEW_MODES = ['matrix','tree','roster','directorate','health','heatmap','amap'];
-// Normalize an activity (root or nested) over a column-key set, recursing into child matrices.
-// colKeys = ACTORS for tier-0; null = derive from the activity's own existing raci/notes keys.
-function normalizeActivity(a, colKeys) {
-  a.id = a.id || uid();
-  a.name = a.name || '';
-  a.definition = a.definition || '';
-  a.outputs = a.outputs || '';
-  a.comments = a.comments || '';
-  a.raci = a.raci && typeof a.raci === 'object' ? a.raci : {};
-  a.notes = a.notes && typeof a.notes === 'object' ? a.notes : {};
-  const keys = colKeys || Array.from(new Set([...Object.keys(a.raci), ...Object.keys(a.notes)]));
-  keys.forEach(k => {
-    a.raci[k] = normalizeRaci(a.raci[k]);
-    a.notes[k] = normalizeActorNotes(a.notes[k], a.raci[k]);
+const ALL_VIEW_MODES = ['chart','roster'];
+
+function normalizeNodes(nodes, depth) {
+  if (!Array.isArray(nodes)) return [];
+  nodes.forEach(n => {
+    n.id = n.id || uid();
+    n.name = typeof n.name === 'string' ? n.name : '';
+    n.raci = (n.raci && typeof n.raci === 'object') ? n.raci : {};
+    COLS.forEach(k => { n.raci[k] = normalizeRaci(n.raci[k] || ''); });
+    // Optional roster assignment: Programs hold a Division, Projects hold a Branch.
+    if (n.org && typeof n.org === 'object' && ACTORS.includes(n.org.actor) && typeof n.org.divisionId === 'string') {
+      n.org = typeof n.org.branchId === 'string'
+        ? { actor: n.org.actor, divisionId: n.org.divisionId, branchId: n.org.branchId }
+        : { actor: n.org.actor, divisionId: n.org.divisionId };
+    } else { delete n.org; }
+    if (depth >= MAX_TIER) n.children = [];
+    else n.children = normalizeNodes(Array.isArray(n.children) ? n.children : [], depth + 1);
   });
-  a.child = normalizeChildMatrix(a.child);
-}
-function normalizeChildMatrix(child) {
-  if (!child || typeof child !== 'object' || !child.owner || typeof child.owner !== 'object') return null;
-  child.id = child.id || uid();
-  const o = child.owner;
-  o.tier = (o.tier === 1 || o.tier === 2 || o.tier === 3) ? o.tier : 1;
-  o.actor = ACTORS.includes(o.actor) ? o.actor : ACTORS[0];
-  if (o.divisionId != null && typeof o.divisionId !== 'string') o.divisionId = String(o.divisionId);
-  if (o.branchId != null && typeof o.branchId !== 'string') o.branchId = String(o.branchId);
-  child.via = (child.via === 'A' || child.via === 'R') ? child.via : 'A';
-  if (!Array.isArray(child.activities)) child.activities = [];
-  child.activities.forEach(ca => normalizeActivity(ca, null));
-  return child;
+  return nodes;
 }
 function migrateState(s) {
   if (!s || typeof s !== 'object') return defaultState();
-  if (!Array.isArray(s.workstreams) || s.workstreams.length === 0) return defaultState();
-  s.title = typeof s.title === 'string' ? s.title : 'Workstream RACI';
-  s.workstreams.forEach(ws => {
-    ws.id = ws.id || uid();
-    ws.name = typeof ws.name === 'string' ? ws.name : '';
-    if (!Array.isArray(ws.activities)) ws.activities = [];
-    ws.activities.forEach(a => normalizeActivity(a, ACTORS));
-  });
-  if (!s.workstreams.find(w => w.id === s.activeWorkstreamId)) {
-    s.activeWorkstreamId = s.workstreams[0].id;
-  }
+  s.title = typeof s.title === 'string' ? s.title : 'Portfolio RACI';
+  s.activities = normalizeNodes(Array.isArray(s.activities) ? s.activities : [], 0);
+  s.drillPath = Array.isArray(s.drillPath) ? s.drillPath.filter(x => typeof x === 'string') : [];
   s.directorates = s.directorates && typeof s.directorates === 'object' ? s.directorates : {};
   ACTORS.forEach(k => {
     let d = s.directorates[k];
@@ -1569,21 +1749,15 @@ function migrateState(s) {
     });
     s.directorates[k] = d;
   });
-  s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'matrix';
-  s.collapsedDirectorates = s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object'
-    ? s.collapsedDirectorates : {};
-  s.lensDirectorate = ACTORS.includes(s.lensDirectorate) ? s.lensDirectorate : 'ocio';
-  s.lensLevel = [0,1,2,3].includes(s.lensLevel) ? s.lensLevel : 0;
-  s.lensUnit = typeof s.lensUnit === 'string' ? s.lensUnit : s.lensDirectorate;
-  s.treeCollapsed = (s.treeCollapsed && typeof s.treeCollapsed === 'object') ? s.treeCollapsed : {};
-  s.sidebarCollapsed = !!s.sidebarCollapsed;
+  s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'chart';
+  s.collapsedDirectorates = (s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object') ? s.collapsedDirectorates : {};
   s.showLegend = !!s.showLegend;
   s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
   ACTORS.forEach(k => { if (typeof s.actorLabels[k] !== 'string' || !s.actorLabels[k].trim()) s.actorLabels[k] = ACTOR_LABELS_DEFAULT[k]; });
-  s.searchQuery = typeof s.searchQuery === 'string' ? s.searchQuery : '';
-  s.expandedActivities = Array.isArray(s.expandedActivities) ? s.expandedActivities : [];
-  s.nav = (s.nav && typeof s.nav === 'object') ? s.nav : {};
-  s.nav.path = Array.isArray(s.nav.path) ? s.nav.path.filter(x => typeof x === 'string') : [];
+  // drop legacy fields from prior (workstream/structure/lens) versions
+  ['workstreams','activeWorkstreamId','portfolios','structureCollapsed','nav','searchQuery',
+   'expandedActivities','treeCollapsed','lensDirectorate','lensLevel','lensUnit','sidebarCollapsed']
+    .forEach(k => { delete s[k]; });
   return s;
 }
 function loadState() {
@@ -1591,14 +1765,6 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return migrateState(JSON.parse(raw));
   } catch (e) { console.warn('load failed', e); }
-  // Offer to discard incompatible legacy data
-  if (localStorage.getItem(LEGACY_KEY)) {
-    const discard = confirm(
-      'Found older people-based RACI data (raci-matrix-v3). ' +
-      'The data model has changed and cannot be migrated. Discard the old data?'
-    );
-    if (discard) localStorage.removeItem(LEGACY_KEY);
-  }
   return defaultState();
 }
 let state = loadState();
@@ -1611,755 +1777,234 @@ function saveState() {
     catch (e) { console.error('save failed', e); }
   }, 100);
 }
+function setTitle(t) { state.title = t; saveState(); }
 
-// ---------- lookups ----------
-function activeWs() {
-  return state.workstreams.find(w => w.id === state.activeWorkstreamId) || state.workstreams[0];
-}
-function findActivity(activityId) {
-  function walk(activities, ws, chain) {
-    for (const a of activities) {
-      if (a.id === activityId) return { ws, activity: a, chain: [...chain, a] };
-      if (a.child && Array.isArray(a.child.activities)) {
-        const r = walk(a.child.activities, ws, [...chain, a]);
-        if (r) return r;
-      }
+// ---------- lookups / navigation ----------
+function findNode(id) {
+  let res = null;
+  (function walk(nodes, parent, depth) {
+    for (const n of nodes) {
+      if (n.id === id) { res = { node: n, parent, siblings: nodes, depth }; return true; }
+      if (n.children && walk(n.children, n, depth + 1)) return true;
     }
-    return null;
+    return false;
+  })(state.activities, null, 0);
+  return res;
+}
+function countNodes(nodes) {
+  let n = 0; (nodes || []).forEach(x => { n++; n += countNodes(x.children); }); return n;
+}
+// Resolve the single drill path into an ordered list of charts (tier 0 .. N).
+function resolveCascade() {
+  const acc = { division: null, branch: null }; // inherited roster refs from ancestors
+  const charts = [{ tier: 0, parent: null, nodes: state.activities, openId: null, inherited: { ...acc } }];
+  const valid = [];
+  let nodes = state.activities;
+  for (let i = 0; i < state.drillPath.length; i++) {
+    const id = state.drillPath[i];
+    const node = nodes.find(n => n.id === id);
+    if (!node || i >= MAX_TIER) break;
+    charts[charts.length - 1].openId = id;
+    // a Program contributes its Division, a Project its Branch, to everything below
+    if (node.org) { if (node.org.branchId) acc.branch = node.org; else acc.division = node.org; }
+    charts.push({ tier: i + 1, parent: node, nodes: node.children, openId: null, inherited: { ...acc } });
+    valid.push(id);
+    nodes = node.children;
   }
-  for (const ws of state.workstreams) {
-    const r = walk(ws.activities, ws, []);
-    if (r) return r;
+  if (valid.length !== state.drillPath.length) state.drillPath = valid;
+  return charts;
+}
+// Resolve a stored roster ref {actor,divisionId[,branchId]} into display strings.
+function orgLabel(org) {
+  if (!org) return null;
+  if (org.branchId) {
+    const b = findBranch(org.actor, org.divisionId, org.branchId);
+    if (!b) return null;
+    const d = findDivision(org.actor, org.divisionId);
+    const chief = b.chief && b.chief.name ? ` · Chief: ${b.chief.name}` : '';
+    return { short: b.name || 'Untitled branch',
+             full: `${ACTOR_LABELS[org.actor]} › ${(d && d.name) || '—'} › ${b.name || 'Untitled branch'}${chief}` };
+  }
+  if (org.divisionId) {
+    const d = findDivision(org.actor, org.divisionId);
+    if (!d) return null;
+    const chief = d.chief && d.chief.name ? ` · Chief: ${d.chief.name}` : '';
+    return { short: d.name || 'Untitled division',
+             full: `${ACTOR_LABELS[org.actor]} › ${d.name || 'Untitled division'}${chief}` };
   }
   return null;
 }
 
-// ---------- nesting / navigation ----------
-// Tier index = the org-level of THIS matrix's COLUMNS.
-const TIER_LABELS = ['Directorate', 'Division', 'Branch', 'Team'];
-
-// Columns for a matrix at a given tier. Root (tier 0) = the 6 fixed directorates;
-// deeper tiers derive columns from the owner org-unit's roster sub-units.
-function matrixColumns(tier, owner) {
-  if (tier === 0 || !owner) {
-    return ACTORS.map(k => ({ key: k, label: ACTOR_LABELS[k], wide: ACTOR_WIDE.has(k) }));
+// ---------- mutations ----------
+function addRootActivity() { state.activities.push(makeNode('')); saveState(); renderChart(); }
+function addChildActivity(parentId) {
+  const f = findNode(parentId);
+  if (!f || f.depth >= MAX_TIER) return;
+  f.node.children.push(makeNode(''));
+  saveState(); renderChart();
+}
+function deleteNode(id) {
+  const f = findNode(id);
+  if (!f) return;
+  const kids = countNodes(f.node.children);
+  const label = f.node.name || ('this ' + TIER_LABELS[f.depth].toLowerCase());
+  if (!confirm(`Delete "${label}"${kids ? ` and its ${kids} sub-item${kids === 1 ? '' : 's'}` : ''}?`)) return;
+  const idx = f.siblings.findIndex(n => n.id === id);
+  if (idx >= 0) f.siblings.splice(idx, 1);
+  const pi = state.drillPath.indexOf(id);
+  if (pi >= 0) state.drillPath = state.drillPath.slice(0, pi);
+  saveState(); renderChart();
+}
+function renameNode(id, name) { const f = findNode(id); if (f) { f.node.name = name; saveState(); } }
+// Drill control on activity `id` at `tier`. Clicking a different activity drills into it,
+// auto-collapsing any tiers in front. Clicking the already-open one first collapses the
+// tiers in front of it (one click), then collapses itself (next click).
+function drillToggle(id, tier) {
+  if (tier >= MAX_TIER) return;
+  const path = state.drillPath;
+  if (path[tier] === id) {
+    state.drillPath = path.length > tier + 1 ? path.slice(0, tier + 1) : path.slice(0, tier);
+  } else {
+    state.drillPath = path.slice(0, tier).concat(id);
   }
-  if (owner.tier === 1) {
-    const d = state.directorates[owner.actor];
-    return (d ? d.divisions : []).map(div => ({ key: div.id, label: div.name || 'Untitled division' }));
-  }
-  if (owner.tier === 2) {
-    const div = findDivision(owner.actor, owner.divisionId);
-    return (div ? div.branches : []).map(b => ({ key: b.id, label: b.name || 'Untitled branch' }));
-  }
-  if (owner.tier === 3) {
-    const br = findBranch(owner.actor, owner.divisionId, owner.branchId);
-    return (br ? br.teams : []).map(t => ({ key: t.id, label: t.name || 'Untitled team' }));
-  }
-  return [];
-}
-// The parent-matrix column key that an owner ref hangs off of (the hinge cell column).
-function ownerColumnKey(owner) {
-  if (!owner) return null;
-  if (owner.tier === 1) return owner.actor;
-  if (owner.tier === 2) return owner.divisionId;
-  if (owner.tier === 3) return owner.branchId;
-  return null;
-}
-// Human label for an owner org-unit.
-function ownerLabel(owner) {
-  if (!owner) return '';
-  if (owner.tier === 1) return ACTOR_LABELS[owner.actor] || owner.actor;
-  if (owner.tier === 2) { const d = findDivision(owner.actor, owner.divisionId); return (d && d.name) || 'Untitled division'; }
-  if (owner.tier === 3) { const b = findBranch(owner.actor, owner.divisionId, owner.branchId); return (b && b.name) || 'Untitled branch'; }
-  return '';
-}
-// Build the owner ref for the CHILD produced by drilling column `colKey` in a parent matrix.
-function ownerRefFor(parentTier, parentOwner, colKey) {
-  if (parentTier === 0) return { tier: 1, actor: colKey };
-  if (parentTier === 1) return { tier: 2, actor: parentOwner.actor, divisionId: colKey };
-  if (parentTier === 2) return { tier: 3, actor: parentOwner.actor, divisionId: parentOwner.divisionId, branchId: colKey };
-  return null; // tier 3 is the deepest "for now"
-}
-// Walk the active workstream down state.nav.path, resolving the matrix on screen.
-// Stops (and truncates the path) at the first id that no longer resolves.
-function resolveCurrentMatrix() {
-  const ws = activeWs();
-  const path = (state.nav && Array.isArray(state.nav.path)) ? state.nav.path : [];
-  let activities = ws.activities, tier = 0, owner = null, parentActivity = null, via = null;
-  const crumbs = [{ label: ws.name || 'Untitled', kind: 'ws', depth: 0 }];
-  const validPath = [];
-  for (const aid of path) {
-    const a = activities.find(x => x.id === aid);
-    if (!a || !a.child) break;
-    parentActivity = a;
-    owner = a.child.owner;
-    via = a.child.via;
-    activities = a.child.activities;
-    tier = owner.tier;
-    validPath.push(aid);
-    crumbs.push({ label: a.name || '(untitled activity)', kind: 'activity', depth: validPath.length });
-  }
-  if (validPath.length !== path.length) { state.nav.path = validPath; }
-  return { ws, tier, owner, via, parentActivity, activities,
-           columns: matrixColumns(tier, owner), crumbs, path: validPath };
-}
-// Lazily build a child matrix for activity `a` in `node`. Owner defaults to the
-// A-holder column, else R-holder, else the first column (warn-only — always succeeds).
-function makeChildMatrix(node, a) {
-  const cols = node.columns;
-  if (!cols.length) return null;
-  let ownerCol = cols.find(c => normalizeRaci(a.raci[c.key] || '').includes('A'));
-  let via = 'A';
-  if (!ownerCol) { ownerCol = cols.find(c => normalizeRaci(a.raci[c.key] || '').includes('R')); if (ownerCol) via = 'R'; }
-  if (!ownerCol) { ownerCol = cols[0]; via = 'A'; }
-  const owner = ownerRefFor(node.tier, node.owner, ownerCol.key);
-  if (!owner) return null;
-  const childCols = matrixColumns(owner.tier, owner);
-  return { id: uid(), owner, via, activities: [makeActivity(childCols.map(c => c.key))] };
-}
-
-// Walk the entire forest (all workstreams + every nested matrix). Returns one entry
-// per activity at any tier, with its matrix context (tier, owner, columns) and trail.
-function allActivitiesDeep() {
-  const out = [];
-  function walk(activities, ws, tier, owner, path, trail) {
-    const columns = matrixColumns(tier, owner);
-    activities.forEach(a => {
-      out.push({ ws, activity: a, tier, owner, columns, path, trail });
-      if (a.child) {
-        walk(a.child.activities, ws, a.child.owner.tier, a.child.owner,
-             [...path, a.id], [...trail, a.name || '(untitled)']);
-      }
-    });
-  }
-  state.workstreams.forEach(ws => walk(ws.activities, ws, 0, null, [], [ws.name || 'Untitled']));
-  return out;
-}
-// Org units selectable in the Lens at a given level (0=Directorate … 3=Team).
-function orgUnitsAtLevel(level) {
-  if (level === 0) return ACTORS.map(k => ({ key: k, label: ACTOR_LABELS[k], group: '' }));
-  const out = [];
-  ACTORS.forEach(actor => {
-    const d = state.directorates[actor];
-    (d ? d.divisions : []).forEach(div => {
-      if (level === 1) { out.push({ key: div.id, label: div.name || 'Untitled division', group: ACTOR_LABELS[actor] }); return; }
-      (div.branches || []).forEach(br => {
-        if (level === 2) { out.push({ key: br.id, label: br.name || 'Untitled branch', group: `${ACTOR_LABELS[actor]} › ${div.name || '—'}` }); return; }
-        (br.teams || []).forEach(t => {
-          if (level === 3) out.push({ key: t.id, label: t.name || 'Untitled team', group: `${div.name || '—'} › ${br.name || '—'}` });
-        });
-      });
-    });
-  });
-  return out;
-}
-const LEVEL_LABELS = ['Directorate', 'Division', 'Branch', 'Team'];
-
-// ---------- analytical helpers ----------
-function allActivities() {
-  const out = [];
-  state.workstreams.forEach(ws => ws.activities.forEach(a => out.push({ ws, activity: a })));
-  return out;
-}
-function rolesForActor(activity, actor) {
-  return normalizeRaci(activity.raci && activity.raci[actor] || '');
-}
-function accountabilityFor(activity) {
-  return ACTORS.filter(k => rolesForActor(activity, k).includes('A'));
-}
-function responsibilityFor(activity) {
-  return ACTORS.filter(k => rolesForActor(activity, k).includes('R'));
-}
-function activityHealth(activity) {
-  const A = accountabilityFor(activity), R = responsibilityFor(activity);
-  return { noA: A.length === 0, multipleA: A.length > 1, noR: R.length === 0, A, R };
-}
-function weightForCell(letters) {
-  const n = normalizeRaci(letters);
-  return (n.includes('A')?4:0) + (n.includes('R')?3:0) + (n.includes('C')?2:0) + (n.includes('I')?1:0);
-}
-function matchesQuery(ws, activity, q) {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  const parts = [ws.name, activity.name, activity.definition, activity.outputs, activity.comments];
-  for (const p of parts) { if (p && p.toLowerCase().includes(needle)) return true; }
-  const notes = activity.notes || {};
-  for (const k of Object.keys(notes)) {
-    const n = notes[k];
-    if (!n) continue;
-    if (typeof n === 'string') { if (n.toLowerCase().includes(needle)) return true; continue; }
-    for (const r of ROLES) {
-      if (n[r] && n[r].toLowerCase().includes(needle)) return true;
-    }
-  }
-  return false;
+  saveState(); renderChart();
 }
 
 // ---------- render ----------
 function render() {
   document.getElementById('doc-title').textContent = state.title || '';
   document.body.dataset.view = state.viewMode;
-  document.body.classList.toggle('sidebar-collapsed', !!state.sidebarCollapsed);
   document.body.classList.toggle('show-legend', !!state.showLegend);
-  const sbToggle = document.getElementById('btn-toggle-sidebar');
-  if (sbToggle) sbToggle.title = state.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
   updateViewTabs();
-  updateSearchInput();
-  switch (state.viewMode) {
-    case 'tree':        renderTree(); break;
-    case 'roster':      renderRoster(); break;
-    case 'directorate': renderDirectorateLens(); break;
-    case 'health':      renderHealth(); break;
-    case 'heatmap':     renderHeatmap(); break;
-    case 'amap':        renderAccountabilityMap(); break;
-    case 'matrix':
-    default:            renderSidebar(); renderMain();
-  }
+  if (state.viewMode === 'roster') renderRoster();
+  else renderChart();
 }
 function updateViewTabs() {
   document.querySelectorAll('#view-tabs button').forEach(b => {
     b.classList.toggle('active', b.dataset.view === state.viewMode);
   });
 }
-function updateSearchInput() {
-  const el = document.getElementById('search-input');
-  if (el && el.value !== state.searchQuery) el.value = state.searchQuery || '';
-}
 
-function renderSidebar() {
-  const ul = document.getElementById('ws-list');
-  const activeId = state.activeWorkstreamId;
-  const q = state.searchQuery || '';
-  ul.innerHTML = state.workstreams.map(ws => {
-    const matchCount = q ? ws.activities.filter(a => matchesQuery(ws, a, q)).length : ws.activities.length;
-    const dim = q && matchCount === 0;
-    return `
-    <li data-ws-id="${ws.id}" class="${ws.id === activeId ? 'active' : ''}${dim ? ' dim' : ''}">
-      <span class="ws-name"
-            contenteditable="false"
-            spellcheck="false"
-            data-ws-id="${ws.id}"
-            data-field="name"
-            title="Double-click to rename">${escapeHtml(ws.name)}</span>
-      ${q ? `<span class="ws-match-count">${matchCount}</span>` : ''}
-      <button class="ws-del" data-ws-del="${ws.id}" title="Delete workstream">×</button>
-    </li>`;
-  }).join('');
-}
-
-function renderMain() {
+// ========== Cascade chart ==========
+function renderChart() {
   const main = document.getElementById('ws-main');
-  const ws = activeWs();
-  if (!ws) {
-    main.innerHTML = `<div class="empty-state">
-      <div>No workstreams yet.</div>
-      <button class="primary" id="btn-empty-add">+ Add workstream</button>
+  const charts = resolveCascade();
+  const blocks = charts.map((c, i) => renderChartBlock(c, i, charts.length)).join('');
+  main.innerHTML = `<div class="cascade" id="cascade">${blocks}<svg class="cascade-svg" id="cascade-svg" aria-hidden="true"></svg></div>`;
+  requestAnimationFrame(drawConnectors);
+}
+function renderChartBlock(chart, idx, total) {
+  const { tier, parent, nodes, openId, inherited } = chart;
+  const focus = idx === total - 1;
+  const cls = focus ? 'focus' : 'faded';
+  // depth = how far this chart sits behind the focused one; further back = darker/more faded
+  const depth = (total - 1) - idx;
+  const opacity = focus ? 1 : Math.max(0.18, 1 - depth * 0.26);
+  const heading = tier === 0
+    ? 'Portfolio Activities'
+    : `${escapeHtml(parent.name || ('Untitled ' + TIER_LABELS[tier - 1]))} <span class="ch-sep">›</span> ${TIER_LABELS[tier]}s`;
+  const inbound = tier > 0 ? '<span class="ch-inbound">⤷</span> ' : '';
+  const cols = columnsForTier(tier);
+  const header = `<tr>
+      <th class="ch-toggle"></th>
+      <th class="ch-name">${TIER_LABELS[tier]} activity</th>
+      ${cols.map(k => `<th class="ch-col" title="${escapeHtml(COL_LABELS[k])}">${COL_SHORT[k]}</th>`).join('')}
+      <th class="ch-del"></th>
+    </tr>`;
+  // Cascade rule: an entity that is R on the parent activity is A on this (one-level-down) breakdown.
+  const parentR = {};
+  cols.forEach(k => { parentR[k] = !!(parent && normalizeRaci(parent.raci[k] || '').includes('R')); });
+  const rows = nodes.length
+    ? nodes.map(n => renderNodeRow(n, tier, openId === n.id, cols, inherited, parentR)).join('')
+    : `<tr class="ch-empty-row"><td colspan="${cols.length + 3}">No ${TIER_LABELS[tier].toLowerCase()} activities yet.</td></tr>`;
+  const addBtn = tier === 0
+    ? `<button class="ch-add" data-add-root="1">+ Add ${TIER_LABELS[tier].toLowerCase()} activity</button>`
+    : `<button class="ch-add" data-add-child="${parent.id}">+ Add ${TIER_LABELS[tier].toLowerCase()} activity</button>`;
+  return `<div class="chart-block ${cls}" data-tier="${tier}" style="margin-left:${tier * 56}px; z-index:${idx + 1}; opacity:${opacity};">
+      <div class="chart-head" data-chart-head="${tier}">${inbound}${heading}</div>
+      <table class="chart"><thead>${header}</thead><tbody>${rows}</tbody></table>
+      ${addBtn}
     </div>`;
-    return;
+}
+// A cell's chips = its own (manual) roles, plus an inherited "A" when the entity is R one level up.
+// Cells support any combination of R/A/C/I; chips render in R-A-C-I order.
+function cellChipsHtml(node, col, inheritedA) {
+  const manual = new Set(normalizeRaci(node.raci[col] || '').split('').filter(Boolean));
+  const chips = [];
+  ROLES.forEach(l => {
+    if (manual.has(l)) chips.push(`<span class="raci-chip ${l}">${l}</span>`);
+    else if (l === 'A' && inheritedA) chips.push(`<span class="raci-chip A inherited" title="Accountable — inherited (Responsible one level up)">A</span>`);
+  });
+  return chips.length ? `<div class="cell-chips">${chips.join('')}</div>` : `<div class="cell-chips empty">·</div>`;
+}
+function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
+  const leaf = tier >= MAX_TIER;
+  const caret = leaf
+    ? '<span class="ch-caret leaf">·</span>'
+    : `<button class="ch-caret${isOpen ? ' open' : ''}" data-drill="${node.id}" data-tier="${tier}" title="${isOpen ? 'Collapse' : 'Drill into breakdown'}">${isOpen ? '▾' : '▸'}</button>`;
+  const cells = cols.map(k =>
+    `<td class="chart-cell" data-id="${node.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">${cellChipsHtml(node, k, parentR && parentR[k])}</td>`).join('');
+  return `<tr class="chart-row${isOpen ? ' open' : ''}" data-id="${node.id}">
+      <td class="ch-toggle">${caret}</td>
+      <td class="ch-name"><span class="ch-name-edit" contenteditable="true" spellcheck="false" data-node-id="${node.id}" data-field="name" data-placeholder="${TIER_LABELS[tier]} name">${escapeHtml(node.name)}</span>${renderOrgRow(node, tier, inherited)}</td>
+      ${cells}
+      <td class="ch-del"><button data-del-node="${node.id}" title="Delete">×</button></td>
+    </tr>`;
+}
+// Roster assignment row under an activity name.
+// Programs assign a Division (editable); Projects assign a Branch (editable);
+// Tasks show the Division + Branch inherited from their Program/Project (read-only tooltip).
+function renderOrgRow(node, tier, inherited) {
+  const badge = (cls, ico, label, full, attrs) =>
+    `<span class="org-badge ${cls}" title="${escapeHtml(full)}"${attrs || ''}><span class="ob-ico">${ico}</span>${escapeHtml(label)}</span>`;
+  if (tier === 1) { // Program → Division (editable)
+    const lab = orgLabel(node.org);
+    return `<span class="org-row">${lab
+      ? badge('editable', '🏢', lab.short, lab.full, ` data-org-edit="${node.id}" data-org-kind="division"`)
+      : badge('editable empty', '🏢', 'Assign division', 'Assign a roster Division to this Program', ` data-org-edit="${node.id}" data-org-kind="division"`)}</span>`;
   }
-  const node = resolveCurrentMatrix();
-  const { columns, activities, tier, owner } = node;
-
-  // breadcrumb
-  const crumbsHtml = node.crumbs.map((c, i) => {
-    const sep = i > 0 ? '<span class="crumb-sep">›</span>' : '';
-    const cur = i === node.crumbs.length - 1 ? ' current' : '';
-    return `${sep}<span class="crumb${cur}" data-crumb-depth="${c.depth}" title="Go to ${escapeHtml(c.label)}">${escapeHtml(c.label)}</span>`;
-  }).join('');
-
-  // owner / tier tag + warn-only health badges
-  const tierLabel = TIER_LABELS[tier] || 'Sub';
-  const drift = ownerDrift(node);
-  const ownerHtml = owner
-    ? `<span class="owner-tag">${tierLabel} matrix · owned by <b>${escapeHtml(ownerLabel(owner))}</b> <span class="via-tag">via ${node.via}</span></span>${drift ? `<span class="warn-badge" title="${escapeHtml(drift)}">⚠ A-drift</span>` : ''}`
-    : `<span class="owner-tag">${tierLabel}-level matrix</span>`;
-
-  const q = state.searchQuery || '';
-  const visibleActivities = q ? activities.filter(a => matchesQuery(ws, a, q)) : activities;
-  const filterHint = q
-    ? `<span class="filter-hint">Showing ${visibleActivities.length} of ${activities.length} matching "${escapeHtml(q)}"</span>`
-    : '';
-
-  // empty-roster notice (a child whose owner has no sub-units yet)
-  const emptyRoster = (tier > 0 && columns.length === 0)
-    ? `<div class="empty-roster-notice">
-         <b>${escapeHtml(ownerLabel(owner))}</b> has no ${TIER_LABELS[tier].toLowerCase()}s yet — add them in the
-         <button class="link-btn" data-goto-roster="1">Roster</button> to populate this matrix's columns.
-       </div>`
-    : '';
-
-  const headerCols = `
-    <th class="col-toggle"></th>
-    <th class="col-name">Activity</th>
-    <th class="col-def">Definition</th>
-    ${columns.map(c => `<th class="actor ${c.wide ? 'wide' : ''}"><span class="col-name-label">${escapeHtml(c.label)}</span><span class="col-tier-pill tier-${tier}">${TIER_LABELS[tier]}</span></th>`).join('')}
-    <th class="col-outputs">Typical Outputs / Artifacts</th>
-    <th class="col-comments">Comments</th>
-    <th></th>
-  `;
-  const rows = visibleActivities.map(a => renderActivityRow(a, columns, tier, owner)).join('');
-
-  main.innerHTML = `
-    <div class="ws-header">
-      <div class="breadcrumb">${crumbsHtml}</div>
-      ${ownerHtml}
-      <span class="ws-meta">${activities.length} activit${activities.length === 1 ? 'y' : 'ies'}</span>
-      ${filterHint}
-    </div>
-    <div class="table-wrap">
-      ${emptyRoster}
-      <table class="activities">
-        <thead><tr>${headerCols}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      ${q ? '' : '<button class="add-activity" id="btn-add-activity">+ Add activity</button>'}
-    </div>
-  `;
-}
-
-// A-drift: the current child's owner column no longer holds its `via` letter (or any A/R) on the parent activity.
-function ownerDrift(node) {
-  if (!node.owner || !node.parentActivity) return null;
-  const key = ownerColumnKey(node.owner);
-  const letters = normalizeRaci(node.parentActivity.raci[key] || '');
-  if (letters.includes(node.via)) return null;
-  if (!letters.includes('A') && !letters.includes('R')) {
-    return `Owner "${ownerLabel(node.owner)}" is no longer Accountable/Responsible on the parent activity.`;
+  if (tier === 2) { // Project → Branch (editable), with inherited Division shown read-only
+    const lab = orgLabel(node.org);
+    const divLab = orgLabel(inherited && inherited.division);
+    const divChip = divLab ? badge('inherited', '🏢', divLab.short, `Inherited Division — ${divLab.full}`) : '';
+    return `<span class="org-row">${divChip}${lab
+      ? badge('editable', '🌿', lab.short, lab.full, ` data-org-edit="${node.id}" data-org-kind="branch"`)
+      : badge('editable empty', '🌿', 'Assign branch', 'Assign a roster Branch to this Project', ` data-org-edit="${node.id}" data-org-kind="branch"`)}</span>`;
   }
-  return `Owner "${ownerLabel(node.owner)}" no longer holds ${node.via} (was ${node.via}-via) on the parent activity.`;
-}
-
-// Column-aware per-row RACI health (warn-only): exactly-one-A and at-least-one-R.
-function rowHealth(a, columns) {
-  let A = 0, R = 0;
-  columns.forEach(c => {
-    const L = normalizeRaci(a.raci[c.key] || '');
-    if (L.includes('A')) A++;
-    if (L.includes('R')) R++;
-  });
-  return { noA: A === 0, multiA: A > 1, noR: R === 0 };
-}
-function rowFlagsHtml(a, columns) {
-  if (!columns.length) return '';
-  const h = rowHealth(a, columns);
-  const flags = [];
-  if (h.noA)    flags.push('<span class="row-flag err" title="No Accountable — nobody owns this activity">no A</span>');
-  if (h.multiA) flags.push('<span class="row-flag warn" title="Multiple Accountable — only one role should be A">multi A</span>');
-  if (h.noR)    flags.push('<span class="row-flag warn" title="No Responsible — nobody is doing the work">no R</span>');
-  return flags.length ? `<span class="row-flags">${flags.join('')}</span>` : '';
-}
-
-function renderActivityRow(a, columns, tier, owner) {
-  const nameCell = `
-    <td class="text-cell">
-      <div class="edit"
-           contenteditable="true"
-           spellcheck="false"
-           data-activity-id="${a.id}"
-           data-field="name"
-           data-placeholder="Activity name">${escapeHtml(a.name)}</div>
-      ${rowFlagsHtml(a, columns)}
-    </td>`;
-  const textCell = (field, ph) => `
-    <td class="text-cell">
-      <div class="edit"
-           contenteditable="true"
-           spellcheck="false"
-           data-activity-id="${a.id}"
-           data-field="${field}"
-           data-placeholder="${escapeHtml(ph)}">${escapeHtml(a[field])}</div>
-    </td>`;
-  const hinge = a.child ? ownerColumnKey(a.child.owner) : null;
-  const actorCells = columns.map(c => `
-    <td class="actor-cell${c.key === hinge ? ' hinge' : ''}"
-        data-activity-id="${a.id}"
-        data-actor="${c.key}">${renderActorCellInner(a, c.key)}</td>
-  `).join('');
-  const canDrill = tier < 3 && columns.length > 0;
-  const hasChild = !!a.child;
-  const chevron = canDrill
-    ? `<button class="row-chevron${hasChild ? ' has-child' : ''}" data-drill-activity="${a.id}" title="${hasChild ? 'Open breakdown' : 'Break down into a sub-matrix'}">▸</button>`
-    : '';
-  return `
-    <tr data-activity-id="${a.id}"${hasChild ? ' class="drilled"' : ''}>
-      <td class="row-toggle">${chevron}</td>
-      ${nameCell}
-      ${textCell('definition', 'Definition')}
-      ${actorCells}
-      ${textCell('outputs', 'Outputs / artifacts')}
-      ${textCell('comments', 'Comments')}
-      <td class="row-del"><button data-activity-del="${a.id}" title="Delete row">×</button></td>
-    </tr>
-  `;
-}
-
-// ========== Tree (single pane of glass) ==========
-function countTreeActivities(activities) {
-  let n = 0;
-  activities.forEach(a => { n++; if (a.child) n += countTreeActivities(a.child.activities); });
-  return n;
-}
-function walkTree(activities, ws, tier, owner, depth, path, rows) {
-  const cols = matrixColumns(tier, owner);
-  const collapsed = state.treeCollapsed || {};
-  const matrixDir = tier === 0 ? null : (owner && owner.actor);
-  activities.forEach(a => {
-    const isCol = !!collapsed[a.id];
-    const hasAny = cols.some(c => normalizeRaci(a.raci[c.key] || ''));
-    const canToggle = cols.length > 0 || !!a.child;
-    const caret = canToggle ? (isCol ? '▸' : '▾') : '·';
-    const actDirClass = matrixDir ? ` dir-${matrixDir}` : '';
-    // --- activity heading ---
-    rows.push(`
-      <div class="tree-row tree-act tt-${tier}${actDirClass}" style="padding-left:${depth * 22}px" data-activity-id="${a.id}">
-        <span class="tree-caret${canToggle ? ' has-child' : ''}"${canToggle ? ` data-tree-toggle="${a.id}"` : ''}>${caret}</span>
-        <span class="tree-name tree-open" data-tree-open="${ws.id}|${path.join(',')}" data-open-activity="${a.id}" title="Open in Matrix">${escapeHtml(a.name || '(untitled activity)')}</span>
-        ${hasAny ? '' : '<span class="tree-none">no assignments</span>'}
-      </div>`);
-    if (isCol) return;
-    // --- org-unit rows under the activity (every unit; uninvolved ones are greyed/hatched) ---
-    const hingeKey = a.child ? ownerColumnKey(a.child.owner) : null;
-    cols.forEach(c => {
-      const letters = normalizeRaci(a.raci[c.key] || '');
-      const empty = !letters;
-      const isOwner = a.child && c.key === hingeKey;
-      const unitDir = tier === 0 ? c.key : matrixDir;
-      const cls = empty ? ' tree-unit-empty' : (unitDir ? ` dir-${unitDir}` : '');
-      rows.push(`
-        <div class="tree-row tree-unit tu-${tier}${cls}${isOwner ? ' is-owner' : ''}" style="padding-left:${(depth + 1) * 22}px">
-          <span class="tree-caret">·</span>
-          <span class="tree-unit-pill tier-${tier}">${TIER_LABELS[tier]}</span>
-          <span class="tree-unit-name">${escapeHtml(c.label)}</span>
-          <span class="tree-unit-chips">${empty
-            ? '<span class="tree-unit-none">no responsibility</span>'
-            : letters.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>
-          ${isOwner ? `<span class="tree-unit-owner">owns ${LEVEL_LABELS[a.child.owner.tier]} breakdown ↴</span>` : ''}
-        </div>`);
-    });
-    // then the owner's breakdown, nested one level deeper (recurses the same pattern)
-    if (a.child) {
-      walkTree(a.child.activities, ws, a.child.owner.tier, a.child.owner, depth + 2, [...path, a.id], rows);
-    }
-  });
-}
-function renderTree() {
-  const main = document.getElementById('ws-main');
-  const collapsed = state.treeCollapsed || {};
-  const rows = [];
-  state.workstreams.forEach(ws => {
-    const wsCollapsed = !!collapsed[ws.id];
-    const total = countTreeActivities(ws.activities);
-    rows.push(`
-      <div class="tree-row tree-ws" data-tree-toggle="${ws.id}">
-        <span class="tree-caret has-child">${wsCollapsed ? '▸' : '▾'}</span>
-        <span class="tree-name">${escapeHtml(ws.name || 'Untitled')}</span>
-        <span class="tree-meta">${total} activit${total === 1 ? 'y' : 'ies'}</span>
-      </div>`);
-    if (!wsCollapsed) walkTree(ws.activities, ws, 0, null, 1, [], rows);
-  });
-  main.innerHTML = `
-    <div class="lens-header">
-      <h2>Tree</h2>
-      <span class="lens-stats">Every activity across all tiers, in one pane. Caret folds a branch; click a name to open it in the Matrix. The owner tag shows the accountability cascade.</span>
-      <span class="hm-scale-strip">
-        <button id="tree-expand-all">Expand all</button>
-        <button id="tree-collapse-all">Collapse all</button>
-      </span>
-    </div>
-    <div class="tree-body">${rows.join('') || '<div class="lens-empty">No workstreams.</div>'}</div>
-  `;
-}
-function toggleTreeNode(id) {
-  state.treeCollapsed = state.treeCollapsed || {};
-  if (state.treeCollapsed[id]) delete state.treeCollapsed[id];
-  else state.treeCollapsed[id] = true;
-  saveState();
-  renderTree();
-}
-function collapseAllTree() {
-  const c = {};
-  state.workstreams.forEach(ws => {
-    c[ws.id] = true;
-    (function rec(acts) { acts.forEach(a => { if (a.child) { c[a.id] = true; rec(a.child.activities); } }); })(ws.activities);
-  });
-  state.treeCollapsed = c;
-}
-
-// ========== Accountability Map ==========
-function renderAccountabilityMap() {
-  const main = document.getElementById('ws-main');
-  const all = allActivities();
-  const gaps = all.filter(({activity}) => accountabilityFor(activity).length === 0).length;
-  const conflicts = all.filter(({activity}) => accountabilityFor(activity).length > 1).length;
-  main.innerHTML = `
-    <div class="lens-header">
-      <h2>Accountability Map</h2>
-      <span class="lens-stats">${all.length} activit${all.length === 1 ? 'y' : 'ies'} · <span class="health-stat red">${gaps} gaps</span> · <span class="health-stat amber">${conflicts} conflicts</span> · Showing only <span class="raci-chip A">A</span> assignments.</span>
-    </div>
-    <div class="lens-body">
-      <table class="amap-table">
-        <thead>
-          <tr>
-            <th class="amap-col-ws">Workstream</th>
-            <th class="amap-col-name">Activity</th>
-            ${ACTORS.map(k => `<th class="amap-actor">${escapeHtml(ACTOR_LABELS[k])}</th>`).join('')}
-            <th class="amap-flag"></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${all.map(({ws, activity}) => renderAmapRow(ws, activity)).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function renderAmapRow(ws, activity) {
-  const A = accountabilityFor(activity);
-  const tone = A.length === 0 ? 'gap' : (A.length > 1 ? 'conflict' : '');
-  const flag = A.length === 0 ? '<span class="amap-flag-dot red" title="No Accountable"></span>'
-            : A.length > 1 ? '<span class="amap-flag-dot amber" title="Multiple Accountable"></span>'
-            : '';
-  return `
-    <tr class="${tone}" data-jump-activity="${activity.id}">
-      <td class="amap-ws">${escapeHtml(ws.name || 'Untitled')}</td>
-      <td class="amap-name">${escapeHtml(activity.name || '(untitled)')}</td>
-      ${ACTORS.map(k => `<td class="amap-cell">${rolesForActor(activity, k).includes('A') ? '<span class="raci-chip A">A</span>' : ''}</td>`).join('')}
-      <td class="amap-flag">${flag}</td>
-    </tr>
-  `;
-}
-
-// ========== Workload Heatmap ==========
-function renderHeatmap() {
-  const main = document.getElementById('ws-main');
-  const wss = state.workstreams;
-  // grid[wsIdx][actorIdx] = { score, A, R, C, I }
-  const grid = wss.map(ws => ACTORS.map(actor => {
-    let A=0, R=0, C=0, I=0, score=0;
-    ws.activities.forEach(a => {
-      const letters = rolesForActor(a, actor);
-      if (letters.includes('A')) { A++; score += 4; }
-      if (letters.includes('R')) { R++; score += 3; }
-      if (letters.includes('C')) { C++; score += 2; }
-      if (letters.includes('I')) { I++; score += 1; }
-    });
-    return { score, A, R, C, I };
-  }));
-  let maxScore = 0;
-  grid.forEach(row => row.forEach(c => { if (c.score > maxScore) maxScore = c.score; }));
-  const colTotals = ACTORS.map((_, j) => grid.reduce((sum, row) => sum + row[j].score, 0));
-  const rowTotals = grid.map(row => row.reduce((sum, c) => sum + c.score, 0));
-  const grandTotal = colTotals.reduce((a, b) => a + b, 0);
-  function heatColor(score) {
-    if (maxScore === 0 || score === 0) return 'var(--bg-cell)';
-    const t = score / maxScore;
-    // hsl: from bg-cell to accent (greenish #51cf66 ~ hsl(132, 56%, 56%))
-    const hue = 132;
-    const sat = Math.round(20 + t * 50);  // 20 -> 70
-    const light = Math.round(14 + t * 30); // 14 -> 44
-    return `hsl(${hue}, ${sat}%, ${light}%)`;
+  if (tier === 3) { // Task → inherited Division + Branch (read-only)
+    const divLab = orgLabel(inherited && inherited.division);
+    const brLab = orgLabel(inherited && inherited.branch);
+    if (!divLab && !brLab) return '';
+    return `<span class="org-row">${divLab ? badge('inherited', '🏢', divLab.short, `Inherited Division — ${divLab.full}`) : ''}${brLab ? badge('inherited', '🌿', brLab.short, `Inherited Branch — ${brLab.full}`) : ''}</span>`;
   }
-  const cellText = c => c.score === 0 ? '<span class="hm-zero">·</span>' : c.score;
-  const cellTip = c => `A:${c.A}  R:${c.R}  C:${c.C}  I:${c.I}  → ${c.score}`;
-  main.innerHTML = `
-    <div class="lens-header">
-      <h2>Workload Heatmap</h2>
-      <span class="lens-stats">Weighted score per (workstream × directorate). A=4 · R=3 · C=2 · I=1. Max cell: ${maxScore}.</span>
-      <span class="hm-scale-strip">
-        <span class="hm-scale-label">low</span>
-        <span class="hm-scale-grad"></span>
-        <span class="hm-scale-label">high</span>
-      </span>
-    </div>
-    <div class="lens-body lens-centered heatmap-body">
-      <table class="heatmap-table">
-        <thead>
-          <tr>
-            <th class="hm-corner">Workstream \\ Directorate</th>
-            ${ACTORS.map(k => `<th class="hm-col">${escapeHtml(ACTOR_LABELS[k])}</th>`).join('')}
-            <th class="hm-total-col">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${wss.map((ws, i) => `
-            <tr>
-              <th class="hm-row-label">${escapeHtml(ws.name || 'Untitled')}</th>
-              ${grid[i].map(c => `<td class="heatmap-cell" style="background: ${heatColor(c.score)}" title="${cellTip(c)}">${cellText(c)}</td>`).join('')}
-              <td class="hm-total">${rowTotals[i] || '·'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th class="hm-row-label">Total</th>
-            ${colTotals.map(s => `<td class="hm-total">${s || '·'}</td>`).join('')}
-            <td class="hm-total hm-grand">${grandTotal}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  `;
+  return '';
 }
-
-// ========== Governance Health ==========
-function renderHealth() {
-  const main = document.getElementById('ws-main');
-  const all = allActivities();
-  const healthRows = all.map(r => ({ ...r, health: activityHealth(r.activity) }));
-  const noA = healthRows.filter(r => r.health.noA);
-  const multiA = healthRows.filter(r => r.health.multipleA);
-  const noR = healthRows.filter(r => r.health.noR);
-  const sections = [
-    { id: 'noA', label: 'No Accountable', desc: 'Activity has nobody marked A — accountability gap.', tone: 'red', rows: noA },
-    { id: 'multiA', label: 'Multiple Accountable', desc: 'More than one directorate is A — RACI says only one should be.', tone: 'amber', rows: multiA },
-    { id: 'noR', label: 'No Responsible', desc: 'Nobody is doing the work.', tone: 'amber', rows: noR }
-  ];
-  main.innerHTML = `
-    <div class="lens-header">
-      <h2>Governance Health</h2>
-      <span class="lens-stats">${all.length} activit${all.length === 1 ? 'y' : 'ies'} reviewed · <span class="health-stat red">${noA.length} gaps</span> · <span class="health-stat amber">${multiA.length} conflicts</span> · <span class="health-stat amber">${noR.length} missing R</span></span>
-    </div>
-    <div class="lens-body lens-centered health-body">
-      ${sections.map(renderHealthSection).join('')}
-    </div>
-  `;
+// Draw arrows from each open row down to the next tier's chart heading.
+function drawConnectors() {
+  const svg = document.getElementById('cascade-svg');
+  const wrap = document.getElementById('cascade');
+  if (!svg || !wrap) return;
+  const wr = wrap.getBoundingClientRect();
+  const w = wrap.scrollWidth, h = wrap.scrollHeight;
+  svg.setAttribute('width', w); svg.setAttribute('height', h);
+  svg.style.width = w + 'px'; svg.style.height = h + 'px';
+  const blocks = Array.from(wrap.querySelectorAll('.chart-block'));
+  let s = `<defs><marker id="cc-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L6,3 L0,6 Z" fill="${ACCENT}"/></marker></defs>`;
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const openRow = blocks[i].querySelector('.chart-row.open');
+    const head = blocks[i + 1].querySelector('.chart-head');
+    if (!openRow || !head) continue;
+    const r = openRow.getBoundingClientRect();
+    const hd = head.getBoundingClientRect();
+    const x1 = r.left - wr.left + 15;
+    const y1 = r.bottom - wr.top;
+    const x2 = hd.left - wr.left - 7;
+    const y2 = hd.top - wr.top + hd.height / 2;
+    s += `<path d="M ${x1} ${y1} V ${y2} H ${x2}" fill="none" stroke="${ACCENT}" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#cc-arrow)" opacity="0.9"/>`;
+  }
+  svg.innerHTML = s;
 }
-
-function renderHealthSection(section) {
-  const rowsHtml = section.rows.length
-    ? section.rows.map(({ws, activity, health}) => renderHealthRow(section, ws, activity, health)).join('')
-    : `<div class="lens-empty">(none — 🎉)</div>`;
-  return `
-    <section class="lens-section health-section ${section.tone}">
-      <header class="lens-section-header">
-        <span class="health-dot ${section.tone}"></span>
-        <h3>${section.label}</h3>
-        <span class="lens-section-desc">${section.desc}</span>
-        <span class="lens-section-count">${section.rows.length}</span>
-      </header>
-      <div class="lens-section-body">${rowsHtml}</div>
-    </section>
-  `;
-}
-
-function renderHealthRow(section, ws, activity, health) {
-  const involved = ACTORS.filter(k => rolesForActor(activity, k).length > 0);
-  return `
-    <div class="lens-row health-row" data-jump-activity="${activity.id}">
-      <div class="lens-row-head">
-        <span class="lens-ws">${escapeHtml(ws.name || 'Untitled')}</span>
-        <span class="lens-sep">/</span>
-        <span class="lens-name">${escapeHtml(activity.name || '(untitled activity)')}</span>
-        <span class="health-flag ${section.tone}">${section.label}</span>
-      </div>
-      ${activity.definition ? `<div class="lens-def">${escapeHtml(activity.definition)}</div>` : ''}
-      <div class="health-involved">
-        ${involved.length
-          ? involved.map(k => `<span class="health-actor"><span class="health-actor-label">${escapeHtml(ACTOR_LABELS[k])}</span> ${rolesForActor(activity, k).split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>`).join('')
-          : '<span class="lens-empty">no actors assigned</span>'}
-      </div>
-    </div>
-  `;
-}
-
-// ========== Directorate Lens ==========
-function lensUnitOptions(units, selectedKey) {
-  const order = [];
-  const byGroup = {};
-  units.forEach(u => { const g = u.group || ''; if (!(g in byGroup)) { byGroup[g] = []; order.push(g); } byGroup[g].push(u); });
-  return order.map(g => {
-    const opts = byGroup[g].map(u =>
-      `<option value="${u.key}"${u.key === selectedKey ? ' selected' : ''}>${escapeHtml(u.label)}</option>`).join('');
-    return g ? `<optgroup label="${escapeHtml(g)}">${opts}</optgroup>` : opts;
-  }).join('');
-}
-const LENS_SECTIONS = [
-  { role: 'R', label: 'Responsible', desc: 'Does the work' },
-  { role: 'A', label: 'Accountable', desc: 'Owns the outcome' },
-  { role: 'C', label: 'Consulted',   desc: 'Two-way input' },
-  { role: 'I', label: 'Informed',    desc: 'Kept in the loop' }
-];
-function renderDirectorateLens() {
-  const main = document.getElementById('ws-main');
-  const level = state.lensLevel || 0;
-  const units = orgUnitsAtLevel(level);
-  let unit = units.find(u => u.key === state.lensUnit);
-  if (!unit) { unit = units[0]; state.lensUnit = unit ? unit.key : null; }
-  const unitKey = state.lensUnit;
-  const deep = allActivitiesDeep().filter(r => r.tier === level);
-  const involved = unitKey ? deep.filter(r => normalizeRaci(r.activity.raci[unitKey] || '')) : [];
-  const involvedWsIds = new Set(involved.map(r => r.ws.id));
-  const counts = { R: 0, A: 0, C: 0, I: 0 };
-  involved.forEach(r => { const L = normalizeRaci(r.activity.raci[unitKey] || ''); ROLES.forEach(x => { if (L.includes(x)) counts[x]++; }); });
-  const groupLine = unit && unit.group ? `<span class="lens-unit-group">${escapeHtml(unit.group)}</span>` : '';
-  main.innerHTML = `
-    <div class="lens-header">
-      <h2>Org Lens</h2>
-      <select id="lens-level" class="lens-select">
-        ${LEVEL_LABELS.map((lab, i) => `<option value="${i}"${i === level ? ' selected' : ''}>${lab}</option>`).join('')}
-      </select>
-      <select id="lens-unit" class="lens-select">
-        ${unitKey ? lensUnitOptions(units, unitKey) : '<option>(none)</option>'}
-      </select>
-    </div>
-    <div class="lens-subheader">
-      <h1 class="lens-actor-name">${escapeHtml(unit ? unit.label : '(no unit)')}</h1>
-      ${groupLine}
-      <span class="lens-stats">${LEVEL_LABELS[level]} lens · ${involved.length} activit${involved.length === 1 ? 'y' : 'ies'} · ${involvedWsIds.size} workstream${involvedWsIds.size === 1 ? '' : 's'} · <span class="raci-chip R">R</span> ${counts.R} <span class="raci-chip A">A</span> ${counts.A} <span class="raci-chip C">C</span> ${counts.C} <span class="raci-chip I">I</span> ${counts.I}</span>
-    </div>
-    <div class="lens-body lens-cols">
-      ${unitKey
-        ? LENS_SECTIONS.map(s => renderLensSection(deep, unitKey, s)).join('')
-        : `<div class="lens-empty">No ${LEVEL_LABELS[level].toLowerCase()}s in the roster yet — add them in the Roster view.</div>`}
-    </div>
-  `;
-}
-
-function renderLensSection(deep, unitKey, section) {
-  const rows = deep.filter(r => normalizeRaci(r.activity.raci[unitKey] || '').includes(section.role));
-  const rowsHtml = rows.length
-    ? rows.map(r => renderLensRow(r, unitKey, section.role)).join('')
-    : `<div class="lens-empty">(none)</div>`;
-  return `
-    <section class="lens-section">
-      <header class="lens-section-header">
-        <span class="raci-chip ${section.role}">${section.role}</span>
-        <h3>${section.label}</h3>
-        <span class="lens-section-desc">${section.desc}</span>
-        <span class="lens-section-count">${rows.length}</span>
-      </header>
-      <div class="lens-section-body">${rowsHtml}</div>
-    </section>
-  `;
-}
-
-function renderLensRow(r, unitKey, role) {
-  const a = r.activity;
-  const notesObj = (a.notes && a.notes[unitKey]) || {};
-  const note = (typeof notesObj === 'string' ? notesObj : notesObj[role]) || '';
-  const allLetters = normalizeRaci(a.raci[unitKey] || '');
-  const otherLetters = allLetters.replace(role, '');
-  return `
-    <div class="lens-row tree-open" data-tree-open="${r.ws.id}|${r.path.join(',')}" data-open-activity="${a.id}" title="Open in Matrix">
-      <div class="lens-row-head">
-        <span class="lens-ws">${escapeHtml(r.trail.join(' › '))}</span>
-        <span class="lens-sep">/</span>
-        <span class="lens-name">${escapeHtml(a.name || '(untitled activity)')}</span>
-        ${otherLetters ? `<span class="lens-other-roles">also ${otherLetters.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>` : ''}
-      </div>
-      ${a.definition ? `<div class="lens-def">${escapeHtml(a.definition)}</div>` : ''}
-      ${note ? `<div class="lens-note">${escapeHtml(note)}</div>` : ''}
-      ${a.outputs || a.comments ? `
-        <div class="lens-meta">
-          ${a.outputs ? `<div><span class="lens-meta-label">Outputs:</span> ${escapeHtml(a.outputs)}</div>` : ''}
-          ${a.comments ? `<div><span class="lens-meta-label">Comments:</span> ${escapeHtml(a.comments)}</div>` : ''}
-        </div>
-      ` : ''}
-    </div>
-  `;
-}
+window.addEventListener('resize', () => { if (state.viewMode === 'chart') drawConnectors(); });
 
 function renderRoster() {
   const main = document.getElementById('ws-main');
@@ -2514,125 +2159,6 @@ function renderChipsHtml(letters) {
   const norm = normalizeRaci(letters);
   if (!norm) return `<div class="cell-chips empty">·</div>`;
   return `<div class="cell-chips">${norm.split('').map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</div>`;
-}
-function renderActorCellInner(a, colKey) {
-  return renderChipsHtml(a.raci[colKey] || '');
-}
-
-// ---------- mutations ----------
-function setTitle(t) { state.title = t; saveState(); }
-function addWorkstream() {
-  const ws = makeWorkstream(`Workstream ${state.workstreams.length + 1}`);
-  state.workstreams.push(ws);
-  state.activeWorkstreamId = ws.id;
-  saveState();
-  render();
-}
-function deleteWorkstream(id) {
-  const ws = state.workstreams.find(w => w.id === id);
-  if (!ws) return;
-  if (!confirm(`Delete workstream "${ws.name || 'Untitled'}" and its ${ws.activities.length} activit${ws.activities.length === 1 ? 'y' : 'ies'}?`)) return;
-  state.workstreams = state.workstreams.filter(w => w.id !== id);
-  if (state.workstreams.length === 0) {
-    const fresh = makeWorkstream('Workstream 1');
-    state.workstreams.push(fresh);
-    state.activeWorkstreamId = fresh.id;
-  } else if (state.activeWorkstreamId === id) {
-    state.activeWorkstreamId = state.workstreams[0].id;
-  }
-  saveState();
-  render();
-}
-function renameWorkstream(id, name) {
-  const ws = state.workstreams.find(w => w.id === id);
-  if (!ws) return;
-  ws.name = name;
-  saveState();
-  // partial update so we don't blow away focus
-  document.querySelectorAll(`[data-ws-id="${id}"][data-field="name"]`).forEach(el => {
-    if (document.activeElement !== el) el.textContent = name;
-  });
-  const meta = document.querySelector('.ws-meta');
-  if (meta && ws.id === state.activeWorkstreamId) {
-    // also clear empty placeholder state on title
-    const title = document.querySelector('.ws-title');
-    if (title) title.classList.toggle('empty', !name);
-  }
-}
-function setActiveWorkstream(id) {
-  if (state.activeWorkstreamId === id) return;
-  state.activeWorkstreamId = id;
-  state.nav = { path: [] };
-  saveState();
-  render();
-}
-function addActivity() {
-  const node = resolveCurrentMatrix();
-  node.activities.push(makeActivity(node.columns.map(c => c.key)));
-  saveState();
-  renderMain();
-}
-function deleteActivity(id) {
-  const node = resolveCurrentMatrix();
-  const idx = node.activities.findIndex(a => a.id === id);
-  if (idx < 0) return;
-  node.activities.splice(idx, 1);
-  saveState();
-  renderMain();
-}
-function drillInto(activityId) {
-  const node = resolveCurrentMatrix();
-  if (node.tier >= 3) return; // team tier is the deepest "for now"
-  const a = node.activities.find(x => x.id === activityId);
-  if (!a) return;
-  if (!a.child) {
-    const child = makeChildMatrix(node, a);
-    if (!child) return;
-    a.child = child;
-  }
-  state.nav.path = [...node.path, activityId];
-  saveState();
-  render();
-}
-function navigateToDepth(depth) {
-  state.nav = state.nav || { path: [] };
-  state.nav.path = (state.nav.path || []).slice(0, depth);
-  saveState();
-  render();
-}
-function setActivityField(id, field, value) {
-  const f = findActivity(id);
-  if (!f) return;
-  f.activity[field] = value;
-  saveState();
-}
-function replaceChipsInCell(activityId, actor, letters) {
-  const cell = document.querySelector(`td.actor-cell[data-activity-id="${activityId}"][data-actor="${actor}"]`);
-  if (!cell) return;
-  const oldChips = cell.querySelector('.cell-chips');
-  if (!oldChips) return;
-  const tmp = document.createElement('div');
-  tmp.innerHTML = renderChipsHtml(letters);
-  oldChips.replaceWith(tmp.firstElementChild);
-}
-function toggleRaciLetter(activityId, actor, letter) {
-  const f = findActivity(activityId);
-  if (!f) return;
-  const cur = normalizeRaci(f.activity.raci[actor] || '');
-  const has = cur.includes(letter);
-  const next = normalizeRaci(has ? cur.replace(letter, '') : cur + letter);
-  f.activity.raci[actor] = next;
-  saveState();
-  replaceChipsInCell(activityId, actor, next);
-  refreshPopoverButtons(activityId, actor, next);
-}
-function clearRaciCell(activityId, actor) {
-  const f = findActivity(activityId);
-  if (!f) return;
-  f.activity.raci[actor] = '';
-  saveState();
-  replaceChipsInCell(activityId, actor, '');
-  refreshPopoverButtons(activityId, actor, '');
 }
 
 // ---------- roster mutations ----------
@@ -2802,141 +2328,150 @@ function updateDirectorateStats(actor) {
 
 // ---------- RACI popover ----------
 let openPopover = null;
-function closePopover() {
-  if (openPopover) { openPopover.remove(); openPopover = null; }
-}
-function refreshPopoverButtons(activityId, actor, letters) {
-  if (!openPopover) return;
-  if (openPopover.dataset.activityId !== activityId || openPopover.dataset.actor !== actor) return;
+function closePopover() { if (openPopover) { openPopover.remove(); openPopover = null; } }
+function refreshPopoverButtons(id, col, letters) {
+  if (!openPopover || openPopover.dataset.id !== id || openPopover.dataset.col !== col) return;
   const set = new Set(letters.split(''));
-  openPopover.querySelectorAll('button[data-letter]').forEach(b => {
-    b.classList.toggle('on', set.has(b.dataset.letter));
-  });
+  openPopover.querySelectorAll('button[data-letter]').forEach(b => b.classList.toggle('on', set.has(b.dataset.letter)));
 }
-function openRaciPopover(activityId, actor, anchorEl) {
+// Re-render the whole cascade after a RACI edit so inherited-A chips downstream stay in sync.
+function toggleRaciLetter(id, col, letter) {
+  const f = findNode(id); if (!f) return;
+  const cur = normalizeRaci(f.node.raci[col] || '');
+  const next = normalizeRaci(cur.includes(letter) ? cur.replace(letter, '') : cur + letter);
+  f.node.raci[col] = next; saveState();
+  renderChart(); refreshPopoverButtons(id, col, next);
+}
+function clearRaciCell(id, col) {
+  const f = findNode(id); if (!f) return;
+  f.node.raci[col] = ''; saveState();
+  renderChart(); refreshPopoverButtons(id, col, '');
+}
+function openRaciPopover(id, col, anchorEl) {
   closePopover();
-  const f = findActivity(activityId);
-  if (!f) return;
-  const letters = normalizeRaci(f.activity.raci[actor] || '');
+  const f = findNode(id); if (!f) return;
+  const letters = normalizeRaci(f.node.raci[col] || '');
   const set = new Set(letters.split(''));
   const pop = document.createElement('div');
   pop.className = 'raci-popover';
-  pop.dataset.activityId = activityId;
-  pop.dataset.actor = actor;
-  pop.innerHTML = ROLES.map(r =>
-    `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}">${r}</button>`
-  ).join('') + `<button class="clear" data-clear="1" title="Clear">✕</button>`;
+  pop.dataset.id = id; pop.dataset.col = col;
+  pop.innerHTML = ROLES.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}">${r}</button>`).join('')
+    + `<button class="clear" data-clear="1" title="Clear">✕</button>`;
   document.body.appendChild(pop);
   const rect = anchorEl.getBoundingClientRect();
   const popRect = pop.getBoundingClientRect();
   let top = rect.bottom + 4 + window.scrollY;
-  let left = rect.left + (rect.width / 2) - (popRect.width / 2) + window.scrollX;
+  let left = rect.left + rect.width / 2 - popRect.width / 2 + window.scrollX;
   left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
-  if (top + popRect.height > window.scrollY + window.innerHeight - 8) {
-    top = rect.top - popRect.height - 4 + window.scrollY;
-  }
-  pop.style.top = top + 'px';
-  pop.style.left = left + 'px';
+  if (top + popRect.height > window.scrollY + window.innerHeight - 8) top = rect.top - popRect.height - 4 + window.scrollY;
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
   openPopover = pop;
   pop.addEventListener('click', e => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
+    const btn = e.target.closest('button'); if (!btn) return;
     e.stopPropagation();
-    if (btn.dataset.clear) { clearRaciCell(activityId, actor); return; }
-    toggleRaciLetter(activityId, actor, btn.dataset.letter);
+    if (btn.dataset.clear) { clearRaciCell(id, col); return; }
+    toggleRaciLetter(id, col, btn.dataset.letter);
+  });
+}
+
+// ---------- roster-assignment (org) popover ----------
+function setNodeOrg(id, org) { const f = findNode(id); if (!f) return; if (org) f.node.org = org; else delete f.node.org; saveState(); renderChart(); }
+// Build the option list for the picker. kind 'division' lists all roster divisions;
+// 'branch' lists all roster branches, grouped by directorate › division.
+function orgOptions(kind) {
+  const groups = [];
+  ACTORS.forEach(actor => {
+    const d = state.directorates[actor];
+    (d ? d.divisions : []).forEach(div => {
+      if (kind === 'division') {
+        groups.push({ group: ACTOR_LABELS[actor], items: groups.length, ref: { actor, divisionId: div.id }, label: div.name || 'Untitled division', g: ACTOR_LABELS[actor] });
+      } else {
+        (div.branches || []).forEach(br => {
+          groups.push({ ref: { actor, divisionId: div.id, branchId: br.id }, label: br.name || 'Untitled branch', g: `${ACTOR_LABELS[actor]} › ${div.name || '—'}` });
+        });
+      }
+    });
+  });
+  return groups;
+}
+function openOrgPopover(id, kind, anchorEl) {
+  closePopover();
+  const f = findNode(id); if (!f) return;
+  const cur = f.node.org || {};
+  const opts = orgOptions(kind);
+  const pop = document.createElement('div');
+  pop.className = 'org-popover';
+  pop.dataset.id = id;
+  let html = '';
+  if (!opts.length) {
+    html = `<div class="op-empty">No ${kind === 'division' ? 'divisions' : 'branches'} in the Roster yet. Add them in the Roster tab.</div>`;
+  } else {
+    let lastG = null;
+    opts.forEach((o, i) => {
+      if (o.g !== lastG) { html += `<div class="op-group">${escapeHtml(o.g)}</div>`; lastG = o.g; }
+      const on = kind === 'division'
+        ? (cur.divisionId === o.ref.divisionId && !cur.branchId)
+        : (cur.branchId === o.ref.branchId);
+      html += `<button class="op-item${on ? ' on' : ''}" data-pick="${i}">${escapeHtml(o.label)}</button>`;
+    });
+  }
+  html += `<button class="op-item op-clear" data-pick="clear">✕ Clear assignment</button>`;
+  pop.innerHTML = html;
+  document.body.appendChild(pop);
+  const rect = anchorEl.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  let top = rect.bottom + 4 + window.scrollY;
+  let left = rect.left + window.scrollX;
+  left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+  if (top + popRect.height > window.scrollY + window.innerHeight - 8) top = Math.max(8 + window.scrollY, rect.top - popRect.height - 4 + window.scrollY);
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
+  openPopover = pop;
+  pop.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-pick]'); if (!btn) return;
+    e.stopPropagation();
+    const pick = btn.dataset.pick;
+    closePopover();
+    if (pick === 'clear') { setNodeOrg(id, null); return; }
+    const o = opts[parseInt(pick, 10)];
+    if (o) setNodeOrg(id, o.ref);
   });
 }
 
 // ---------- event wiring ----------
-document.addEventListener('change', e => {
-  if (e.target.id === 'lens-level') {
-    state.lensLevel = parseInt(e.target.value, 10) || 0;
-    const units = orgUnitsAtLevel(state.lensLevel);
-    state.lensUnit = units[0] ? units[0].key : null;
-    saveState();
-    renderDirectorateLens();
-  } else if (e.target.id === 'lens-unit') {
-    state.lensUnit = e.target.value;
-    saveState();
-    renderDirectorateLens();
-  }
-});
-
-document.addEventListener('dblclick', e => {
-  const name = e.target.closest('#ws-list .ws-name');
-  if (!name) return;
-  name.contentEditable = 'true';
-  name.focus();
-  const range = document.createRange();
-  range.selectNodeContents(name);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-});
-
 document.addEventListener('click', e => {
-  const viewTab = e.target.closest('#view-tabs button');
-  if (viewTab) { setViewMode(viewTab.dataset.view); return; }
-
-  if (e.target.closest('#btn-toggle-sidebar')) {
-    state.sidebarCollapsed = !state.sidebarCollapsed;
-    saveState();
-    document.body.classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
-    const b = document.getElementById('btn-toggle-sidebar');
-    if (b) b.title = state.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
-    return;
-  }
+  const tab = e.target.closest('#view-tabs button');
+  if (tab) { setViewMode(tab.dataset.view); return; }
   if (e.target.closest('#btn-legend')) {
-    state.showLegend = !state.showLegend;
-    saveState();
-    document.body.classList.toggle('show-legend', state.showLegend);
-    return;
+    state.showLegend = !state.showLegend; saveState();
+    document.body.classList.toggle('show-legend', state.showLegend); return;
   }
-
-  // ---- Tree / Lens navigation ----
-  if (e.target.closest('#tree-expand-all')) { state.treeCollapsed = {}; saveState(); renderTree(); return; }
-  if (e.target.closest('#tree-collapse-all')) { collapseAllTree(); saveState(); renderTree(); return; }
-  const treeToggle = e.target.closest('[data-tree-toggle]');
-  if (treeToggle) { toggleTreeNode(treeToggle.dataset.treeToggle); return; }
-  const treeOpen = e.target.closest('[data-tree-open]');
-  if (treeOpen) {
-    const [wsId, pathCsv] = treeOpen.dataset.treeOpen.split('|');
-    const actId = treeOpen.dataset.openActivity;
-    state.activeWorkstreamId = wsId;
-    state.nav = { path: pathCsv ? pathCsv.split(',') : [] };
-    state.viewMode = 'matrix';
-    saveState();
-    render();
-    setTimeout(() => {
-      const row = document.querySelector(`tr[data-activity-id="${actId}"]`);
-      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 60);
-    return;
-  }
-
-  const jump = e.target.closest('[data-jump-activity]');
-  if (jump) {
-    const id = jump.dataset.jumpActivity;
-    const f = findActivity(id);
-    if (f) {
-      state.activeWorkstreamId = f.ws.id;
-      state.viewMode = 'matrix';
-      state.nav = { path: [] };
-      saveState();
-      render();
-      setTimeout(() => {
-        const row = document.querySelector(`tr[data-activity-id="${id}"]`);
-        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 50);
+  if (e.target.closest('#btn-export')) { exportJSON(); return; }
+  if (e.target.closest('#btn-export-xlsx')) { exportXLSX(); return; }
+  if (e.target.closest('#btn-import')) { document.getElementById('file-import').click(); return; }
+  if (e.target.closest('#btn-reset')) {
+    if (confirm('Reset everything to the sample dataset? This replaces the chart AND the roster.')) {
+      state = defaultState();
+      applyActorLabels(); saveState(); render();
     }
     return;
   }
 
-  // ---- Roster mode handlers ----
+  // ---- Chart handlers ----
+  if (e.target.closest('[data-add-root]')) { addRootActivity(); return; }
+  const addChild = e.target.closest('[data-add-child]');
+  if (addChild) { addChildActivity(addChild.dataset.addChild); return; }
+  const delNode = e.target.closest('[data-del-node]');
+  if (delNode) { deleteNode(delNode.dataset.delNode); return; }
+  const drill = e.target.closest('[data-drill]');
+  if (drill) { drillToggle(drill.dataset.drill, parseInt(drill.dataset.tier, 10) || 0); return; }
+  const orgEdit = e.target.closest('[data-org-edit]');
+  if (orgEdit) { openOrgPopover(orgEdit.dataset.orgEdit, orgEdit.dataset.orgKind, orgEdit); return; }
+  const cell = e.target.closest('.chart-cell');
+  if (cell) { openRaciPopover(cell.dataset.id, cell.dataset.col, cell); return; }
+
+  // ---- Roster handlers ----
   const dirToggle = e.target.closest('[data-toggle-dir]');
-  if (dirToggle && !e.target.closest('button') && !e.target.closest('.dir-name-edit')) {
-    toggleDirectorate(dirToggle.dataset.toggleDir); return;
-  }
+  if (dirToggle && !e.target.closest('button') && !e.target.closest('.dir-name-edit')) { toggleDirectorate(dirToggle.dataset.toggleDir); return; }
   const addDiv = e.target.closest('[data-add-division]');
   if (addDiv) { addDivision(addDiv.dataset.addDivision); return; }
   const delDiv = e.target.closest('[data-del-division]');
@@ -2954,192 +2489,153 @@ document.addEventListener('click', e => {
   const delP = e.target.closest('[data-del-person]');
   if (delP) { const [a, d, b, t, p] = delP.dataset.delPerson.split('|'); deletePerson(a, d, b, t, p); return; }
   const addLead = e.target.closest('[data-add-lead]');
-  if (addLead) {
-    const [a, d, b, t, role] = addLead.dataset.addLead.split('|');
-    setLead(a, d || null, b || null, t || null, role); return;
-  }
+  if (addLead) { const [a, d, b, t, role] = addLead.dataset.addLead.split('|'); setLead(a, d || null, b || null, t || null, role); return; }
   const delLead = e.target.closest('[data-del-lead]');
-  if (delLead) {
-    const [a, d, b, t, role] = delLead.dataset.delLead.split('|');
-    removeLead(a, d || null, b || null, t || null, role); return;
-  }
+  if (delLead) { const [a, d, b, t, role] = delLead.dataset.delLead.split('|'); removeLead(a, d || null, b || null, t || null, role); return; }
 
-  // ---- Matrix mode handlers ----
-  const wsLi = e.target.closest('#ws-list li');
-  if (wsLi && !e.target.closest('.ws-del')) {
-    // If the user is mid-edit (already enabled via dblclick), don't re-select
-    const editing = e.target.closest('.ws-name[contenteditable="true"]');
-    if (editing) return;
-    setActiveWorkstream(wsLi.dataset.wsId);
-    return;
-  }
-  const wsDel = e.target.closest('[data-ws-del]');
-  if (wsDel) { deleteWorkstream(wsDel.dataset.wsDel); return; }
-  if (e.target.closest('#btn-add-ws') || e.target.closest('#btn-empty-add')) {
-    addWorkstream(); return;
-  }
-  if (e.target.closest('#btn-add-activity')) { addActivity(); return; }
-  if (e.target.closest('[data-goto-roster]')) { setViewMode('roster'); return; }
-  const drill = e.target.closest('[data-drill-activity]');
-  if (drill) { drillInto(drill.dataset.drillActivity); return; }
-  const crumb = e.target.closest('[data-crumb-depth]');
-  if (crumb) { navigateToDepth(parseInt(crumb.dataset.crumbDepth, 10) || 0); return; }
-  const actDel = e.target.closest('[data-activity-del]');
-  if (actDel) { deleteActivity(actDel.dataset.activityDel); return; }
-  const actorCell = e.target.closest('td.actor-cell');
-  if (actorCell) {
-    openRaciPopover(actorCell.dataset.activityId, actorCell.dataset.actor, actorCell);
-    return;
-  }
-  if (openPopover && !e.target.closest('.raci-popover')) closePopover();
+  if (openPopover && !e.target.closest('.raci-popover') && !e.target.closest('.org-popover')) closePopover();
 });
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && openPopover) { closePopover(); return; }
-  if (e.key === 'Enter' && !e.shiftKey) {
-    const el = e.target;
-    if (el.matches('[contenteditable="true"]')) {
-      e.preventDefault();
-      el.blur();
-    }
+  if (e.key === 'Enter' && !e.shiftKey && e.target.matches && e.target.matches('[contenteditable="true"]')) {
+    e.preventDefault(); e.target.blur();
   }
 });
 
-// blur handlers commit inline edits
 document.addEventListener('blur', e => {
   const el = e.target;
   if (!el.matches || !el.matches('[contenteditable="true"]')) return;
-  if (el.id === 'doc-title') {
-    setTitle(el.textContent.trim());
-    return;
-  }
-  if (el.dataset.wsId && el.dataset.field === 'name') {
-    renameWorkstream(el.dataset.wsId, el.textContent.trim());
-    if (el.classList.contains('ws-name')) el.contentEditable = 'false';
-    return;
-  }
-  if (el.dataset.activityId && el.dataset.field) {
-    setActivityField(el.dataset.activityId, el.dataset.field, el.textContent);
-    return;
-  }
-  if (el.dataset.field === 'dir-name' && el.dataset.actor) {
-    commitDirectorateName(el.dataset.actor, el.textContent.trim());
-    return;
-  }
+  if (el.id === 'doc-title') { setTitle(el.textContent.trim()); return; }
+  if (el.dataset.nodeId && el.dataset.field === 'name') { renameNode(el.dataset.nodeId, el.textContent.trim()); return; }
+  if (el.dataset.field === 'dir-name' && el.dataset.actor) { commitDirectorateName(el.dataset.actor, el.textContent.trim()); return; }
   const rosterFields = ['div-name','branch-name','team-name','p-name','p-title'];
-  if (rosterFields.includes(el.dataset.field) && el.dataset.actor) {
-    commitRosterEdit(el);
-    return;
-  }
-  if (el.dataset.field === 'lead-name' && el.dataset.role) {
-    commitLeadEdit(el);
-    return;
-  }
+  if (rosterFields.includes(el.dataset.field) && el.dataset.actor) { commitRosterEdit(el); return; }
+  if (el.dataset.field === 'lead-name' && el.dataset.role) { commitLeadEdit(el); return; }
 }, true);
 
 // ---------- export / import ----------
 function download(filename, content, mime) {
-  const blob = new Blob([content], { type: mime });
+  downloadBlob(filename, new Blob([content], { type: mime }));
+}
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-function csvCell(v) {
-  const s = String(v == null ? '' : v);
-  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-}
 function exportJSON() {
-  download(`${(state.title || 'raci').replace(/\s+/g,'_')}.json`,
-           JSON.stringify(state, null, 2), 'application/json');
+  download(`${(state.title || 'raci').replace(/\s+/g,'_')}.json`, JSON.stringify(state, null, 2), 'application/json');
 }
-function exportCSV() {
-  const headers = ['Workstream','Activity','Definition',
-    ...ACTORS.map(k => ACTOR_LABELS[k]),
-    'Typical Outputs / Artifacts','Comments'];
-  const rows = [headers];
-  state.workstreams.forEach(ws => {
-    ws.activities.forEach(a => {
-      rows.push([
-        ws.name, a.name, a.definition,
-        ...ACTORS.map(k => {
-          const L = normalizeRaci(a.raci[k] || '');
-          const n = (a.notes && a.notes[k]) || {};
-          const pieces = [];
-          if (L) pieces.push(L);
-          ROLES.forEach(r => { if (n[r] && n[r].trim()) pieces.push(`${r}: ${n[r].trim()}`); });
-          return pieces.join(' — ');
-        }),
-        a.outputs, a.comments
-      ]);
+
+// ---------- Excel (.xlsx) export — one sheet per tier ----------
+// Flatten the tree into one table per level, carrying ancestor context + (inherited) roster org.
+function buildLevelSheets() {
+  const colHdrs = COLS.map(k => COL_LABELS[k]);
+  // Effective RACI = own roles + inherited A where the entity is R on the parent activity.
+  const raciCells = (node, parent) => COLS.map(k => {
+    let v = normalizeRaci(node.raci[k] || '');
+    if (parent && normalizeRaci(parent.raci[k] || '').includes('R') && !v.includes('A')) v = normalizeRaci(v + 'A');
+    return v;
+  });
+  const full = org => { const l = orgLabel(org); return l ? l.full : ''; };
+  const L = {
+    Portfolio: { headers: ['Portfolio', ...colHdrs], rows: [] },
+    Program:   { headers: ['Portfolio','Program','Division', ...colHdrs], rows: [] },
+    Project:   { headers: ['Portfolio','Program','Project','Branch','Division (inherited)', ...colHdrs], rows: [] },
+    Task:      { headers: ['Portfolio','Program','Project','Task','Division (inherited)','Branch (inherited)', ...colHdrs], rows: [] }
+  };
+  (state.activities || []).forEach(pf => {
+    L.Portfolio.rows.push([pf.name || '', ...raciCells(pf, null)]);
+    (pf.children || []).forEach(prog => {
+      const inhDiv = prog.org && !prog.org.branchId ? prog.org : null;
+      L.Program.rows.push([pf.name || '', prog.name || '', full(prog.org), ...raciCells(prog, pf)]);
+      (prog.children || []).forEach(proj => {
+        const inhBranch = proj.org && proj.org.branchId ? proj.org : null;
+        L.Project.rows.push([pf.name || '', prog.name || '', proj.name || '', full(proj.org), full(inhDiv), ...raciCells(proj, prog)]);
+        (proj.children || []).forEach(task => {
+          L.Task.rows.push([pf.name || '', prog.name || '', proj.name || '', task.name || '', full(inhDiv), full(inhBranch), ...raciCells(task, proj)]);
+        });
+      });
     });
   });
-  const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
-  download(`${(state.title || 'raci').replace(/\s+/g,'_')}.csv`, csv, 'text/csv');
+  return [
+    { name: 'Portfolio', ...L.Portfolio },
+    { name: 'Program',   ...L.Program },
+    { name: 'Project',   ...L.Project },
+    { name: 'Task',      ...L.Task }
+  ];
+}
+const _CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = _CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function colLetter(i) { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+function sheetXml(sheet) {
+  const rowXml = (cells, r) => `<row r="${r}">${cells.map((v, c) =>
+    `<c r="${colLetter(c)}${r}" t="inlineStr"><is><t xml:space="preserve">${escapeHtml(v == null ? '' : String(v))}</t></is></c>`).join('')}</row>`;
+  const rows = [rowXml(sheet.headers, 1), ...sheet.rows.map((row, i) => rowXml(row, i + 2))].join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows}</sheetData></worksheet>`;
+}
+function exportXLSX() {
+  downloadBlob(`${(state.title || 'raci').replace(/\s+/g, '_')}.xlsx`,
+    new Blob([xlsxBytes()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+}
+function xlsxBytes() {
+  const sheets = buildLevelSheets();
+  const enc = new TextEncoder();
+  const files = [];
+  files.push(['[Content_Types].xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`]);
+  files.push(['_rels/.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`]);
+  files.push(['xl/workbook.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s, i) => `<sheet name="${escapeHtml(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`]);
+  files.push(['xl/_rels/workbook.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}</Relationships>`]);
+  sheets.forEach((s, i) => files.push([`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)]));
+
+  // minimal store-only ZIP (xlsx)
+  const u16 = v => [v & 255, (v >> 8) & 255];
+  const u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+  const locals = [], centrals = [];
+  let offset = 0;
+  files.forEach(([name, content]) => {
+    const nameB = enc.encode(name), data = enc.encode(content), crc = crc32(data);
+    const local = [...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nameB.length), ...u16(0), ...nameB, ...data];
+    locals.push(new Uint8Array(local));
+    centrals.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nameB.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(0), ...u32(offset), ...nameB]));
+    offset += local.length;
+  });
+  let cdSize = 0; centrals.forEach(c => cdSize += c.length);
+  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(cdSize), ...u32(offset), ...u16(0)]);
+  const parts = [...locals, ...centrals, end];
+  let total = 0; parts.forEach(p => total += p.length);
+  const out = new Uint8Array(total); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; });
+  return out;
 }
 function importJSON(file) {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const parsed = JSON.parse(ev.target.result);
-      if (!parsed || !Array.isArray(parsed.workstreams)) {
-        alert('Not a valid Workstream RACI file (no workstreams array).');
-        return;
-      }
       state = migrateState(parsed);
-      applyActorLabels();
-      saveState();
-      render();
-    } catch (err) {
-      alert('Import failed: ' + err.message);
-    }
+      applyActorLabels(); saveState(); render();
+    } catch (err) { alert('Import failed: ' + err.message); }
   };
   reader.readAsText(file);
 }
-
-// search input
-let searchDebounce = null;
-const searchEl = document.getElementById('search-input');
-if (searchEl) {
-  searchEl.addEventListener('input', e => {
-    const val = e.target.value;
-    clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
-      state.searchQuery = val;
-      saveState();
-      if (state.viewMode === 'matrix') {
-        renderSidebar();
-        renderMain();
-      }
-    }, 120);
-  });
-  searchEl.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      e.target.value = '';
-      state.searchQuery = '';
-      saveState();
-      if (state.viewMode === 'matrix') { renderSidebar(); renderMain(); }
-    }
-  });
-}
-
-document.getElementById('btn-export').addEventListener('click', exportJSON);
-document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
-document.getElementById('btn-import').addEventListener('click', () => {
-  document.getElementById('file-import').click();
-});
 document.getElementById('file-import').addEventListener('change', e => {
   const f = e.target.files[0];
   if (f) importJSON(f);
   e.target.value = '';
-});
-document.getElementById('btn-reset').addEventListener('click', () => {
-  if (!confirm('Reset to a blank workstream? Current data will be replaced.')) return;
-  state = defaultState();
-  applyActorLabels();
-  saveState();
-  render();
 });
 
 // ---------- init ----------
