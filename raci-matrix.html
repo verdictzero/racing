@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Workstream RACI Matrix</title>
+<title>ASIC RACI Tool</title>
 <style>
 :root {
   --bg: #0d0e12;
@@ -41,6 +41,119 @@ header {
   border-bottom: 1px solid var(--border);
   gap: 14px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2; /* stay above the background watermark */
+}
+/* ASIC emblem in the header corner */
+#app-logo {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+}
+/* desaturated, very faint ASIC watermark behind the RACI chart screen */
+#bg-watermark {
+  position: fixed;
+  right: 3vw;
+  bottom: 4vh;
+  width: 25vw;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  filter: grayscale(1) brightness(1.15);
+  display: none;
+}
+body[data-view="chart"] #bg-watermark { display: block; }
+/* complementary (ASIC blue + crimson) gradient behind the RACI chart screen */
+body[data-view="chart"] {
+  background:
+    radial-gradient(1200px 820px at 16% 10%, rgba(45,95,165,0.20) 0%, transparent 60%),
+    radial-gradient(1050px 720px at 86% 90%, rgba(165,42,62,0.16) 0%, transparent 55%),
+    linear-gradient(135deg, #0e1422 0%, var(--bg) 50%, #150e16 100%);
+}
+
+/* ===== Big drill breadcrumbs — own band at the top, separate from the chart pane ===== */
+#drill-crumbs {
+  display: none;
+  position: relative;
+  z-index: 2; /* above the background watermark */
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 22px;
+  background: linear-gradient(180deg, var(--bg-2) 0%, #16171c 100%);
+  border-bottom: 2px solid var(--border);
+  box-shadow: 0 4px 14px -6px rgba(0,0,0,0.7);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+body[data-view="chart"] #drill-crumbs { display: flex; }
+.crumb {
+  --ct: var(--accent);
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  flex-shrink: 0;
+  padding: 7px 20px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 2px solid color-mix(in srgb, var(--ct) 55%, var(--border));
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  line-height: 1.15;
+  transition: transform 0.1s ease, background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 14%, transparent), 0 2px 6px -2px rgba(0,0,0,0.6);
+}
+.crumb .crumb-tier {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ct) 72%, #ffffff);
+}
+.crumb .crumb-name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #fff;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crumb:hover {
+  transform: translateY(-1px);
+  border-color: var(--ct);
+  background: color-mix(in srgb, var(--ct) 12%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 30%, transparent), 0 4px 12px -3px rgba(0,0,0,0.7);
+}
+.crumb.current {
+  cursor: default;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ct) 92%, #fff) 0%,
+    var(--ct) 100%);
+  border-color: color-mix(in srgb, var(--ct) 60%, #ffffff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ct) 50%, transparent), 0 0 16px -2px color-mix(in srgb, var(--ct) 60%, transparent);
+}
+.crumb.current:hover { transform: none; }
+.crumb.current .crumb-tier { color: rgba(0,0,0,0.62); }
+.crumb.current .crumb-name { color: #07140b; }
+/* tier hues, cohesive with the chart tier colors */
+.crumb.t0 { --ct: #5c7cfa; }
+.crumb.t1 { --ct: #4dabf7; }
+.crumb.t2 { --ct: #f0a23a; }
+.crumb.t3 { --ct: #51cf66; }
+.crumb-sep {
+  align-self: center;
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 22px;
+  font-weight: 700;
+  opacity: 0.7;
 }
 h1 {
   margin: 0;
@@ -209,6 +322,7 @@ body.sidebar-collapsed .sidebar-toggle { transform: rotate(180deg); }
   flex: 1;
   overflow: auto;
   position: relative;
+  z-index: 1; /* paint above the background watermark, which sits at z-index 0 */
   display: flex;
   flex-direction: column;
 }
@@ -1119,24 +1233,50 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   background: var(--bg-3);
 }
 
-/* ===== Leadership (Associate Director / Division Chief / Branch Chief) ===== */
+/* ===== Leadership — each role gets its own color via --lc set per data-role =====
+   AD = Associate Director (gold), DC = Division Chief (blue),
+   BC = Branch Chief (purple), TL = Team Lead (green) */
+.lead-card, .add-lead { --lc: #c9a635; }
+.lead-card[data-role="AD"], .add-lead[data-role="AD"] { --lc: #e0b53a; }
+.lead-card[data-role="DC"], .add-lead[data-role="DC"] { --lc: #4dabf7; }
+.lead-card[data-role="BC"], .add-lead[data-role="BC"] { --lc: #b07cff; }
+.lead-card[data-role="TL"], .add-lead[data-role="TL"] { --lc: #51cf66; }
+
 .lead-card {
-  background: linear-gradient(180deg, #4a3815 0%, #382a0d 100%);
-  border: 1px solid #c9a635;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--lc) 26%, #14151a) 0%,
+    color-mix(in srgb, var(--lc) 13%, #0f1015) 100%);
+  border: 1px solid color-mix(in srgb, var(--lc) 68%, transparent);
   border-radius: 6px;
   padding: 8px 12px;
   display: flex;
   gap: 12px;
   align-items: center;
-  box-shadow: inset 0 0 0 1px rgba(245, 200, 66, 0.18);
+  /* extruded to match the person tiles it stacks alongside (tinted per role) */
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--lc) 45%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--lc) 20%, transparent),
+    0 2px 0 color-mix(in srgb, var(--lc) 30%, #07080b),
+    0 4px 0 color-mix(in srgb, var(--lc) 18%, #05060a),
+    0 7px 12px -3px rgba(0, 0, 0, 0.55);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.lead-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--lc) 55%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--lc) 28%, transparent),
+    0 3px 0 color-mix(in srgb, var(--lc) 30%, #07080b),
+    0 6px 0 color-mix(in srgb, var(--lc) 18%, #05060a),
+    0 11px 17px -3px rgba(0, 0, 0, 0.62);
 }
 .lead-badge {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.7px;
   text-transform: uppercase;
-  background: #c9a635;
-  color: #1a1100;
+  background: var(--lc);
+  color: #10131a;
   padding: 3px 8px;
   border-radius: 3px;
   white-space: nowrap;
@@ -1146,26 +1286,26 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   padding: 1px 5px;
   border-radius: 3px;
   font-weight: 700;
-  color: #f5c842;
+  color: color-mix(in srgb, var(--lc) 68%, #ffffff);
   font-size: 13px;
   flex: 1;
   min-width: 80px;
 }
-.lead-name:hover, .lead-name:focus { background: rgba(255, 215, 0, 0.10); }
+.lead-name:hover, .lead-name:focus { background: color-mix(in srgb, var(--lc) 16%, transparent); }
 .lead-name:empty::before {
   content: attr(data-placeholder);
-  color: rgba(245, 200, 66, 0.5);
+  color: color-mix(in srgb, var(--lc) 50%, transparent);
   font-style: italic;
   font-weight: 400;
 }
-.lead-card .del-icon { color: #d4b04a; }
+.lead-card .del-icon { color: color-mix(in srgb, var(--lc) 65%, #ffffff); }
 .lead-card:hover .del-icon { visibility: visible; }
 .lead-card .del-icon:hover { background: var(--err); color: #fff; }
 
 .add-lead {
   background: transparent;
-  border: 1px dashed #6b5a2b;
-  color: #d4af37;
+  border: 1px dashed color-mix(in srgb, var(--lc) 45%, transparent);
+  color: color-mix(in srgb, var(--lc) 72%, #ffffff);
   padding: 6px 10px;
   font-size: 11px;
   border-radius: 4px;
@@ -1173,9 +1313,9 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   font-style: italic;
 }
 .add-lead:hover {
-  background: rgba(201, 166, 53, 0.12);
-  border-color: #c9a635;
-  color: #f5c842;
+  background: color-mix(in srgb, var(--lc) 14%, transparent);
+  border-color: var(--lc);
+  color: color-mix(in srgb, var(--lc) 55%, #ffffff);
 }
 
 .del-icon {
@@ -1323,39 +1463,153 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 .tree-unit-none { color: var(--text-dim); font-style: italic; font-size: 11px; opacity: 0.7; }
 
 /* ===== Cascade chart (Portfolio → Program → Project → Task) ===== */
-.cascade { position: relative; padding: 18px 26px 140px; }
+.cascade { position: relative; padding: 0; }
 .cascade-svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 40; overflow: visible; }
+/* the connector feeding the focused (top) chart flows green toward it */
+.cascade-svg path.cc-pulse { animation: dashFlow 0.55s linear infinite; }
+@keyframes dashFlow { to { stroke-dashoffset: -16; } }
 
+/* Cascading layers: each tier is stacked (absolutely positioned by layoutCascade)
+   on top of the previous one, overlapping it almost fully — only a small left
+   strip (indentation) and top strip (arrow space) of the layer behind peeks out. */
 .chart-block {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: fit-content;
   min-width: 560px;
-  max-width: 100%;
-  margin: 0 0 30px;
+  max-width: calc(100% - 40px);
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  transition: opacity 0.15s ease;
+  box-shadow: 0 12px 32px -10px rgba(0,0,0,0.7), 0 3px 10px -3px rgba(0,0,0,0.5);
+  transition: filter 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
 }
+/* layers that are NOT on top: desaturated, dimmed, and clipped to the peeking strip.
+   Clicking anywhere on one collapses the layers in front and brings it into focus. */
 .chart-block.faded {
-  /* opacity is set inline per depth (further back = more faded); this adds the vertical fade-out */
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000 48%, #000 100%);
-          mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000 48%, #000 100%);
+  filter: saturate(0.16) brightness(0.92);
+  overflow: hidden;
+  cursor: pointer;
 }
-.chart-block.focus { opacity: 1; }
+.chart-block.faded:hover { filter: saturate(0.4) brightness(1.04); }
+/* the top (focused) layer: full color, a strong drop shadow, and a pulsing green ring */
+.chart-block.focus {
+  opacity: 1;
+  animation: focusRingPulse 2.8s ease-in-out infinite;
+}
+@keyframes focusRingPulse {
+  0%, 100% {
+    box-shadow: 0 18px 48px -12px rgba(0,0,0,0.85), 0 5px 16px -4px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(81,207,102,0.30), 0 0 8px 0 rgba(81,207,102,0.12);
+  }
+  50% {
+    box-shadow: 0 18px 48px -12px rgba(0,0,0,0.85), 0 5px 16px -4px rgba(0,0,0,0.6),
+                0 0 0 1.5px rgba(81,207,102,0.5), 0 0 14px 1px rgba(81,207,102,0.28);
+  }
+}
+
+/* zoom wrapper: #cascade is transform-scaled; this wrapper reserves the scaled footprint
+   so the scroll container sizes correctly */
+.cascade-zoom { position: relative; }
+
+/* zoom control overlay (chart view only) */
+#zoom-ctl {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 6px 18px -4px rgba(0,0,0,0.6);
+}
+body[data-view="chart"] #zoom-ctl { display: inline-flex; }
+#zoom-ctl button {
+  width: 30px; height: 28px; padding: 0;
+  font-size: 16px; line-height: 1; border-radius: 5px;
+}
+#zoom-ctl .zoom-level {
+  min-width: 48px; text-align: center; font-size: 12px;
+  color: var(--text-dim); cursor: pointer; user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+#zoom-ctl .zoom-level:hover { color: var(--text); }
+
+/* drag handle to dynamically resize the focused chart (positioned by layoutCascade).
+   Sits above the chart's glow + content as a beveled tab with dense diagonal hashes. */
+.chart-resize {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  z-index: 70; /* above the pulsing glow (focused chart) and the chart content */
+  cursor: nwse-resize;
+  border-radius: 5px 0 8px 0;
+  /* clean, slightly raised beveled tab (no hashing) */
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--accent) 16%, var(--bg-4)),
+    color-mix(in srgb, var(--accent) 7%, var(--bg-2)));
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  /* slight bevel: light top-left highlight, dark bottom-right, soft cast shadow */
+  box-shadow:
+    inset 1.5px 1.5px 0 rgba(255,255,255,0.22),
+    inset -1.5px -1.5px 0 rgba(0,0,0,0.55),
+    0 2px 7px -1px rgba(0,0,0,0.6);
+  opacity: 0.9;
+  display: none;
+}
+body[data-view="chart"] .chart-resize { display: block; }
+.chart-resize:hover {
+  opacity: 1;
+  border-color: var(--accent);
+  box-shadow:
+    inset 1.5px 1.5px 0 rgba(255,255,255,0.3),
+    inset -1.5px -1.5px 0 rgba(0,0,0,0.55),
+    0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 3px 10px -1px rgba(0,0,0,0.65);
+}
+body.chart-resizing { cursor: nwse-resize; user-select: none; }
+body.chart-resizing .chart-block { transition: none; }
 
 .chart-head {
   font-weight: 700;
   font-size: 13px;
-  padding: 9px 14px;
+  padding: 13px 20px 13px 34px;
   color: var(--text);
   background: var(--bg-3);
   border-bottom: 1px solid var(--border);
   border-radius: 8px 8px 0 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  cursor: grab;          /* drag the header to move the pane out of the stack */
+  user-select: none;
 }
+/* grip dots hint that the header is draggable */
+.chart-head::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 4px;
+  height: 16px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background:
+    radial-gradient(circle, var(--text-dim) 1px, transparent 1.4px) 0 0 / 4px 4px;
+  opacity: 0.6;
+}
+.chart-head { position: relative; }
 .chart-block.focus .chart-head { border-bottom-color: var(--accent); }
+.chart-block.faded .chart-head::before { opacity: 0.4; }
+body.chart-dragging, body.chart-dragging .chart-head { cursor: grabbing; }
+body.chart-dragging .chart-block { transition: none; }
+/* a pane lifted out of the stack: shown in full + a stronger shadow while active */
+.chart-block.faded.moved { overflow: visible; }
+.chart-block.dragging-active { z-index: 65 !important; box-shadow: 0 22px 60px -14px rgba(0,0,0,0.9), 0 0 0 1px rgba(81,207,102,0.45); }
 .ch-inbound { color: var(--accent); font-weight: 800; margin-right: 2px; }
 .ch-sep { color: var(--text-dim); font-weight: 400; }
 
@@ -1363,7 +1617,7 @@ table.chart { border-collapse: separate; border-spacing: 0; width: 100%; }
 table.chart th, table.chart td {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 7px 9px;
+  padding: 12px 16px;
   font-size: 12px;
   text-align: center;
   vertical-align: middle;
@@ -1379,11 +1633,12 @@ table.chart thead th {
   letter-spacing: 0.4px;
   white-space: nowrap;
 }
-table.chart th.ch-name, table.chart td.ch-name { text-align: left; min-width: 220px; }
-table.chart th.ch-col { min-width: 72px; cursor: help; }
+table.chart th.ch-name, table.chart td.ch-name { text-align: left; min-width: 240px; padding-left: 18px; }
+table.chart th.ch-col { min-width: 80px; cursor: help; }
 .chart-cell { cursor: pointer; }
 .chart-cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--bg-3); }
-.chart-cell .cell-chips { justify-content: center; gap: 3px; min-height: 22px; }
+table.chart td.chart-cell { padding: 14px 20px; }
+.chart-cell .cell-chips { justify-content: center; gap: 8px; min-height: 24px; }
 /* inherited-A chip (entity was R one tier up) — dashed ring marks it as cascaded, not manual */
 .raci-chip.inherited { outline: 2px dashed rgba(255,255,255,0.6); outline-offset: -3px; opacity: 0.82; cursor: help; }
 .ch-toggle { width: 32px; padding: 0; }
@@ -1466,7 +1721,9 @@ body[data-view="roster"] #legend { display: none; }
 </style>
 </head>
 <body>
+<img id="bg-watermark" src="ASIC-LOGO-2026.png" alt="" aria-hidden="true">
 <header>
+  <img id="app-logo" src="ASIC-LOGO-2026.png" alt="ASIC — Army Software & Innovation Center" title="ASIC — Army Software & Innovation Center">
   <h1 contenteditable="true" id="doc-title" spellcheck="false"></h1>
   <div class="view-tabs" id="view-tabs">
     <button data-view="chart">Chart</button>
@@ -1476,11 +1733,14 @@ body[data-view="roster"] #legend { display: none; }
     <button id="btn-legend" title="Show/hide RACI legend">Legend</button>
     <button id="btn-export">Export JSON</button>
     <button id="btn-export-xlsx">Export Excel</button>
+    <button id="btn-export-xml">Export XML</button>
+    <button id="btn-export-mmd">Export Mermaid</button>
     <button id="btn-import">Import JSON</button>
     <input type="file" id="file-import" accept=".json,application/json">
     <button id="btn-reset" class="danger">Reset</button>
   </div>
 </header>
+<div id="drill-crumbs"></div>
 <main>
   <section id="ws-main"></section>
   <aside id="legend">
@@ -1496,17 +1756,17 @@ body[data-view="roster"] #legend { display: none; }
 <script>
 'use strict';
 
-const STORAGE_KEY = 'raci-matrix-v6';
+const STORAGE_KEY = 'raci-matrix-v8';
 const ACCENT = '#51cf66';
 
 const ACTORS = ['ocio','mission','infra','cyber','sw','vendor'];
 const ACTOR_LABELS_DEFAULT = {
-  ocio: 'OCIO',
-  mission: 'MISSION MANAGEMENT',
-  infra: 'INFRASTRUCTURE',
-  cyber: 'CYBER / EW',
-  sw: 'SOFTWARE SUPPORT AND SERVICES',
-  vendor: 'VENDOR'
+  ocio: 'DIRECTORATE A',
+  mission: 'DIRECTORATE B',
+  infra: 'DIRECTORATE C',
+  cyber: 'DIRECTORATE D',
+  sw: 'DIRECTORATE E',
+  vendor: 'DIRECTORATE F'
 };
 // Working copy — editable at runtime; synced from state.actorLabels via applyActorLabels().
 const ACTOR_LABELS = { ...ACTOR_LABELS_DEFAULT };
@@ -1519,17 +1779,17 @@ const ROLES = ['R','A','C','I'];
 // ---- RACI chart columns (same at every tier for now; lower tiers may differ later) ----
 const COLS = ['hq','cos','mission','infra','cyber','sw','contacts'];
 const COL_LABELS = {
-  hq: 'Director HQ',
-  cos: 'Chief of Staff (HR/Fin)',
-  mission: 'Mission Management Dir.',
-  infra: 'Infrastructure Dir.',
-  cyber: 'Cyber & EW Dir.',
-  sw: 'Software and Support Dir.',
-  contacts: 'Contacts'
+  hq: 'Unit 1',
+  cos: 'Unit 2',
+  mission: 'Unit 3',
+  infra: 'Unit 4',
+  cyber: 'Unit 5',
+  sw: 'Unit 6',
+  contacts: 'Unit 7'
 };
 const COL_SHORT = {
-  hq: 'DIR HQ', cos: 'COS', mission: 'MISSION', infra: 'INFRA',
-  cyber: 'CYBER/EW', sw: 'SW', contacts: 'CONTACTS'
+  hq: 'U1', cos: 'U2', mission: 'U3', infra: 'U4',
+  cyber: 'U5', sw: 'U6', contacts: 'U7'
 };
 const TIER_LABELS = ['Portfolio','Program','Project','Task'];
 const MAX_TIER = TIER_LABELS.length - 1;
@@ -1573,43 +1833,71 @@ function normalizeLead(x) {
   };
 }
 
-// ---- sample data generation (professional / generic) ----
-const SEED_NAMES = ['A. Reyes','J. Calloway','M. Okafor','S. Lindqvist','T. Nakamura','R. Delgado',
-  'K. Abernathy','P. Sørensen','D. Whitfield','L. Castellano','N. Bhattacharya','E. Fontaine',
-  'C. Yamamoto','H. Eriksson','B. Montgomery','V. Andersson','G. Holloway','O. Nwosu',
-  'F. Petrova','W. Castellanos','I. Aaltonen','Q. Stratford','Z. Vandenberg','Y. Castellano'];
-const SEED_TITLES = ['Program Lead','Senior Engineer','Systems Architect','Operations Manager',
-  'Analyst','Project Officer','Technical Lead','Specialist','Coordinator','Subject Matter Expert'];
-let _seedNameI = 0, _seedTitleI = 0;
-function _nm() { return SEED_NAMES[(_seedNameI++) % SEED_NAMES.length]; }
+// ---- sample data generation (deep, professional demo) ----
+const FIRST_NAMES = ['James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda','David',
+  'Elizabeth','William','Barbara','Richard','Susan','Joseph','Jessica','Thomas','Karen','Christopher',
+  'Sarah','Daniel','Nancy','Matthew','Lisa','Anthony','Margaret','Mark','Sandra','Donald','Ashley',
+  'Steven','Kimberly','Andrew','Emily','Joshua','Donna','Kenneth','Michelle','Kevin','Carol','Brian',
+  'Amanda','George','Melissa','Edward','Deborah','Ronald','Stephanie','Timothy','Rebecca','Jason',
+  'Laura','Jeffrey','Sharon','Ryan','Cynthia','Jacob','Kathleen','Gary','Amy','Nicholas','Angela',
+  'Eric','Shirley','Jonathan','Anna','Justin','Brenda','Scott','Pamela','Brandon','Nicole','Benjamin',
+  'Samantha','Samuel','Christine','Gregory','Rachel','Alexander','Catherine','Patrick','Carolyn',
+  'Dennis','Maria','Jerry','Heather','Tyler','Diane','Aaron','Olivia','Henry','Julie','Adam','Joan',
+  'Douglas','Victoria','Nathan','Kelly','Peter','Christina'];
+const LAST_NAMES = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez',
+  'Martinez','Hernandez','Lopez','Gonzalez','Wilson','Anderson','Thomas','Taylor','Moore','Jackson',
+  'Martin','Lee','Perez','Thompson','White','Harris','Sanchez','Clark','Ramirez','Lewis','Robinson',
+  'Walker','Young','Allen','King','Wright','Scott','Torres','Nguyen','Hill','Flores','Green','Adams',
+  'Nelson','Baker','Hall','Rivera','Campbell','Mitchell','Carter','Roberts','Phillips','Evans','Turner',
+  'Parker','Collins','Edwards','Stewart','Morris','Murphy','Cook','Rogers','Morgan','Bell','Bailey',
+  'Cooper','Richardson','Cox','Howard','Ward','Peterson','Gray','Ramos','Watson','Brooks','Kelly',
+  'Sanders','Price','Bennett','Wood','Barnes','Ross','Henderson','Coleman','Jenkins','Perry','Powell',
+  'Long','Patterson','Hughes','Washington','Butler','Simmons','Foster','Bryant','Russell','Griffin'];
+const SEED_TITLES = ['Program Manager','Project Manager','Software Engineer','Senior Software Engineer',
+  'Systems Architect','Solutions Architect','Cybersecurity Analyst','Information System Security Officer',
+  'DevSecOps Engineer','Site Reliability Engineer','Cloud Engineer','Data Engineer','Data Scientist',
+  'Product Owner','Scrum Master','Technical Lead','Business Analyst','Quality Assurance Engineer',
+  'Test Engineer','UX Designer','Configuration Manager','Network Engineer','Database Administrator',
+  'Systems Administrator','Requirements Analyst','Integration Engineer','Release Manager','Project Officer',
+  'Operations Manager','Subject Matter Expert'];
+let _nameI = 0, _seedTitleI = 0;
+// Walk first/last pools on co-prime strides so generated names rarely repeat.
+function _nm() {
+  // shift the last-name offset each time the first-name pool wraps, so names rarely repeat
+  const cycle = Math.floor(_nameI / FIRST_NAMES.length);
+  const f = FIRST_NAMES[(_nameI * 17) % FIRST_NAMES.length];
+  const l = LAST_NAMES[(_nameI * 11 + 3 + cycle * 7) % LAST_NAMES.length];
+  _nameI++;
+  return `${f} ${l}`;
+}
 function _tt() { return SEED_TITLES[(_seedTitleI++) % SEED_TITLES.length]; }
 function _lead() { return { id: uid(), name: _nm() }; }
 
-const ROSTER_PLAN = {
-  ocio:    [['Strategy & Policy', ['Governance','Enterprise Architecture']], ['Resource Management', ['Budget & Finance','Acquisition']]],
-  mission: [['Operations', ['Current Operations','Future Operations']], ['Analysis', ['Targeting','Assessment']]],
-  infra:   [['Network', ['Transport','Edge Services']], ['Compute', ['Data Center','Cloud Services']], ['Facilities', ['Power & Cooling','Physical Security']]],
-  cyber:   [['Defensive Cyber', ['Threat Hunt','Security Operations']], ['Electronic Warfare', ['Spectrum','Signals']]],
-  sw:      [['Platforms', ['DevSecOps','Data Services']], ['Applications', ['Mission Apps','Enterprise Apps']]],
-  vendor:  [['Prime Contractors', ['Integration','Sustainment']], ['Specialty', ['Research & Development','Logistics']]]
+// Per-directorate org depth: [divisions, branches/division, teams/branch]. Deep but readable.
+const ROSTER_SHAPE = {
+  ocio:    [3, 3, 2], mission: [4, 2, 2], infra:  [4, 3, 2],
+  cyber:   [3, 2, 3], sw:      [4, 3, 2], vendor: [3, 2, 2]
 };
 function seedRoster() {
   const dirs = emptyDirectorates();
-  ACTORS.forEach(actor => {
-    const plan = ROSTER_PLAN[actor] || [];
+  ACTORS.forEach((actor, ai) => {
+    const L = String.fromCharCode(65 + ai); // A..F
+    const [nDiv, nBr, nTeam] = ROSTER_SHAPE[actor] || [3, 2, 2];
     dirs[actor].lead = _lead();
-    plan.forEach(([divName, branchNames], di) => {
-      const div = makeDivision(divName); div.chief = _lead();
-      branchNames.forEach((bn, bi) => {
-        const br = makeBranch(bn); br.chief = _lead();
-        const team = makeTeam(bn + ' Team'); team.chief = _lead();
-        const np = 2 + ((di + bi) % 3);
-        for (let i = 0; i < np; i++) { const p = makePerson(); p.name = _nm(); p.title = _tt(); team.people.push(p); }
-        br.teams.push(team);
+    for (let d = 1; d <= nDiv; d++) {
+      const div = makeDivision(`Division ${L}${d}`); div.chief = _lead();
+      for (let b = 1; b <= nBr; b++) {
+        const br = makeBranch(`Branch ${L}${d}.${b}`); br.chief = _lead();
+        for (let t = 1; t <= nTeam; t++) {
+          const team = makeTeam(`Team ${L}${d}.${b}.${t}`); team.chief = _lead();
+          const np = 3 + ((d + b + t) % 4); // 3..6 people
+          for (let i = 0; i < np; i++) { const p = makePerson(); p.name = _nm(); p.title = _tt(); team.people.push(p); }
+          br.teams.push(team);
+        }
         div.branches.push(br);
-      });
+      }
       dirs[actor].divisions.push(div);
-    });
+    }
   });
   return dirs;
 }
@@ -1624,21 +1912,10 @@ function seedRaci(s) {
   put(COLS[(s + 5) % COLS.length], 'I');
   return raci;
 }
-const SEED_PORTFOLIOS = [
-  ['Enterprise Cloud Modernization', ['Cloud Foundation','Application Migration','Cloud Operations']],
-  ['Mission Command & Control',      ['C2 Modernization','Sensor Integration','Decision Support']],
-  ['Cybersecurity & Resilience',     ['Zero Trust Implementation','Threat Defense','Continuity & Recovery']],
-  ['Data & Analytics Platform',      ['Data Fabric','Advanced Analytics','Data Governance']],
-  ['Network Transport Modernization',['Backbone Upgrade','Edge Connectivity','Spectrum Operations']],
-  ['Workforce & Talent',             ['Recruiting & Hiring','Training & Certification','Retention & Culture']],
-  ['Acquisition & Vendor Management',['Contract Strategy','Vendor Performance','Supply Chain Risk']]
-];
-const SEED_PROJ_SUFFIX = ['Increment A','Increment B','Pilot','Scale-Up'];
-const SEED_TASKS = ['Requirements analysis','Solution design','Design review','Prototype build',
-  'Implementation','Integration testing','Security accreditation (ATO)','Performance tuning',
-  'Deployment','User training','Documentation','O&M transition','Risk assessment','Stakeholder review'];
+const SEED_PROJ_SUFFIX = ['Project A','Project B','Project C','Project D','Project E','Project F'];
+const N_PORTFOLIOS = 12; // really deep demo tree (Portfolio › Program › Project › Task)
 function seedData() {
-  _seedNameI = 0; _seedTitleI = 0;
+  _nameI = 0; _seedTitleI = 0;
   const dirs = seedRoster();
   // flat list of divisions with their branch refs, to assign to programs/projects
   const divisions = [];
@@ -1647,42 +1924,46 @@ function seedData() {
                      branches: (div.branches || []).map(br => ({ actor: a, divisionId: div.id, branchId: br.id })) });
   }));
   let s = 0, gp = 0;
-  const activities = SEED_PORTFOLIOS.map(([pfName, programs]) => {
-    const pf = makeNode(pfName); pf.raci = seedRaci(s++);
-    pf.children = programs.map((progName, pri) => {
-      const prog = makeNode(progName); prog.raci = seedRaci(s++);
+  const activities = [];
+  for (let p = 1; p <= N_PORTFOLIOS; p++) {
+    const pf = makeNode(`Portfolio ${p}`); pf.raci = seedRaci(s++); pf.children = [];
+    const nProg = 3 + (p % 2); // 3..4 programs
+    for (let m = 1; m <= nProg; m++) {
+      const prog = makeNode(`Program ${p}.${m}`); prog.raci = seedRaci(s++); prog.children = [];
       const division = divisions[gp++ % divisions.length];
       prog.org = division.ref;
-      const nproj = 2 + (pri % 2);
-      prog.children = [];
-      for (let j = 0; j < nproj; j++) {
-        const proj = makeNode(`${progName} — ${SEED_PROJ_SUFFIX[j % SEED_PROJ_SUFFIX.length]}`); proj.raci = seedRaci(s++);
+      const nProj = 2 + ((p + m) % 3); // 2..4 projects
+      for (let j = 0; j < nProj; j++) {
+        const proj = makeNode(`Program ${p}.${m} — ${SEED_PROJ_SUFFIX[j % SEED_PROJ_SUFFIX.length]}`);
+        proj.raci = seedRaci(s++); proj.children = [];
         if (division.branches.length) proj.org = division.branches[j % division.branches.length];
-        const ntask = 3 + (j % 2);
-        proj.children = [];
-        for (let t = 0; t < ntask; t++) {
-          const task = makeNode(SEED_TASKS[(s + t) % SEED_TASKS.length]); task.raci = seedRaci(s++);
+        const nTask = 4 + ((p + m + j) % 4); // 4..7 tasks
+        for (let t = 1; t <= nTask; t++) {
+          const task = makeNode(`Task ${t}`); task.raci = seedRaci(s++);
           proj.children.push(task);
         }
         prog.children.push(proj);
       }
-      return prog;
-    });
-    return pf;
-  });
+      pf.children.push(prog);
+    }
+    activities.push(pf);
+  }
   return { activities, directorates: dirs };
 }
 function defaultState() {
   const d = seedData();
   return {
-    title: 'Portfolio RACI',
+    title: 'ASIC RACI Tool Demo',
     activities: d.activities,
     drillPath: [],
     actorLabels: { ...ACTOR_LABELS_DEFAULT },
     directorates: d.directorates,
     collapsedDirectorates: {},
     viewMode: 'chart',
-    showLegend: false
+    showLegend: false,
+    chartSize: null,
+    chartZoom: 1,
+    chartPos: {}
   };
 }
 const ALL_VIEW_MODES = ['chart','roster'];
@@ -1707,7 +1988,7 @@ function normalizeNodes(nodes, depth) {
 }
 function migrateState(s) {
   if (!s || typeof s !== 'object') return defaultState();
-  s.title = typeof s.title === 'string' ? s.title : 'Portfolio RACI';
+  s.title = typeof s.title === 'string' ? s.title : 'ASIC RACI Tool Demo';
   s.activities = normalizeNodes(Array.isArray(s.activities) ? s.activities : [], 0);
   s.drillPath = Array.isArray(s.drillPath) ? s.drillPath.filter(x => typeof x === 'string') : [];
   s.directorates = s.directorates && typeof s.directorates === 'object' ? s.directorates : {};
@@ -1752,6 +2033,20 @@ function migrateState(s) {
   s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'chart';
   s.collapsedDirectorates = (s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object') ? s.collapsedDirectorates : {};
   s.showLegend = !!s.showLegend;
+  s.chartSize = (s.chartSize && typeof s.chartSize === 'object'
+    && Number.isFinite(s.chartSize.w) && Number.isFinite(s.chartSize.h))
+    ? { w: s.chartSize.w, h: s.chartSize.h } : null;
+  s.chartZoom = Number.isFinite(s.chartZoom) ? Math.min(2.5, Math.max(0.4, s.chartZoom)) : 1;
+  {
+    const cp = {};
+    if (s.chartPos && typeof s.chartPos === 'object') {
+      Object.keys(s.chartPos).forEach(k => {
+        const p = s.chartPos[k];
+        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) cp[k] = { x: p.x, y: p.y };
+      });
+    }
+    s.chartPos = cp;
+  }
   s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
   ACTORS.forEach(k => { if (typeof s.actorLabels[k] !== 'string' || !s.actorLabels[k].trim()) s.actorLabels[k] = ACTOR_LABELS_DEFAULT[k]; });
   // drop legacy fields from prior (workstream/structure/lens) versions
@@ -1855,6 +2150,13 @@ function deleteNode(id) {
   if (pi >= 0) state.drillPath = state.drillPath.slice(0, pi);
   saveState(); renderChart();
 }
+// Bring a background (already-drilled) layer back to the front: collapse every layer in
+// front of tier `t` so the chart at that tier becomes the focused one.
+function focusChartTier(t) {
+  if (!Array.isArray(state.drillPath) || state.drillPath.length <= t) return;
+  state.drillPath = state.drillPath.slice(0, t);
+  saveState(); renderChart();
+}
 function renameNode(id, name) { const f = findNode(id); if (f) { f.node.name = name; saveState(); } }
 // Drill control on activity `id` at `tier`. Clicking a different activity drills into it,
 // auto-collapsing any tiers in front. Clicking the already-open one first collapses the
@@ -1886,23 +2188,117 @@ function updateViewTabs() {
 }
 
 // ========== Cascade chart ==========
+// Big drill breadcrumbs in their own top band (separate from the chart pane). Each capsule
+// brings that level back into focus; the deepest one is the current location.
+function renderBreadcrumbs(charts) {
+  const el = document.getElementById('drill-crumbs');
+  if (!el) return;
+  const last = charts.length - 1;
+  const html = [];
+  charts.forEach((c, i) => {
+    const isCurrent = i === last;
+    const tierClass = 't' + Math.min(i, 3);
+    const tierLabel = i === 0 ? 'Portfolios' : TIER_LABELS[i - 1];
+    const name = i === 0 ? 'All Portfolios'
+      : escapeHtml(c.parent.name || ('Untitled ' + TIER_LABELS[i - 1]));
+    if (i > 0) html.push('<span class="crumb-sep">›</span>');
+    html.push(
+      `<button class="crumb ${tierClass}${isCurrent ? ' current' : ''}" data-crumb-tier="${i}"${isCurrent ? ' disabled' : ''} title="${isCurrent ? 'Current level' : 'Jump to ' + escapeHtml(name)}">
+        <span class="crumb-tier">${escapeHtml(tierLabel)}</span>
+        <span class="crumb-name">${name}</span>
+      </button>`);
+  });
+  el.innerHTML = html.join('');
+}
 function renderChart() {
   const main = document.getElementById('ws-main');
   const charts = resolveCascade();
+  renderBreadcrumbs(charts);
   const blocks = charts.map((c, i) => renderChartBlock(c, i, charts.length)).join('');
-  main.innerHTML = `<div class="cascade" id="cascade">${blocks}<svg class="cascade-svg" id="cascade-svg" aria-hidden="true"></svg></div>`;
-  requestAnimationFrame(drawConnectors);
+  main.innerHTML = `<div class="cascade-zoom" id="cascade-zoom"><div class="cascade" id="cascade">${blocks}<svg class="cascade-svg" id="cascade-svg" aria-hidden="true"></svg><div class="chart-resize" id="chart-resize" title="Drag to resize the charts"></div></div></div>
+    <div id="zoom-ctl">
+      <button id="zoom-out" title="Zoom out">−</button>
+      <span class="zoom-level" id="zoom-level" title="Reset zoom">${Math.round((state.chartZoom || 1) * 100)}%</span>
+      <button id="zoom-in" title="Zoom in">+</button>
+    </div>`;
+  requestAnimationFrame(() => { layoutCascade(); drawConnectors(); });
+}
+// Stack the cascade layers so each tier sits on top of the previous one, overlapping it
+// almost fully. Only CASCADE_DX of left (indentation) and CASCADE_DY of top (arrow space)
+// of each layer behind peeks out. The top/focused layer shows in full.
+const CASCADE_DX = 48; // px the next layer is indented to the right (left peek)
+const CASCADE_DY = 38; // px the next layer is dropped down    (top peek / arrow space)
+const CASCADE_BASE_X = 44; // external padding so charts don't touch the left edge
+const CASCADE_BASE_Y = 30; // external padding so charts don't touch the top edge
+function layoutCascade() {
+  const wrap = document.getElementById('cascade');
+  if (!wrap) return;
+  const blocks = Array.from(wrap.querySelectorAll('.chart-block'));
+  if (!blocks.length) return;
+  const n = blocks.length;
+  const pos = state.chartPos || {};
+  const focused = blocks[n - 1];
+  focused.style.maxHeight = '';                 // measure natural height of the top layer
+  const H = focused.offsetHeight;
+  const focusBottom = CASCADE_BASE_Y + (n - 1) * CASCADE_DY + H;
+  blocks.forEach((b, i) => {
+    const tier = parseInt(b.dataset.tier, 10) || 0;
+    const moved = pos[tier];
+    b.classList.toggle('moved', !!moved);
+    const top = moved ? moved.y : CASCADE_BASE_Y + i * CASCADE_DY;
+    const left = moved ? moved.x : CASCADE_BASE_X + i * CASCADE_DX;
+    b.style.top = top + 'px';
+    b.style.left = left + 'px';
+    // Clip background layers to their peeking strip while nested. A pane that's been
+    // pulled out of the stack (moved) shows in full so the user can read it.
+    b.style.maxHeight = (i < n - 1 && !moved)
+      ? Math.max(CASCADE_DY + 8, focusBottom - (CASCADE_BASE_Y + i * CASCADE_DY)) + 'px' : '';
+  });
+  // measure the real bounding box (handles freely-moved panes in any direction)
+  let maxRight = 0, maxBottom = 0;
+  blocks.forEach(b => {
+    maxRight = Math.max(maxRight, b.offsetLeft + b.offsetWidth);
+    maxBottom = Math.max(maxBottom, b.offsetTop + b.offsetHeight);
+  });
+  // logical (unscaled) content size, then apply zoom by scaling #cascade and reserving the
+  // scaled footprint on the wrapper so the scroll container sizes correctly.
+  const logicalW = maxRight + CASCADE_BASE_X;
+  const logicalH = Math.max(focusBottom, maxBottom) + 60;
+  const z = state.chartZoom || 1;
+  wrap.style.width = logicalW + 'px';
+  wrap.style.height = logicalH + 'px';
+  wrap.style.transformOrigin = 'top left';
+  wrap.style.transform = z === 1 ? '' : `scale(${z})`;
+  const zoomWrap = document.getElementById('cascade-zoom');
+  if (zoomWrap) { zoomWrap.style.width = (logicalW * z) + 'px'; zoomWrap.style.height = (logicalH * z) + 'px'; }
+  // pin the resize grip onto the bottom-right corner of the focused (top) layer wherever it is
+  const grip = document.getElementById('chart-resize');
+  if (grip) {
+    grip.style.left = (focused.offsetLeft + focused.offsetWidth - 20) + 'px';
+    grip.style.top = (focused.offsetTop + focused.offsetHeight - 20) + 'px';
+  }
 }
 function renderChartBlock(chart, idx, total) {
   const { tier, parent, nodes, openId, inherited } = chart;
   const focus = idx === total - 1;
   const cls = focus ? 'focus' : 'faded';
-  // depth = how far this chart sits behind the focused one; further back = darker/more faded
+  // depth = how far this chart sits behind the focused one; further back = darker/greyer.
+  // Behind layers stay near-opaque so they solidly cover the one below (no bleed-through);
+  // depth is conveyed by desaturation + dimming, not transparency.
   const depth = (total - 1) - idx;
-  const opacity = focus ? 1 : Math.max(0.18, 1 - depth * 0.26);
+  let layerStyle = focus
+    ? ''
+    : `opacity:1; filter:saturate(0.16) brightness(${Math.max(0.6, 0.92 - depth * 0.08).toFixed(3)});`;
+  // user-set size (dragged via the resize handle): width applies to every layer so the
+  // stack stays aligned; height + scroll apply only to the focused (top) layer (faded
+  // layers keep their CSS overflow:hidden so they stay clipped to the peeking strip).
+  const sz = state.chartSize;
+  if (sz && sz.w) layerStyle += `width:${sz.w}px; min-width:0; max-width:none;`;
+  if (focus && sz && (sz.w || sz.h)) layerStyle += `overflow:auto;`;
+  if (focus && sz && sz.h) layerStyle += `height:${sz.h}px;`;
   const heading = tier === 0
     ? 'Portfolio Activities'
-    : `${escapeHtml(parent.name || ('Untitled ' + TIER_LABELS[tier - 1]))} <span class="ch-sep">›</span> ${TIER_LABELS[tier]}s`;
+    : `${escapeHtml(parent.name || ('Untitled ' + TIER_LABELS[tier - 1]))} <span class="ch-sep">›</span> ${TIER_LABELS[tier]} Activities`;
   const inbound = tier > 0 ? '<span class="ch-inbound">⤷</span> ' : '';
   const cols = columnsForTier(tier);
   const header = `<tr>
@@ -1920,8 +2316,8 @@ function renderChartBlock(chart, idx, total) {
   const addBtn = tier === 0
     ? `<button class="ch-add" data-add-root="1">+ Add ${TIER_LABELS[tier].toLowerCase()} activity</button>`
     : `<button class="ch-add" data-add-child="${parent.id}">+ Add ${TIER_LABELS[tier].toLowerCase()} activity</button>`;
-  return `<div class="chart-block ${cls}" data-tier="${tier}" style="margin-left:${tier * 56}px; z-index:${idx + 1}; opacity:${opacity};">
-      <div class="chart-head" data-chart-head="${tier}">${inbound}${heading}</div>
+  return `<div class="chart-block ${cls}" data-tier="${tier}" data-depth="${depth}" style="z-index:${idx + 1}; ${layerStyle}">
+      <div class="chart-head" data-chart-head="${tier}" title="Drag to move this pane · double-click to snap it back">${inbound}${heading}</div>
       <table class="chart"><thead>${header}</thead><tbody>${rows}</tbody></table>
       ${addBtn}
     </div>`;
@@ -1979,32 +2375,147 @@ function renderOrgRow(node, tier, inherited) {
   }
   return '';
 }
-// Draw arrows from each open row down to the next tier's chart heading.
+// Draw arrows connecting each layer's header down into the next layer's header.
+// Uses logical offsets (offsetLeft/offsetTop) so it's unaffected by the zoom transform.
 function drawConnectors() {
   const svg = document.getElementById('cascade-svg');
   const wrap = document.getElementById('cascade');
   if (!svg || !wrap) return;
-  const wr = wrap.getBoundingClientRect();
   const w = wrap.scrollWidth, h = wrap.scrollHeight;
   svg.setAttribute('width', w); svg.setAttribute('height', h);
   svg.style.width = w + 'px'; svg.style.height = h + 'px';
   const blocks = Array.from(wrap.querySelectorAll('.chart-block'));
   let s = `<defs><marker id="cc-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L6,3 L0,6 Z" fill="${ACCENT}"/></marker></defs>`;
+  // The drilled row is covered by the overlapping child layer, so connect the parent
+  // layer's header (visible in its peeking top strip) down into the child layer's header.
   for (let i = 0; i < blocks.length - 1; i++) {
-    const openRow = blocks[i].querySelector('.chart-row.open');
-    const head = blocks[i + 1].querySelector('.chart-head');
-    if (!openRow || !head) continue;
-    const r = openRow.getBoundingClientRect();
-    const hd = head.getBoundingClientRect();
-    const x1 = r.left - wr.left + 15;
-    const y1 = r.bottom - wr.top;
-    const x2 = hd.left - wr.left - 7;
-    const y2 = hd.top - wr.top + hd.height / 2;
-    s += `<path d="M ${x1} ${y1} V ${y2} H ${x2}" fill="none" stroke="${ACCENT}" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#cc-arrow)" opacity="0.9"/>`;
+    const head = blocks[i].querySelector('.chart-head');
+    const childHead = blocks[i + 1].querySelector('.chart-head');
+    if (!head || !childHead) continue;
+    const x1 = blocks[i].offsetLeft + head.offsetLeft + 18;
+    const y1 = blocks[i].offsetTop + head.offsetTop + head.offsetHeight;
+    const x2 = blocks[i + 1].offsetLeft + childHead.offsetLeft - 7;
+    const y2 = blocks[i + 1].offsetTop + childHead.offsetTop + childHead.offsetHeight / 2;
+    // the connector feeding the focused (last) layer flows green toward it
+    const pulse = (i === blocks.length - 2) ? ' class="cc-pulse"' : '';
+    const sw = (i === blocks.length - 2) ? 2.5 : 2;
+    s += `<path${pulse} d="M ${x1} ${y1} V ${y2} H ${x2}" fill="none" stroke="${ACCENT}" stroke-width="${sw}" stroke-dasharray="5 3" marker-end="url(#cc-arrow)" opacity="0.95"/>`;
   }
   svg.innerHTML = s;
 }
-window.addEventListener('resize', () => { if (state.viewMode === 'chart') drawConnectors(); });
+window.addEventListener('resize', () => { if (state.viewMode === 'chart') { layoutCascade(); drawConnectors(); } });
+
+// ---- dynamic chart resize (drag the bottom-right grip on the focused layer) ----
+let chartResize = null;
+document.addEventListener('mousedown', e => {
+  const grip = e.target.closest('#chart-resize');
+  if (!grip) return;
+  const focused = document.querySelector('.chart-block.focus');
+  if (!focused) return;
+  e.preventDefault();
+  chartResize = { x: e.clientX, y: e.clientY, w: focused.offsetWidth, h: focused.offsetHeight };
+  document.body.classList.add('chart-resizing');
+});
+document.addEventListener('mousemove', e => {
+  if (!chartResize) return;
+  // screen delta -> logical delta (divide by zoom so the grip tracks the cursor 1:1)
+  const z = state.chartZoom || 1;
+  const w = Math.max(360, Math.round(chartResize.w + (e.clientX - chartResize.x) / z));
+  const h = Math.max(120, Math.round(chartResize.h + (e.clientY - chartResize.y) / z));
+  chartResize.curW = w; chartResize.curH = h;
+  // live-apply: width to every layer (keeps the stack aligned), height/scroll to the top one
+  document.querySelectorAll('.chart-block').forEach(b => {
+    b.style.width = w + 'px'; b.style.minWidth = '0'; b.style.maxWidth = 'none';
+  });
+  const focused = document.querySelector('.chart-block.focus');
+  if (focused) { focused.style.height = h + 'px'; focused.style.overflow = 'auto'; }
+  layoutCascade(); drawConnectors();
+});
+document.addEventListener('mouseup', () => {
+  if (!chartResize) return;
+  if (chartResize.curW) { state.chartSize = { w: chartResize.curW, h: chartResize.curH }; saveState(); }
+  chartResize = null;
+  document.body.classList.remove('chart-resizing');
+});
+
+// ---- drag a pane out of its nested position (grab its header) ----
+// Each pane remembers a manual {x,y} per tier in state.chartPos; connectors (incl. the
+// pulsing arrow) follow because drawConnectors reads the live block positions.
+let chartDrag = null, dragSuppressClick = false;
+document.addEventListener('mousedown', e => {
+  if (e.target.closest('#chart-resize')) return;       // resize grip owns its own drag
+  const head = e.target.closest('.chart-head');
+  if (!head) return;
+  const block = head.closest('.chart-block');
+  if (!block) return;
+  chartDrag = {
+    block,
+    tier: parseInt(block.dataset.tier, 10) || 0,
+    sx: e.clientX, sy: e.clientY,
+    ox: block.offsetLeft, oy: block.offsetTop,
+    moved: false
+  };
+});
+document.addEventListener('mousemove', e => {
+  if (!chartDrag) return;
+  const z = state.chartZoom || 1;
+  const dx = (e.clientX - chartDrag.sx) / z, dy = (e.clientY - chartDrag.sy) / z;
+  if (!chartDrag.moved && Math.hypot(dx, dy) < 4) return; // small move = click, not a drag
+  if (!chartDrag.moved) {
+    chartDrag.moved = true;
+    document.body.classList.add('chart-dragging');
+    chartDrag.block.classList.add('dragging-active');
+  }
+  if (!state.chartPos) state.chartPos = {};
+  state.chartPos[chartDrag.tier] = {
+    x: Math.max(0, Math.round(chartDrag.ox + dx)),
+    y: Math.max(0, Math.round(chartDrag.oy + dy))
+  };
+  layoutCascade(); drawConnectors();
+});
+document.addEventListener('mouseup', () => {
+  if (!chartDrag) return;
+  if (chartDrag.moved) {
+    chartDrag.block.classList.remove('dragging-active');
+    document.body.classList.remove('chart-dragging');
+    dragSuppressClick = true;                            // don't let this drag also focus the pane
+    saveState(); drawConnectors();
+  }
+  chartDrag = null;
+});
+// double-click a pane header to snap it back into the nested cascade
+document.addEventListener('dblclick', e => {
+  const head = e.target.closest('.chart-head');
+  if (!head || state.viewMode !== 'chart') return;
+  const block = head.closest('.chart-block');
+  const tier = parseInt(block.dataset.tier, 10) || 0;
+  if (state.chartPos && state.chartPos[tier]) {
+    delete state.chartPos[tier];
+    saveState(); layoutCascade(); drawConnectors();
+  }
+});
+
+// ---- chart zoom ----
+const ZOOM_MIN = 0.4, ZOOM_MAX = 2.5;
+function applyZoom() {
+  const z = state.chartZoom || 1;
+  const lbl = document.getElementById('zoom-level');
+  if (lbl) lbl.textContent = Math.round(z * 100) + '%';
+  layoutCascade(); drawConnectors();
+}
+function setZoom(z) {
+  state.chartZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100));
+  saveState();
+  applyZoom();
+}
+function zoomBy(delta) { setZoom((state.chartZoom || 1) + delta); }
+// Ctrl/Cmd + wheel zooms the chart
+document.addEventListener('wheel', e => {
+  if (state.viewMode !== 'chart' || !(e.ctrlKey || e.metaKey)) return;
+  if (!e.target.closest('#ws-main')) return;
+  e.preventDefault();
+  zoomBy(e.deltaY < 0 ? 0.1 : -0.1);
+}, { passive: false });
 
 function renderRoster() {
   const main = document.getElementById('ws-main');
@@ -2046,7 +2557,7 @@ const ROLE_ADD_LABELS = { AD: '+ Set Associate Director', DC: '+ Set Division Ch
 function renderLeadSlot(actor, divId, brId, teamId, role, lead) {
   const scope = `${actor}|${divId || ''}|${brId || ''}|${teamId || ''}|${role}`;
   if (!lead) {
-    return `<button class="add-lead" data-add-lead="${scope}">${ROLE_ADD_LABELS[role]}</button>`;
+    return `<button class="add-lead" data-role="${role}" data-add-lead="${scope}">${ROLE_ADD_LABELS[role]}</button>`;
   }
   const idAttrs = `data-actor="${actor}"${divId ? ` data-division-id="${divId}"` : ''}${brId ? ` data-branch-id="${brId}"` : ''}${teamId ? ` data-team-id="${teamId}"` : ''} data-role="${role}"`;
   return `
@@ -2439,6 +2950,8 @@ function openOrgPopover(id, kind, anchorEl) {
 
 // ---------- event wiring ----------
 document.addEventListener('click', e => {
+  // a pane drag just ended on this element — swallow the click so it doesn't also focus it
+  if (dragSuppressClick) { dragSuppressClick = false; return; }
   const tab = e.target.closest('#view-tabs button');
   if (tab) { setViewMode(tab.dataset.view); return; }
   if (e.target.closest('#btn-legend')) {
@@ -2447,7 +2960,12 @@ document.addEventListener('click', e => {
   }
   if (e.target.closest('#btn-export')) { exportJSON(); return; }
   if (e.target.closest('#btn-export-xlsx')) { exportXLSX(); return; }
+  if (e.target.closest('#btn-export-xml')) { exportXML(); return; }
+  if (e.target.closest('#btn-export-mmd')) { exportMermaid(); return; }
   if (e.target.closest('#btn-import')) { document.getElementById('file-import').click(); return; }
+  if (e.target.closest('#zoom-in')) { zoomBy(0.1); return; }
+  if (e.target.closest('#zoom-out')) { zoomBy(-0.1); return; }
+  if (e.target.closest('#zoom-level')) { setZoom(1); return; }
   if (e.target.closest('#btn-reset')) {
     if (confirm('Reset everything to the sample dataset? This replaces the chart AND the roster.')) {
       state = defaultState();
@@ -2457,6 +2975,13 @@ document.addEventListener('click', e => {
   }
 
   // ---- Chart handlers ----
+  // Breadcrumb capsule -> jump that drill level back into focus.
+  const crumb = e.target.closest('[data-crumb-tier]');
+  if (crumb) { focusChartTier(parseInt(crumb.dataset.crumbTier, 10) || 0); return; }
+  // Click anywhere on a background (faded) layer -> collapse the layers in front of it
+  // and bring it into focus. Checked first so it wins over carets/cells in that layer.
+  const bgBlock = e.target.closest('.chart-block.faded');
+  if (bgBlock) { focusChartTier(parseInt(bgBlock.dataset.tier, 10) || 0); return; }
   if (e.target.closest('[data-add-root]')) { addRootActivity(); return; }
   const addChild = e.target.closest('[data-add-child]');
   if (addChild) { addChildActivity(addChild.dataset.addChild); return; }
@@ -2527,6 +3052,92 @@ function downloadBlob(filename, blob) {
 }
 function exportJSON() {
   download(`${(state.title || 'raci').replace(/\s+/g,'_')}.json`, JSON.stringify(state, null, 2), 'application/json');
+}
+
+// Effective RACI for a node = own roles + an inherited A where it's R on the parent activity.
+function effectiveRaci(node, parent) {
+  const o = {};
+  COLS.forEach(k => {
+    let v = normalizeRaci(node.raci[k] || '');
+    if (parent && normalizeRaci(parent.raci[k] || '').includes('R') && !v.includes('A')) v = normalizeRaci(v + 'A');
+    o[k] = v;
+  });
+  return o;
+}
+function fileBase() { return (state.title || 'raci').replace(/\s+/g, '_'); }
+
+// ---------- XML export (full RACI tree + roster) ----------
+function exportXML() {
+  const esc = s => escapeHtml(s == null ? '' : String(s));
+  const tagName = ['portfolio', 'program', 'project', 'task'];
+  const node = (n, depth, parent, pad) => {
+    const eff = effectiveRaci(n, parent);
+    const raci = COLS.filter(k => eff[k]).map(k => ` ${k}="${eff[k]}"`).join('');
+    let org = '';
+    if (n.org) { const l = orgLabel(n.org); if (l) org = ` org="${esc(l.full)}"`; }
+    const tag = tagName[depth] || ('level' + depth);
+    const open = `${pad}<${tag} name="${esc(n.name)}"${org}${raci}`;
+    const kids = n.children || [];
+    if (!kids.length) return open + '/>\n';
+    return open + '>\n' + kids.map(c => node(c, depth + 1, n, pad + '  ')).join('') + `${pad}</${tag}>\n`;
+  };
+  const cols = COLS.map(k => `    <column key="${k}" label="${esc(COL_LABELS[k])}"/>`).join('\n');
+  const acts = (state.activities || []).map(pf => node(pf, 0, null, '    ')).join('');
+  const lead = l => (l && l.name) ? ` lead="${esc(l.name)}"` : '';
+  const chief = l => (l && l.name) ? ` chief="${esc(l.name)}"` : '';
+  const roster = ACTORS.map(a => {
+    const d = state.directorates[a] || { divisions: [] };
+    const divs = (d.divisions || []).map(div => {
+      const brs = (div.branches || []).map(br => {
+        const tms = (br.teams || []).map(tm => {
+          const ppl = (tm.people || []).map(p => `            <person name="${esc(p.name)}" title="${esc(p.title)}"/>`).join('\n');
+          return `          <team name="${esc(tm.name)}"${chief(tm.chief)}>${ppl ? '\n' + ppl + '\n          ' : ''}</team>`;
+        }).join('\n');
+        return `        <branch name="${esc(br.name)}"${chief(br.chief)}>${tms ? '\n' + tms + '\n        ' : ''}</branch>`;
+      }).join('\n');
+      return `      <division name="${esc(div.name)}"${chief(div.chief)}>${brs ? '\n' + brs + '\n      ' : ''}</division>`;
+    }).join('\n');
+    return `    <directorate key="${a}" label="${esc(ACTOR_LABELS[a])}"${lead(d.lead)}>${divs ? '\n' + divs + '\n    ' : ''}</directorate>`;
+  }).join('\n');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<raciTool title="${esc(state.title || 'RACI')}">
+  <columns>
+${cols}
+  </columns>
+  <activities>
+${acts}  </activities>
+  <roster>
+${roster}
+  </roster>
+</raciTool>
+`;
+  download(`${fileBase()}.xml`, xml, 'application/xml');
+}
+
+// ---------- Mermaid export (flowchart of the activity tree, with R/A summary) ----------
+function exportMermaid() {
+  const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/[\r\n]+/g, ' ');
+  const lines = ['flowchart TD'];
+  const tierClass = ['pf', 'pg', 'pj', 'tk'];
+  let id = 0;
+  const summary = (n, parent) => {
+    const eff = effectiveRaci(n, parent);
+    const A = COLS.filter(k => eff[k].includes('A')).map(k => COL_SHORT[k]);
+    const R = COLS.filter(k => eff[k].includes('R')).map(k => COL_SHORT[k]);
+    return (A.length ? `<br/>A: ${A.join(', ')}` : '') + (R.length ? `<br/>R: ${R.join(', ')}` : '');
+  };
+  const walk = (n, depth, parentMid, parent) => {
+    const mid = 'n' + (id++);
+    lines.push(`  ${mid}["${esc(n.name) || '(unnamed)'}${summary(n, parent)}"]:::${tierClass[depth] || 'tk'}`);
+    if (parentMid) lines.push(`  ${parentMid} --> ${mid}`);
+    (n.children || []).forEach(c => walk(c, depth + 1, mid, n));
+  };
+  (state.activities || []).forEach(pf => walk(pf, 0, null, null));
+  lines.push('  classDef pf fill:#1c2b45,stroke:#4dabf7,color:#fff;');
+  lines.push('  classDef pg fill:#1d2540,stroke:#748ffc,color:#fff;');
+  lines.push('  classDef pj fill:#2a2140,stroke:#b07cff,color:#fff;');
+  lines.push('  classDef tk fill:#14271c,stroke:#51cf66,color:#fff;');
+  download(`${fileBase()}.mmd`, lines.join('\n') + '\n', 'text/vnd.mermaid');
 }
 
 // ---------- Excel (.xlsx) export — one sheet per tier ----------
