@@ -1707,6 +1707,12 @@ table.chart td.chart-cell { padding: 14px 20px; }
 #legend { display: none; }
 body.show-legend[data-view="chart"] #legend { display: block; }
 body[data-view="chart"] #btn-legend { display: inline-block; }
+/* Auto Arrange is chart-view only */
+#btn-arrange { display: none; }
+body[data-view="chart"] #btn-arrange { display: inline-block; }
+#btn-arrange:hover { border-color: var(--accent); color: var(--accent); }
+/* smooth glide back into the cascade when auto-arranging */
+.cascade.arranging .chart-block { transition: top 0.38s cubic-bezier(.2,.7,.2,1), left 0.38s cubic-bezier(.2,.7,.2,1), max-height 0.38s ease; }
 body[data-view="chart"] #ws-main { padding: 0; }
 body[data-view="roster"] #legend { display: none; }
 
@@ -1730,6 +1736,7 @@ body[data-view="roster"] #legend { display: none; }
     <button data-view="roster">Roster</button>
   </div>
   <div class="actions">
+    <button id="btn-arrange" title="Snap all panes back into a tight nested cascade">⤧ Auto Arrange</button>
     <button id="btn-legend" title="Show/hide RACI legend">Legend</button>
     <button id="btn-export">Export JSON</button>
     <button id="btn-export-xlsx">Export Excel</button>
@@ -2386,6 +2393,9 @@ function drawConnectors() {
   svg.style.width = w + 'px'; svg.style.height = h + 'px';
   const blocks = Array.from(wrap.querySelectorAll('.chart-block'));
   let s = `<defs><marker id="cc-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L6,3 L0,6 Z" fill="${ACCENT}"/></marker></defs>`;
+  // green connection node where a connector meets a card
+  const dot = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${ACCENT}" stroke="#0d0e12" stroke-width="1.5"/>`;
+  let dots = '';
   // The drilled row is covered by the overlapping child layer, so connect the parent
   // layer's header (visible in its peeking top strip) down into the child layer's header.
   for (let i = 0; i < blocks.length - 1; i++) {
@@ -2397,11 +2407,15 @@ function drawConnectors() {
     const x2 = blocks[i + 1].offsetLeft + childHead.offsetLeft - 7;
     const y2 = blocks[i + 1].offsetTop + childHead.offsetTop + childHead.offsetHeight / 2;
     // the connector feeding the focused (last) layer flows green toward it
-    const pulse = (i === blocks.length - 2) ? ' class="cc-pulse"' : '';
-    const sw = (i === blocks.length - 2) ? 2.5 : 2;
+    const toFocus = (i === blocks.length - 2);
+    const pulse = toFocus ? ' class="cc-pulse"' : '';
+    const sw = toFocus ? 2.5 : 2;
     s += `<path${pulse} d="M ${x1} ${y1} V ${y2} H ${x2}" fill="none" stroke="${ACCENT}" stroke-width="${sw}" stroke-dasharray="5 3" marker-end="url(#cc-arrow)" opacity="0.95"/>`;
+    // green circle where the connector leaves the parent card and where it meets the child card
+    dots += dot(x1, y1, 5);
+    dots += dot(x2, y2, toFocus ? 6 : 5);
   }
-  svg.innerHTML = s;
+  svg.innerHTML = s + dots; // draw dots last so they sit on top of the lines
 }
 window.addEventListener('resize', () => { if (state.viewMode === 'chart') { layoutCascade(); drawConnectors(); } });
 
@@ -2516,6 +2530,26 @@ document.addEventListener('wheel', e => {
   e.preventDefault();
   zoomBy(e.deltaY < 0 ? 0.1 : -0.1);
 }, { passive: false });
+
+// ---- auto arrange: drop all manual pane offsets and glide back into the tight cascade ----
+function autoArrange() {
+  if (state.viewMode !== 'chart') return;
+  const had = state.chartPos && Object.keys(state.chartPos).length;
+  state.chartPos = {};
+  saveState();
+  const cascade = document.getElementById('cascade');
+  if (!cascade || !had) { layoutCascade(); drawConnectors(); return; } // already tidy
+  cascade.classList.add('arranging');   // CSS transition animates the glide home
+  layoutCascade();
+  let start = null;
+  function frame(ts) {
+    if (start === null) start = ts;
+    drawConnectors();                   // keep connectors glued to the moving panes
+    if (ts - start < 480) requestAnimationFrame(frame);
+    else { cascade.classList.remove('arranging'); drawConnectors(); }
+  }
+  requestAnimationFrame(frame);
+}
 
 function renderRoster() {
   const main = document.getElementById('ws-main');
@@ -2950,10 +2984,16 @@ function openOrgPopover(id, kind, anchorEl) {
 
 // ---------- event wiring ----------
 document.addEventListener('click', e => {
-  // a pane drag just ended on this element — swallow the click so it doesn't also focus it
-  if (dragSuppressClick) { dragSuppressClick = false; return; }
+  // A pane drag just ended — swallow the click so it doesn't also focus the pane. Only
+  // swallow clicks that land on a pane: a big drag fires no click at all (browser cancels
+  // it), so the flag must not eat a later click on a toolbar button (e.g. Auto Arrange).
+  if (dragSuppressClick) {
+    dragSuppressClick = false;
+    if (e.target.closest('.chart-block')) return;
+  }
   const tab = e.target.closest('#view-tabs button');
   if (tab) { setViewMode(tab.dataset.view); return; }
+  if (e.target.closest('#btn-arrange')) { autoArrange(); return; }
   if (e.target.closest('#btn-legend')) {
     state.showLegend = !state.showLegend; saveState();
     document.body.classList.toggle('show-legend', state.showLegend); return;
