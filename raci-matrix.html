@@ -665,6 +665,57 @@ td.row-del button:hover { background: var(--err); color: #fff; }
   font-size: 11px;
   font-weight: 600;
 }
+/* Primary-R toggle: marks the R in this cell as the one that cascades down as Accountable */
+.raci-popover .primary-r {
+  width: auto;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.raci-popover .primary-r.on { background: var(--r); color: #000; border-color: var(--r); }
+
+/* ===== Toasts ===== */
+#toast-tray {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  max-width: 460px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #fff;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast .toast-ico { flex: 0 0 auto; font-size: 15px; line-height: 1.2; }
+.toast.error { border-color: var(--r); background: #3a1518; }
+.toast.error .toast-ico { color: var(--r); }
+.toast.suggest { border-color: var(--a); background: #16263a; }
+.toast.suggest .toast-ico { color: var(--a); }
+
+/* Primary-R chip ring + needs-pick nudge */
+.raci-chip.primary-r { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px #fff; }
+.chart-cell.needs-primary .raci-chip.R { outline: 2px dotted var(--a); outline-offset: 1px; }
 
 input[type="file"] { display: none; }
 
@@ -1727,6 +1778,7 @@ body[data-view="roster"] #legend { display: none; }
 </style>
 </head>
 <body>
+<div id="toast-tray" aria-live="polite"></div>
 <img id="bg-watermark" src="ASIC-LOGO-2026.png" alt="" aria-hidden="true">
 <header>
   <img id="app-logo" src="ASIC-LOGO-2026.png" alt="ASIC — Army Software & Innovation Center" title="ASIC — Army Software & Innovation Center">
@@ -1813,6 +1865,19 @@ function normalizeRaci(s) {
   if (!s) return '';
   const set = new Set(String(s).toUpperCase().split('').filter(ch => ROLES.includes(ch)));
   return ROLES.filter(r => set.has(r)).join('');
+}
+// Columns where this node is Responsible.
+function rColumns(node) {
+  return COLS.filter(k => normalizeRaci(node.raci[k] || '').includes('R'));
+}
+// The single R column that cascades down to become the children's Accountable:
+//   0 R's -> null; exactly 1 R -> that column; 2+ R's -> node.primaryR if still valid, else null
+//   (null at 2+ means the user hasn't designated one yet — cascade continues from the ancestor).
+function primaryRColumn(node) {
+  const rs = rColumns(node);
+  if (rs.length === 0) return null;
+  if (rs.length === 1) return rs[0];
+  return (node.primaryR && rs.includes(node.primaryR)) ? node.primaryR : null;
 }
 
 // ---------- state ----------
@@ -2099,7 +2164,11 @@ function countNodes(nodes) {
 // Resolve the single drill path into an ordered list of charts (tier 0 .. N).
 function resolveCascade() {
   const acc = { division: null, branch: null }; // inherited roster refs from ancestors
-  const charts = [{ tier: 0, parent: null, nodes: state.activities, openId: null, inherited: { ...acc } }];
+  // casc = the single column whose Accountable cascades into the current chart's rows.
+  // It's null at the top; each drilled node replaces it with its own designated R (primaryRColumn),
+  // and if a node has no designated R the ancestor's accountability keeps flowing down unchanged.
+  let casc = null;
+  const charts = [{ tier: 0, parent: null, nodes: state.activities, openId: null, inherited: { ...acc }, inheritedAcol: null }];
   const valid = [];
   let nodes = state.activities;
   for (let i = 0; i < state.drillPath.length; i++) {
@@ -2109,7 +2178,8 @@ function resolveCascade() {
     charts[charts.length - 1].openId = id;
     // a Program contributes its Division, a Project its Branch, to everything below
     if (node.org) { if (node.org.branchId) acc.branch = node.org; else acc.division = node.org; }
-    charts.push({ tier: i + 1, parent: node, nodes: node.children, openId: null, inherited: { ...acc } });
+    casc = primaryRColumn(node) || casc;
+    charts.push({ tier: i + 1, parent: node, nodes: node.children, openId: null, inherited: { ...acc }, inheritedAcol: casc });
     valid.push(id);
     nodes = node.children;
   }
@@ -2286,7 +2356,7 @@ function layoutCascade() {
   }
 }
 function renderChartBlock(chart, idx, total) {
-  const { tier, parent, nodes, openId, inherited } = chart;
+  const { tier, parent, nodes, openId, inherited, inheritedAcol } = chart;
   const focus = idx === total - 1;
   const cls = focus ? 'focus' : 'faded';
   // depth = how far this chart sits behind the focused one; further back = darker/greyer.
@@ -2314,9 +2384,10 @@ function renderChartBlock(chart, idx, total) {
       ${cols.map(k => `<th class="ch-col" title="${escapeHtml(COL_LABELS[k])}">${COL_SHORT[k]}</th>`).join('')}
       <th class="ch-del"></th>
     </tr>`;
-  // Cascade rule: an entity that is R on the parent activity is A on this (one-level-down) breakdown.
+  // Cascade rule: the designated R that flows down from the ancestors lands here as the single
+  // inherited Accountable column (see resolveCascade). Every row in this breakdown inherits A there.
   const parentR = {};
-  cols.forEach(k => { parentR[k] = !!(parent && normalizeRaci(parent.raci[k] || '').includes('R')); });
+  cols.forEach(k => { parentR[k] = (k === inheritedAcol); });
   const rows = nodes.length
     ? nodes.map(n => renderNodeRow(n, tier, openId === n.id, cols, inherited, parentR)).join('')
     : `<tr class="ch-empty-row"><td colspan="${cols.length + 3}">No ${TIER_LABELS[tier].toLowerCase()} activities yet.</td></tr>`;
@@ -2333,10 +2404,15 @@ function renderChartBlock(chart, idx, total) {
 // Cells support any combination of R/A/C/I; chips render in R-A-C-I order.
 function cellChipsHtml(node, col, inheritedA) {
   const manual = new Set(normalizeRaci(node.raci[col] || '').split('').filter(Boolean));
+  const isPrimaryR = rColumns(node).length > 1 && primaryRColumn(node) === col;
   const chips = [];
   ROLES.forEach(l => {
-    if (manual.has(l)) chips.push(`<span class="raci-chip ${l}">${l}</span>`);
-    else if (l === 'A' && inheritedA) chips.push(`<span class="raci-chip A inherited" title="Accountable — inherited (Responsible one level up)">A</span>`);
+    if (manual.has(l)) {
+      const extra = (l === 'R' && isPrimaryR) ? ' primary-r' : '';
+      const t = (l === 'R' && isPrimaryR) ? ' title="Primary Responsible — cascades down as Accountable"' : '';
+      chips.push(`<span class="raci-chip ${l}${extra}"${t}>${l}</span>`);
+    }
+    else if (l === 'A' && inheritedA && !manual.has('A')) chips.push(`<span class="raci-chip A inherited" title="Accountable — inherited (Responsible one level up)">A</span>`);
   });
   return chips.length ? `<div class="cell-chips">${chips.join('')}</div>` : `<div class="cell-chips empty">·</div>`;
 }
@@ -2345,8 +2421,10 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
   const caret = leaf
     ? '<span class="ch-caret leaf">·</span>'
     : `<button class="ch-caret${isOpen ? ' open' : ''}" data-drill="${node.id}" data-tier="${tier}" title="${isOpen ? 'Collapse' : 'Drill into breakdown'}">${isOpen ? '▾' : '▸'}</button>`;
+  // 2+ R's with no designated primary → nudge the user to pick which R cascades.
+  const needsPrimary = rColumns(node).length > 1 && !primaryRColumn(node);
   const cells = cols.map(k =>
-    `<td class="chart-cell" data-id="${node.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">${cellChipsHtml(node, k, parentR && parentR[k])}</td>`).join('');
+    `<td class="chart-cell${needsPrimary ? ' needs-primary' : ''}" data-id="${node.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">${cellChipsHtml(node, k, parentR && parentR[k])}</td>`).join('');
   return `<tr class="chart-row${isOpen ? ' open' : ''}" data-id="${node.id}">
       <td class="ch-toggle">${caret}</td>
       <td class="ch-name"><span class="ch-name-edit" contenteditable="true" spellcheck="false" data-node-id="${node.id}" data-field="name" data-placeholder="${TIER_LABELS[tier]} name">${escapeHtml(node.name)}</span>${renderOrgRow(node, tier, inherited)}</td>
@@ -2871,37 +2949,90 @@ function updateDirectorateStats(actor) {
   }
 }
 
+// ---------- toasts ----------
+// Lightweight transient notification. type: 'error' (rule violation) | 'suggest' (advisory).
+function showToast(message, type) {
+  const tray = document.getElementById('toast-tray');
+  if (!tray) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'suggest');
+  el.innerHTML = `<span class="toast-ico">${type === 'error' ? '⛔' : '💡'}</span><span>${escapeHtml(message)}</span>`;
+  tray.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 220);
+  }, type === 'error' ? 3200 : 5200);
+}
+
 // ---------- RACI popover ----------
 let openPopover = null;
 function closePopover() { if (openPopover) { openPopover.remove(); openPopover = null; } }
-function refreshPopoverButtons(id, col, letters) {
+// Inner buttons for a cell's popover: R/A/C/I toggles, a clear button, and — only when the row
+// has 2+ R's — a star to mark which R cascades down as the children's Accountable.
+function popoverInnerHtml(node, col) {
+  const set = new Set(normalizeRaci(node.raci[col] || '').split(''));
+  let html = ROLES.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}">${r}</button>`).join('')
+    + `<button class="clear" data-clear="1" title="Clear">✕</button>`;
+  if (set.has('R') && rColumns(node).length > 1) {
+    const on = primaryRColumn(node) === col;
+    html += `<button class="primary-r${on ? ' on' : ''}" data-primary="1" title="Cascade this R down as the Accountable for the next level">${on ? '★ Cascading' : '☆ Cascade R'}</button>`;
+  }
+  return html;
+}
+function refreshPopover(id, col) {
   if (!openPopover || openPopover.dataset.id !== id || openPopover.dataset.col !== col) return;
-  const set = new Set(letters.split(''));
-  openPopover.querySelectorAll('button[data-letter]').forEach(b => b.classList.toggle('on', set.has(b.dataset.letter)));
+  const f = findNode(id); if (!f) return;
+  openPopover.innerHTML = popoverInnerHtml(f.node, col);
 }
 // Re-render the whole cascade after a RACI edit so inherited-A chips downstream stay in sync.
 function toggleRaciLetter(id, col, letter) {
   const f = findNode(id); if (!f) return;
-  const cur = normalizeRaci(f.node.raci[col] || '');
-  const next = normalizeRaci(cur.includes(letter) ? cur.replace(letter, '') : cur + letter);
-  f.node.raci[col] = next; saveState();
-  renderChart(); refreshPopoverButtons(id, col, next);
+  const node = f.node;
+  const cur = normalizeRaci(node.raci[col] || '');
+  const adding = !cur.includes(letter);
+  // Hard rule: only one explicit Accountable per row. Block a second A in another column.
+  if (letter === 'A' && adding) {
+    const otherA = COLS.find(k => k !== col && normalizeRaci(node.raci[k] || '').includes('A'));
+    if (otherA) {
+      showToast(`Only one Accountable per row — ${COL_LABELS[otherA]} already holds the A. Clear it first.`, 'error');
+      return;
+    }
+  }
+  const next = normalizeRaci(adding ? cur + letter : cur.replace(letter, ''));
+  node.raci[col] = next;
+  // Removing an R that was the designated primary clears the designation.
+  if (letter === 'R' && !adding && node.primaryR === col) delete node.primaryR;
+  // Adding an R that creates a 2nd-or-more Responsible without a designated primary → suggest.
+  if (letter === 'R' && adding && rColumns(node).length > 1 && !primaryRColumn(node)) {
+    showToast('Two Responsible parties on this line. Star the R that cascades down as Accountable, or consider splitting this into two process areas.', 'suggest');
+  }
+  saveState();
+  renderChart(); refreshPopover(id, col);
+}
+// Designate (or clear) which R in a row cascades down as the children's Accountable.
+function setPrimaryR(id, col) {
+  const f = findNode(id); if (!f) return;
+  const node = f.node;
+  if (!normalizeRaci(node.raci[col] || '').includes('R')) return; // only an R cell can be primary
+  if (node.primaryR === col) delete node.primaryR; else node.primaryR = col;
+  saveState();
+  renderChart(); refreshPopover(id, col);
 }
 function clearRaciCell(id, col) {
   const f = findNode(id); if (!f) return;
-  f.node.raci[col] = ''; saveState();
-  renderChart(); refreshPopoverButtons(id, col, '');
+  f.node.raci[col] = '';
+  if (f.node.primaryR === col) delete f.node.primaryR;
+  saveState();
+  renderChart(); refreshPopover(id, col);
 }
 function openRaciPopover(id, col, anchorEl) {
   closePopover();
   const f = findNode(id); if (!f) return;
-  const letters = normalizeRaci(f.node.raci[col] || '');
-  const set = new Set(letters.split(''));
   const pop = document.createElement('div');
   pop.className = 'raci-popover';
   pop.dataset.id = id; pop.dataset.col = col;
-  pop.innerHTML = ROLES.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}">${r}</button>`).join('')
-    + `<button class="clear" data-clear="1" title="Clear">✕</button>`;
+  pop.innerHTML = popoverInnerHtml(f.node, col);
   document.body.appendChild(pop);
   const rect = anchorEl.getBoundingClientRect();
   const popRect = pop.getBoundingClientRect();
@@ -2915,6 +3046,7 @@ function openRaciPopover(id, col, anchorEl) {
     const btn = e.target.closest('button'); if (!btn) return;
     e.stopPropagation();
     if (btn.dataset.clear) { clearRaciCell(id, col); return; }
+    if (btn.dataset.primary) { setPrimaryR(id, col); return; }
     toggleRaciLetter(id, col, btn.dataset.letter);
   });
 }
@@ -3094,32 +3226,37 @@ function exportJSON() {
   download(`${(state.title || 'raci').replace(/\s+/g,'_')}.json`, JSON.stringify(state, null, 2), 'application/json');
 }
 
-// Effective RACI for a node = own roles + an inherited A where it's R on the parent activity.
-function effectiveRaci(node, parent) {
+// Effective RACI for a node = own roles + an inherited A in the single column cascaded from above
+// (inheritedAcol; see resolveCascade). Inherited A only shows where the row has no explicit A.
+function effectiveRaci(node, inheritedAcol) {
+  const hasOwnA = COLS.some(k => normalizeRaci(node.raci[k] || '').includes('A'));
   const o = {};
   COLS.forEach(k => {
     let v = normalizeRaci(node.raci[k] || '');
-    if (parent && normalizeRaci(parent.raci[k] || '').includes('R') && !v.includes('A')) v = normalizeRaci(v + 'A');
+    if (!hasOwnA && k === inheritedAcol && !v.includes('A')) v = normalizeRaci(v + 'A');
     o[k] = v;
   });
   return o;
 }
+// The column this node passes down to its children as their Accountable.
+function cascadeDown(node, inheritedAcol) { return primaryRColumn(node) || inheritedAcol; }
 function fileBase() { return (state.title || 'raci').replace(/\s+/g, '_'); }
 
 // ---------- XML export (full RACI tree + roster) ----------
 function exportXML() {
   const esc = s => escapeHtml(s == null ? '' : String(s));
   const tagName = ['portfolio', 'program', 'project', 'task'];
-  const node = (n, depth, parent, pad) => {
-    const eff = effectiveRaci(n, parent);
+  const node = (n, depth, inheritedAcol, pad) => {
+    const eff = effectiveRaci(n, inheritedAcol);
     const raci = COLS.filter(k => eff[k]).map(k => ` ${k}="${eff[k]}"`).join('');
     let org = '';
     if (n.org) { const l = orgLabel(n.org); if (l) org = ` org="${esc(l.full)}"`; }
     const tag = tagName[depth] || ('level' + depth);
     const open = `${pad}<${tag} name="${esc(n.name)}"${org}${raci}`;
     const kids = n.children || [];
+    const down = cascadeDown(n, inheritedAcol);
     if (!kids.length) return open + '/>\n';
-    return open + '>\n' + kids.map(c => node(c, depth + 1, n, pad + '  ')).join('') + `${pad}</${tag}>\n`;
+    return open + '>\n' + kids.map(c => node(c, depth + 1, down, pad + '  ')).join('') + `${pad}</${tag}>\n`;
   };
   const cols = COLS.map(k => `    <column key="${k}" label="${esc(COL_LABELS[k])}"/>`).join('\n');
   const acts = (state.activities || []).map(pf => node(pf, 0, null, '    ')).join('');
@@ -3160,17 +3297,18 @@ function exportMermaid() {
   const lines = ['flowchart TD'];
   const tierClass = ['pf', 'pg', 'pj', 'tk'];
   let id = 0;
-  const summary = (n, parent) => {
-    const eff = effectiveRaci(n, parent);
+  const summary = (n, inheritedAcol) => {
+    const eff = effectiveRaci(n, inheritedAcol);
     const A = COLS.filter(k => eff[k].includes('A')).map(k => COL_SHORT[k]);
     const R = COLS.filter(k => eff[k].includes('R')).map(k => COL_SHORT[k]);
     return (A.length ? `<br/>A: ${A.join(', ')}` : '') + (R.length ? `<br/>R: ${R.join(', ')}` : '');
   };
-  const walk = (n, depth, parentMid, parent) => {
+  const walk = (n, depth, parentMid, inheritedAcol) => {
     const mid = 'n' + (id++);
-    lines.push(`  ${mid}["${esc(n.name) || '(unnamed)'}${summary(n, parent)}"]:::${tierClass[depth] || 'tk'}`);
+    lines.push(`  ${mid}["${esc(n.name) || '(unnamed)'}${summary(n, inheritedAcol)}"]:::${tierClass[depth] || 'tk'}`);
     if (parentMid) lines.push(`  ${parentMid} --> ${mid}`);
-    (n.children || []).forEach(c => walk(c, depth + 1, mid, n));
+    const down = cascadeDown(n, inheritedAcol);
+    (n.children || []).forEach(c => walk(c, depth + 1, mid, down));
   };
   (state.activities || []).forEach(pf => walk(pf, 0, null, null));
   lines.push('  classDef pf fill:#1c2b45,stroke:#4dabf7,color:#fff;');
@@ -3184,12 +3322,8 @@ function exportMermaid() {
 // Flatten the tree into one table per level, carrying ancestor context + (inherited) roster org.
 function buildLevelSheets() {
   const colHdrs = COLS.map(k => COL_LABELS[k]);
-  // Effective RACI = own roles + inherited A where the entity is R on the parent activity.
-  const raciCells = (node, parent) => COLS.map(k => {
-    let v = normalizeRaci(node.raci[k] || '');
-    if (parent && normalizeRaci(parent.raci[k] || '').includes('R') && !v.includes('A')) v = normalizeRaci(v + 'A');
-    return v;
-  });
+  // Effective RACI = own roles + inherited A in the single column cascaded down from the ancestors.
+  const raciCells = (node, inheritedAcol) => { const eff = effectiveRaci(node, inheritedAcol); return COLS.map(k => eff[k]); };
   const full = org => { const l = orgLabel(org); return l ? l.full : ''; };
   const L = {
     Portfolio: { headers: ['Portfolio', ...colHdrs], rows: [] },
@@ -3199,14 +3333,17 @@ function buildLevelSheets() {
   };
   (state.activities || []).forEach(pf => {
     L.Portfolio.rows.push([pf.name || '', ...raciCells(pf, null)]);
+    const progA = cascadeDown(pf, null);
     (pf.children || []).forEach(prog => {
       const inhDiv = prog.org && !prog.org.branchId ? prog.org : null;
-      L.Program.rows.push([pf.name || '', prog.name || '', full(prog.org), ...raciCells(prog, pf)]);
+      L.Program.rows.push([pf.name || '', prog.name || '', full(prog.org), ...raciCells(prog, progA)]);
+      const projA = cascadeDown(prog, progA);
       (prog.children || []).forEach(proj => {
         const inhBranch = proj.org && proj.org.branchId ? proj.org : null;
-        L.Project.rows.push([pf.name || '', prog.name || '', proj.name || '', full(proj.org), full(inhDiv), ...raciCells(proj, prog)]);
+        L.Project.rows.push([pf.name || '', prog.name || '', proj.name || '', full(proj.org), full(inhDiv), ...raciCells(proj, projA)]);
+        const taskA = cascadeDown(proj, projA);
         (proj.children || []).forEach(task => {
-          L.Task.rows.push([pf.name || '', prog.name || '', proj.name || '', task.name || '', full(inhDiv), full(inhBranch), ...raciCells(task, proj)]);
+          L.Task.rows.push([pf.name || '', prog.name || '', proj.name || '', task.name || '', full(inhDiv), full(inhBranch), ...raciCells(task, taskA)]);
         });
       });
     });
