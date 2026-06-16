@@ -1915,6 +1915,101 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 .person:hover > .del-icon { visibility: visible; }
 .del-icon:hover { color: #fff; background: var(--err); }
 
+/* ===== Task (Kanban) + Workflow (swimlane) views ===== */
+/* Both are full-pane views with their own inner scroll; no chart chrome. */
+body[data-view="kanban"]  #ws-main,
+body[data-view="workflow"] #ws-main { padding: 0; }
+
+/* Scope toggle (shared) — mirrors the header view-tabs styling */
+.scope-toggle { display: inline-flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.scope-toggle .seg {
+  background: var(--bg-3); color: var(--text-dim); border: none; cursor: pointer;
+  font: inherit; font-size: 12px; padding: 5px 12px;
+}
+.scope-toggle .seg + .seg { border-left: 1px solid var(--border); }
+.scope-toggle .seg:hover { background: var(--bg-4); color: var(--text); }
+.scope-toggle .seg.active { background: var(--bg); color: var(--text); box-shadow: inset 0 -2px 0 0 var(--accent); cursor: default; }
+
+/* ----- Kanban (Task view) ----- */
+.kb-header, .wf-header {
+  flex: 0 0 auto;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: 14px 18px; display: flex; align-items: center; gap: 14px;
+}
+.kb-header h2, .wf-header h2 { font-size: 18px; margin: 0; font-weight: 600; }
+.kb-header .meta, .wf-header .meta { color: var(--text-dim); font-size: 12px; margin-left: auto; }
+
+.kb-board {
+  flex: 1; min-height: 0; overflow: auto;
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px 18px 60px;
+}
+.kb-col {
+  flex: 0 0 300px; max-width: 300px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
+  display: flex; flex-direction: column; max-height: 100%;
+}
+.kb-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 600;
+}
+.kb-col-title { display: inline-flex; align-items: center; gap: 7px; }
+.kb-col-title::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--text-dim); }
+.kb-col-title.status-todo::before  { background: var(--i); }
+.kb-col-title.status-doing::before { background: var(--c); }
+.kb-col-title.status-done::before  { background: var(--accent); }
+.kb-count { color: var(--text-dim); font-size: 12px; background: var(--bg-3); border-radius: 10px; padding: 1px 8px; }
+.kb-col-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; min-height: 70px; overflow-y: auto; }
+.kb-col-body.kb-over { outline: 2px dashed var(--accent); outline-offset: -4px; background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 6px; }
+.kb-card {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px; cursor: grab;
+}
+.kb-card:active { cursor: grabbing; }
+.kb-card.kb-dragging { opacity: 0.45; }
+.kb-tier { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+.kb-name { font-weight: 600; margin: 3px 0 4px; line-height: 1.25; }
+.kb-path { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+.kb-raci-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.kb-raci { display: inline-flex; align-items: center; gap: 3px; }
+.kb-raci-col { font-size: 10px; color: var(--text-dim); }
+.kb-card .cell-chips { display: inline-flex; gap: 2px; }
+.kb-card .raci-chip { width: 18px; height: 18px; font-size: 10px; border-radius: 3px; }
+.kb-status-sel {
+  width: 100%; margin-top: 2px; background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.kb-empty { color: var(--text-dim); font-size: 12px; text-align: center; padding: 10px 4px; }
+
+/* ----- Workflow (swimlane) ----- */
+.wf-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px 18px 60px; }
+.wf-empty { color: var(--text-dim); padding: 30px 18px; font-size: 13px; }
+.wf-table { border-collapse: separate; border-spacing: 0; }
+.wf-table th, .wf-table td { border: 1px solid var(--border); }
+.wf-corner { position: sticky; left: 0; top: 0; z-index: 4; background: var(--bg-2); }
+.wf-step-head {
+  position: sticky; top: 0; z-index: 2; background: var(--bg-2);
+  padding: 8px 12px; min-width: 130px; max-width: 200px; text-align: left; vertical-align: top;
+}
+.wf-step-head:not(:last-child)::after {
+  content: '›'; position: absolute; right: -9px; top: 50%; transform: translateY(-50%);
+  color: var(--accent); font-weight: 800; font-size: 17px; z-index: 3; pointer-events: none;
+}
+.wf-step-idx {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  border-radius: 50%; background: var(--bg-4); color: var(--text-dim); font-size: 10px; font-weight: 700; margin-bottom: 4px;
+}
+.wf-step-name { display: block; font-weight: 600; font-size: 13px; line-height: 1.25; }
+.wf-step-tier { display: block; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+.wf-lane-head {
+  position: sticky; left: 0; z-index: 1; background: var(--bg-2);
+  padding: 8px 12px; font-weight: 700; white-space: nowrap; text-align: left;
+}
+.wf-cell { padding: 6px 8px; text-align: center; background: var(--bg); vertical-align: middle; }
+.wf-cell-empty { background: var(--bg-cell); }
+.wf-cell .cell-chips { display: inline-flex; gap: 3px; justify-content: center; }
+.wf-cell .raci-chip { width: 22px; height: 22px; font-size: 12px; }
+
 /* ===== Org Lens extras ===== */
 .lens-subheader .lens-unit-group {
   color: var(--text-dim); font-size: 13px; font-weight: 500;
@@ -2416,6 +2511,8 @@ body[data-view="roster"] #legend { display: none; }
   <div class="view-tabs" id="view-tabs">
     <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
+    <button data-view="kanban">Task</button>
+    <button data-view="workflow">Workflow</button>
   </div>
   <div class="actions">
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
@@ -2465,6 +2562,7 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.11 alpha - Task (Kanban) + Workflow (swimlane) views; per-node status; scope toggle
 //     0.10 alpha - multi-chart tabs + version banner
 //     0.9  alpha - violation pin clipping fix
 //     0.8  alpha - Activity Details panel (descriptions + documents); splash + save-nag
@@ -2476,7 +2574,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.10';
+const APP_VERSION = '0.11';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -2527,6 +2625,16 @@ const TIER_LABELS = ['Portfolio','Program','Project','Task'];
 const MAX_TIER = TIER_LABELS.length - 1;
 function columnsForTier(tier) { return COLS; } // hook: lower tiers may differ later
 
+// ---- Task status (Kanban / Task view) ----
+// Every activity node carries a `status`; only leaf activities surface on the board.
+const TASK_STATUSES = [
+  { key: 'todo',  label: 'To Do' },
+  { key: 'doing', label: 'In Progress' },
+  { key: 'done',  label: 'Done' }
+];
+const TASK_STATUS_KEYS = TASK_STATUSES.map(s => s.key);
+const DEFAULT_STATUS = 'todo';
+
 // ---------- utils ----------
 function uid() { return Math.random().toString(36).slice(2, 10); }
 function escapeHtml(s) {
@@ -2558,7 +2666,7 @@ function primaryRColumn(node) {
 function makeNode(name) {
   const raci = {};
   COLS.forEach(k => { raci[k] = ''; });
-  return { id: uid(), name: name || '', raci, description: '', documents: [], children: [] };
+  return { id: uid(), name: name || '', raci, status: DEFAULT_STATUS, description: '', documents: [], children: [] };
 }
 function makeDivision(name) { return { id: uid(), name: name || '', chief: null, branches: [] }; }
 function makeBranch(name) { return { id: uid(), name: name || '', chief: null, teams: [] }; }
@@ -2721,6 +2829,7 @@ function defaultState() {
     directorates: d.directorates,
     collapsedDirectorates: {},
     viewMode: 'chart',
+    subScope: 'chart',
     showLegend: false
   };
 }
@@ -2734,7 +2843,7 @@ function ac() {
   if (!chart) { chart = state.charts[0]; state.activeChartId = chart.id; }
   return chart;
 }
-const ALL_VIEW_MODES = ['chart','roster'];
+const ALL_VIEW_MODES = ['chart','roster','kanban','workflow'];
 
 function normalizeNodes(nodes, depth) {
   if (!Array.isArray(nodes)) return [];
@@ -2745,6 +2854,8 @@ function normalizeNodes(nodes, depth) {
     COLS.forEach(k => { n.raci[k] = normalizeRaci(n.raci[k] || ''); });
     // Activity definition / description (free-form text — Slide 3 style).
     n.description = typeof n.description === 'string' ? n.description : '';
+    // Kanban status (Task view). Backfills old data and imports lacking the field.
+    n.status = TASK_STATUS_KEYS.includes(n.status) ? n.status : DEFAULT_STATUS;
     // Attached process documents: [{ id, name, type, size, dataUrl }]. dataUrl is base64.
     n.documents = Array.isArray(n.documents) ? n.documents.filter(d => d && typeof d === 'object').map(d => ({
       id: typeof d.id === 'string' ? d.id : uid(),
@@ -2857,6 +2968,7 @@ function migrateState(s) {
     s.directorates[k] = d;
   });
   s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'chart';
+  s.subScope = (s.subScope === 'all') ? 'all' : 'chart';
   s.collapsedDirectorates = (s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object') ? s.collapsedDirectorates : {};
   s.showLegend = !!s.showLegend;
   s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
@@ -3101,6 +3213,8 @@ function render() {
   document.body.classList.toggle('show-legend', !!state.showLegend);
   updateViewTabs();
   if (state.viewMode === 'roster') renderRoster();
+  else if (state.viewMode === 'kanban') renderKanban();
+  else if (state.viewMode === 'workflow') renderWorkflow();
   else renderChart();
   // Keep the violations toast accurate even in roster view (chart view recomputes inside renderChart).
   if (state.viewMode !== 'chart') { recomputeViolations(); renderViolationsUI(); }
@@ -3522,6 +3636,150 @@ function renderRoster() {
       ${ACTORS.map(k => renderDirectoratePanel(k)).join('')}
     </div>
   `;
+}
+
+// ========== Task (Kanban) + Workflow (swimlane) shared helpers ==========
+// Charts in scope, honoring state.subScope: 'chart' = active chart only; 'all' = every tab.
+function scopedCharts() {
+  return state.subScope === 'all' ? state.charts : [ac()];
+}
+// Flatten to leaf activities (no children) in document order. Charts concatenated in tab order;
+// within a chart, depth-first. Each entry carries the node plus tier + ancestor path + owning chart.
+function collectLeafActivities() {
+  const out = [];
+  scopedCharts().forEach(chart => {
+    (function walk(nodes, depth, path) {
+      (nodes || []).forEach(n => {
+        if (n.children && n.children.length) {
+          walk(n.children, depth + 1, path.concat(n.name || ('Untitled ' + (TIER_LABELS[depth] || 'item'))));
+        } else {
+          out.push({
+            node: n,
+            chartId: chart.id,
+            chartTitle: chart.title,
+            depth,
+            tierLabel: TIER_LABELS[depth] || ('Level ' + depth),
+            ancestors: path.slice()
+          });
+        }
+      });
+    })(chart.activities, 0, []);
+  });
+  return out;
+}
+// Recursive node finder over an arbitrary node list (returns the node object itself).
+function findNodeIn(nodes, id) {
+  for (const n of (nodes || [])) {
+    if (n.id === id) return n;
+    const hit = n.children && findNodeIn(n.children, id);
+    if (hit) return hit;
+  }
+  return null;
+}
+// Set a node's Kanban status. Searches every chart (not just the active one) so a card from a
+// non-active chart in 'all' scope still mutates the right node.
+function setNodeStatus(nodeId, status) {
+  if (!TASK_STATUS_KEYS.includes(status)) return;
+  for (const chart of state.charts) {
+    const n = findNodeIn(chart.activities, nodeId);
+    if (n) { if (n.status !== status) { n.status = status; saveState(); } return; }
+  }
+}
+// Segmented scope control shared by both views.
+function scopeToggleHtml() {
+  const seg = (key, label) =>
+    `<button class="seg${state.subScope === key ? ' active' : ''}" data-sub-scope="${key}">${label}</button>`;
+  return `<div class="scope-toggle" role="group" aria-label="Scope">${seg('chart', 'Active chart only')}${seg('all', 'All charts')}</div>`;
+}
+
+// ========== Task view (Kanban board) ==========
+function renderKanban() {
+  const main = document.getElementById('ws-main');
+  const items = collectLeafActivities();
+  const board = TASK_STATUSES.map(st => {
+    const cards = items.filter(it => (it.node.status || DEFAULT_STATUS) === st.key);
+    return `
+      <section class="kb-col" data-status="${st.key}">
+        <header class="kb-col-head"><span class="kb-col-title status-${st.key}">${escapeHtml(st.label)}</span><span class="kb-count">${cards.length}</span></header>
+        <div class="kb-col-body" data-status="${st.key}">
+          ${cards.map(kanbanCardHtml).join('') || '<div class="kb-empty">No activities</div>'}
+        </div>
+      </section>`;
+  }).join('');
+  main.innerHTML = `
+    <div class="kb-header">
+      <h2>Task Board</h2>
+      ${scopeToggleHtml()}
+      <span class="meta">${items.length} leaf activit${items.length === 1 ? 'y' : 'ies'} · drag a card between columns to change its status</span>
+    </div>
+    <div class="kb-board">${board}</div>`;
+}
+function kanbanCardHtml(it) {
+  const n = it.node;
+  const tier = `${escapeHtml(it.tierLabel)}${state.subScope === 'all' ? ' · ' + escapeHtml(it.chartTitle) : ''}`;
+  const crumbs = it.ancestors.length
+    ? `<div class="kb-path">${it.ancestors.map(escapeHtml).join(' › ')}</div>` : '';
+  const sel = `<select class="kb-status-sel" data-status-for="${n.id}" aria-label="Status">${
+    TASK_STATUSES.map(s => `<option value="${s.key}"${(n.status || DEFAULT_STATUS) === s.key ? ' selected' : ''}>${escapeHtml(s.label)}</option>`).join('')
+  }</select>`;
+  return `
+    <article class="kb-card" draggable="true" data-card="${n.id}">
+      <div class="kb-tier">${tier}</div>
+      <div class="kb-name">${escapeHtml(n.name || ('Untitled ' + it.tierLabel))}</div>
+      ${crumbs}
+      ${kanbanCardRaciHtml(n)}
+      ${sel}
+    </article>`;
+}
+// Compact RACI summary on a card: only columns that hold an R or A (the owners / accountable).
+function kanbanCardRaciHtml(n) {
+  const parts = [];
+  COLS.forEach(col => {
+    const norm = normalizeRaci(n.raci[col] || '');
+    if (norm.includes('R') || norm.includes('A')) {
+      parts.push(`<span class="kb-raci"><span class="kb-raci-col">${escapeHtml(COL_SHORT[col])}</span>${renderChipsHtml(norm)}</span>`);
+    }
+  });
+  return parts.length ? `<div class="kb-raci-row">${parts.join('')}</div>` : '';
+}
+
+// ========== Workflow view (swimlane process flow) ==========
+function renderWorkflow() {
+  const main = document.getElementById('ws-main');
+  const steps = collectLeafActivities();
+  const header = `
+    <div class="wf-header">
+      <h2>Workflow</h2>
+      ${scopeToggleHtml()}
+      <span class="meta">${steps.length} step${steps.length === 1 ? '' : 's'} · lanes are the ${COLS.length} RACI parties · steps flow left → right</span>
+    </div>`;
+  if (!steps.length) {
+    main.innerHTML = `${header}<div class="wf-empty">No activities in scope. Add activities in the Chart view to populate the workflow.</div>`;
+    return;
+  }
+  const headCells = steps.map((s, i) => `
+    <th class="wf-step-head" title="${escapeHtml(s.ancestors.concat(s.node.name || ('Untitled ' + s.tierLabel)).join(' › '))}">
+      <span class="wf-step-idx">${i + 1}</span>
+      <span class="wf-step-name">${escapeHtml(s.node.name || ('Untitled ' + s.tierLabel))}</span>
+      <span class="wf-step-tier">${escapeHtml(s.tierLabel)}${state.subScope === 'all' ? ' · ' + escapeHtml(s.chartTitle) : ''}</span>
+    </th>`).join('');
+  const laneRows = COLS.map(col => {
+    const cells = steps.map(s => {
+      const norm = normalizeRaci(s.node.raci[col] || '');
+      return `<td class="wf-cell${norm ? '' : ' wf-cell-empty'}">${norm ? renderChipsHtml(norm) : ''}</td>`;
+    }).join('');
+    return `<tr class="wf-lane">
+      <th class="wf-lane-head" title="${escapeHtml(COL_LABELS[col])}">${escapeHtml(COL_SHORT[col])}</th>
+      ${cells}
+    </tr>`;
+  }).join('');
+  main.innerHTML = `${header}
+    <div class="wf-scroll">
+      <table class="wf-table">
+        <thead><tr><th class="wf-corner"></th>${headCells}</tr></thead>
+        <tbody>${laneRows}</tbody>
+      </table>
+    </div>`;
 }
 
 function countOrgUnits(d) {
@@ -4007,6 +4265,17 @@ document.addEventListener('click', e => {
   }
   const tab = e.target.closest('#view-tabs button');
   if (tab) { setViewMode(tab.dataset.view); return; }
+  // Scope toggle shared by the Task (kanban) + Workflow views.
+  const scopeBtn = e.target.closest('[data-sub-scope]');
+  if (scopeBtn) {
+    const next = scopeBtn.dataset.subScope;
+    if (state.subScope !== next) {
+      state.subScope = next; saveState();
+      if (state.viewMode === 'kanban') renderKanban();
+      else if (state.viewMode === 'workflow') renderWorkflow();
+    }
+    return;
+  }
   if (e.target.closest('#btn-arrange')) { autoArrange(); return; }
   if (e.target.closest('#btn-legend')) {
     state.showLegend = !state.showLegend; saveState();
@@ -4086,6 +4355,51 @@ document.addEventListener('click', e => {
   if (delLead) { const [a, d, b, t, role] = delLead.dataset.delLead.split('|'); removeLead(a, d || null, b || null, t || null, role); return; }
 
   if (openPopover && !e.target.closest('.raci-popover') && !e.target.closest('.org-popover')) closePopover();
+});
+
+// ---- Kanban drag-and-drop (Task view) ----
+let _dragCardId = null;
+document.addEventListener('dragstart', e => {
+  const card = e.target.closest('.kb-card');
+  if (!card) return;
+  _dragCardId = card.dataset.card;
+  e.dataTransfer.effectAllowed = 'move';
+  card.classList.add('kb-dragging');
+});
+document.addEventListener('dragend', e => {
+  const card = e.target.closest('.kb-card');
+  if (card) card.classList.remove('kb-dragging');
+  document.querySelectorAll('.kb-col-body.kb-over').forEach(el => el.classList.remove('kb-over'));
+  _dragCardId = null;
+});
+document.addEventListener('dragover', e => {
+  const body = e.target.closest('.kb-col-body');
+  if (!body || !_dragCardId) return;
+  e.preventDefault();                       // required to allow a drop
+  e.dataTransfer.dropEffect = 'move';
+});
+document.addEventListener('dragenter', e => {
+  const body = e.target.closest('.kb-col-body');
+  if (body && _dragCardId) body.classList.add('kb-over');
+});
+document.addEventListener('dragleave', e => {
+  const body = e.target.closest('.kb-col-body');
+  if (body && !body.contains(e.relatedTarget)) body.classList.remove('kb-over');
+});
+document.addEventListener('drop', e => {
+  const body = e.target.closest('.kb-col-body');
+  if (!body || !_dragCardId) return;
+  e.preventDefault();
+  setNodeStatus(_dragCardId, body.dataset.status);
+  _dragCardId = null;
+  renderKanban();
+});
+// Non-drag fallback: per-card status <select>.
+document.addEventListener('change', e => {
+  const sel = e.target.closest('[data-status-for]');
+  if (!sel) return;
+  setNodeStatus(sel.dataset.statusFor, sel.value);
+  renderKanban();
 });
 
 document.addEventListener('keydown', e => {
