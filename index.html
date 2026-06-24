@@ -17,6 +17,9 @@
   --a: #fa5252;
   --c: #fcc419;
   --i: #868e96;
+  --s: #51cf66;
+  --d: #9775fa;
+  --p: #22b8cf;
   --accent: #51cf66;
   --err: #fa5252;
   --warn: #fcc419;
@@ -179,6 +182,35 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
 }
 
 /* ===== Chart tabs bar (between header and breadcrumbs) ===== */
+.chart-fw { margin-left: auto; display: flex; align-items: center; gap: 7px; padding: 0 6px; flex-shrink: 0; }
+.chart-fw .cf-label { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.chart-fw select {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 7px; font-size: 12px; cursor: pointer;
+}
+.chart-fw select:hover { border-color: var(--accent); }
+#legend .legend-blurb { color: var(--text-dim); font-size: 11px; line-height: 1.5; margin: 0 0 12px; font-style: italic; }
+#legend .legend-map-section { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+#legend .legend-map-section h4 { margin: 0 0 4px; font-size: 12px; color: var(--text); }
+#legend .lm-note { color: var(--text-dim); font-size: 10.5px; line-height: 1.45; margin-bottom: 8px; }
+#legend .lm-row { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 6px; margin-bottom: 5px; }
+#legend .lm-row .lm-col { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+#legend .lm-row select {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 5px; font-size: 11px; width: 100%; cursor: pointer;
+}
+#legend .lm-row .lm-name { grid-column: 2; font-size: 10.5px; color: var(--accent); margin-top: 1px; min-height: 13px; }
+/* Details-panel "Who's responsible" rows */
+.dw-list { display: flex; flex-direction: column; gap: 7px; }
+.dw-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "col chips" "who who"; gap: 2px 8px; align-items: center;
+  background: var(--bg-cell); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; }
+.dw-row .dw-col { grid-area: col; font-size: 12px; font-weight: 600; color: var(--text); }
+.dw-row .dw-chips { grid-area: chips; }
+.dw-row .dw-chips .cell-chips { display: flex; gap: 3px; }
+.dw-row .dw-who { grid-area: who; font-size: 11px; }
+.dw-row .dw-who .dw-person { color: var(--accent); }
+.dw-row .dw-who .dw-note { color: var(--text-dim); font-style: italic; }
+.dw-row .dw-inh { color: var(--text-dim); font-weight: 400; font-size: 10px; }
 #chart-tabs {
   display: flex; align-items: stretch;
   gap: 2px;
@@ -833,6 +865,9 @@ td.actor-cell .raci-chip { width: 28px; height: 28px; font-size: 15px; }
 .raci-chip.A { background: var(--a); color: #fff; }
 .raci-chip.C { background: var(--c); color: #000; }
 .raci-chip.I { background: var(--i); color: #fff; }
+.raci-chip.S { background: var(--s); color: #000; }
+.raci-chip.D { background: var(--d); color: #fff; }
+.raci-chip.P { background: var(--p); color: #000; }
 
 td.row-del {
   width: 32px;
@@ -1171,8 +1206,21 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   box-shadow: 0 8px 24px rgba(0,0,0,0.6);
   z-index: 100;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 280px;
 }
+/* "Who" footer — names the person behind the column (from the roster). Wraps to its own line. */
+.raci-popover .pop-who {
+  flex-basis: 100%;
+  border-top: 1px solid var(--border);
+  margin-top: 2px; padding-top: 6px;
+  font-size: 11px; color: var(--text);
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.raci-popover .pop-who.unmapped, .raci-popover .pop-who.nolead { color: var(--text-dim); font-style: italic; }
+.raci-popover .pop-who .pw-role { color: var(--text-dim); }
+.raci-popover .pop-who .pw-hint { color: var(--text-dim); font-size: 10px; opacity: .8; }
 .raci-popover button {
   width: 32px;
   height: 32px;
@@ -1188,6 +1236,9 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 .raci-popover button.on.A { background: var(--a); color: #fff; border-color: var(--a); }
 .raci-popover button.on.C { background: var(--c); color: #000; border-color: var(--c); }
 .raci-popover button.on.I { background: var(--i); color: #fff; border-color: var(--i); }
+.raci-popover button.on.S { background: var(--s); color: #000; border-color: var(--s); }
+.raci-popover button.on.D { background: var(--d); color: #fff; border-color: var(--d); }
+.raci-popover button.on.P { background: var(--p); color: #000; border-color: var(--p); }
 .raci-popover button:hover { transform: scale(1.05); }
 .raci-popover .clear {
   width: auto;
@@ -2010,6 +2061,136 @@ body[data-view="workflow"] #ws-main { padding: 0; }
 .wf-cell .cell-chips { display: inline-flex; gap: 3px; justify-content: center; }
 .wf-cell .raci-chip { width: 22px; height: 22px; font-size: 12px; }
 
+/* ===== Business Case (node-graph) view — tabletop exercises ===== */
+/* Full-pane, dark-themed canvas. Parallel to the org RACI chart; its own RACI per task. */
+body[data-view="bizcase"] #ws-main { padding: 0; overflow: hidden; }
+/* hide chart/roster chrome that's meaningless here */
+body[data-view="bizcase"] #chart-tabs,
+body[data-view="bizcase"] #drill-crumbs,
+body[data-view="bizcase"] #details,
+body[data-view="bizcase"] #legend,
+body[data-view="bizcase"] #btn-arrange,
+body[data-view="bizcase"] #btn-details,
+body[data-view="bizcase"] #btn-legend { display: none !important; }
+
+.bz-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.bz-toolbar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 14px; background: var(--bg-2); border-bottom: 1px solid var(--border);
+}
+.bz-toolbar select, .bz-toolbar button {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.bz-toolbar #bz-select { min-width: 200px; max-width: 320px; }
+.bz-toolbar #bz-framework { min-width: 0; }
+.bz-toolbar #bz-framework:hover { border-color: var(--accent); }
+.bz-toolbar button:hover { background: var(--bg-4); }
+.bz-toolbar #bz-toggle-table.active { background: var(--bg); box-shadow: inset 0 -2px 0 0 var(--accent); }
+.bz-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.bz-meta { color: var(--text-dim); font-size: 12px; margin-left: auto; }
+
+.bz-body { flex: 1; min-height: 0; display: flex; }
+.bz-canvas {
+  position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 22px 22px,
+    var(--bg);
+}
+.bz-canvas.panning { cursor: grabbing; }
+body.bz-connecting .bz-canvas { cursor: crosshair; }
+.bz-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+.bz-edges { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.bz-edges .bz-edge { pointer-events: stroke; cursor: pointer; }
+.bz-edges .bz-edge:hover { stroke-width: 4; }
+
+.bz-empty {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: var(--text-dim); font-size: 13px; text-align: center; pointer-events: none; z-index: 1;
+}
+
+.bz-node {
+  position: absolute; width: 220px; background: var(--bg-2);
+  border: 1px solid var(--border); border-radius: 9px;
+  box-shadow: 0 5px 16px rgba(0,0,0,0.45); z-index: 2;
+}
+.bz-node.dragging { box-shadow: 0 10px 28px rgba(0,0,0,0.6); border-color: var(--accent); z-index: 5; }
+.bz-node-head {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px;
+  border-bottom: 1px solid var(--border); cursor: move; border-radius: 9px 9px 0 0;
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+}
+.bz-node-name {
+  flex: 1; font-weight: 600; font-size: 13px; outline: none; min-width: 0;
+  border-radius: 3px; padding: 1px 3px;
+}
+.bz-node-name:focus { background: var(--bg); box-shadow: 0 0 0 1px var(--accent); cursor: text; }
+.bz-node-name:empty::before { content: attr(data-placeholder); color: var(--text-dim); }
+.bz-node-del {
+  flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; padding: 0;
+  background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; border-radius: 3px;
+}
+.bz-node-del:hover { background: var(--err); color: #fff; }
+.bz-node-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 7px 8px; }
+.bz-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 3px 1px; border-radius: 4px; cursor: pointer; background: var(--bg-cell);
+}
+.bz-cell:hover { background: var(--bg-4); }
+.bz-cell-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; }
+.bz-cell .cell-chips { display: inline-flex; gap: 2px; }
+.bz-cell .cell-chips.empty { color: var(--text-dim); font-size: 11px; }
+.bz-cell .raci-chip { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; }
+
+.bz-socket {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--bg-4); border: 2px solid var(--accent); z-index: 3; cursor: crosshair;
+}
+.bz-socket.in { left: -8px; }
+.bz-socket.out { right: -8px; }
+.bz-socket.out:hover { background: var(--accent); }
+
+.bz-table-pane { flex: 0 0 380px; max-width: 42%; overflow: auto; background: var(--bg); border-left: 1px solid var(--border); }
+.bz-table-head { display: flex; align-items: baseline; gap: 10px; padding: 12px 14px 6px; }
+.bz-table-head h3 { margin: 0; font-size: 14px; }
+.bz-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.bz-table th, .bz-table td { border: 1px solid var(--border); padding: 5px 7px; }
+.bz-table thead th { position: sticky; top: 0; background: var(--bg-2); z-index: 1; font-size: 11px; }
+.bz-table .bz-th-task, .bz-table .bz-trow { text-align: left; }
+.bz-table .bz-trow { background: var(--bg-2); font-weight: 600; max-width: 160px; }
+.bz-tcell { text-align: center; }
+.bz-tcell .cell-chips { display: inline-flex; gap: 3px; justify-content: center; cursor: pointer; }
+.bz-tcell .raci-chip { width: 20px; height: 20px; font-size: 11px; }
+.bz-tempty { text-align: center; color: var(--text-dim); padding: 14px; }
+
+/* decision points + labeled branches */
+.bz-node--decision { border-color: var(--c); }
+.bz-node--decision .bz-node-head { background: linear-gradient(180deg, #3a3318, var(--bg-2)); }
+.bz-decision-badge { flex: 0 0 auto; font-size: 9px; font-weight: 700; color: #1a1300; background: var(--c); border-radius: 3px; padding: 1px 5px; letter-spacing: 0.02em; white-space: nowrap; }
+.bz-edges .bz-edge-label { fill: var(--text); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+
+.bz-edge-popover {
+  position: absolute; z-index: 120; background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  display: flex; flex-direction: column; gap: 6px; width: 220px;
+}
+.bz-edge-popover .bz-ep-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.bz-edge-popover .bz-ep-input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; font-size: 12px; }
+.bz-edge-popover .bz-ep-del { background: var(--bg-3); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.bz-edge-popover .bz-ep-del:hover { background: var(--err); color: #fff; border-color: var(--err); }
+
+/* Flow / branches table */
+.bz-flow-h { margin-top: 6px; border-top: 1px solid var(--border); }
+.bz-flow-table .bz-flow-step { text-align: left; vertical-align: top; background: var(--bg-2); max-width: 150px; }
+.bz-flow-table .bz-flow-step.is-decision { box-shadow: inset 3px 0 0 0 var(--c); }
+.bz-flow-fork { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 700; color: #1a1300; background: var(--c); border-radius: 3px; padding: 0 4px; vertical-align: middle; white-space: nowrap; }
+.bz-flow-cond-cell { min-width: 120px; }
+.bz-flow-cond { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 3px 5px; font: inherit; font-size: 11px; }
+.bz-flow-cond::placeholder { color: var(--text-dim); }
+.bz-flow-next { color: var(--text); }
+.bz-flow-end { color: var(--text-dim); font-style: italic; }
+
 /* ===== Org Lens extras ===== */
 .lens-subheader .lens-unit-group {
   color: var(--text-dim); font-size: 13px; font-weight: 500;
@@ -2455,13 +2636,44 @@ body[data-view="chart"] #ws-main { padding: 0; }
 body[data-view="roster"] #legend { display: none; }
 
 @media print {
-  body { background: #fff; color: #000; overflow: visible; }
-  header, #ws-sidebar, #legend, .ws-add, .add-activity, td.row-del, .actions { display: none !important; }
-  main, #ws-main, .table-wrap { display: block; overflow: visible; }
-  table.activities { width: 100%; min-width: 0; }
-  table.activities th, table.activities td { background: #fff; color: #000; border-color: #000; }
-  .raci-chip { border: 1px solid #000; }
+  @page { size: landscape; margin: 12mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  /* Hide all interactive chrome — leave just the matrix. */
+  header, #chart-tabs, #drill-crumbs, #legend, #details, #violations-toast, #violations-popover,
+  #save-nag, #splash-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
+  #zoom-ctl, .chart-resize, .ch-add, .ch-del, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
+  [data-del-node], [data-bz-del-task] { display: none !important; }
+  main, #ws-main { display: block !important; overflow: visible !important; position: static !important;
+    padding: 0 !important; height: auto !important; }
+  /* Flatten the zoomed/absolute cascade into a normal vertical flow that paginates cleanly. */
+  #cascade, .cascade-layer, .chart-block { position: static !important; transform: none !important;
+    left: auto !important; top: auto !important; width: auto !important; height: auto !important;
+    max-width: 100% !important; margin: 0 0 14px !important; box-shadow: none !important; opacity: 1 !important;
+    filter: none !important; }
+  #cascade-svg, .cascade-connectors { display: none !important; }
+  .cascade-zoom { position: static !important; transform: none !important; }
+  /* Force light surfaces on every chart/table surface — but NOT the coloured RACI chips. */
+  .chart-block, .chart-head, table.chart, table.chart tr, table.chart td, table.chart th,
+  .chart-cell, .chart-row > td, .chart-row.open > td, .ch-name, .ch-toggle, .ch-col, .ch-desc, .ch-docs,
+  .ch-name-edit, .ch-empty-row, .bz-table, .bz-table td, .bz-table th {
+    background: #fff !important; background-image: none !important; color: #000 !important;
+    border-color: #c4c4c4 !important; box-shadow: none !important; }
+  .chart-head, .ch-col, .bz-table th { background: #e8eef6 !important; font-weight: 700; }
+  .chart-head::before { display: none !important; }
+  .chart-block { border: 1px solid #999 !important; break-inside: avoid; page-break-inside: avoid; }
+  .chart-row, .bz-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .raci-chip { border: 1px solid rgba(0,0,0,0.3) !important; }
+  .raci-chip.inherited { opacity: 1 !important; }
+  .org-badge { background: #eef2fb !important; color: #243 !important; border-color: #c2cce0 !important; }
+  .desc-empty, .docs-empty { color: #999 !important; }
+  /* A printed title band injected by the print handler. */
+  #print-head { display: block !important; margin: 0 0 12px; padding: 0 0 8px; border-bottom: 2px solid #000;
+    color: #000 !important; }
+  #print-head .ph-title { font-size: 18px; font-weight: 800; }
+  #print-head .ph-sub { font-size: 12px; color: #333 !important; margin-top: 2px; }
 }
+#print-head { display: none; }
 </style>
 </head>
 <body>
@@ -2511,17 +2723,19 @@ body[data-view="roster"] #legend { display: none; }
   <div class="view-tabs" id="view-tabs">
     <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
-    <button data-view="kanban">Task</button>
-    <button data-view="workflow">Workflow</button>
+    <button data-view="bizcase">Business Case Task Flow</button>
   </div>
   <div class="actions">
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
     <button id="btn-import" title="Load a previously-saved JSON file (replaces current state)">📂 Load</button>
+    <button id="btn-merge" title="Merge another saved JSON file into this workspace — its charts and business cases are added as new tabs">⧉ Merge</button>
     <input type="file" id="file-import" accept=".json,application/json">
     <span class="actions-divider" aria-hidden="true"></span>
     <button id="btn-arrange" title="Snap all panes back into a tight nested cascade">⤧ Auto Arrange</button>
     <button id="btn-details" title="Show/hide the Activity Details panel (definitions + documents)">Details</button>
     <button id="btn-legend" title="Show/hide RACI legend">Legend</button>
+    <button id="btn-print" title="Print or save the matrix as a PDF (clean, chrome-free layout)">🖨 Print / PDF</button>
+    <button id="btn-export-pptx" title="Export as PowerPoint (.pptx) — one slide per tier">Export PPTX</button>
     <button id="btn-export-xlsx" title="Export as Excel (.xlsx) for spreadsheet review">Export Excel</button>
     <button id="btn-export-xml" title="Export as XML for programmatic processing">Export XML</button>
     <button id="btn-export-mmd" title="Export as Mermaid (.mmd) for diagramming">Export Mermaid</button>
@@ -2532,6 +2746,7 @@ body[data-view="roster"] #legend { display: none; }
 <div id="chart-tabs" role="tablist" aria-label="RACI chart tabs"></div>
 <div id="drill-crumbs"></div>
 <main>
+  <div id="print-head"></div>
   <section id="ws-main"></section>
   <aside id="details" aria-label="Activity details panel">
     <div class="det-head">
@@ -2541,15 +2756,7 @@ body[data-view="roster"] #legend { display: none; }
     <div id="det-body"></div>
     <input type="file" id="det-file-input" multiple style="display:none">
   </aside>
-  <aside id="legend">
-    <h3>RACI Legend</h3>
-    <div class="legend-row"><span class="raci-chip R">R</span><div><div class="label">Responsible</div><div class="desc">Does the work</div></div></div>
-    <div class="legend-row"><span class="raci-chip A">A</span><div><div class="label">Accountable</div><div class="desc">Owns the outcome</div></div></div>
-    <div class="legend-row"><span class="raci-chip C">C</span><div><div class="label">Consulted</div><div class="desc">Two-way input</div></div></div>
-    <div class="legend-row"><span class="raci-chip I">I</span><div><div class="label">Informed</div><div class="desc">Kept in the loop</div></div></div>
-    <p>Click any column cell to toggle R / A / C / I for that activity. A cell can hold none, one, or any combination.</p>
-    <p>Use the <b>▸</b> drill control on a row to break a Portfolio activity down into its Programs, then Projects, then Tasks. Each breakdown opens as a new chart below, stemming from the row you clicked; the parent chart recedes and fades. Click the open row's <b>▾</b> again to collapse.</p>
-  </aside>
+  <aside id="legend"><!-- filled by renderLegend() from the active chart's framework --></aside>
 </main>
 <script>
 'use strict';
@@ -2562,6 +2769,14 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.13 alpha - Best-practice pass: framework variants (RASCI on charts; DACI/RAPID on the
+//                  decision graph); completed RACI rule engine (missing-owner / missing-doer /
+//                  over-consult, cascade-aware); roster→cell people linking (column→directorate
+//                  map, who's-responsible in cell tooltip, popover & Details); persistence hardening
+//                  (docs in IndexedDB, undo/redo, JSON import-MERGE, quota warning); print/PDF
+//                  stylesheet + PowerPoint (.pptx) export
+//     0.12 alpha - Business Case node-graph view (independent RACI per case; decision points +
+//                  labeled branches in graph & table; tabletop exercises)
 //     0.11 alpha - Task (Kanban) + Workflow (swimlane) views; per-node status; scope toggle
 //     0.10 alpha - multi-chart tabs + version banner
 //     0.9  alpha - violation pin clipping fix
@@ -2574,7 +2789,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.11';
+const APP_VERSION = '0.13';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -2594,6 +2809,65 @@ function applyActorLabels() {
 }
 const ACTOR_WIDE = new Set(['mission','sw']);
 const ROLES = ['R','A','C','I'];
+
+// ---- RACI-family frameworks (responsibility-assignment matrix variants) ----
+// Each framework declares its role letters, per-letter meta, the single "owner" letter (must be
+// unique per row — the accountable/approver/decider) and the "doer" letter (the worker; the one
+// whose Primary cell cascades down as the next tier's owner in the org chart).
+//   Matrix charts use raci|rasci — they share A/R semantics, so the existing cascade is untouched.
+//   The Business Case decision graph can additionally use daci|rapid (no cascade there).
+const FRAMEWORKS = {
+  raci: {
+    name: 'RACI', blurb: 'Execution — who does the work, who owns the outcome.',
+    roles: ['R','A','C','I'], owner: 'A', doer: 'R',
+    meta: {
+      R: { label: 'Responsible', desc: 'Does the work' },
+      A: { label: 'Accountable', desc: 'Owns the outcome' },
+      C: { label: 'Consulted',   desc: 'Two-way input' },
+      I: { label: 'Informed',    desc: 'Kept in the loop' }
+    }
+  },
+  rasci: {
+    name: 'RASCI', blurb: 'RACI + Support — for deliverables many teams contribute to.',
+    roles: ['R','A','S','C','I'], owner: 'A', doer: 'R',
+    meta: {
+      R: { label: 'Responsible', desc: 'Does the work' },
+      A: { label: 'Accountable', desc: 'Owns the outcome' },
+      S: { label: 'Support',     desc: 'Assists the Responsible party' },
+      C: { label: 'Consulted',   desc: 'Two-way input' },
+      I: { label: 'Informed',    desc: 'Kept in the loop' }
+    }
+  },
+  daci: {
+    name: 'DACI', blurb: 'Decisions — Driver/Approver split for decision velocity.',
+    roles: ['D','A','C','I'], owner: 'A', doer: 'D',
+    meta: {
+      D: { label: 'Driver',      desc: 'Drives the decision forward' },
+      A: { label: 'Approver',    desc: 'Signs off — the single decision owner' },
+      C: { label: 'Contributor', desc: 'Provides input' },
+      I: { label: 'Informed',    desc: 'Told the outcome' }
+    }
+  },
+  rapid: {
+    name: 'RAPID', blurb: 'Decision rights — explicit recommend / agree / decide.',
+    roles: ['R','A','P','I','D'], owner: 'D', doer: 'P',
+    meta: {
+      R: { label: 'Recommend', desc: 'Proposes the course of action' },
+      A: { label: 'Agree',     desc: 'Must agree — holds a veto' },
+      P: { label: 'Perform',   desc: 'Carries out the decision' },
+      I: { label: 'Input',     desc: 'Consulted for input' },
+      D: { label: 'Decide',    desc: 'Makes the final call — the single owner' }
+    }
+  }
+};
+const CHART_FRAMEWORKS = ['raci', 'rasci'];          // org matrix: share the A/R cascade semantics
+const BIZ_FRAMEWORKS   = ['raci', 'daci', 'rapid'];  // decision graph: flat, no cascade
+// Every letter any framework can use, in canonical display order. normalizeRaci keeps only these
+// (and orders by this), so switching a chart's framework never silently drops a cell's letters.
+const ALL_ROLE_LETTERS = ['R', 'D', 'A', 'S', 'P', 'C', 'I'];
+function fw(key) { return FRAMEWORKS[key] || FRAMEWORKS.raci; }
+function chartFw() { return fw(ac().framework); }
+function bizFw() { return fw(abc().framework); }
 
 // ---- RACI chart columns (same at every tier for now; lower tiers may differ later) ----
 const COLS = ['hq','cos','mission','infra','cyber','sw','contacts'];
@@ -2625,6 +2899,70 @@ const TIER_LABELS = ['Portfolio','Program','Project','Task'];
 const MAX_TIER = TIER_LABELS.length - 1;
 function columnsForTier(tier) { return COLS; } // hook: lower tiers may differ later
 
+// ---- Column ↔ roster directorate mapping (so a RACI cell can name WHO, not just which unit) ----
+// Each RACI column maps to one roster directorate; that directorate's lead (the Associate Director)
+// is the named person behind any role in that column. The mission/infra/cyber/sw column keys already
+// match actor keys, so they self-map; hq/cos/contacts have no roster counterpart and start unmapped.
+function defaultColumnActor() {
+  const m = {};
+  COLS.forEach(k => { m[k] = ACTORS.includes(k) ? k : null; });
+  return m;
+}
+function columnActorKey(col) {
+  const a = state.columnActor && state.columnActor[col];
+  return (a && ACTORS.includes(a)) ? a : null;
+}
+// The named person accountable/responsible behind a column = its directorate's lead (Associate Director).
+// Returns null when the column isn't mapped; { name:'' } when mapped but no lead has been entered.
+function columnPerson(col) {
+  const a = columnActorKey(col);
+  if (!a) return null;
+  const d = state.directorates[a] || {};
+  const lead = d.lead;
+  return { actor: a, actorLabel: ACTOR_LABELS[a], name: (lead && lead.name) ? lead.name.trim() : '', roleLabel: 'Associate Director' };
+}
+// The owner column a node inherits from the cascade (walk from root tracking primary-doer flow-down).
+function inheritedOwnerCol(targetId) {
+  let res = null;
+  (function walk(nodes, inh) {
+    for (const n of nodes) {
+      if (n.id === targetId) { res = inh; return true; }
+      if (n.children && n.children.length && walk(n.children, cascadeDown(n, inh))) return true;
+    }
+    return false;
+  })(ac().activities, null);
+  return res;
+}
+// Details-panel "Who's responsible" block: each column with a role on this node → resolved person.
+function nodeWhoHtml(node) {
+  const F = chartFw();
+  const inh = inheritedOwnerCol(node.id);
+  const cols = COLS.filter(k => normalizeRaci(node.raci[k] || '') || k === inh);
+  if (!cols.length) return `<div class="det-doc-empty">No roles assigned yet.</div>`;
+  return `<div class="dw-list">` + cols.map(k => {
+    const own = normalizeRaci(node.raci[k] || '');
+    const showInherited = (k === inh && !own.includes(F.owner));
+    const letters = showInherited ? normalizeRaci(own + F.owner) : own;
+    const who = columnPerson(k);
+    const person = !who ? `<span class="dw-note">column not mapped</span>`
+      : who.name ? `<span class="dw-person">👤 ${escapeHtml(who.name)}</span>`
+      : `<span class="dw-note">no lead set</span>`;
+    const inhTag = showInherited ? ` <span class="dw-inh" title="Inherited ${escapeHtml(F.meta[F.owner].label)} from the cascade">(inherited)</span>` : '';
+    return `<div class="dw-row">
+        <div class="dw-col">${escapeHtml(COL_LABELS[k])}${inhTag}</div>
+        <div class="dw-chips">${renderChipsHtml(letters)}</div>
+        <div class="dw-who">${person}</div>
+      </div>`;
+  }).join('') + `</div>`;
+}
+// Footer line for a cell popover: names the person behind this column (or how to set one).
+function whoFooterHtml(col) {
+  const who = columnPerson(col);
+  if (!who) return `<div class="pop-who unmapped">${escapeHtml(COL_LABELS[col])} — not mapped <span class="pw-hint">(map columns in the Legend)</span></div>`;
+  if (!who.name) return `<div class="pop-who nolead">${escapeHtml(who.actorLabel)} — no lead set <span class="pw-hint">(add in Roster)</span></div>`;
+  return `<div class="pop-who"><span class="pw-ico">👤</span><b>${escapeHtml(who.name)}</b><span class="pw-role">· ${escapeHtml(who.actorLabel)}</span></div>`;
+}
+
 // ---- Task status (Kanban / Task view) ----
 // Every activity node carries a `status`; only leaf activities surface on the board.
 const TASK_STATUSES = [
@@ -2644,8 +2982,8 @@ function escapeHtml(s) {
 }
 function normalizeRaci(s) {
   if (!s) return '';
-  const set = new Set(String(s).toUpperCase().split('').filter(ch => ROLES.includes(ch)));
-  return ROLES.filter(r => set.has(r)).join('');
+  const set = new Set(String(s).toUpperCase().split('').filter(ch => ALL_ROLE_LETTERS.includes(ch)));
+  return ALL_ROLE_LETTERS.filter(r => set.has(r)).join('');
 }
 // Columns where this node is Responsible.
 function rColumns(node) {
@@ -2810,6 +3148,7 @@ function makeChart(title, activities) {
   return {
     id: 'c_' + uid(),
     title: title || 'Untitled chart',
+    framework: 'raci',
     activities: Array.isArray(activities) ? activities : [],
     drillPath: [],
     chartSize: null,
@@ -2817,15 +3156,63 @@ function makeChart(title, activities) {
     chartPos: {}
   };
 }
+// ---- Business Cases (tabletop-exercise node graphs) ----
+// A business case is a self-contained RACI matrix over its own task nodes, laid out as a node
+// graph. Fully independent of state.charts and the organizational RACI cascade.
+function makeBizCase(name) {
+  return { id: 'b_' + uid(), name: name || 'Untitled business case', description: '', framework: 'raci',
+    tasks: [], edges: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
+}
+// A task box. Carries its OWN raci over the same 7 COLS, stored here (not on chart nodes).
+function makeBizTask(name) {
+  const raci = {};
+  COLS.forEach(k => { raci[k] = ''; });
+  return { id: 't_' + uid(), name: name || '', raci, description: '', status: DEFAULT_STATUS, x: 0, y: 0 };
+}
+// A directed handoff edge between two task boxes. Future hook: optional from/to ports per box.
+// label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
+function makeBizEdge(from, to, label) { return { id: 'e_' + uid(), from, to, label: label || '' }; }
+function seedBizCase() {
+  const bc = makeBizCase('Cyber Incident Response (Tabletop)');
+  bc.description = 'Example tabletop: who is R / A / C / I at each step — including a decision point that branches into more than one path.';
+  // Detect & Triage is a DECISION POINT: it branches (confirmed incident vs. false positive).
+  const defs = [
+    { key: 'detect',  name: 'Detect & Triage',     x: 60,   y: 220, raci: { cyber: 'R', hq: 'A' } },
+    { key: 'declare', name: 'Declare Incident',     x: 360,  y: 80,  raci: { hq: 'RA', cos: 'C' } },
+    { key: 'contain', name: 'Contain',              x: 660,  y: 80,  raci: { cyber: 'R', infra: 'C', hq: 'A' } },
+    { key: 'erad',    name: 'Eradicate',            x: 960,  y: 80,  raci: { sw: 'R', cyber: 'C', hq: 'A' } },
+    { key: 'recover', name: 'Recover',              x: 1260, y: 80,  raci: { infra: 'R', sw: 'C', hq: 'A' } },
+    { key: 'aar',     name: 'After-Action Review',  x: 660,  y: 400, raci: { cos: 'R', hq: 'A', mission: 'I' } }
+  ];
+  const byKey = {};
+  defs.forEach(d => {
+    const t = makeBizTask(d.name);
+    t.x = d.x; t.y = d.y;
+    Object.keys(d.raci).forEach(k => { if (COLS.includes(k)) t.raci[k] = normalizeRaci(d.raci[k]); });
+    bc.tasks.push(t); byKey[d.key] = t.id;
+  });
+  const link = (f, to, label) => bc.edges.push(makeBizEdge(byKey[f], byKey[to], label));
+  link('detect', 'declare', 'Confirmed incident');   // decision branch A
+  link('detect', 'aar', 'False positive');           // decision branch B (skips response, straight to review)
+  link('declare', 'contain');
+  link('contain', 'erad');
+  link('erad', 'recover');
+  link('recover', 'aar');                            // merges back with the false-positive path
+  return bc;
+}
 function defaultState() {
   const d = seedData();
   const demo = makeChart('ASIC RACI Tool Demo', d.activities);
+  const bc = seedBizCase();
   return {
     charts: [demo],
     activeChartId: demo.id,
+    bizCases: [bc],
+    activeBizCaseId: bc.id,
     actorLabels: { ...ACTOR_LABELS_DEFAULT },
     columnLabels: { ...COL_LABELS_DEFAULT },
     columnShort: { ...COL_SHORT_DEFAULT },
+    columnActor: defaultColumnActor(),
     directorates: d.directorates,
     collapsedDirectorates: {},
     viewMode: 'chart',
@@ -2843,7 +3230,19 @@ function ac() {
   if (!chart) { chart = state.charts[0]; state.activeChartId = chart.id; }
   return chart;
 }
-const ALL_VIEW_MODES = ['chart','roster','kanban','workflow'];
+// Active business case accessor. Self-heals if the id is stale or the list is empty.
+function abc() {
+  if (!state.bizCases || !state.bizCases.length) {
+    state.bizCases = [makeBizCase('Untitled business case')];
+    state.activeBizCaseId = state.bizCases[0].id;
+  }
+  let b = state.bizCases.find(x => x.id === state.activeBizCaseId);
+  if (!b) { b = state.bizCases[0]; state.activeBizCaseId = b.id; }
+  return b;
+}
+// Task (kanban) + Workflow (swimlane) views were retired from the UI in v0.13; their render
+// functions/CSS remain dead but harmless. A stale saved viewMode now coerces to 'chart'.
+const ALL_VIEW_MODES = ['chart','roster','bizcase'];
 
 function normalizeNodes(nodes, depth) {
   if (!Array.isArray(nodes)) return [];
@@ -2906,6 +3305,7 @@ function migrateState(s) {
   s.charts = s.charts.filter(c => c && typeof c === 'object').map(c => ({
     id: typeof c.id === 'string' && c.id ? c.id : 'c_' + uid(),
     title: typeof c.title === 'string' ? c.title : 'Untitled chart',
+    framework: CHART_FRAMEWORKS.includes(c.framework) ? c.framework : 'raci',
     activities: normalizeNodes(Array.isArray(c.activities) ? c.activities : [], 0),
     drillPath: Array.isArray(c.drillPath) ? c.drillPath.filter(x => typeof x === 'string') : [],
     chartSize: (c.chartSize && typeof c.chartSize === 'object'
@@ -2979,10 +3379,58 @@ function migrateState(s) {
     if (typeof s.columnLabels[k] !== 'string' || !s.columnLabels[k].trim()) s.columnLabels[k] = COL_LABELS_DEFAULT[k];
     if (typeof s.columnShort[k]  !== 'string' || !s.columnShort[k].trim())  s.columnShort[k]  = COL_SHORT_DEFAULT[k];
   });
+  // Column → roster directorate mapping (added v0.13). Default-fills self-mapping columns.
+  const defColAct = defaultColumnActor();
+  s.columnActor = (s.columnActor && typeof s.columnActor === 'object') ? s.columnActor : {};
+  COLS.forEach(k => { if (!(k in s.columnActor)) s.columnActor[k] = defColAct[k]; });
+  Object.keys(s.columnActor).forEach(k => { if (!COLS.includes(k)) delete s.columnActor[k]; });
   // drop legacy fields from prior (workstream/structure/lens) versions
   ['workstreams','activeWorkstreamId','portfolios','structureCollapsed','nav','searchQuery',
    'expandedActivities','treeCollapsed','lensDirectorate','lensLevel','lensUnit','sidebarCollapsed']
     .forEach(k => { delete s[k]; });
+
+  // ---- Business Cases migration (parallel to charts; independent RACI graphs) ----
+  // Backfilled here WITHOUT bumping STORAGE_KEY, mirroring the directorates normalization above.
+  s.bizCases = Array.isArray(s.bizCases) ? s.bizCases : [];
+  s.bizCases = s.bizCases.filter(b => b && typeof b === 'object').map(b => {
+    const view = (b.view && typeof b.view === 'object') ? b.view : {};
+    const tasks = (Array.isArray(b.tasks) ? b.tasks : []).filter(t => t && typeof t === 'object').map(t => {
+      const raci = (t.raci && typeof t.raci === 'object') ? t.raci : {};
+      COLS.forEach(k => { raci[k] = normalizeRaci(raci[k] || ''); });
+      Object.keys(raci).forEach(k => { if (!COLS.includes(k)) delete raci[k]; });
+      return {
+        id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
+        name: typeof t.name === 'string' ? t.name : '',
+        raci,
+        description: typeof t.description === 'string' ? t.description : '',
+        status: TASK_STATUS_KEYS.includes(t.status) ? t.status : DEFAULT_STATUS,
+        x: Number.isFinite(t.x) ? t.x : 0,
+        y: Number.isFinite(t.y) ? t.y : 0
+      };
+    });
+    const ids = new Set(tasks.map(t => t.id));
+    const seen = new Set();
+    // Drop edges referencing deleted tasks, self-loops, and duplicates — keeps delete logic trivial.
+    const edges = (Array.isArray(b.edges) ? b.edges : []).filter(ed =>
+      ed && typeof ed === 'object' && ids.has(ed.from) && ids.has(ed.to) && ed.from !== ed.to
+    ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to, label: typeof ed.label === 'string' ? ed.label : '' }))
+     .filter(ed => { const key = ed.from + '>' + ed.to; if (seen.has(key)) return false; seen.add(key); return true; });
+    return {
+      id: typeof b.id === 'string' && b.id ? b.id : 'b_' + uid(),
+      name: typeof b.name === 'string' ? b.name : 'Untitled business case',
+      description: typeof b.description === 'string' ? b.description : '',
+      framework: BIZ_FRAMEWORKS.includes(b.framework) ? b.framework : 'raci',
+      tasks, edges,
+      view: {
+        panX: Number.isFinite(view.panX) ? view.panX : 0,
+        panY: Number.isFinite(view.panY) ? view.panY : 0,
+        zoom: Number.isFinite(view.zoom) ? Math.min(2.5, Math.max(0.4, view.zoom)) : 1
+      },
+      showTable: !!b.showTable
+    };
+  });
+  if (!s.bizCases.length) s.bizCases = [seedBizCase()];
+  if (!s.bizCases.find(b => b.id === s.activeBizCaseId)) s.activeBizCaseId = s.bizCases[0].id;
   return s;
 }
 function loadState() {
@@ -2996,11 +3444,112 @@ let state = loadState();
 applyActorLabels();
 applyColumnLabels();
 let saveTimer = null;
+
+// ===== Document blob store (IndexedDB) — keeps base64 file bytes OUT of the localStorage payload =====
+// Doc metadata ({id,name,type,size}) stays in state; the heavy dataUrl moves here, keyed by doc id.
+// In memory node.documents[].dataUrl stays populated (so open/download/export are unchanged); the
+// localStorage copy drops a dataUrl ONLY for docs confirmed in IDB — so a failed/absent IDB never
+// loses data (it just falls back to the old inline-in-localStorage behaviour).
+const DOCS_DB = 'raci-docs', DOCS_STORE = 'docs';
+const _docsInIdb = new Set();
+let _docDBPromise = null;
+function docDB() {
+  if (!_docDBPromise) _docDBPromise = new Promise((res, rej) => {
+    if (typeof indexedDB === 'undefined') return rej(new Error('no indexedDB'));
+    const req = indexedDB.open(DOCS_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(DOCS_STORE);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+  return _docDBPromise;
+}
+function idbTx(mode, fn) {
+  return docDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(DOCS_STORE, mode);
+    const rq = fn(tx.objectStore(DOCS_STORE));
+    tx.oncomplete = () => res(rq ? rq.result : undefined);
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+function idbPutDoc(id, dataUrl) { return idbTx('readwrite', s => s.put(dataUrl, id)).then(() => _docsInIdb.add(id), e => console.warn('doc store failed', e)); }
+function idbGetDoc(id) { return idbTx('readonly', s => s.get(id)).catch(() => null); }
+function idbDelDoc(id) { return idbTx('readwrite', s => s.delete(id)).then(() => _docsInIdb.delete(id), () => {}); }
+function eachDocInState(st, cb) {
+  const walk = ns => (ns || []).forEach(n => { (n.documents || []).forEach(cb); if (n.children) walk(n.children); });
+  (st.charts || []).forEach(c => walk(c.activities));
+}
+// After load / undo: migrate any inline dataUrls into IDB (back-compat) and hydrate any missing ones.
+function syncDocsWithIdb() {
+  const jobs = [];
+  eachDocInState(state, doc => {
+    if (!doc || !doc.id) return;
+    if (doc.dataUrl) jobs.push(idbPutDoc(doc.id, doc.dataUrl));
+    else jobs.push(idbGetDoc(doc.id).then(u => { if (u) { doc.dataUrl = u; _docsInIdb.add(doc.id); } }));
+  });
+  return Promise.all(jobs);
+}
+// JSON replacer: drop a doc's heavy dataUrl from the localStorage copy only when it's safely in IDB.
+// (`this` is the holder object — i.e. the doc.)
+function storageReplacer(key, val) {
+  if (key === 'dataUrl' && this && _docsInIdb.has(this.id)) return undefined;
+  return val;
+}
+
+// ===== Undo / redo — full-fidelity snapshots, but a new history entry only when CONTENT changes =====
+// (pan/zoom/drill/active-tab are volatile: they update the restore point but don't push a new entry,
+// so undo steps back through real edits, not camera moves.)
+const _undoStack = [], _redoStack = [];
+const MAX_HISTORY = 60;
+const VOLATILE_KEYS = new Set(['chartPos','chartZoom','chartSize','drillPath','view','collapsedDirectorates',
+  'viewMode','subScope','showLegend','showTable','activeChartId','activeBizCaseId']);
+let _lastFull = null, _lastContent = null, _restoringHistory = false;
+function historyReplacer(key, val) { return VOLATILE_KEYS.has(key) ? undefined : storageReplacer.call(this, key, val); }
+function fullSnap() { return JSON.stringify(state, storageReplacer); }
+function contentSig() { return JSON.stringify(state, historyReplacer); }
+function captureHistory() {
+  if (_restoringHistory) return;
+  const sig = contentSig();
+  if (_lastFull != null && sig !== _lastContent) {
+    _undoStack.push(_lastFull);
+    if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+    _redoStack.length = 0;
+  }
+  _lastFull = fullSnap();
+  _lastContent = sig;
+}
+function applySnapshot(json) {
+  _restoringHistory = true;
+  try {
+    state = migrateState(JSON.parse(json));
+    applyActorLabels(); applyColumnLabels();
+    _lastFull = fullSnap(); _lastContent = contentSig();
+    writeStorage();
+    syncDocsWithIdb();
+    setActiveNode(null);
+    render();
+  } finally { _restoringHistory = false; }
+}
+function undo() { if (!_undoStack.length) { showToast('Nothing to undo', 'suggest'); return; } _redoStack.push(fullSnap()); applySnapshot(_undoStack.pop()); }
+function redo() { if (!_redoStack.length) { showToast('Nothing to redo', 'suggest'); return; } _undoStack.push(fullSnap()); applySnapshot(_redoStack.pop()); }
+
+let _quotaWarned = false;
+function writeStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state, storageReplacer));
+    _quotaWarned = false;
+  } catch (e) {
+    console.error('save failed', e);
+    if (!_quotaWarned && e && (e.name === 'QuotaExceededError' || /quota/i.test(String(e.message)))) {
+      _quotaWarned = true;
+      showToast('Browser storage is full — your latest change was NOT saved locally. Click 💾 Save to export a JSON snapshot now, then remove large attachments.', 'error');
+    }
+  }
+}
 function saveState() {
+  captureHistory();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-    catch (e) { console.error('save failed', e); }
+    writeStorage();
     // Debounced save = 1 edit. Nag will float in after NAG_THRESHOLD bumps.
     if (typeof bumpEditCounter === 'function') bumpEditCounter();
   }, 100);
@@ -3124,7 +3673,19 @@ function renderChartTabs() {
       <button class="tab-close" type="button" data-tab-close="${c.id}" title="Close this chart">×</button>
     </div>`;
   }).join('');
-  bar.innerHTML = tabs + `<button id="chart-tab-add" type="button" title="Add a new blank chart tab">+</button>`;
+  const fwOpts = CHART_FRAMEWORKS.map(k =>
+    `<option value="${k}"${ac().framework === k ? ' selected' : ''}>${FRAMEWORKS[k].name}</option>`).join('');
+  const fwSel = `<div class="chart-fw" title="Responsibility framework for this chart — RASCI adds a Support role">
+      <span class="cf-label">Framework</span>
+      <select id="chart-framework">${fwOpts}</select>
+    </div>`;
+  bar.innerHTML = tabs + `<button id="chart-tab-add" type="button" title="Add a new blank chart tab">+</button>` + fwSel;
+}
+function setChartFramework(key) {
+  if (!CHART_FRAMEWORKS.includes(key) || ac().framework === key) return;
+  ac().framework = key;
+  saveState();
+  render();
 }
 function addChart() {
   const fresh = makeChart('Untitled chart', []);
@@ -3206,18 +3767,51 @@ function renderBrand() {
   brand.querySelector('.brand-ver').textContent  = `ver ${APP_VERSION} ${APP_STAGE}`;
   brand.setAttribute('title', APP_BANNER);
 }
+function renderLegend() {
+  const el = document.getElementById('legend');
+  if (!el) return;
+  const F = chartFw();
+  const rows = F.roles.map(l =>
+    `<div class="legend-row"><span class="raci-chip ${l}">${l}</span><div><div class="label">${escapeHtml(F.meta[l].label)}</div><div class="desc">${escapeHtml(F.meta[l].desc)}</div></div></div>`).join('');
+  const mapRows = COLS.map(k => {
+    const cur = columnActorKey(k) || '';
+    const opts = `<option value="">— unmapped —</option>` +
+      ACTORS.map(a => `<option value="${a}"${a === cur ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[a])}</option>`).join('');
+    const who = columnPerson(k);
+    const name = (who && who.name) ? who.name : '';
+    return `<div class="lm-row">
+        <span class="lm-col" title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}</span>
+        <select class="legend-map" data-col="${k}" title="Map ${escapeHtml(COL_LABELS[k])} to a roster directorate">${opts}</select>
+        <span class="lm-name" title="Directorate lead (Associate Director)">${name ? '👤 ' + escapeHtml(name) : ''}</span>
+      </div>`;
+  }).join('');
+  el.innerHTML = `
+    <h3>${escapeHtml(F.name)} Legend</h3>
+    <div class="legend-blurb">${escapeHtml(F.blurb)}</div>
+    ${rows}
+    <p>Click any column cell to toggle ${F.roles.join(' / ')}. A cell can hold none, one, or any combination — but only one <b>${F.owner}</b> (${escapeHtml(F.meta[F.owner].label)}) per row.</p>
+    <p>Drill a row with <b>▸</b> to break it into the next tier. The Primary <b>${F.doer}</b> (${escapeHtml(F.meta[F.doer].label)}) on a row cascades down as the next level's ${escapeHtml(F.meta[F.owner].label)}.</p>
+    <div class="legend-map-section">
+      <h4>Column → directorate</h4>
+      <div class="lm-note">Map each column to a roster directorate so its lead becomes the named person behind that column's roles (shown on cell hover and in the cell popover).</div>
+      ${mapRows}
+    </div>`;
+}
 function render() {
   renderBrand();
   renderChartTabs();
+  renderLegend();
   document.body.dataset.view = state.viewMode;
   document.body.classList.toggle('show-legend', !!state.showLegend);
   updateViewTabs();
   if (state.viewMode === 'roster') renderRoster();
   else if (state.viewMode === 'kanban') renderKanban();
   else if (state.viewMode === 'workflow') renderWorkflow();
+  else if (state.viewMode === 'bizcase') renderBizcase();
   else renderChart();
-  // Keep the violations toast accurate even in roster view (chart view recomputes inside renderChart).
-  if (state.viewMode !== 'chart') { recomputeViolations(); renderViolationsUI(); }
+  // Keep the violations toast accurate in roster/task/workflow (chart recomputes inside renderChart;
+  // the bizcase view has its own independent RACI and no chart-cell violations to track).
+  if (state.viewMode !== 'chart' && state.viewMode !== 'bizcase') { recomputeViolations(); renderViolationsUI(); }
 }
 function updateViewTabs() {
   document.querySelectorAll('#view-tabs button').forEach(b => {
@@ -3389,15 +3983,16 @@ function renderChartBlock(chart, idx, total) {
 // Cells support any combination of R/A/C/I; chips render in R-A-C-I order.
 function cellChipsHtml(node, col, inheritedA) {
   const manual = new Set(normalizeRaci(node.raci[col] || '').split('').filter(Boolean));
+  const F = chartFw();
   const isPrimaryR = rColumns(node).length > 1 && primaryRColumn(node) === col;
   const chips = [];
-  ROLES.forEach(l => {
+  F.roles.forEach(l => {
     if (manual.has(l)) {
-      const extra = (l === 'R' && isPrimaryR) ? ' primary-r' : '';
-      const t = (l === 'R' && isPrimaryR) ? ' title="Primary Responsible — cascades down as Accountable"' : '';
+      const extra = (l === F.doer && isPrimaryR) ? ' primary-r' : '';
+      const t = (l === F.doer && isPrimaryR) ? ` title="Primary ${F.meta[F.doer].label} — cascades down as ${F.meta[F.owner].label}"` : '';
       chips.push(`<span class="raci-chip ${l}${extra}"${t}>${l}</span>`);
     }
-    else if (l === 'A' && inheritedA && !manual.has('A')) chips.push(`<span class="raci-chip A inherited" title="Accountable — inherited (Responsible one level up)">A</span>`);
+    else if (l === F.owner && inheritedA && !manual.has(F.owner)) chips.push(`<span class="raci-chip ${F.owner} inherited" title="${F.meta[F.owner].label} — inherited (${F.meta[F.doer].label} one level up)">${F.owner}</span>`);
   });
   // Auto-default: a cell with no manual roles and no inherited A is treated as Informed.
   if (!chips.length) {
@@ -3412,8 +4007,11 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
     : `<button class="ch-caret${isOpen ? ' open' : ''}" data-drill="${node.id}" data-tier="${tier}" title="${isOpen ? 'Collapse' : 'Drill into breakdown'}">${isOpen ? '▾' : '▸'}</button>`;
   // 2+ R's with no designated primary → nudge the user to pick which R cascades.
   const needsPrimary = rColumns(node).length > 1 && !primaryRColumn(node);
-  const cells = cols.map(k =>
-    `<td class="chart-cell${needsPrimary ? ' needs-primary' : ''}" data-id="${node.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">${cellChipsHtml(node, k, parentR && parentR[k])}</td>`).join('');
+  const cells = cols.map(k => {
+    const who = columnPerson(k);
+    const tip = COL_LABELS[k] + (who && who.name ? ` — ${who.name}` : '');
+    return `<td class="chart-cell${needsPrimary ? ' needs-primary' : ''}" data-id="${node.id}" data-col="${k}" title="${escapeHtml(tip)}">${cellChipsHtml(node, k, parentR && parentR[k])}</td>`;
+  }).join('');
   const vio = _violationsByNodeId[node.id];
   const pin = vio
     ? `<span class="violation-pin ${vio.severity === 'err' ? '' : 'warn'}" data-violation-jump="${node.id}" title="${escapeHtml(vio.issues.map(i => i.message).join('\n'))}">!</span>`
@@ -3782,6 +4380,415 @@ function renderWorkflow() {
     </div>`;
 }
 
+// ========== Business Case node-graph view (tabletop exercises) ==========
+// A self-contained, parallel RACI system: each business case owns its own tasks (boxes on a
+// Blender-style node canvas), its own RACI over the same 7 COLS (stored on the task, independent
+// of state.charts), and hand-drawn handoff edges. Plus an optional synced RACI table pane.
+const BZ_NODE_W = 220;                 // fixed node width — keeps socket geometry predictable
+const BZ_ZOOM_MIN = 0.4, BZ_ZOOM_MAX = 2.5;
+
+function bizTaskById(id) { return abc().tasks.find(t => t.id === id); }
+
+function bizSelectorHtml() {
+  const b = abc();
+  const opts = state.bizCases.map(c =>
+    `<option value="${c.id}"${c.id === state.activeBizCaseId ? ' selected' : ''}>${escapeHtml(c.name || 'Untitled')}</option>`).join('');
+  const fwOpts = BIZ_FRAMEWORKS.map(k =>
+    `<option value="${k}"${b.framework === k ? ' selected' : ''}>${FRAMEWORKS[k].name}</option>`).join('');
+  return `
+    <select id="bz-select" title="Active business case">${opts}</select>
+    <button id="bz-new" title="New business case">+ New</button>
+    <button id="bz-rename" title="Rename this business case">Rename</button>
+    <button id="bz-del" title="Delete this business case">Delete</button>
+    <span class="bz-sep" aria-hidden="true"></span>
+    <select id="bz-framework" title="Decision framework — DACI / RAPID fit decision points better than RACI">${fwOpts}</select>
+    <span class="bz-sep" aria-hidden="true"></span>
+    <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
+    <button id="bz-toggle-table" class="${b.showTable ? 'active' : ''}" title="Show/hide the RACI table pane">▦ Table</button>
+    <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · Ctrl/Cmd+scroll to zoom</span>`;
+}
+
+function bizNodeHtml(t) {
+  const cells = COLS.map(k => {
+    const norm = normalizeRaci(t.raci[k] || '');
+    return `<div class="bz-cell" data-bz-cell="${t.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">
+      <span class="bz-cell-col">${escapeHtml(COL_SHORT[k])}</span>
+      ${renderChipsHtml(norm)}
+    </div>`;
+  }).join('');
+  // A task with 2+ outgoing edges is a DECISION POINT (branches into more than one path).
+  const outCount = abc().edges.reduce((n, e) => n + (e.from === t.id ? 1 : 0), 0);
+  const isDecision = outCount >= 2;
+  const badge = isDecision ? `<span class="bz-decision-badge" title="Decision point — ${outCount} outgoing paths">⑂ ${outCount}</span>` : '';
+  return `<div class="bz-node${isDecision ? ' bz-node--decision' : ''}" data-bz-node="${t.id}" style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
+    <span class="bz-socket in" data-bz-socket="in" data-bz-node-id="${t.id}" title="Input"></span>
+    <span class="bz-socket out" data-bz-socket="out" data-bz-node-id="${t.id}" title="Output — drag onto another box to connect (draw more than one to branch)"></span>
+    <div class="bz-node-head">
+      <span class="bz-node-name" contenteditable="true" spellcheck="false" data-bz-name="${t.id}" data-placeholder="Task name">${escapeHtml(t.name)}</span>
+      ${badge}
+      <button class="bz-node-del" data-bz-del-task="${t.id}" title="Delete task">×</button>
+    </div>
+    <div class="bz-node-body">${cells}</div>
+  </div>`;
+}
+
+function bizTableHtml() {
+  const b = abc();
+  const head = `<th class="bz-th-task">Task</th>` + COLS.map(k =>
+    `<th title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}</th>`).join('');
+  const rows = b.tasks.length ? b.tasks.map(t => {
+    const cells = COLS.map(k =>
+      `<td class="bz-tcell" data-bz-cell="${t.id}" data-col="${k}">${renderChipsHtml(normalizeRaci(t.raci[k] || ''))}</td>`).join('');
+    return `<tr><th class="bz-trow" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}</th>${cells}</tr>`;
+  }).join('') : `<tr><td class="bz-tempty" colspan="${COLS.length + 1}">No tasks yet.</td></tr>`;
+  return `<div class="bz-table-head"><h3>RACI table</h3><span class="bz-meta">click a cell to edit</span></div>
+    <table class="bz-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
+    ${bizFlowTableHtml()}`;
+}
+// Tabular view of the branching flow: one row per outgoing path. A step with 2+ outgoing rows is a
+// decision point (badged). Endpoints show "— end —". The condition cell edits the edge label.
+function bizFlowTableHtml() {
+  const b = abc();
+  if (!b.tasks.length) return '';
+  const nameOf = id => { const t = b.tasks.find(x => x.id === id); return t ? (t.name || 'Untitled task') : '—'; };
+  let body = '';
+  b.tasks.forEach(t => {
+    const outs = b.edges.filter(e => e.from === t.id);
+    const decision = outs.length >= 2;
+    const stepCell = `<th class="bz-flow-step${decision ? ' is-decision' : ''}" rowspan="${Math.max(1, outs.length)}" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}${decision ? `<span class="bz-flow-fork" title="Decision point — ${outs.length} paths">⑂ decision</span>` : ''}</th>`;
+    if (!outs.length) {
+      body += `<tr>${stepCell}<td class="bz-flow-cond-cell"><span class="bz-flow-end">— end —</span></td><td class="bz-flow-next">—</td></tr>`;
+    } else {
+      outs.forEach((e, i) => {
+        const cond = `<input class="bz-flow-cond" data-bz-edge-cond="${e.id}" value="${escapeHtml(e.label || '')}" placeholder="${decision ? 'condition…' : '(then)'}" spellcheck="false">`;
+        body += `<tr>${i === 0 ? stepCell : ''}<td class="bz-flow-cond-cell">${cond}</td><td class="bz-flow-next">${escapeHtml(nameOf(e.to))}</td></tr>`;
+      });
+    }
+  });
+  return `<div class="bz-table-head bz-flow-h"><h3>Flow / branches</h3><span class="bz-meta">⑂ = decision · edit a condition</span></div>
+    <table class="bz-table bz-flow-table"><thead><tr><th class="bz-th-task">Step</th><th>Path / condition</th><th>Next step</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderBizcase() {
+  const main = document.getElementById('ws-main');
+  const b = abc();
+  const nodes = b.tasks.map(bizNodeHtml).join('');
+  const tablePane = b.showTable ? `<aside class="bz-table-pane" id="bz-table">${bizTableHtml()}</aside>` : '';
+  const empty = b.tasks.length ? '' :
+    `<div class="bz-empty">No tasks yet.<br>Click <b>+ Add task</b> to drop the first step onto the canvas.</div>`;
+  main.innerHTML = `
+    <div class="bz-wrap">
+      <div class="bz-toolbar">${bizSelectorHtml()}</div>
+      <div class="bz-body">
+        <div class="bz-canvas" id="bz-canvas">
+          ${empty}
+          <div class="bz-world" id="bz-world">
+            <svg class="bz-edges" id="bz-edges" xmlns="http://www.w3.org/2000/svg"></svg>
+            ${nodes}
+          </div>
+        </div>
+        ${tablePane}
+      </div>
+    </div>`;
+  bizApplyTransform();
+  drawBizEdges();
+}
+
+function bizApplyTransform() {
+  const v = abc().view;
+  const world = document.getElementById('bz-world');
+  if (world) world.style.transform = `translate(${v.panX}px, ${v.panY}px) scale(${v.zoom})`;
+}
+
+// Cubic bezier between two socket points, with horizontal tangents (Blender-noodle look).
+function bizEdgePath(x1, y1, x2, y2) {
+  const dx = Math.max(40, Math.abs(x2 - x1) * 0.5);
+  return `M ${x1} ${y1} C ${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`;
+}
+
+// Redraw all edges in WORLD coordinates (the SVG lives inside #bz-world, so the single pan/zoom
+// transform scales noodles + boxes together). Socket points read live offsets, so a mid-drag box
+// keeps its edges attached. Pass a {x1,y1,x2,y2} rubber band while connecting.
+function drawBizEdges(rubber) {
+  const world = document.getElementById('bz-world');
+  const svg = document.getElementById('bz-edges');
+  if (!world || !svg) return;
+  const b = abc();
+  const nodeEl = id => world.querySelector(`.bz-node[data-bz-node="${id}"]`);
+  const sock = (el, side) => ({ x: el.offsetLeft + (side === 'out' ? el.offsetWidth : 0), y: el.offsetTop + el.offsetHeight / 2 });
+  let maxX = 800, maxY = 600;
+  b.tasks.forEach(t => { maxX = Math.max(maxX, t.x + BZ_NODE_W + 120); maxY = Math.max(maxY, t.y + 260); });
+  svg.setAttribute('width', maxX); svg.setAttribute('height', maxY);
+  const BRANCH_COLOR = '#fcc419'; // amber (matches --c) for decision branches
+  let inner = `<defs>` +
+    `<marker id="bz-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${ACCENT}"/></marker>` +
+    `<marker id="bz-arrow-b" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${BRANCH_COLOR}"/></marker>` +
+    `</defs>`;
+  // A source with 2+ outgoing edges is a decision/branch — tint those noodles so paths read clearly.
+  const branchSrc = new Set();
+  const fromCount = {};
+  b.edges.forEach(e => { fromCount[e.from] = (fromCount[e.from] || 0) + 1; });
+  Object.keys(fromCount).forEach(k => { if (fromCount[k] >= 2) branchSrc.add(k); });
+  b.edges.forEach(e => {
+    const a = nodeEl(e.from), c = nodeEl(e.to);
+    if (!a || !c) return;
+    const p1 = sock(a, 'out'), p2 = sock(c, 'in');
+    const branch = branchSrc.has(e.from);
+    const stroke = branch ? BRANCH_COLOR : ACCENT;
+    const marker = branch ? 'bz-arrow-b' : 'bz-arrow';
+    inner += `<path class="bz-edge" data-bz-edge="${e.id}" d="${bizEdgePath(p1.x, p1.y, p2.x, p2.y)}" fill="none" stroke="${stroke}" stroke-width="2.5" marker-end="url(#${marker})"/>`;
+    if (e.label) {
+      const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+      inner += `<text class="bz-edge-label" x="${mx}" y="${my - 4}" text-anchor="middle">${escapeHtml(e.label)}</text>`;
+    }
+  });
+  if (rubber) {
+    inner += `<path class="bz-rubber" d="${bizEdgePath(rubber.x1, rubber.y1, rubber.x2, rubber.y2)}" fill="none" stroke="${ACCENT}" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>`;
+  }
+  svg.innerHTML = inner;
+}
+
+// Screen point -> world point, inverting #bz-world's translate(pan) scale(zoom).
+function bzScreenToWorld(clientX, clientY) {
+  const cv = document.getElementById('bz-canvas');
+  const v = abc().view;
+  const r = cv.getBoundingClientRect();
+  return { x: (clientX - r.left - v.panX) / v.zoom, y: (clientY - r.top - v.panY) / v.zoom };
+}
+
+// ---- bizcase RACI popover (reuses the shared .raci-popover + openPopover/closePopover globals) ----
+function bizPopoverInnerHtml(t, col) {
+  const F = bizFw();
+  const set = new Set(normalizeRaci(t.raci[col] || '').split(''));
+  return F.roles.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}" title="${escapeHtml(F.meta[r].label)} — ${escapeHtml(F.meta[r].desc)}">${r}</button>`).join('')
+    + `<button class="clear" data-clear="1" title="Clear">✕</button>`
+    + whoFooterHtml(col);
+}
+function bizRefreshPopover(taskId, col) {
+  if (openPopover && openPopover.dataset.biz && openPopover.dataset.id === taskId && openPopover.dataset.col === col) {
+    const t = bizTaskById(taskId);
+    if (t) openPopover.innerHTML = bizPopoverInnerHtml(t, col);
+  }
+}
+function bizToggleRaci(taskId, col, letter) {
+  const t = bizTaskById(taskId); if (!t) return;
+  const F = bizFw();
+  const cur = normalizeRaci(t.raci[col] || '');
+  const adding = !cur.includes(letter);
+  // Same "one owner per task" rule as the org chart, for consistency.
+  if (letter === F.owner && adding) {
+    const otherA = COLS.find(k => k !== col && normalizeRaci(t.raci[k] || '').includes(F.owner));
+    if (otherA) { showToast(`Only one ${F.meta[F.owner].label} per task — ${COL_LABELS[otherA]} already holds the ${F.owner}. Clear it first.`, 'error'); return; }
+  }
+  t.raci[col] = normalizeRaci(adding ? cur + letter : cur.replace(letter, ''));
+  saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
+}
+function bizClearRaci(taskId, col) {
+  const t = bizTaskById(taskId); if (!t) return;
+  t.raci[col] = '';
+  saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
+}
+function openBizRaciPopover(taskId, col, anchorEl) {
+  closePopover();
+  const t = bizTaskById(taskId); if (!t) return;
+  const pop = document.createElement('div');
+  pop.className = 'raci-popover';
+  pop.dataset.id = taskId; pop.dataset.col = col; pop.dataset.biz = '1';
+  pop.innerHTML = bizPopoverInnerHtml(t, col);
+  document.body.appendChild(pop);
+  const rect = anchorEl.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  let top = rect.bottom + 4 + window.scrollY;
+  let left = rect.left + rect.width / 2 - popRect.width / 2 + window.scrollX;
+  left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+  if (top + popRect.height > window.scrollY + window.innerHeight - 8) top = rect.top - popRect.height - 4 + window.scrollY;
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
+  openPopover = pop;
+  pop.addEventListener('click', e => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    e.stopPropagation();
+    if (btn.dataset.clear) { bizClearRaci(taskId, col); return; }
+    bizToggleRaci(taskId, col, btn.dataset.letter);
+  });
+}
+// Edge popover: name the branch condition (decision label) or delete the handoff.
+function openBizEdgePopover(edgeId, clientX, clientY) {
+  closePopover();
+  const edge = abc().edges.find(x => x.id === edgeId); if (!edge) return;
+  const pop = document.createElement('div');
+  pop.className = 'bz-edge-popover';
+  pop.dataset.edge = edgeId;
+  pop.innerHTML = `
+    <label class="bz-ep-label">Path / condition</label>
+    <input class="bz-ep-input" type="text" value="${escapeHtml(edge.label || '')}" placeholder="e.g. Yes / No / If escalated" spellcheck="false">
+    <button class="bz-ep-del" type="button" title="Delete this handoff">🗑 Delete handoff</button>`;
+  document.body.appendChild(pop);
+  const popRect = pop.getBoundingClientRect();
+  let left = Math.max(8, Math.min(clientX - popRect.width / 2, window.innerWidth - popRect.width - 8));
+  let top = clientY + 10;
+  if (top + popRect.height > window.innerHeight - 8) top = Math.max(8, clientY - popRect.height - 10);
+  pop.style.left = (left + window.scrollX) + 'px'; pop.style.top = (top + window.scrollY) + 'px';
+  openPopover = pop;
+  const input = pop.querySelector('.bz-ep-input');
+  input.focus(); input.select();
+  input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } });
+  input.addEventListener('change', () => {
+    const ed = abc().edges.find(x => x.id === edgeId);
+    if (ed) { ed.label = input.value.trim(); saveState(); renderBizcase(); }
+    closePopover();
+  });
+  // mousedown (not click) + preventDefault so the input doesn't blur/commit and steal the delete.
+  pop.querySelector('.bz-ep-del').addEventListener('mousedown', ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    const b = abc(); b.edges = b.edges.filter(x => x.id !== edgeId); saveState(); renderBizcase(); closePopover();
+  });
+}
+
+// ---- bizcase mutations ----
+function bizAddTask() {
+  const b = abc();
+  const cv = document.getElementById('bz-canvas');
+  let wx = 80, wy = 80;
+  if (cv) {
+    const r = cv.getBoundingClientRect();
+    const c = bzScreenToWorld(r.left + cv.clientWidth / 2, r.top + cv.clientHeight / 2);
+    wx = Math.round(c.x - BZ_NODE_W / 2); wy = Math.round(c.y - 40);
+  }
+  const t = makeBizTask('New task');
+  t.x = wx; t.y = wy;
+  b.tasks.push(t);
+  saveState(); renderBizcase();
+  const el = document.querySelector(`.bz-node[data-bz-node="${t.id}"] .bz-node-name`);
+  if (el) { el.focus(); const sel = document.getSelection(); if (sel && sel.selectAllChildren) sel.selectAllChildren(el); }
+}
+function bizDeleteTask(id) {
+  const b = abc();
+  const t = bizTaskById(id);
+  if (!confirm(`Delete task "${(t && t.name) || 'Untitled'}"? This also removes its handoffs.`)) return;
+  b.tasks = b.tasks.filter(x => x.id !== id);
+  b.edges = b.edges.filter(x => x.from !== id && x.to !== id);
+  saveState(); renderBizcase();
+}
+function bizAddCase() {
+  const c = makeBizCase('Business case ' + (state.bizCases.length + 1));
+  state.bizCases.push(c);
+  state.activeBizCaseId = c.id;
+  saveState(); renderBizcase();
+}
+function bizRenameCase() {
+  const b = abc();
+  const nm = prompt('Rename business case:', b.name);
+  if (nm == null) return;
+  b.name = nm.trim() || b.name;
+  saveState(); renderBizcase();
+}
+function bizDeleteCase() {
+  if (state.bizCases.length <= 1) { showToast('Keep at least one business case.', 'error'); return; }
+  const b = abc();
+  if (!confirm(`Delete business case "${b.name}" and all its tasks?`)) return;
+  state.bizCases = state.bizCases.filter(x => x.id !== b.id);
+  state.activeBizCaseId = state.bizCases[0].id;
+  saveState(); renderBizcase();
+}
+function bizToggleTable() {
+  abc().showTable = !abc().showTable;
+  saveState(); renderBizcase();
+}
+
+// ---- bizcase canvas interactions (each guarded to viewMode === 'bizcase') ----
+let bizDrag = null, bizConnect = null, bizPan = null, bizDragSuppressClick = false, bizFrontId = null;
+document.addEventListener('mousedown', e => {
+  if (state.viewMode !== 'bizcase') return;
+  const outSock = e.target.closest('.bz-socket.out');
+  if (outSock) {                                   // begin a connection from an output socket
+    e.preventDefault(); e.stopPropagation();
+    const id = outSock.dataset.bzNodeId;
+    const el = document.querySelector(`.bz-node[data-bz-node="${id}"]`);
+    if (el) { bizConnect = { fromId: id, x1: el.offsetLeft + el.offsetWidth, y1: el.offsetTop + el.offsetHeight / 2 }; document.body.classList.add('bz-connecting'); }
+    return;
+  }
+  if (e.target.closest('.bz-socket')) return;      // input socket — not a drag origin
+  if (e.target.closest('.bz-node-del')) return;    // let the click handler delete
+  const head = e.target.closest('.bz-node-head');
+  if (head) {                                       // drag-move the box
+    const nodeEl = head.closest('.bz-node');
+    const t = bizTaskById(nodeEl.dataset.bzNode);
+    if (t) bizDrag = { id: t.id, el: nodeEl, sx: e.clientX, sy: e.clientY, ox: t.x, oy: t.y, moved: false };
+    return;                                         // no preventDefault — lets the name caret work
+  }
+  if (e.target.closest('[data-bz-edge]')) return;  // edge click handled on click
+  if (e.target.closest('.bz-node')) return;        // cell click handled on click
+  if (e.target.closest('#bz-canvas')) {            // empty canvas → pan
+    const v = abc().view;
+    bizPan = { sx: e.clientX, sy: e.clientY, ox: v.panX, oy: v.panY, moved: false };
+    document.getElementById('bz-canvas').classList.add('panning');
+  }
+});
+document.addEventListener('mousemove', e => {
+  if (state.viewMode !== 'bizcase') return;
+  if (bizDrag) {
+    const z = abc().view.zoom || 1;
+    const dx = (e.clientX - bizDrag.sx) / z, dy = (e.clientY - bizDrag.sy) / z;
+    if (!bizDrag.moved && Math.hypot(dx, dy) < 4) return;  // small move = click (place caret)
+    bizDrag.moved = true; bizDrag.el.classList.add('dragging');
+    const t = bizTaskById(bizDrag.id); if (!t) return;
+    t.x = Math.round(bizDrag.ox + dx); t.y = Math.round(bizDrag.oy + dy);
+    bizDrag.el.style.left = t.x + 'px'; bizDrag.el.style.top = t.y + 'px';
+    drawBizEdges();
+    return;
+  }
+  if (bizConnect) {
+    const wp = bzScreenToWorld(e.clientX, e.clientY);
+    drawBizEdges({ x1: bizConnect.x1, y1: bizConnect.y1, x2: wp.x, y2: wp.y });
+    return;
+  }
+  if (bizPan) {
+    const v = abc().view;
+    v.panX = bizPan.ox + (e.clientX - bizPan.sx);
+    v.panY = bizPan.oy + (e.clientY - bizPan.sy);
+    bizPan.moved = true; bizApplyTransform();
+  }
+});
+document.addEventListener('mouseup', e => {
+  if (state.viewMode !== 'bizcase') return;
+  if (bizDrag) {
+    if (bizDrag.moved) { bizDrag.el.classList.remove('dragging'); bizDrag.el.style.zIndex = 6; bizFrontId = bizDrag.id; bizDragSuppressClick = true; saveState(); }
+    bizDrag = null; return;
+  }
+  if (bizConnect) {
+    document.body.classList.remove('bz-connecting');
+    const targetNode = e.target.closest('.bz-node');
+    if (targetNode) {
+      const toId = targetNode.dataset.bzNode, fromId = bizConnect.fromId, b = abc();
+      if (toId && toId !== fromId && !b.edges.some(x => x.from === fromId && x.to === toId)) {
+        b.edges.push(makeBizEdge(fromId, toId)); saveState();
+      }
+    }
+    bizConnect = null; renderBizcase(); return;
+  }
+  if (bizPan) {
+    const cv = document.getElementById('bz-canvas'); if (cv) cv.classList.remove('panning');
+    if (bizPan.moved) saveState();
+    bizPan = null;
+  }
+});
+// Cursor-anchored zoom (Ctrl/Cmd + wheel), mirroring the chart zoom.
+document.addEventListener('wheel', e => {
+  if (state.viewMode !== 'bizcase' || !(e.ctrlKey || e.metaKey)) return;
+  if (!e.target.closest('#bz-canvas')) return;
+  e.preventDefault();
+  const v = abc().view;
+  const old = v.zoom || 1;
+  const next = Math.min(BZ_ZOOM_MAX, Math.max(BZ_ZOOM_MIN, old * (e.deltaY < 0 ? 1.1 : 0.9)));
+  if (next === old) return;
+  const r = document.getElementById('bz-canvas').getBoundingClientRect();
+  const cx = e.clientX - r.left, cy = e.clientY - r.top;
+  v.panX = cx - ((cx - v.panX) * (next / old));
+  v.panY = cy - ((cy - v.panY) * (next / old));
+  v.zoom = next;
+  bizApplyTransform(); saveState();
+}, { passive: false });
+
 function countOrgUnits(d) {
   // d is a directorate { lead, divisions }
   const divisions = d.divisions.length;
@@ -4111,14 +5118,15 @@ function closePopover() { if (openPopover) { openPopover.remove(); openPopover =
 // Inner buttons for a cell's popover: R/A/C/I toggles, a clear button, and — only when the row
 // has 2+ R's — a star to mark which R cascades down as the children's Accountable.
 function popoverInnerHtml(node, col) {
+  const F = chartFw();
   const set = new Set(normalizeRaci(node.raci[col] || '').split(''));
-  let html = ROLES.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}">${r}</button>`).join('')
+  let html = F.roles.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}" title="${escapeHtml(F.meta[r].label)} — ${escapeHtml(F.meta[r].desc)}">${r}</button>`).join('')
     + `<button class="clear" data-clear="1" title="Clear">✕</button>`;
-  if (set.has('R') && rColumns(node).length > 1) {
+  if (set.has(F.doer) && rColumns(node).length > 1) {
     const on = primaryRColumn(node) === col;
-    html += `<button class="primary-r${on ? ' on' : ''}" data-primary="1" title="Cascade this R down as the Accountable for the next level">${on ? '★ Cascading' : '☆ Cascade R'}</button>`;
+    html += `<button class="primary-r${on ? ' on' : ''}" data-primary="1" title="Cascade this ${F.doer} down as the ${F.meta[F.owner].label} for the next level">${on ? '★ Cascading' : '☆ Cascade ' + F.doer}</button>`;
   }
-  return html;
+  return html + whoFooterHtml(col);
 }
 function refreshPopover(id, col) {
   if (!openPopover || openPopover.dataset.id !== id || openPopover.dataset.col !== col) return;
@@ -4129,23 +5137,24 @@ function refreshPopover(id, col) {
 function toggleRaciLetter(id, col, letter) {
   const f = findNode(id); if (!f) return;
   const node = f.node;
+  const F = chartFw();
   const cur = normalizeRaci(node.raci[col] || '');
   const adding = !cur.includes(letter);
-  // Hard rule: only one explicit Accountable per row. Block a second A in another column.
-  if (letter === 'A' && adding) {
-    const otherA = COLS.find(k => k !== col && normalizeRaci(node.raci[k] || '').includes('A'));
+  // Hard rule: only one explicit owner (Accountable) per row. Block a second in another column.
+  if (letter === F.owner && adding) {
+    const otherA = COLS.find(k => k !== col && normalizeRaci(node.raci[k] || '').includes(F.owner));
     if (otherA) {
-      showToast(`Only one Accountable per row — ${COL_LABELS[otherA]} already holds the A. Clear it first.`, 'error');
+      showToast(`Only one ${F.meta[F.owner].label} per row — ${COL_LABELS[otherA]} already holds the ${F.owner}. Clear it first.`, 'error');
       return;
     }
   }
   const next = normalizeRaci(adding ? cur + letter : cur.replace(letter, ''));
   node.raci[col] = next;
-  // Removing an R that was the designated primary clears the designation.
-  if (letter === 'R' && !adding && node.primaryR === col) delete node.primaryR;
-  // Adding an R that creates a 2nd-or-more Responsible without a designated primary → suggest.
-  if (letter === 'R' && adding && rColumns(node).length > 1 && !primaryRColumn(node)) {
-    showToast('Two Responsible parties on this line. Star the R that cascades down as Accountable, or consider splitting this into two process areas.', 'suggest');
+  // Removing a doer (R) that was the designated primary clears the designation.
+  if (letter === F.doer && !adding && node.primaryR === col) delete node.primaryR;
+  // Adding a doer that creates a 2nd-or-more without a designated primary → suggest.
+  if (letter === F.doer && adding && rColumns(node).length > 1 && !primaryRColumn(node)) {
+    showToast(`Two ${F.meta[F.doer].label} parties on this line. Star the ${F.doer} that cascades down as ${F.meta[F.owner].label}, or split this into two process areas.`, 'suggest');
   }
   saveState();
   renderChart(); refreshPopover(id, col);
@@ -4276,6 +5285,22 @@ document.addEventListener('click', e => {
     }
     return;
   }
+  // ---- Business Case (node-graph) handlers ----
+  if (state.viewMode === 'bizcase') {
+    // A box drag just ended — swallow the trailing click if it lands on a node (don't open a cell).
+    if (bizDragSuppressClick) { bizDragSuppressClick = false; if (e.target.closest('.bz-node')) return; }
+    if (e.target.closest('#bz-new')) { bizAddCase(); return; }
+    if (e.target.closest('#bz-rename')) { bizRenameCase(); return; }
+    if (e.target.closest('#bz-del')) { bizDeleteCase(); return; }
+    if (e.target.closest('#bz-add-task')) { bizAddTask(); return; }
+    if (e.target.closest('#bz-toggle-table')) { bizToggleTable(); return; }
+    const bzDelTask = e.target.closest('[data-bz-del-task]');
+    if (bzDelTask) { bizDeleteTask(bzDelTask.dataset.bzDelTask); return; }
+    const bzEdge = e.target.closest('[data-bz-edge]');
+    if (bzEdge) { openBizEdgePopover(bzEdge.dataset.bzEdge, e.clientX, e.clientY); return; }
+    const bzCell = e.target.closest('[data-bz-cell]');
+    if (bzCell) { openBizRaciPopover(bzCell.dataset.bzCell, bzCell.dataset.col, bzCell); return; }
+  }
   if (e.target.closest('#btn-arrange')) { autoArrange(); return; }
   if (e.target.closest('#btn-legend')) {
     state.showLegend = !state.showLegend; saveState();
@@ -4283,9 +5308,12 @@ document.addEventListener('click', e => {
   }
   if (e.target.closest('#btn-export')) { exportJSON(); return; }
   if (e.target.closest('#btn-export-xlsx')) { exportXLSX(); return; }
+  if (e.target.closest('#btn-export-pptx')) { exportPPTX(); return; }
+  if (e.target.closest('#btn-print')) { window.print(); return; }
   if (e.target.closest('#btn-export-xml')) { exportXML(); return; }
   if (e.target.closest('#btn-export-mmd')) { exportMermaid(); return; }
-  if (e.target.closest('#btn-import')) { document.getElementById('file-import').click(); return; }
+  if (e.target.closest('#btn-import')) { _importMerge = false; document.getElementById('file-import').click(); return; }
+  if (e.target.closest('#btn-merge')) { _importMerge = true; document.getElementById('file-import').click(); return; }
   if (e.target.closest('#zoom-in')) { zoomBy(0.1); return; }
   if (e.target.closest('#zoom-out')) { zoomBy(-0.1); return; }
   if (e.target.closest('#zoom-level')) { setZoom(1); return; }
@@ -4354,7 +5382,7 @@ document.addEventListener('click', e => {
   const delLead = e.target.closest('[data-del-lead]');
   if (delLead) { const [a, d, b, t, role] = delLead.dataset.delLead.split('|'); removeLead(a, d || null, b || null, t || null, role); return; }
 
-  if (openPopover && !e.target.closest('.raci-popover') && !e.target.closest('.org-popover')) closePopover();
+  if (openPopover && !e.target.closest('.raci-popover') && !e.target.closest('.org-popover') && !e.target.closest('.bz-edge-popover')) closePopover();
 });
 
 // ---- Kanban drag-and-drop (Task view) ----
@@ -4397,15 +5425,37 @@ document.addEventListener('drop', e => {
 // Non-drag fallback: per-card status <select>.
 document.addEventListener('change', e => {
   const sel = e.target.closest('[data-status-for]');
-  if (!sel) return;
-  setNodeStatus(sel.dataset.statusFor, sel.value);
-  renderKanban();
+  if (sel) { setNodeStatus(sel.dataset.statusFor, sel.value); renderKanban(); return; }
+  const cfSel = e.target.closest('#chart-framework');
+  if (cfSel) { setChartFramework(cfSel.value); return; }
+  const lmSel = e.target.closest('.legend-map');
+  if (lmSel) {
+    const col = lmSel.dataset.col;
+    state.columnActor[col] = lmSel.value || null;
+    saveState();
+    render();
+    return;
+  }
+  const bzSel = e.target.closest('#bz-select');
+  if (bzSel) { state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
+  const bzFwSel = e.target.closest('#bz-framework');
+  if (bzFwSel) { if (BIZ_FRAMEWORKS.includes(bzFwSel.value)) { abc().framework = bzFwSel.value; saveState(); renderBizcase(); } return; }
+  const flowCond = e.target.closest('.bz-flow-cond');
+  if (flowCond) { const ed = abc().edges.find(x => x.id === flowCond.dataset.bzEdgeCond); if (ed) { ed.label = flowCond.value.trim(); saveState(); renderBizcase(); } return; }
 });
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && openPopover) { closePopover(); return; }
   if (e.key === 'Enter' && !e.shiftKey && e.target.matches && e.target.matches('[contenteditable="true"]')) {
     e.preventDefault(); e.target.blur();
+  }
+  // Undo / redo — but leave native editing undo alone inside text fields.
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    const editing = e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]');
+    if (editing) return;
+    const k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
   }
 });
 
@@ -4414,6 +5464,11 @@ document.addEventListener('blur', e => {
   if (!el.matches || !el.matches('[contenteditable="true"]')) return;
   if (el.dataset.tabId && el.classList.contains('tab-label')) { renameChart(el.dataset.tabId, el.textContent.trim()); return; }
   if (el.dataset.nodeId && el.dataset.field === 'name') { renameNode(el.dataset.nodeId, el.textContent.trim()); return; }
+  if (el.dataset.bzName) {
+    const t = bizTaskById(el.dataset.bzName);
+    if (t) { const nm = el.textContent.trim(); if (t.name !== nm) { t.name = nm; saveState(); renderBizcase(); } }
+    return;
+  }
   if (el.dataset.field === 'dir-name' && el.dataset.actor) { commitDirectorateName(el.dataset.actor, el.textContent.trim()); return; }
   const rosterFields = ['div-name','branch-name','team-name','p-name','p-title'];
   if (rosterFields.includes(el.dataset.field) && el.dataset.actor) { commitRosterEdit(el); return; }
@@ -4431,7 +5486,9 @@ function downloadBlob(filename, blob) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-function exportJSON() {
+async function exportJSON() {
+  // Ensure every doc's bytes are loaded into memory (from IDB) so the export is fully portable.
+  await syncDocsWithIdb();
   download(`${(ac().title || 'raci').replace(/\s+/g,'_')}.json`, JSON.stringify(state, null, 2), 'application/json');
 }
 
@@ -4597,14 +5654,18 @@ function xlsxBytes() {
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}</Relationships>`]);
   sheets.forEach((s, i) => files.push([`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)]));
-
-  // minimal store-only ZIP (xlsx)
+  return zipBytes(files);
+}
+// Minimal store-only (uncompressed) ZIP writer — shared by the .xlsx and .pptx exporters.
+// `files` is an array of [path, content] where content is a string or Uint8Array.
+function zipBytes(files) {
+  const enc = new TextEncoder();
   const u16 = v => [v & 255, (v >> 8) & 255];
   const u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
   const locals = [], centrals = [];
   let offset = 0;
   files.forEach(([name, content]) => {
-    const nameB = enc.encode(name), data = enc.encode(content), crc = crc32(data);
+    const nameB = enc.encode(name), data = (typeof content === 'string') ? enc.encode(content) : content, crc = crc32(data);
     const local = [...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
       ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nameB.length), ...u16(0), ...nameB, ...data];
     locals.push(new Uint8Array(local));
@@ -4620,45 +5681,175 @@ function xlsxBytes() {
   const out = new Uint8Array(total); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; });
   return out;
 }
+// ---------- PowerPoint (.pptx) export — one slide per tier (paginated), reusing the Excel tables ----------
+// Hand-rolled OOXML (like the .xlsx writer). A title slide + one slide per tier page, each a native
+// PowerPoint table so leadership can drop it straight into the PG deck the chart came from.
+function pptxBytes() {
+  const SLIDE_W = 12192000, SLIDE_H = 6858000;     // 13.333" × 7.5" widescreen, in EMU
+  const esc = s => escapeHtml(s == null ? '' : String(s));
+  const F = chartFw();
+  const ROWS_PER_SLIDE = 13;
+  const sheets = buildLevelSheets();
+
+  // 1) Logical slide list.
+  const slideDefs = [{ kind: 'title', title: ac().title || 'RACI chart', sub: `${F.name} responsibility matrix` }];
+  sheets.forEach(sheet => {
+    const pages = Math.max(1, Math.ceil(sheet.rows.length / ROWS_PER_SLIDE));
+    for (let p = 0; p < pages; p++) {
+      slideDefs.push({ kind: 'table', title: sheet.name + (pages > 1 ? `  (${p + 1}/${pages})` : ''),
+        headers: sheet.headers, rows: sheet.rows.slice(p * ROWS_PER_SLIDE, (p + 1) * ROWS_PER_SLIDE) });
+    }
+  });
+
+  // 2) Shape helpers.
+  const textBox = (id, name, x, y, cx, cy, runs, anchorBold, szDefault) =>
+    `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${esc(name)}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+    `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
+    `<p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:spAutoFit/></a:bodyPr><a:lstStyle/>${runs}</p:txBody></p:sp>`;
+  const para = (text, sz, bold, colorHex) =>
+    `<a:p><a:r><a:rPr lang="en-US" sz="${sz}"${bold ? ' b="1"' : ''} dirty="0">` +
+    `<a:solidFill><a:srgbClr val="${colorHex}"/></a:solidFill></a:rPr><a:t>${esc(text)}</a:t></a:r></a:p>`;
+
+  // Native PowerPoint table.
+  const tableFrame = (id, headers, rows) => {
+    const TW = 11582400, x = 304800, y = 1295400;
+    const nLead = headers.length - COLS.length;
+    const raciW = 640000;
+    const leadW = Math.max(900000, Math.floor((TW - raciW * COLS.length) / Math.max(1, nLead)));
+    const widths = headers.map((_, i) => i < nLead ? leadW : raciW);
+    const grid = `<a:tblGrid>${widths.map(w => `<a:gridCol w="${w}"/>`).join('')}</a:tblGrid>`;
+    const cell = (txt, i, headerRow) => {
+      const fill = headerRow ? '2D5FA5' : (i % 2 ? 'EEF2F8' : 'FFFFFF');
+      const color = headerRow ? 'FFFFFF' : '20242B';
+      const algn = i >= nLead ? ' algn="ctr"' : '';
+      return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr${algn}/>` +
+        `<a:r><a:rPr lang="en-US" sz="${headerRow ? 1000 : 900}"${headerRow ? ' b="1"' : ''} dirty="0">` +
+        `<a:solidFill><a:srgbClr val="${color}"/></a:solidFill></a:rPr><a:t>${esc(txt)}</a:t></a:r></a:p></a:txBody>` +
+        `<a:tcPr marL="36000" marR="36000" marT="18000" marB="18000" anchor="ctr"><a:solidFill><a:srgbClr val="${fill}"/></a:solidFill></a:tcPr></a:tc>`;
+    };
+    const headRow = `<a:tr h="370000">${headers.map((h, i) => cell(h, i, true)).join('')}</a:tr>`;
+    const bodyRows = rows.map(r => `<a:tr h="320000">${headers.map((_, i) => cell(r[i], i, false)).join('')}</a:tr>`).join('');
+    return `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table"/>` +
+      `<p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr>` +
+      `<p:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${TW}" cy="${320000 * rows.length + 370000}"/></p:xfrm>` +
+      `<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">` +
+      `<a:tbl><a:tblPr firstRow="1" bandRow="1"><a:tableStyleId>{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}</a:tableStyleId></a:tblPr>${grid}${headRow}${bodyRows}</a:tbl>` +
+      `</a:graphicData></a:graphic></p:graphicFrame>`;
+  };
+
+  const SLIDE_NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+  const slideWrap = inner => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<p:sld ${SLIDE_NS}><p:cSld><p:spTree>` +
+    `<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
+    `<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
+    `${inner}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+
+  const slideXml = d => {
+    if (d.kind === 'title') {
+      return slideWrap(
+        textBox(2, 'Title', 685800, 2286000, 10820400, 1143000, para(d.title, 4000, true, '20242B')) +
+        textBox(3, 'Subtitle', 685800, 3505200, 10820400, 685800, para(d.sub, 1800, false, '2D5FA5')));
+    }
+    return slideWrap(
+      textBox(2, 'Heading', 304800, 304800, 11582400, 838200, para(d.title, 2400, true, '20242B')) +
+      tableFrame(5, d.headers, d.rows));
+  };
+
+  // 3) Package parts.
+  const files = [];
+  const ctOverrides = slideDefs.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('');
+  files.push(['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>${ctOverrides}</Types>`]);
+  files.push(['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`]);
+
+  const sldIds = slideDefs.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`).join('');
+  files.push(['ppt/presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation ${SLIDE_NS}><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${sldIds}</p:sldIdLst><p:sldSz cx="${SLIDE_W}" cy="${SLIDE_H}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`]);
+  const presRels = slideDefs.map((_, i) => `<Relationship Id="rId${i + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`).join('');
+  files.push(['ppt/_rels/presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>${presRels}</Relationships>`]);
+
+  // Slide master + its layout + theme (minimal but schema-complete).
+  files.push(['ppt/slideMasters/slideMaster1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster ${SLIDE_NS}><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`]);
+  files.push(['ppt/slideMasters/_rels/slideMaster1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/></Relationships>`]);
+  files.push(['ppt/slideLayouts/slideLayout1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout ${SLIDE_NS} type="blank" preserve="1"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`]);
+  files.push(['ppt/slideLayouts/_rels/slideLayout1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`]);
+
+  const fill = h => `<a:solidFill><a:srgbClr val="${h}"/></a:solidFill>`;
+  files.push(['ppt/theme/theme1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="ASIC"><a:themeElements><a:clrScheme name="ASIC"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="20242B"/></a:dk2><a:lt2><a:srgbClr val="EEF2F8"/></a:lt2><a:accent1><a:srgbClr val="2D5FA5"/></a:accent1><a:accent2><a:srgbClr val="FA5252"/></a:accent2><a:accent3><a:srgbClr val="FCC419"/></a:accent3><a:accent4><a:srgbClr val="51CF66"/></a:accent4><a:accent5><a:srgbClr val="4DABF7"/></a:accent5><a:accent6><a:srgbClr val="9775FA"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst>${fill('F5F5F5')}${fill('DDDDDD')}${fill('CCCCCC')}</a:fillStyleLst><a:lnStyleLst><a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="12700" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="19050" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:prstDash val="solid"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst>${fill('FFFFFF')}${fill('F5F5F5')}${fill('EEEEEE')}</a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>`]);
+
+  // Slides + their rels.
+  slideDefs.forEach((d, i) => {
+    files.push([`ppt/slides/slide${i + 1}.xml`, slideXml(d)]);
+    files.push([`ppt/slides/_rels/slide${i + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`]);
+  });
+
+  return zipBytes(files);
+}
+function exportPPTX() {
+  downloadBlob(`${fileBase()}.pptx`,
+    new Blob([pptxBytes()], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
+}
+
 // ---------- R/A rule violations ----------
-// Recomputed on every render. Not persisted to state/localStorage.
-// Rules enforced:
-//   • multipleA  (ERROR)  — more than one explicit A on a single row (hard rule per the deck)
-//   • ambiguousPrimaryR (WARN) — 2+ R's on a row with no primaryR designated
-//   • invalidPrimaryR (WARN) — primaryR set but doesn't match any R column on the row
+// Recomputed on every render. Not persisted to state/localStorage. Framework-aware (owner/doer
+// letters come from the active chart's framework). Rules enforced (see recomputeViolations):
+//   • multipleOwner     (ERROR) — more than one owner (A) on a single row — hard rule
+//   • noOwner           (WARN)  — no owner on the row and none inherited from the cascade
+//   • ambiguousPrimaryR (WARN)  — 2+ doers (R) on a row with no primary designated
+//   • invalidPrimaryR   (WARN)  — primary doer set but doesn't match any doer column on the row
+//   • noDoer            (WARN)  — a leaf row with no one assigned to do the work
+//   • overConsulted     (WARN)  — more than half the columns marked Consulted (sign-off bottleneck)
 let _violations = [];
 let _violationsByNodeId = Object.create(null);
+// Validate the active chart against responsibility-matrix best practice. Framework-aware (RACI /
+// RASCI share owner=A, doer=R) and cascade-aware (a row "has an owner" if it carries an explicit
+// owner letter OR inherits one from an ancestor's Primary-doer cascade). Checks, per the RACI
+// literature: exactly ONE owner (too many = error, none = warning), at least one doer on leaf work,
+// a designated primary when the doer cascade is ambiguous, and a guard against over-consulting.
 function recomputeViolations() {
   _violations = [];
   _violationsByNodeId = Object.create(null);
+  const F = chartFw();
+  const OWNER = F.owner, DOER = F.doer;
+  const ownerName = F.meta[OWNER].label, doerName = F.meta[DOER].label;
   const tierName = i => TIER_LABELS[i] || ('Level ' + i);
   const colLabel = k => COL_LABELS[k] || k;
-  const walk = (nodes, depth, ancestors) => {
+  const colsWith = (n, letter) => COLS.filter(k => normalizeRaci(n.raci && n.raci[k] || '').includes(letter));
+  // More than half the columns marked Consulted reads as a sign-off bottleneck.
+  const OVER_CONSULT = Math.floor(COLS.length / 2) + 1;
+  const walk = (nodes, depth, ancestors, inheritedOwnerCol) => {
     (nodes || []).forEach(n => {
-      const aCols = COLS.filter(k => normalizeRaci(n.raci && n.raci[k] || '').includes('A'));
-      const rCols = COLS.filter(k => normalizeRaci(n.raci && n.raci[k] || '').includes('R'));
+      const ownerCols = colsWith(n, OWNER);
+      const doerCols  = colsWith(n, DOER);
+      const consultCols = colsWith(n, 'C');
+      const leaf = !(n.children && n.children.length);
       const issues = [];
-      if (aCols.length > 1) {
-        issues.push({
-          severity: 'err',
-          rule: 'multipleA',
-          message: `Multiple Accountable (A) assignments: ${aCols.map(colLabel).join(', ')}. Only one A per row.`
-        });
-      }
-      if (rCols.length > 1 && !(n.primaryR && rCols.includes(n.primaryR))) {
-        issues.push({
-          severity: 'warn',
-          rule: 'ambiguousPrimaryR',
-          message: `${rCols.length} Responsible (R) parties (${rCols.map(colLabel).join(', ')}) but no Primary R designated — children won't inherit an Accountable.`
-        });
-      }
-      if (n.primaryR && rCols.length && !rCols.includes(n.primaryR)) {
-        issues.push({
-          severity: 'warn',
-          rule: 'invalidPrimaryR',
-          message: `Primary R is set to "${colLabel(n.primaryR)}" but that column is not marked R on this row.`
-        });
-      }
+      // 1. Exactly one owner — too many.
+      if (ownerCols.length > 1) issues.push({ severity: 'err', rule: 'multipleOwner',
+        message: `Multiple ${ownerName} (${OWNER}) assignments: ${ownerCols.map(colLabel).join(', ')}. Only one ${OWNER} per row.` });
+      // 2. Exactly one owner — none, and none inherited from above. The cardinal RACI failure.
+      else if (ownerCols.length === 0 && !inheritedOwnerCol) issues.push({ severity: 'warn', rule: 'noOwner',
+        message: `No ${ownerName} (${OWNER}) — this row has no clear owner and inherits none. Assign exactly one ${OWNER}.` });
+      // 3. Ambiguous doer cascade — 2+ doers but none designated to flow down as the owner.
+      if (doerCols.length > 1 && !(n.primaryR && doerCols.includes(n.primaryR))) issues.push({ severity: 'warn', rule: 'ambiguousPrimaryR',
+        message: `${doerCols.length} ${doerName} (${DOER}) parties (${doerCols.map(colLabel).join(', ')}) but none marked primary — children won't inherit an ${ownerName}.` });
+      // 4. Designated primary points at a column that isn't actually a doer.
+      if (n.primaryR && doerCols.length && !doerCols.includes(n.primaryR)) issues.push({ severity: 'warn', rule: 'invalidPrimaryR',
+        message: `Primary ${DOER} is set to "${colLabel(n.primaryR)}" but that column is not marked ${DOER} on this row.` });
+      // 5. A unit of work with no one to do it (leaf rows only — parents are just groupings).
+      if (leaf && doerCols.length === 0) issues.push({ severity: 'warn', rule: 'noDoer',
+        message: `No ${doerName} (${DOER}) — no one is assigned to do this ${tierName(depth).toLowerCase()}.` });
+      // 6. Over-consulting — the most common RACI anti-pattern.
+      if (consultCols.length >= OVER_CONSULT) issues.push({ severity: 'warn', rule: 'overConsulted',
+        message: `Over-consulted: ${consultCols.length} of ${COLS.length} parties marked Consulted (C). Each C is a sign-off bottleneck — keep consults lean.` });
       if (issues.length) {
         const severity = issues.some(i => i.severity === 'err') ? 'err' : 'warn';
         const entry = {
@@ -4673,10 +5864,12 @@ function recomputeViolations() {
         _violations.push(entry);
         _violationsByNodeId[n.id] = entry;
       }
-      if (n.children && n.children.length) walk(n.children, depth + 1, ancestors.concat({ id: n.id, name: n.name || '(untitled)' }));
+      if (!leaf) walk(n.children, depth + 1,
+        ancestors.concat({ id: n.id, name: n.name || '(untitled)' }),
+        cascadeDown(n, inheritedOwnerCol));
     });
   };
-  walk(ac().activities, 0, []);
+  walk(ac().activities, 0, [], null);
 }
 // Build an ancestor-id path so drilling it puts the target node's row in the focused chart.
 function pathToNode(id) {
@@ -4812,6 +6005,10 @@ function renderDetails() {
     <span class="det-tier">${escapeHtml(tier)} activity</span>
     <div class="det-name">${escapeHtml(n.name || '(untitled)')}</div>
     <div class="det-section">
+      <h4>Who's responsible</h4>
+      ${nodeWhoHtml(n)}
+    </div>
+    <div class="det-section">
       <h4>Definition</h4>
       <textarea id="det-desc" placeholder="Describe what this activity covers — purpose, scope, decisions, hand-offs.">${escapeHtml(n.description || '')}</textarea>
     </div>
@@ -4819,7 +6016,7 @@ function renderDetails() {
       <h4>Process documents</h4>
       ${docList}
       <button class="det-upload" type="button" id="det-upload-btn">+ Attach document</button>
-      <div class="det-cap-note">Files are embedded into the JSON export (base64). Soft cap ~3 MB per file.</div>
+      <div class="det-cap-note">Files are stored in this browser's IndexedDB (not the localStorage quota) and embedded into the JSON export (base64). Soft cap ~3 MB per file.</div>
     </div>
   `;
 }
@@ -4861,13 +6058,10 @@ function addDocumentsToNode(id, fileList) {
     const reader = new FileReader();
     reader.onload = ev => {
       f.node.documents = f.node.documents || [];
-      f.node.documents.push({
-        id: uid(),
-        name: file.name,
-        type: file.type || '',
-        size: file.size,
-        dataUrl: String(ev.target.result || '')
-      });
+      const docId = uid();
+      const dataUrl = String(ev.target.result || '');
+      f.node.documents.push({ id: docId, name: file.name, type: file.type || '', size: file.size, dataUrl });
+      idbPutDoc(docId, dataUrl).then(saveState);  // store bytes in IDB first, then persist slim state
       saveState();
       if (--remaining === 0) { renderDetails(); refreshNameCell(id); }
     };
@@ -4953,6 +6147,7 @@ function deleteDocument(nodeId, docId) {
   if (idx < 0) return;
   if (!confirm(`Remove "${docs[idx].name}" from this activity?`)) return;
   docs.splice(idx, 1);
+  idbDelDoc(docId);
   saveState();
   bumpEditCounter();
   renderDetails();
@@ -5130,25 +6325,56 @@ function maybeShowSplash() {
   });
 })();
 
-function importJSON(file) {
+// merge=false → replace the whole workspace; merge=true → append the file's charts + business cases
+// as new tabs (fresh ids), keeping the current roster/columns. Lets two people combine their work.
+function importJSON(file, merge) {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      const parsed = JSON.parse(ev.target.result);
-      state = migrateState(parsed);
+      const incoming = migrateState(JSON.parse(ev.target.result));
+      if (merge) {
+        incoming.charts.forEach(c => { c.id = 'c_' + uid(); state.charts.push(c); });
+        (incoming.bizCases || []).forEach(b => { b.id = 'b_' + uid(); state.bizCases.push(b); });
+        eachDocInState(incoming, doc => { if (doc && doc.dataUrl) idbPutDoc(doc.id, doc.dataUrl); });
+        if (incoming.charts.length) state.activeChartId = incoming.charts[0].id;
+        showToast(`Merged ${incoming.charts.length} chart(s) and ${(incoming.bizCases || []).length} business case(s) into your workspace.`, 'suggest');
+      } else {
+        state = incoming;
+      }
       applyActorLabels(); applyColumnLabels(); saveState(); render();
+      syncDocsWithIdb();
       resetEditCounter();
     } catch (err) { alert('Import failed: ' + err.message); }
   };
   reader.readAsText(file);
 }
+let _importMerge = false;
 document.getElementById('file-import').addEventListener('change', e => {
   const f = e.target.files[0];
-  if (f) importJSON(f);
+  if (f) importJSON(f, _importMerge);
+  _importMerge = false;
   e.target.value = '';
 });
 
+// Fill the print-only title band just before the browser paints the print/PDF layout.
+window.addEventListener('beforeprint', () => {
+  const ph = document.getElementById('print-head');
+  if (!ph) return;
+  let title, sub;
+  if (state.viewMode === 'bizcase') {
+    const b = abc();
+    title = b.name || 'Business case';
+    sub = `${bizFw().name} · ${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'} · tabletop exercise`;
+  } else {
+    title = ac().title || 'RACI chart';
+    sub = `${chartFw().name} responsibility matrix · ${COLS.map(k => COL_SHORT[k]).join(' · ')}`;
+  }
+  ph.innerHTML = `<div class="ph-title">${escapeHtml(title)}</div><div class="ph-sub">${escapeHtml(sub)}</div>`;
+});
+
 // ---------- init ----------
+_lastFull = fullSnap(); _lastContent = contentSig();  // history baseline so the first edit is undoable
+syncDocsWithIdb();                                     // migrate any inline doc bytes into IDB + hydrate
 render();
 maybeShowSplash();
 </script>
