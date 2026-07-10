@@ -2211,17 +2211,27 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 
 /* Per-letter responsible-party rows below the RACI grid. Present only when RACI is assigned, so the
    card grows downward on first assignment (node height is auto). */
-.bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 2px; }
+.bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 4px; }
 .bz-party-row {
-  display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
-  padding: 3px 5px; border: none; border-radius: 4px; background: transparent; color: var(--text);
+  display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left;
+  padding: 4px 5px; border: none; border-radius: 5px; background: transparent; color: var(--text);
   font: inherit; font-size: 11px; cursor: pointer;
 }
 .bz-party-row:hover { background: var(--bg-4); }
 .bz-party-row.active { background: var(--bg-4); box-shadow: inset 2px 0 0 var(--accent); }
-.bz-party-row .raci-chip { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; flex: 0 0 auto; }
+.bz-party-row .raci-chip { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; flex: 0 0 auto; margin-top: 1px; }
 .bz-party-row .bz-party-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bz-party-row.is-unset .bz-party-label { color: var(--text-dim); font-style: italic; }
+/* Nested directorate → division → branch capsules for a set party (each level indented inside its parent). */
+.bz-party-tree { flex: 1; min-width: 0; }
+.bz-party-lvl { display: block; border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; background: rgba(255,255,255,0.025); }
+.bz-party-lvl .bz-party-lvl { margin-top: 3px; margin-left: 7px; }
+.bz-party-lbl { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.45; }
+.bz-party-lvl.k-dir > .bz-party-lbl { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-dim); }
+.bz-party-lvl.k-div > .bz-party-lbl,
+.bz-party-lvl.k-branch > .bz-party-lbl { font-size: 10px; color: var(--text); }
+.bz-party-lvl.is-leaf { border-color: rgba(81,207,102,0.55); background: rgba(81,207,102,0.10); }
+.bz-party-lvl.is-leaf > .bz-party-lbl { color: var(--accent); font-weight: 600; }
 
 .bz-socket {
   position: absolute; top: 50%; transform: translateY(-50%);
@@ -2863,10 +2873,10 @@ const ACCENT = '#51cf66';
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
 //     0.14 alpha - Business Case node cards: per-RACI-letter responsible executing party
-//                  (directorate → division → branch), shown on each card (card expands downward as
-//                  boxes are checked), set from a new docked "Responsible Party" sidebar that scrubs
-//                  the roster hierarchy. Also: consolidated the five format exports into a single
-//                  Export ▾ dropdown.
+//                  (directorate → division → branch), shown on each card as nested, indented capsules
+//                  (deepest unit highlighted); card expands downward as boxes are checked; set from a
+//                  new docked "Responsible Party" sidebar that scrubs the roster hierarchy. Also:
+//                  consolidated the five format exports into a single Export ▾ dropdown.
 //     0.13 alpha - Best-practice pass: framework variants (RASCI on charts; DACI/RAPID on the
 //                  decision graph); completed RACI rule engine (missing-owner / missing-doer /
 //                  over-consult, cascade-aware); roster→cell people linking (column→directorate
@@ -3752,6 +3762,26 @@ function partyLabel(ref) {
   if (ref.divisionId) return orgLabel(ref);   // division / branch depth (null if the unit was deleted)
   return { short: ACTOR_LABELS[ref.actor] || ref.actor, full: ACTOR_LABELS[ref.actor] || ref.actor };
 }
+// Break a valid party ref into its hierarchy levels (directorate → division → branch), only as deep as
+// the ref goes. Returns null for an invalid/dangling ref (caller then renders the "unset" state).
+function partyHierarchy(ref) {
+  if (!partyLabel(ref)) return null;          // reuse the same validity/dangling check as the label
+  const out = [{ kind: 'dir', name: ACTOR_LABELS[ref.actor] || ref.actor }];
+  if (ref.divisionId) {
+    const d = findDivision(ref.actor, ref.divisionId);
+    out.push({ kind: 'div', name: (d && d.name) || 'Untitled division' });
+    if (ref.branchId) {
+      const b = findBranch(ref.actor, ref.divisionId, ref.branchId);
+      out.push({ kind: 'branch', name: (b && b.name) || 'Untitled branch' });
+    }
+  }
+  return out;
+}
+// Render the hierarchy as nested capsules (outer = directorate, each child indented inside its parent).
+function partyTreeHtml(hier) {
+  return hier.reduceRight((inner, n) =>
+    `<span class="bz-party-lvl k-${n.kind}${inner ? '' : ' is-leaf'}"><span class="bz-party-lbl">${escapeHtml(n.name)}</span>${inner}</span>`, '');
+}
 
 // ---------- mutations ----------
 function addRootActivity() { ac().activities.push(makeNode('')); saveState(); renderChart(); }
@@ -4569,14 +4599,18 @@ function bizNodeHtml(t) {
   const F = bizFw();
   const parties = letters.length ? `<div class="bz-node-parties">${letters.map(L => {
     const ref = (t.parties || {})[L];
+    const hier = ref ? partyHierarchy(ref) : null;
     const lbl = ref ? partyLabel(ref) : null;
     const active = bizPartyTarget && bizPartyTarget.taskId === t.id && bizPartyTarget.letter === L;
     const roleLabel = F.meta[L] ? F.meta[L].label : L;
-    return `<button class="bz-party-row${active ? ' active' : ''}${lbl ? '' : ' is-unset'}" type="button"
+    const tip = hier ? `${roleLabel} — ${lbl.full}` : `${roleLabel} — set responsible party`;
+    return `<button class="bz-party-row${active ? ' active' : ''}${hier ? '' : ' is-unset'}" type="button"
         data-bz-party="${t.id}" data-letter="${L}"
-        title="${escapeHtml(roleLabel)} — responsible executing party (click to set)">
+        title="${escapeHtml(tip)} (click to change)">
         <span class="raci-chip ${L}">${L}</span>
-        <span class="bz-party-label">${lbl ? escapeHtml(lbl.short) : '+ set responsible party'}</span>
+        ${hier
+          ? `<span class="bz-party-tree">${partyTreeHtml(hier)}</span>`
+          : `<span class="bz-party-label">+ set responsible party</span>`}
       </button>`;
   }).join('')}</div>` : '';
   return `<div class="bz-node${isDecision ? ' bz-node--decision' : ''}" data-bz-node="${t.id}" style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
