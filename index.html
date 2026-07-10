@@ -45,7 +45,11 @@ header {
   gap: 14px;
   flex-shrink: 0;
   position: relative;
-  z-index: 2; /* stay above the background watermark */
+  /* Above the chart-tabs bar (z-index 3) and all #ws-main content (capped at z-index 1 by its own
+     stacking context) so the Export dropdown — which lives inside this header's stacking context —
+     overlays the content below it. Stays well under overlays (violations 50, popovers 100+, splash
+     200, toasts 2000). Also keeps the header above the background watermark (z-index 0). */
+  z-index: 20;
 }
 /* ASIC emblem in the header corner */
 #app-logo {
@@ -324,6 +328,33 @@ button.danger:hover { background: #3a1f1f; }
   margin: 2px 10px;
   background: linear-gradient(180deg, transparent 0%, var(--border) 25%, var(--border) 75%, transparent 100%);
 }
+/* ===== Export dropdown — one toolbar button revealing every document export ===== */
+.export-menu { position: relative; display: inline-flex; }
+#btn-export-menu { display: inline-flex; align-items: center; gap: 5px; }
+.export-menu .em-caret { font-size: 10px; opacity: 0.75; transition: transform 0.12s ease; }
+.export-menu.open .em-caret { transform: rotate(180deg); opacity: 1; }
+.export-menu.open #btn-export-menu { border-color: var(--accent); color: #fff; }
+.export-menu-list {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  z-index: 200; min-width: 210px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+/* .export-menu-list sets display:flex, which would override the plain [hidden] rule —
+   this higher-specificity selector keeps the closed menu collapsed. */
+.export-menu-list[hidden] { display: none; }
+.export-menu-list .em-item {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 7px 10px; border-radius: 4px; background: transparent; border: none;
+  color: var(--text); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.export-menu-list .em-item:hover, .export-menu-list .em-item:focus-visible {
+  background: var(--bg-3); outline: none;
+}
+.export-menu-list .em-ico { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.export-menu-list .em-label { flex: 1; }
+.export-menu-list .em-ext { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
 /* Reset = restore demo data: amber (recoverable destructive) */
 #btn-reset {
   background: linear-gradient(180deg, rgba(252, 196, 25, 0.18) 0%, rgba(252, 196, 25, 0.10) 100%);
@@ -928,6 +959,42 @@ td.row-del button:hover { background: var(--err); color: #fff; }
 #legend .legend-row .label { font-weight: 600; }
 #legend .legend-row .desc { color: var(--text-dim); font-size: 11px; }
 #legend p { color: var(--text-dim); font-size: 11px; line-height: 1.5; margin: 14px 0 0; }
+
+/* ===== Business Case "Responsible Party" right rail — scrub directorate → division → branch ===== */
+#bz-party-panel {
+  width: 320px; flex-shrink: 0; background: var(--bg-2); border-left: 1px solid var(--border);
+  padding: 14px 14px 18px; overflow-y: auto; font-size: 12px; display: none;
+}
+body.show-bz-party[data-view="bizcase"] #bz-party-panel { display: block; }
+.bzp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+#bz-party-panel h3 { margin: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+#bz-party-close {
+  flex-shrink: 0; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--text-dim); border: 1px solid var(--border); border-radius: 50%;
+  font-size: 16px; line-height: 1; cursor: pointer; padding: 0; transition: background .12s, color .12s, border-color .12s;
+}
+#bz-party-close:hover { background: var(--err); color: #fff; border-color: var(--err); }
+.bzp-context { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.bzp-context .raci-chip { width: 24px; height: 24px; font-size: 13px; flex: 0 0 auto; }
+.bzp-ctx-text { min-width: 0; }
+.bzp-ctx-role { font-weight: 700; }
+.bzp-ctx-task { color: var(--text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzp-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.bzp-field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-dim); font-weight: 700; }
+.bzp-field select {
+  width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 8px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.bzp-field select:disabled { opacity: 0.5; cursor: not-allowed; }
+.bzp-preview { margin: 6px 0 14px; padding: 8px 10px; background: var(--bg); border: 1px dashed var(--border); border-radius: 6px; font-size: 11px; color: var(--text-dim); min-height: 18px; }
+.bzp-preview.set { color: var(--text); border-style: solid; }
+.bzp-actions { display: flex; gap: 8px; }
+.bzp-actions button { flex: 1; padding: 7px 10px; border-radius: 5px; font: inherit; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-3); color: var(--text); }
+#bz-party-assign { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+#bz-party-assign:hover { background: #69db7c; }
+#bz-party-assign:disabled { opacity: 0.45; cursor: not-allowed; background: var(--bg-3); color: var(--text-dim); border-color: var(--border); }
+#bz-party-clear:hover { background: var(--err); color: #fff; border-color: var(--err); }
+.bzp-empty { color: var(--text-dim); font-style: italic; line-height: 1.5; }
 
 /* ===== Activity Details right rail (definition + process documents) ===== */
 #details {
@@ -2142,6 +2209,20 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-cell .cell-chips.empty { color: var(--text-dim); font-size: 11px; }
 .bz-cell .raci-chip { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; }
 
+/* Per-letter responsible-party rows below the RACI grid. Present only when RACI is assigned, so the
+   card grows downward on first assignment (node height is auto). */
+.bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 2px; }
+.bz-party-row {
+  display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
+  padding: 3px 5px; border: none; border-radius: 4px; background: transparent; color: var(--text);
+  font: inherit; font-size: 11px; cursor: pointer;
+}
+.bz-party-row:hover { background: var(--bg-4); }
+.bz-party-row.active { background: var(--bg-4); box-shadow: inset 2px 0 0 var(--accent); }
+.bz-party-row .raci-chip { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; flex: 0 0 auto; }
+.bz-party-row .bz-party-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bz-party-row.is-unset .bz-party-label { color: var(--text-dim); font-style: italic; }
+
 .bz-socket {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 13px; height: 13px; border-radius: 50%;
@@ -2640,7 +2721,7 @@ body[data-view="roster"] #legend { display: none; }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important;
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   /* Hide all interactive chrome — leave just the matrix. */
-  header, #chart-tabs, #drill-crumbs, #legend, #details, #violations-toast, #violations-popover,
+  header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover,
   #save-nag, #splash-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
   #zoom-ctl, .chart-resize, .ch-add, .ch-del, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
   [data-del-node], [data-bz-del-task] { display: none !important; }
@@ -2734,11 +2815,16 @@ body[data-view="roster"] #legend { display: none; }
     <button id="btn-arrange" title="Snap all panes back into a tight nested cascade">⤧ Auto Arrange</button>
     <button id="btn-details" title="Show/hide the Activity Details panel (definitions + documents)">Details</button>
     <button id="btn-legend" title="Show/hide RACI legend">Legend</button>
-    <button id="btn-print" title="Print or save the matrix as a PDF (clean, chrome-free layout)">🖨 Print / PDF</button>
-    <button id="btn-export-pptx" title="Export as PowerPoint (.pptx) — one slide per tier">Export PPTX</button>
-    <button id="btn-export-xlsx" title="Export as Excel (.xlsx) for spreadsheet review">Export Excel</button>
-    <button id="btn-export-xml" title="Export as XML for programmatic processing">Export XML</button>
-    <button id="btn-export-mmd" title="Export as Mermaid (.mmd) for diagramming">Export Mermaid</button>
+    <div id="export-menu" class="export-menu">
+      <button id="btn-export-menu" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="export-menu-list" title="Export the matrix as a document — Print/PDF, PowerPoint, Excel, XML, or Mermaid">⭳ Export <span class="em-caret" aria-hidden="true">▾</span></button>
+      <div id="export-menu-list" class="export-menu-list" role="menu" aria-label="Export options" hidden>
+        <button class="em-item" role="menuitem" type="button" id="btn-print" title="Print or save the matrix as a PDF (clean, chrome-free layout)"><span class="em-ico">🖨</span><span class="em-label">Print / PDF</span></button>
+        <button class="em-item" role="menuitem" type="button" id="btn-export-pptx" title="Export as PowerPoint (.pptx) — one slide per tier"><span class="em-ico">📊</span><span class="em-label">PowerPoint</span><span class="em-ext">.pptx</span></button>
+        <button class="em-item" role="menuitem" type="button" id="btn-export-xlsx" title="Export as Excel (.xlsx) for spreadsheet review"><span class="em-ico">📗</span><span class="em-label">Excel</span><span class="em-ext">.xlsx</span></button>
+        <button class="em-item" role="menuitem" type="button" id="btn-export-xml" title="Export as XML for programmatic processing"><span class="em-ico">📄</span><span class="em-label">XML</span><span class="em-ext">.xml</span></button>
+        <button class="em-item" role="menuitem" type="button" id="btn-export-mmd" title="Export as Mermaid (.mmd) for diagramming"><span class="em-ico">🧭</span><span class="em-label">Mermaid</span><span class="em-ext">.mmd</span></button>
+      </div>
+    </div>
     <button id="btn-reset" title="Restore the built-in demo dataset">Reset</button>
     <button id="btn-clear" title="Wipe all activities and roster data — blank slate">Clear</button>
   </div>
@@ -2757,6 +2843,13 @@ body[data-view="roster"] #legend { display: none; }
     <input type="file" id="det-file-input" multiple style="display:none">
   </aside>
   <aside id="legend"><!-- filled by renderLegend() from the active chart's framework --></aside>
+  <aside id="bz-party-panel" aria-label="Responsible party picker">
+    <div class="bzp-head">
+      <h3>Responsible Party</h3>
+      <button type="button" id="bz-party-close" title="Close panel (Esc)" aria-label="Close panel">×</button>
+    </div>
+    <div id="bz-party-body"><!-- filled by renderBizPartyPanel() --></div>
+  </aside>
 </main>
 <script>
 'use strict';
@@ -2769,6 +2862,11 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.14 alpha - Business Case node cards: per-RACI-letter responsible executing party
+//                  (directorate → division → branch), shown on each card (card expands downward as
+//                  boxes are checked), set from a new docked "Responsible Party" sidebar that scrubs
+//                  the roster hierarchy. Also: consolidated the five format exports into a single
+//                  Export ▾ dropdown.
 //     0.13 alpha - Best-practice pass: framework variants (RASCI on charts; DACI/RAPID on the
 //                  decision graph); completed RACI rule engine (missing-owner / missing-doer /
 //                  over-consult, cascade-aware); roster→cell people linking (column→directorate
@@ -2789,7 +2887,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.13';
+const APP_VERSION = '0.14';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -3167,7 +3265,10 @@ function makeBizCase(name) {
 function makeBizTask(name) {
   const raci = {};
   COLS.forEach(k => { raci[k] = ''; });
-  return { id: 't_' + uid(), name: name || '', raci, description: '', status: DEFAULT_STATUS, x: 0, y: 0 };
+  // parties: per-RACI-LETTER responsible executing party — { [roleLetter]: {actor,divisionId?,branchId?} }.
+  // Keyed by the role letter (R/A/C/I…), NOT by column: whichever column(s) hold that letter, one org
+  // path names who executes it. Set from the Business Case "Responsible Party" sidebar.
+  return { id: 't_' + uid(), name: name || '', raci, parties: {}, description: '', status: DEFAULT_STATUS, x: 0, y: 0 };
 }
 // A directed handoff edge between two task boxes. Future hook: optional from/to ports per box.
 // label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
@@ -3244,6 +3345,19 @@ function abc() {
 // functions/CSS remain dead but harmless. A stale saved viewMode now coerces to 'chart'.
 const ALL_VIEW_MODES = ['chart','roster','bizcase'];
 
+// Validate/clean a roster ref {actor, divisionId?, branchId?}. Returns a fresh cleaned ref or null.
+// actor is required; divisionId is optional; branchId is only kept when a divisionId is present.
+// (IDs are not checked against the live roster here — dangling refs degrade gracefully at display time
+// via orgLabel/partyLabel, exactly like node.org.)
+function normalizeOrgRef(ref) {
+  if (!ref || typeof ref !== 'object' || !ACTORS.includes(ref.actor)) return null;
+  const out = { actor: ref.actor };
+  if (typeof ref.divisionId === 'string' && ref.divisionId) {
+    out.divisionId = ref.divisionId;
+    if (typeof ref.branchId === 'string' && ref.branchId) out.branchId = ref.branchId;
+  }
+  return out;
+}
 function normalizeNodes(nodes, depth) {
   if (!Array.isArray(nodes)) return [];
   nodes.forEach(n => {
@@ -3263,12 +3377,10 @@ function normalizeNodes(nodes, depth) {
       size: Number.isFinite(d.size) ? d.size : 0,
       dataUrl: typeof d.dataUrl === 'string' ? d.dataUrl : ''
     })) : [];
-    // Optional roster assignment: Programs hold a Division, Projects hold a Branch.
-    if (n.org && typeof n.org === 'object' && ACTORS.includes(n.org.actor) && typeof n.org.divisionId === 'string') {
-      n.org = typeof n.org.branchId === 'string'
-        ? { actor: n.org.actor, divisionId: n.org.divisionId, branchId: n.org.branchId }
-        : { actor: n.org.actor, divisionId: n.org.divisionId };
-    } else { delete n.org; }
+    // Optional roster assignment: Programs hold a Division, Projects hold a Branch. Chart nodes always
+    // carry at least a Division, so an actor-only ref is treated as unassigned here.
+    const ref = normalizeOrgRef(n.org);
+    if (ref && ref.divisionId) n.org = ref; else delete n.org;
     if (depth >= MAX_TIER) n.children = [];
     else n.children = normalizeNodes(Array.isArray(n.children) ? n.children : [], depth + 1);
   });
@@ -3398,10 +3510,20 @@ function migrateState(s) {
       const raci = (t.raci && typeof t.raci === 'object') ? t.raci : {};
       COLS.forEach(k => { raci[k] = normalizeRaci(raci[k] || ''); });
       Object.keys(raci).forEach(k => { if (!COLS.includes(k)) delete raci[k]; });
+      // Responsible parties keyed by RACI role letter → validated roster ref. Drop unknown letters and
+      // invalid refs (dangling ids survive here and degrade gracefully at display time, like node.org).
+      const parties = {};
+      const rawParties = (t.parties && typeof t.parties === 'object') ? t.parties : {};
+      Object.keys(rawParties).forEach(l => {
+        if (!ALL_ROLE_LETTERS.includes(l)) return;
+        const ref = normalizeOrgRef(rawParties[l]);
+        if (ref) parties[l] = ref;
+      });
       return {
         id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
         name: typeof t.name === 'string' ? t.name : '',
         raci,
+        parties,
         description: typeof t.description === 'string' ? t.description : '',
         status: TASK_STATUS_KEYS.includes(t.status) ? t.status : DEFAULT_STATUS,
         x: Number.isFinite(t.x) ? t.x : 0,
@@ -3527,6 +3649,13 @@ function applySnapshot(json) {
     syncDocsWithIdb();
     setActiveNode(null);
     render();
+    // Keep the Responsible Party sidebar consistent with the restored state (reseed from the committed
+    // party, or close it if undo/redo removed the targeted task).
+    if (bizPartyTarget) {
+      const tt = bizTaskById(bizPartyTarget.taskId);
+      if (tt) { bizPartyDraft = (tt.parties && tt.parties[bizPartyTarget.letter]) ? { ...tt.parties[bizPartyTarget.letter] } : null; renderBizPartyPanel(); }
+      else closeBizPartyPanel();
+    }
   } finally { _restoringHistory = false; }
 }
 function undo() { if (!_undoStack.length) { showToast('Nothing to undo', 'suggest'); return; } _redoStack.push(fullSnap()); applySnapshot(_undoStack.pop()); }
@@ -3615,6 +3744,13 @@ function orgLabel(org) {
              full: `${ACTOR_LABELS[org.actor]} › ${d.name || 'Untitled division'}${chief}` };
   }
   return null;
+}
+// Like orgLabel, but also resolves a directorate-only ref (no division) to the directorate name — used
+// by the Business Case responsible-party rows, where a user may scrub only as deep as they want.
+function partyLabel(ref) {
+  if (!ref || !ACTORS.includes(ref.actor)) return null;
+  if (ref.divisionId) return orgLabel(ref);   // division / branch depth (null if the unit was deleted)
+  return { short: ACTOR_LABELS[ref.actor] || ref.actor, full: ACTOR_LABELS[ref.actor] || ref.actor };
 }
 
 // ---------- mutations ----------
@@ -4408,6 +4544,13 @@ function bizSelectorHtml() {
     <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · Ctrl/Cmd+scroll to zoom</span>`;
 }
 
+// Distinct RACI role letters assigned anywhere on a task (de-duplicated across the 7 columns), returned
+// in the active framework's canonical role order. Each such letter gets one responsible-party slot.
+function bizAssignedLetters(t) {
+  const set = new Set();
+  COLS.forEach(k => normalizeRaci(t.raci[k] || '').split('').forEach(l => set.add(l)));
+  return bizFw().roles.filter(l => set.has(l));
+}
 function bizNodeHtml(t) {
   const cells = COLS.map(k => {
     const norm = normalizeRaci(t.raci[k] || '');
@@ -4420,6 +4563,22 @@ function bizNodeHtml(t) {
   const outCount = abc().edges.reduce((n, e) => n + (e.from === t.id ? 1 : 0), 0);
   const isDecision = outCount >= 2;
   const badge = isDecision ? `<span class="bz-decision-badge" title="Decision point — ${outCount} outgoing paths">⑂ ${outCount}</span>` : '';
+  // Responsible-party rows: one per assigned RACI letter. Appears only once a box is checked, so the
+  // card grows downward on first assignment. Clicking a row opens the Responsible Party sidebar.
+  const letters = bizAssignedLetters(t);
+  const F = bizFw();
+  const parties = letters.length ? `<div class="bz-node-parties">${letters.map(L => {
+    const ref = (t.parties || {})[L];
+    const lbl = ref ? partyLabel(ref) : null;
+    const active = bizPartyTarget && bizPartyTarget.taskId === t.id && bizPartyTarget.letter === L;
+    const roleLabel = F.meta[L] ? F.meta[L].label : L;
+    return `<button class="bz-party-row${active ? ' active' : ''}${lbl ? '' : ' is-unset'}" type="button"
+        data-bz-party="${t.id}" data-letter="${L}"
+        title="${escapeHtml(roleLabel)} — responsible executing party (click to set)">
+        <span class="raci-chip ${L}">${L}</span>
+        <span class="bz-party-label">${lbl ? escapeHtml(lbl.short) : '+ set responsible party'}</span>
+      </button>`;
+  }).join('')}</div>` : '';
   return `<div class="bz-node${isDecision ? ' bz-node--decision' : ''}" data-bz-node="${t.id}" style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
     <span class="bz-socket in" data-bz-socket="in" data-bz-node-id="${t.id}" title="Input"></span>
     <span class="bz-socket out" data-bz-socket="out" data-bz-node-id="${t.id}" title="Output — drag onto another box to connect (draw more than one to branch)"></span>
@@ -4429,6 +4588,7 @@ function bizNodeHtml(t) {
       <button class="bz-node-del" data-bz-del-task="${t.id}" title="Delete task">×</button>
     </div>
     <div class="bz-node-body">${cells}</div>
+    ${parties}
   </div>`;
 }
 
@@ -4517,7 +4677,14 @@ function drawBizEdges(rubber) {
   const nodeEl = id => world.querySelector(`.bz-node[data-bz-node="${id}"]`);
   const sock = (el, side) => ({ x: el.offsetLeft + (side === 'out' ? el.offsetWidth : 0), y: el.offsetTop + el.offsetHeight / 2 });
   let maxX = 800, maxY = 600;
-  b.tasks.forEach(t => { maxX = Math.max(maxX, t.x + BZ_NODE_W + 120); maxY = Math.max(maxY, t.y + 260); });
+  // Size the SVG to cover every node's live footprint. A card grows taller when responsible parties are
+  // shown, so read the real height (offsetHeight + margin) rather than a flat 260, keeping edges unclipped.
+  b.tasks.forEach(t => {
+    maxX = Math.max(maxX, t.x + BZ_NODE_W + 120);
+    const el = nodeEl(t.id);
+    const h = Math.max(260, (el && el.offsetHeight ? el.offsetHeight + 60 : 260));
+    maxY = Math.max(maxY, t.y + h);
+  });
   svg.setAttribute('width', maxX); svg.setAttribute('height', maxY);
   const BRANCH_COLOR = '#fcc419'; // amber (matches --c) for decision branches
   let inner = `<defs>` +
@@ -4665,6 +4832,7 @@ function bizDeleteTask(id) {
   const b = abc();
   const t = bizTaskById(id);
   if (!confirm(`Delete task "${(t && t.name) || 'Untitled'}"? This also removes its handoffs.`)) return;
+  if (bizPartyTarget && bizPartyTarget.taskId === id) closeBizPartyPanel();
   b.tasks = b.tasks.filter(x => x.id !== id);
   b.edges = b.edges.filter(x => x.from !== id && x.to !== id);
   saveState(); renderBizcase();
@@ -4686,6 +4854,7 @@ function bizDeleteCase() {
   if (state.bizCases.length <= 1) { showToast('Keep at least one business case.', 'error'); return; }
   const b = abc();
   if (!confirm(`Delete business case "${b.name}" and all its tasks?`)) return;
+  closeBizPartyPanel();
   state.bizCases = state.bizCases.filter(x => x.id !== b.id);
   state.activeBizCaseId = state.bizCases[0].id;
   saveState(); renderBizcase();
@@ -4950,6 +5119,7 @@ function findPerson(actor, divId, brId, teamId, pId) {
 }
 function setViewMode(mode) {
   if (state.viewMode === mode) return;
+  if (mode !== 'bizcase' && bizPartyTarget) closeBizPartyPanel();  // don't carry the panel into other views
   state.viewMode = mode;
   saveState();
   render();
@@ -5115,6 +5285,109 @@ function showToast(message, type) {
 // ---------- RACI popover ----------
 let openPopover = null;
 function closePopover() { if (openPopover) { openPopover.remove(); openPopover = null; } }
+
+// ===== Business Case "Responsible Party" sidebar =====
+// Targets one (task, RACI letter). Lets the user scrub directorate → division → branch and commit an org
+// ref to task.parties[letter]. The panel lives outside #ws-main, so it survives renderBizcase() rebuilds;
+// only renderBizPartyPanel() rebuilds the panel body. bizPartyDraft holds the in-progress selection
+// (seeded from the committed party when the panel opens; updated as the cascading selects change).
+let bizPartyTarget = null;   // { taskId, letter }
+let bizPartyDraft = null;    // { actor, divisionId?, branchId? } currently shown in the selects
+function openBizPartyPanel(taskId, letter) {
+  const t = bizTaskById(taskId); if (!t) return;
+  bizPartyTarget = { taskId, letter };
+  bizPartyDraft = (t.parties && t.parties[letter]) ? { ...t.parties[letter] } : null;
+  document.body.classList.add('show-bz-party');
+  renderBizPartyPanel();
+  renderBizcase();            // reflect the .active row highlight on the card
+}
+function closeBizPartyPanel() {
+  const had = !!bizPartyTarget;
+  bizPartyTarget = null; bizPartyDraft = null;
+  document.body.classList.remove('show-bz-party');
+  if (had && state.viewMode === 'bizcase') renderBizcase();   // clear the highlight
+}
+function bizPartyAssign() {
+  if (!bizPartyTarget) return;
+  const t = bizTaskById(bizPartyTarget.taskId); if (!t) { closeBizPartyPanel(); return; }
+  const ref = normalizeOrgRef(bizPartyDraft);
+  if (!ref) { showToast('Pick at least a directorate first.', 'error'); return; }
+  t.parties = t.parties || {};
+  t.parties[bizPartyTarget.letter] = ref;
+  saveState(); renderBizcase();
+  const lbl = partyLabel(ref);
+  showToast(`${bizPartyTarget.letter} → ${lbl ? lbl.short : 'party set'}`);
+  renderBizPartyPanel();
+}
+function bizPartyClear() {
+  if (!bizPartyTarget) return;
+  const t = bizTaskById(bizPartyTarget.taskId); if (!t) { closeBizPartyPanel(); return; }
+  if (t.parties) delete t.parties[bizPartyTarget.letter];
+  bizPartyDraft = null;
+  saveState(); renderBizcase(); renderBizPartyPanel();
+}
+function renderBizPartyPanel() {
+  const body = document.getElementById('bz-party-body');
+  if (!body || !bizPartyTarget) return;
+  const t = bizTaskById(bizPartyTarget.taskId);
+  if (!t) { closeBizPartyPanel(); return; }
+  const L = bizPartyTarget.letter, F = bizFw();
+  const roleLabel = F.meta[L] ? F.meta[L].label : L;
+  const d0 = bizPartyDraft || {};
+  const actor = ACTORS.includes(d0.actor) ? d0.actor : '';
+  const divId = actor && d0.divisionId ? d0.divisionId : '';
+  const brId  = divId && d0.branchId ? d0.branchId : '';
+  const dirOpts = `<option value="">— select directorate —</option>` +
+    ACTORS.map(k => `<option value="${k}"${k === actor ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[k])}</option>`).join('');
+  const divList = (actor && state.directorates[actor]) ? state.directorates[actor].divisions : [];
+  const divOpts = `<option value="">— whole directorate —</option>` +
+    divList.map(d => `<option value="${d.id}"${d.id === divId ? ' selected' : ''}>${escapeHtml(d.name || 'Untitled division')}</option>`).join('');
+  const brList = (actor && divId) ? ((findDivision(actor, divId) || {}).branches || []) : [];
+  const brOpts = `<option value="">— whole division —</option>` +
+    brList.map(b => `<option value="${b.id}"${b.id === brId ? ' selected' : ''}>${escapeHtml(b.name || 'Untitled branch')}</option>`).join('');
+  const previewRef = actor ? Object.assign({ actor }, divId ? { divisionId: divId } : {}, brId ? { branchId: brId } : {}) : null;
+  const lbl = previewRef ? partyLabel(previewRef) : null;
+  const committed = !!(t.parties && t.parties[L]);
+  body.innerHTML = `
+    <div class="bzp-context">
+      <span class="raci-chip ${L}">${L}</span>
+      <div class="bzp-ctx-text">
+        <div class="bzp-ctx-role">${escapeHtml(roleLabel)}</div>
+        <div class="bzp-ctx-task">${escapeHtml(t.name || 'Untitled task')}</div>
+      </div>
+    </div>
+    <div class="bzp-field"><label>Directorate</label>
+      <select data-bz-party-sel="directorate">${dirOpts}</select></div>
+    <div class="bzp-field"><label>Division</label>
+      <select data-bz-party-sel="division"${actor ? '' : ' disabled'}>${divOpts}</select></div>
+    <div class="bzp-field"><label>Branch</label>
+      <select data-bz-party-sel="branch"${divId ? '' : ' disabled'}>${brOpts}</select></div>
+    <div class="bzp-preview${lbl ? ' set' : ''}">${lbl ? escapeHtml(lbl.full) : 'No party selected yet — scrub the hierarchy above.'}</div>
+    <div class="bzp-actions">
+      <button type="button" id="bz-party-assign" data-bz-party-assign="1"${actor ? '' : ' disabled'}>Assign</button>
+      <button type="button" id="bz-party-clear" data-bz-party-clear="1"${committed ? '' : ' disabled'}>Clear</button>
+    </div>`;
+}
+
+// ---------- Export dropdown menu ----------
+function exportMenuOpen() {
+  const w = document.getElementById('export-menu');
+  return !!w && w.classList.contains('open');
+}
+function closeExportMenu() {
+  const w = document.getElementById('export-menu');
+  if (!w || !w.classList.contains('open')) return;
+  w.classList.remove('open');
+  document.getElementById('export-menu-list').hidden = true;
+  document.getElementById('btn-export-menu').setAttribute('aria-expanded', 'false');
+}
+function toggleExportMenu() {
+  if (exportMenuOpen()) { closeExportMenu(); return; }
+  const w = document.getElementById('export-menu');
+  w.classList.add('open');
+  document.getElementById('export-menu-list').hidden = false;
+  document.getElementById('btn-export-menu').setAttribute('aria-expanded', 'true');
+}
 // Inner buttons for a cell's popover: R/A/C/I toggles, a clear button, and — only when the row
 // has 2+ R's — a star to mark which R cascades down as the children's Accountable.
 function popoverInnerHtml(node, col) {
@@ -5265,6 +5538,9 @@ function openOrgPopover(id, kind, anchorEl) {
 
 // ---------- event wiring ----------
 document.addEventListener('click', e => {
+  // Close the Export dropdown on any click outside it. The toggle button and the menu
+  // items live inside #export-menu, so they're excluded here and manage their own close.
+  if (exportMenuOpen() && !e.target.closest('#export-menu')) closeExportMenu();
   // A pane drag just ended — swallow the click so it doesn't also focus the pane. Only
   // swallow clicks that land on a pane: a big drag fires no click at all (browser cancels
   // it), so the flag must not eat a later click on a toolbar button (e.g. Auto Arrange).
@@ -5300,12 +5576,21 @@ document.addEventListener('click', e => {
     if (bzEdge) { openBizEdgePopover(bzEdge.dataset.bzEdge, e.clientX, e.clientY); return; }
     const bzCell = e.target.closest('[data-bz-cell]');
     if (bzCell) { openBizRaciPopover(bzCell.dataset.bzCell, bzCell.dataset.col, bzCell); return; }
+    // Responsible-party rows on a card + the sidebar's own buttons (panel only shows in bizcase view).
+    const bzParty = e.target.closest('[data-bz-party]');
+    if (bzParty) { openBizPartyPanel(bzParty.dataset.bzParty, bzParty.dataset.letter); return; }
+    if (e.target.closest('#bz-party-close')) { closeBizPartyPanel(); return; }
+    if (e.target.closest('[data-bz-party-assign]')) { bizPartyAssign(); return; }
+    if (e.target.closest('[data-bz-party-clear]')) { bizPartyClear(); return; }
   }
   if (e.target.closest('#btn-arrange')) { autoArrange(); return; }
   if (e.target.closest('#btn-legend')) {
     state.showLegend = !state.showLegend; saveState();
     document.body.classList.toggle('show-legend', state.showLegend); return;
   }
+  if (e.target.closest('#btn-export-menu')) { toggleExportMenu(); return; }
+  // A menu item was chosen — collapse the dropdown, then fall through to its export below.
+  if (e.target.closest('.em-item')) closeExportMenu();
   if (e.target.closest('#btn-export')) { exportJSON(); return; }
   if (e.target.closest('#btn-export-xlsx')) { exportXLSX(); return; }
   if (e.target.closest('#btn-export-pptx')) { exportPPTX(); return; }
@@ -5436,16 +5721,35 @@ document.addEventListener('change', e => {
     render();
     return;
   }
+  // Responsible-party sidebar: cascading directorate → division → branch. Update the working draft and
+  // rebuild the panel (dependent selects repopulate, deeper levels reset).
+  const pSel = e.target.closest('[data-bz-party-sel]');
+  if (pSel) {
+    const kind = pSel.dataset.bzPartySel, val = pSel.value, d = bizPartyDraft || {};
+    if (kind === 'directorate') bizPartyDraft = val ? { actor: val } : null;
+    else if (kind === 'division') bizPartyDraft = val ? { actor: d.actor, divisionId: val } : (d.actor ? { actor: d.actor } : null);
+    else if (kind === 'branch') bizPartyDraft = (d.actor && d.divisionId)
+      ? (val ? { actor: d.actor, divisionId: d.divisionId, branchId: val } : { actor: d.actor, divisionId: d.divisionId })
+      : d;
+    renderBizPartyPanel();
+    return;
+  }
   const bzSel = e.target.closest('#bz-select');
-  if (bzSel) { state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
+  if (bzSel) { closeBizPartyPanel(); state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
   const bzFwSel = e.target.closest('#bz-framework');
-  if (bzFwSel) { if (BIZ_FRAMEWORKS.includes(bzFwSel.value)) { abc().framework = bzFwSel.value; saveState(); renderBizcase(); } return; }
+  if (bzFwSel) { if (BIZ_FRAMEWORKS.includes(bzFwSel.value)) { closeBizPartyPanel(); abc().framework = bzFwSel.value; saveState(); renderBizcase(); } return; }
   const flowCond = e.target.closest('.bz-flow-cond');
   if (flowCond) { const ed = abc().edges.find(x => x.id === flowCond.dataset.bzEdgeCond); if (ed) { ed.label = flowCond.value.trim(); saveState(); renderBizcase(); } return; }
 });
 
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && exportMenuOpen()) {
+    closeExportMenu();
+    document.getElementById('btn-export-menu').focus();
+    return;
+  }
   if (e.key === 'Escape' && openPopover) { closePopover(); return; }
+  if (e.key === 'Escape' && bizPartyTarget) { closeBizPartyPanel(); return; }
   if (e.key === 'Enter' && !e.shiftKey && e.target.matches && e.target.matches('[contenteditable="true"]')) {
     e.preventDefault(); e.target.blur();
   }
