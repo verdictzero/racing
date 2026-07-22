@@ -57,7 +57,7 @@ Confirmed by code audit (7 agents, 2026-07-22):
 
 ## Phases
 
-### Phase 0 — Groundwork (de-risk before adding ~1000+ lines)
+### Phase 0 — Groundwork (de-risk before adding ~1000+ lines) ✅ DONE (v0.17, commits `495003d` + `cded074`)
 1. Delete dead code: Kanban/Workflow renderers, heatmap/amap/search CSS.
 2. Fix `whoFooterHtml`: take an explicit chart-context parameter instead of reading `isFreeChart()`/`ac()`.
 3. Extend `normalizeOrgRef` with `teamId`; extend `orgLabel` (3970), `partyLabel` (3991), `partyHierarchy` (3998); add a Team select to the Responsible Party sidebar (`renderBizPartyPanel` 5683).
