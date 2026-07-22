@@ -2676,6 +2676,17 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.22 alpha - Export parity (roadmap Phase 5, roadmap complete): anchored flows and the
+//                  deliverable registry reach every structured export. XLSX gains a Flows sheet
+//                  (chart-task ancestry, step, roles, parties to team depth, derived IO, next/
+//                  condition — topological order) and a Deliverables sheet (name, type,
+//                  producers, consumers). PPTX appends one paginated table slide per anchored
+//                  flow (table widths generalized for non-RACI tables). XML nests <flow> (steps
+//                  + handoffs with condition/deliverables) under the anchored activity and adds
+//                  an <artifacts> section. Mermaid is view-aware: from the flow view it exports
+//                  the active flow's graph (decision diamonds; edges labeled condition ·
+//                  deliverables). fileBase is view-aware, so a flow-view export is named after
+//                  the business case, not the unrelated active chart tab.
 //     0.21 alpha - My Work view + run book (roadmap Phase 4): fourth view tab — pick your org
 //                  unit (directorate → division → branch → team; remembered in state.workScope)
 //                  and see every chart row and flow step that lands on it, grouped Direct
@@ -2767,7 +2778,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.21';
+const APP_VERSION = '0.22';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -6617,7 +6628,67 @@ function effectiveRaci(node, inheritedAcol) {
 }
 // The column this node passes down to its children as their Accountable.
 function cascadeDown(node, inheritedAcol) { return primaryRColumn(node) || inheritedAcol; }
-function fileBase() { return (ac().title || 'raci').replace(/\s+/g, '_'); }
+// View-aware download name: the bizcase name when exporting from the flow view (used by the
+// view-sensitive exports, e.g. Mermaid); chartFileBase() for the chart-scoped document exports.
+function fileBase() {
+  const base = state.viewMode === 'bizcase' ? (abc().name || 'business_case') : (ac().title || 'raci');
+  return base.replace(/\s+/g, '_');
+}
+function chartFileBase() { return (ac().title || 'raci').replace(/\s+/g, '_'); }
+
+// ---------- shared flow serialization (XLSX / PPTX / XML embed anchored flows, v0.22) ----------
+function flowsForChart(chartId) { return state.bizCases.filter(b => b.anchor && b.anchor.chartId === chartId); }
+function flowRolesText(t) {
+  return COLS.filter(k => normalizeRaci(t.raci[k] || ''))
+    .map(k => `${COL_SHORT[k]}: ${normalizeRaci(t.raci[k] || '')}`).join(' | ');
+}
+function flowPartiesText(ctx, t) {
+  return COLS.filter(k => normalizeRaci(t.raci[k] || '')).map(k => {
+    const explicit = t.parties && t.parties[k];
+    const ref = explicit || bizDefaultPartyFor(ctx, k);
+    const lbl = ref ? (partyLabel(ref) || {}).full : '';
+    return lbl ? `${COL_SHORT[k]} → ${lbl}${explicit ? '' : ' (default)'}` : '';
+  }).filter(Boolean).join(' | ');
+}
+function flowNextText(b, t) {
+  return b.edges.filter(e => e.from === t.id).map(e => {
+    const to = b.tasks.find(x => x.id === e.to);
+    const arts = (e.artifactIds || []).map(artifactLabel).join(', ');
+    return `→ ${(to && to.name) || '?'}${e.label ? ` (${e.label})` : ''}${arts ? ` [${arts}]` : ''}`;
+  }).join('; ');
+}
+// One row per step (topological order) across every flow anchored to the chart.
+function buildFlowRows(chart) {
+  const rows = [];
+  flowsForChart(chart.id).forEach(b => {
+    const an = resolveAnchor(b);
+    const ctx = bizAnchorCtx(b);
+    const anc = an
+      ? (pathToNodeIn(chart, an.node.id) || []).map(id => (nodeInChart(chart, id) || {}).name || '')
+          .concat([an.node.name || '']).join(' › ')
+      : '';
+    bizTopoOrder(b).forEach(t => {
+      const io = bizTaskIO(b, t.id);
+      rows.push([
+        anc, b.name || '', t.name || '', t.description || '',
+        flowRolesText(t), flowPartiesText(ctx, t),
+        io.inputs.map(artifactLabel).join(', '),
+        io.outputs.map(artifactLabel).join(', '),
+        flowNextText(b, t)
+      ]);
+    });
+  });
+  return rows;
+}
+const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Step', 'Description', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+function buildDeliverableRows() {
+  const uses = computeArtifactUses();
+  return state.artifacts.map(a => [
+    a.name || '', a.type || '',
+    (uses.producers[a.id] || []).map(u => u.name).join(', '),
+    (uses.consumers[a.id] || []).map(u => u.name).join(', ')
+  ]);
+}
 
 // ---------- XML export (full RACI tree + roster) ----------
 function exportXML() {
@@ -6625,6 +6696,23 @@ function exportXML() {
   const free = isFreeChart();
   const CC = chartCols();
   const tagName = ['portfolio', 'program', 'project', 'task'];
+  // Anchored flows nest under the activity they implement (v0.22): steps in topological order
+  // with roles/parties/derived IO, then the handoffs with condition + deliverables.
+  const flowXml = (b, pad) => {
+    const ctx = bizAnchorCtx(b);
+    const nameOf = id => { const t = b.tasks.find(x => x.id === id); return (t && t.name) || '?'; };
+    const steps = bizTopoOrder(b).map(t => {
+      const io = bizTaskIO(b, t.id);
+      const inner =
+        io.inputs.map(aid => `${pad}    <input deliverable="${esc(artifactLabel(aid))}"/>\n`).join('') +
+        io.outputs.map(aid => `${pad}    <output deliverable="${esc(artifactLabel(aid))}"/>\n`).join('');
+      const open = `${pad}  <step name="${esc(t.name)}"${t.description ? ` description="${esc(t.description)}"` : ''}${flowRolesText(t) ? ` roles="${esc(flowRolesText(t))}"` : ''}${flowPartiesText(ctx, t) ? ` parties="${esc(flowPartiesText(ctx, t))}"` : ''}`;
+      return inner ? open + '>\n' + inner + `${pad}  </step>\n` : open + '/>\n';
+    }).join('');
+    const handoffs = b.edges.map(e =>
+      `${pad}  <handoff from="${esc(nameOf(e.from))}" to="${esc(nameOf(e.to))}"${e.label ? ` condition="${esc(e.label)}"` : ''}${(e.artifactIds || []).length ? ` deliverables="${esc(e.artifactIds.map(artifactLabel).join(', '))}"` : ''}/>\n`).join('');
+    return `${pad}<flow name="${esc(b.name)}">\n${steps}${handoffs}${pad}</flow>\n`;
+  };
   const node = (n, depth, inheritedAcol, pad) => {
     const eff = effectiveRaci(n, inheritedAcol);
     const raci = CC.filter(k => eff[k]).map(k => ` ${k}="${eff[k]}"`).join('');
@@ -6635,8 +6723,11 @@ function exportXML() {
     const open = `${pad}<${tag} name="${esc(n.name)}"${org}${raci}`;
     const kids = n.children || [];
     const down = cascadeDown(n, inheritedAcol);
-    if (!kids.length) return open + '/>\n';
-    return open + '>\n' + kids.map(c => node(c, depth + 1, down, pad + '  ')).join('') + `${pad}</${tag}>\n`;
+    const flows = free ? [] : flowsForNode(ac().id, n.id);
+    const inner = kids.map(c => node(c, depth + 1, down, pad + '  ')).join('')
+      + flows.map(b => flowXml(b, pad + '  ')).join('');
+    if (!inner) return open + '/>\n';
+    return open + '>\n' + inner + `${pad}</${tag}>\n`;
   };
   const cols = CC.map(k => `    <column key="${k}" label="${esc(chartColLabel(k))}"/>`).join('\n');
   const acts = (ac().activities || []).map(pf => node(pf, 0, null, '    ')).join('');
@@ -6660,6 +6751,12 @@ function exportXML() {
 ${roster}
   </roster>
 `;
+  // Deliverable registry (v0.22) — global, so it exports on every chart that has one.
+  const uses = computeArtifactUses();
+  const artifactsSection = state.artifacts.length ? `  <artifacts>
+${state.artifacts.map(a => `    <artifact name="${esc(a.name)}" type="${esc(a.type)}"${(uses.producers[a.id] || []).length ? ` producers="${esc(uses.producers[a.id].map(u => u.name).join(', '))}"` : ''}${(uses.consumers[a.id] || []).length ? ` consumers="${esc(uses.consumers[a.id].map(u => u.name).join(', '))}"` : ''}/>`).join('\n')}
+  </artifacts>
+` : '';
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <raciTool title="${esc(ac().title || 'RACI')}">
   <columns>
@@ -6667,13 +6764,16 @@ ${cols}
   </columns>
   <activities>
 ${acts}  </activities>
-${rosterSection}</raciTool>
+${artifactsSection}${rosterSection}</raciTool>
 `;
-  download(`${fileBase()}.xml`, xml, 'application/xml');
+  download(`${chartFileBase()}.xml`, xml, 'application/xml');
 }
 
 // ---------- Mermaid export (flowchart of the activity tree, with R/A summary) ----------
+// View-aware (v0.22): from the Business Case view it emits the ACTIVE FLOW's graph instead —
+// steps as nodes (decision points as diamonds), handoffs as labeled edges (condition · deliverables).
 function exportMermaid() {
+  if (state.viewMode === 'bizcase') { exportMermaidFlow(); return; }
   const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/[\r\n]+/g, ' ');
   const lines = ['flowchart TD'];
   const tierClass = ['pf', 'pg', 'pj', 'tk'];
@@ -6696,6 +6796,33 @@ function exportMermaid() {
   lines.push('  classDef pg fill:#1d2540,stroke:#748ffc,color:#fff;');
   lines.push('  classDef pj fill:#2a2140,stroke:#b07cff,color:#fff;');
   lines.push('  classDef tk fill:#14271c,stroke:#51cf66,color:#fff;');
+  download(`${fileBase()}.mmd`, lines.join('\n') + '\n', 'text/vnd.mermaid');
+}
+// The active flow as a left-to-right Mermaid graph — the handout a branch can paste anywhere.
+function exportMermaidFlow() {
+  const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/[\r\n|]+/g, ' ');
+  const b = abc();
+  const F = fw(b.framework);
+  const lines = ['flowchart LR'];
+  const outCount = Object.create(null);
+  b.edges.forEach(e => { outCount[e.from] = (outCount[e.from] || 0) + 1; });
+  const mid = Object.create(null);
+  b.tasks.forEach((t, i) => { mid[t.id] = 's' + i; });
+  b.tasks.forEach(t => {
+    const roles = flowRolesText(t);
+    const label = `${esc(t.name) || '(unnamed)'}${roles ? `<br/>${esc(roles)}` : ''}`;
+    // Decision points (2+ outgoing paths) render as diamonds.
+    lines.push(outCount[t.id] >= 2 ? `  ${mid[t.id]}{"${label}"}:::dec` : `  ${mid[t.id]}["${label}"]:::step`);
+  });
+  b.edges.forEach(e => {
+    const parts = [];
+    if (e.label) parts.push(esc(e.label));
+    if ((e.artifactIds || []).length) parts.push(esc(e.artifactIds.map(artifactLabel).join(', ')));
+    lines.push(`  ${mid[e.from]} ${parts.length ? `-->|${parts.join(' · ')}|` : '-->'} ${mid[e.to]}`);
+  });
+  lines.push('  classDef step fill:#14271c,stroke:#51cf66,color:#fff;');
+  lines.push('  classDef dec fill:#2a2140,stroke:#b07cff,color:#fff;');
+  lines.push(`  %% ${F.name} flow — exported from ${APP_BANNER}`);
   download(`${fileBase()}.mmd`, lines.join('\n') + '\n', 'text/vnd.mermaid');
 }
 
@@ -6781,11 +6908,19 @@ function sheetXml(sheet) {
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows}</sheetData></worksheet>`;
 }
 function exportXLSX() {
-  downloadBlob(`${(ac().title || 'raci').replace(/\s+/g, '_')}.xlsx`,
+  downloadBlob(`${chartFileBase()}.xlsx`,
     new Blob([xlsxBytes()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
 }
 function xlsxBytes() {
   const sheets = buildLevelSheets();
+  // Anchored flows + the deliverable registry ride along as extra sheets (v0.22).
+  const flowRows = buildFlowRows(ac());
+  if (flowRows.length) sheets.push({ name: 'Flows', headers: FLOW_SHEET_HEADERS, rows: flowRows });
+  if (state.artifacts.length) sheets.push({ name: 'Deliverables',
+    headers: ['Deliverable', 'Type', 'Produced by', 'Consumed by'], rows: buildDeliverableRows() });
+  // Guard against a free chart's user-named level colliding with the fixed extra-sheet names.
+  const seen = new Set();
+  sheets.forEach(s => { let nm = s.name, j = 2; while (seen.has(nm)) nm = s.name + ' ' + (j++); seen.add(nm); s.name = nm; });
   const enc = new TextEncoder();
   const files = [];
   files.push(['[Content_Types].xml',
@@ -6838,13 +6973,31 @@ function pptxBytes() {
   const ROWS_PER_SLIDE = 13;
   const sheets = buildLevelSheets();
 
-  // 1) Logical slide list.
+  // 1) Logical slide list. Tier tables first, then one table (paginated) per anchored flow (v0.22).
   const slideDefs = [{ kind: 'title', title: ac().title || 'RACI chart', sub: `${F.name} responsibility matrix` }];
   sheets.forEach(sheet => {
     const pages = Math.max(1, Math.ceil(sheet.rows.length / ROWS_PER_SLIDE));
     for (let p = 0; p < pages; p++) {
       slideDefs.push({ kind: 'table', title: sheet.name + (pages > 1 ? `  (${p + 1}/${pages})` : ''),
-        headers: sheet.headers, rows: sheet.rows.slice(p * ROWS_PER_SLIDE, (p + 1) * ROWS_PER_SLIDE) });
+        headers: sheet.headers, rows: sheet.rows.slice(p * ROWS_PER_SLIDE, (p + 1) * ROWS_PER_SLIDE),
+        raciCols: chartCols().length });
+    }
+  });
+  const FLOW_ROWS_PER_SLIDE = 8;
+  flowsForChart(ac().id).forEach(b => {
+    const an = resolveAnchor(b);
+    const ctx = bizAnchorCtx(b);
+    const headers = ['Step', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+    const rows = bizTopoOrder(b).map(t => {
+      const io = bizTaskIO(b, t.id);
+      return [t.name || '', flowRolesText(t), flowPartiesText(ctx, t),
+        io.inputs.map(artifactLabel).join(', '), io.outputs.map(artifactLabel).join(', '), flowNextText(b, t)];
+    });
+    const flowTitle = `Flow — ${b.name || 'Untitled'}${an ? `  (⚓ ${an.node.name || 'task'})` : ''}`;
+    const pages = Math.max(1, Math.ceil(rows.length / FLOW_ROWS_PER_SLIDE));
+    for (let p = 0; p < pages; p++) {
+      slideDefs.push({ kind: 'table', title: flowTitle + (pages > 1 ? `  (${p + 1}/${pages})` : ''),
+        headers, rows: rows.slice(p * FLOW_ROWS_PER_SLIDE, (p + 1) * FLOW_ROWS_PER_SLIDE), raciCols: 0 });
     }
   });
 
@@ -6858,10 +7011,10 @@ function pptxBytes() {
     `<a:p><a:r><a:rPr lang="en-US" sz="${sz}"${bold ? ' b="1"' : ''} dirty="0">` +
     `<a:solidFill><a:srgbClr val="${colorHex}"/></a:solidFill></a:rPr><a:t>${esc(text)}</a:t></a:r></a:p>`;
 
-  // Native PowerPoint table.
-  const tableFrame = (id, headers, rows) => {
+  // Native PowerPoint table. nRaci = trailing narrow letter columns (0 for flow tables).
+  const tableFrame = (id, headers, rows, nRaciCols) => {
     const TW = 11582400, x = 304800, y = 1295400;
-    const nRaci = chartCols().length;
+    const nRaci = Math.min(nRaciCols == null ? chartCols().length : nRaciCols, headers.length);
     const nLead = headers.length - nRaci;
     const raciW = 640000;
     const leadW = Math.max(900000, Math.floor((TW - raciW * nRaci) / Math.max(1, nLead)));
@@ -6900,7 +7053,7 @@ function pptxBytes() {
     }
     return slideWrap(
       textBox(2, 'Heading', 304800, 304800, 11582400, 838200, para(d.title, 2400, true, '20242B')) +
-      tableFrame(5, d.headers, d.rows));
+      tableFrame(5, d.headers, d.rows, d.raciCols));
   };
 
   // 3) Package parts.
@@ -6942,7 +7095,7 @@ function pptxBytes() {
   return zipBytes(files);
 }
 function exportPPTX() {
-  downloadBlob(`${fileBase()}.pptx`,
+  downloadBlob(`${chartFileBase()}.pptx`,
     new Blob([pptxBytes()], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
 }
 
