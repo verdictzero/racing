@@ -89,7 +89,7 @@ Confirmed by code audit (7 agents, 2026-07-22):
 2. Combined chart+bizcase walker; work-order cards with jump links both ways.
 3. Print run book: `beforeprint` (7178-91) gains a `work` branch with a unit title band — the first branch-facing export in the app.
 
-### Phase 5 — Export parity
+### Phase 5 — Export parity ✅ DONE (v0.22) — **ROADMAP COMPLETE**
 1. XLSX Flows sheet (step, parties to team depth, inputs, outputs, condition) keyed by anchor ancestry; Artifacts sheet.
 2. PPTX: one slide per anchored flow's step table. XML: `<flow>` under the anchored activity + `<artifacts>` section. Mermaid: flow graph export.
 3. Fix `fileBase` (6281) to use the bizcase name when exporting from the bizcase view.
