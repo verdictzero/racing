@@ -84,7 +84,7 @@ Confirmed by code audit (7 agents, 2026-07-22):
 5. Details rail Inputs/Outputs sections; row-eye Consumes/Produces blocks.
 6. Merge hardening: artifact id remap + post-merge dangling-id invariant scan.
 
-### Phase 4 — My Work + run book (decision 3b)
+### Phase 4 — My Work + run book (decision 3b) ✅ DONE (v0.21)
 1. Fourth view `work` in `ALL_VIEW_MODES` (3553) + `render()` dispatch; scope picker to Team depth; `state.workScope` volatile.
 2. Combined chart+bizcase walker; work-order cards with jump links both ways.
 3. Print run book: `beforeprint` (7178-91) gains a `work` branch with a unit title band — the first branch-facing export in the app.
