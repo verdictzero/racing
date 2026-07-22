@@ -64,7 +64,7 @@ Confirmed by code audit (7 agents, 2026-07-22):
 4. Re-key `parties` letter → column (migration in the bizCases block of `migrateState` 3745-96); sidebar targets `{taskId, colKey}`.
 5. Give bizcase task `description` a UI (it exists in the model, 3478, but nowhere to type it).
 
-### Phase 1 — Anchor + navigation (decision 1a)
+### Phase 1 — Anchor + navigation (decision 1a) ✅ DONE (v0.18, commit `94f8518`)
 1. `bizCase.anchor` + migration (backfill null, drop dangling → standalone).
 2. Task-tier rows get a `⤵ flow` affordance: open anchored flow / "Create flow" (seeded with the row's `effectiveRaci`) / "Attach existing…".
 3. Bizcase view, when anchored: ancestry breadcrumb (via `pathToNode` 6685) with click-back to the chart drill, plus a charter strip (anchor name, effective RACI chips, inherited-A indicator, inherited Division/Branch badges).
