@@ -1233,6 +1233,43 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 }
 #splash-actions .sc-dismiss:hover { background: #69db7c; }
 
+/* ===== New-chart chooser (organization vs free-form) ===== */
+#newchart-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#newchart-overlay.open { display: flex; }
+#newchart-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 560px; width: 100%;
+  padding: 24px 26px;
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+}
+#newchart-card h2 { margin: 0 0 4px; font-size: 17px; }
+.nc-sub { margin: 0 0 16px; color: var(--text-dim); font-size: 12.5px; }
+.nc-options { display: flex; flex-direction: column; gap: 10px; }
+.nc-opt {
+  display: flex; flex-direction: column; gap: 5px;
+  text-align: left; font: inherit; color: var(--text);
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 13px 15px; cursor: pointer;
+}
+.nc-opt:hover { border-color: var(--accent); background: var(--bg-4); }
+.nc-name { font-size: 14px; font-weight: 700; }
+.nc-desc { font-size: 12px; line-height: 1.5; color: var(--text-dim); }
+.nc-cancel {
+  margin-top: 14px; background: none; border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 6px; padding: 6px 14px;
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.nc-cancel:hover { color: var(--text); border-color: var(--text-dim); }
+
 /* ===== "Don't forget to export" floating reminder ===== */
 #save-nag {
   position: fixed; right: 16px; bottom: 16px; z-index: 52;
@@ -2673,6 +2710,82 @@ table.chart td.chart-cell { padding: 14px 20px; }
 .ch-del button:hover { background: var(--err); color: #fff; }
 .ch-empty-row td { color: var(--text-dim); font-style: italic; text-align: left; }
 
+/* ===== Free-form chart editing (custom party columns + renamable level names) ===== */
+.tier-edit { outline: none; padding: 1px 5px; margin: -1px -2px; border-radius: 4px; cursor: text; }
+.tier-edit:hover { background: var(--bg-2); box-shadow: 0 0 0 1px var(--border); }
+.tier-edit:focus { background: var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+table.chart th.ch-col { position: relative; }
+table.chart th.ch-col.col-editable { cursor: default; }
+/* Node view opener — per-party task list (👁 appears on header hover, focused pane only) */
+table.chart th.ch-col .col-view {
+  position: absolute; top: 2px; left: 2px; display: none;
+  background: transparent; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 11px; line-height: 1; padding: 2px 3px; border-radius: 3px;
+}
+table.chart th.ch-col:hover .col-view { display: block; }
+table.chart th.ch-col .col-view:hover { background: var(--bg-3); color: var(--accent); }
+/* Node-view popover — reuses the .raci-popover card, but as a scrollable list */
+.raci-popover.colview-popover {
+  display: block; max-width: 360px; min-width: 250px;
+  max-height: 60vh; overflow-y: auto; padding: 10px 10px 8px;
+}
+.colview-popover .cv-head {
+  font-size: 12px; font-weight: 700; color: var(--text);
+  padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+}
+.colview-popover .cv-head .cv-sub { font-weight: 400; font-size: 10.5px; color: var(--text-dim); }
+.colview-popover .cv-group { margin-bottom: 6px; }
+.colview-popover .cv-group-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-dim); margin: 4px 0 3px;
+}
+.colview-popover .cv-group-head .cv-count { margin-left: auto; font-size: 10px; }
+.colview-popover button.cv-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; height: auto; padding: 4px 7px; margin: 2px 0;
+  font-weight: 400; font-size: 11.5px; text-align: left;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); cursor: pointer;
+}
+.colview-popover button.cv-item:hover { border-color: var(--accent); background: var(--bg-4); }
+.colview-popover .cv-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colview-popover .cv-name .cv-inh { color: var(--text-dim); font-style: italic; font-size: 10px; }
+.colview-popover .cv-tier { flex-shrink: 0; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-dim); }
+.colview-popover .cv-empty { font-size: 11.5px; font-style: italic; color: var(--text-dim); padding: 2px 0 4px; }
+/* Task node view (a matrix ROW pivoted into its own card): party rows with the row's chips */
+.colview-popover .cv-chips { flex-shrink: 0; margin-left: auto; }
+.colview-popover .cv-chips .cell-chips { display: flex; gap: 4px; align-items: center; }
+/* Row opener — 👁 on a task row (appears on row hover, next to the delete ×) */
+table.chart td.ch-name { position: relative; }
+.row-view {
+  position: absolute; top: 3px; right: 3px; visibility: hidden;
+  background: transparent; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 11px; line-height: 1; padding: 2px 3px; border-radius: 3px;
+}
+.chart-row:hover .row-view { visibility: visible; }
+.row-view:hover { background: var(--bg-3); color: var(--accent); }
+table.chart th.ch-col .col-edit {
+  outline: none; display: inline-block; min-width: 40px; max-width: 100%;
+  padding: 1px 4px; border-radius: 3px; cursor: text;
+}
+table.chart th.ch-col .col-edit:hover { box-shadow: 0 0 0 1px var(--border); }
+table.chart th.ch-col .col-edit:focus { background: var(--bg); box-shadow: 0 0 0 1px var(--accent); text-transform: none; }
+table.chart th.ch-col .col-del {
+  position: absolute; top: 2px; right: 2px; display: none;
+  background: transparent; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 12px; line-height: 1; padding: 2px 4px; border-radius: 3px;
+}
+table.chart th.ch-col:hover .col-del { display: block; }
+table.chart th.ch-col .col-del:hover { background: var(--err); color: #fff; }
+/* thead has no .chart-row hover, so the add-column button must opt out of the .ch-del hide rule */
+table.chart th.ch-del .col-add {
+  visibility: visible; background: transparent;
+  border: 1px dashed var(--border); border-radius: 4px;
+  color: var(--text-dim); cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 7px;
+}
+table.chart th.ch-del .col-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(81,207,102,0.06); }
+
 /* roster assignment badges under an activity name */
 .org-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
 .org-badge {
@@ -2732,8 +2845,8 @@ body[data-view="roster"] #legend { display: none; }
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   /* Hide all interactive chrome — leave just the matrix. */
   header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover,
-  #save-nag, #splash-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
-  #zoom-ctl, .chart-resize, .ch-add, .ch-del, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
+  #save-nag, #splash-overlay, #newchart-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
+  #zoom-ctl, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
   [data-del-node], [data-bz-del-task] { display: none !important; }
   main, #ws-main { display: block !important; overflow: visible !important; position: static !important;
     padding: 0 !important; height: auto !important; }
@@ -2807,6 +2920,23 @@ body[data-view="roster"] #legend { display: none; }
     </div>
   </div>
 </div>
+<div id="newchart-overlay" role="dialog" aria-modal="true" aria-labelledby="newchart-title">
+  <div id="newchart-card">
+    <h2 id="newchart-title">New chart</h2>
+    <p class="nc-sub">Choose the kind of nested RACI to create.</p>
+    <div class="nc-options">
+      <button type="button" class="nc-opt" data-newchart="org">
+        <span class="nc-name">🏛 Organization chart</span>
+        <span class="nc-desc">Uses the shared organizational columns and roster. Fixed Portfolio → Program → Project → Task tiers, with division/branch assignment and roster-linked people behind each column.</span>
+      </button>
+      <button type="button" class="nc-opt" data-newchart="free">
+        <span class="nc-name">✦ Free-form chart</span>
+        <span class="nc-desc">Organization-agnostic. Define your own party columns — add, rename, or remove them right in the table header — and nest activities to any depth with renamable levels. No roster links.</span>
+      </button>
+    </div>
+    <button type="button" class="nc-cancel" id="newchart-cancel">Cancel</button>
+  </div>
+</div>
 <img id="bg-watermark" src="ASIC-LOGO-2026.png" alt="" aria-hidden="true">
 <header>
   <img id="app-logo" src="ASIC-LOGO-2026.png" alt="ASIC — Army Software & Innovation Center" title="ASIC — Army Software & Innovation Center">
@@ -2872,6 +3002,19 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.16 alpha - Node views (from the whiteboard spec "node view per task"): 👁 on a task ROW
+//                  pivots that row into its own card — every party with the row's chips exactly as
+//                  the cells render them (inherited A dashed, default-I dimmed); 👁 on a column
+//                  header shows the inverse cut — every activity where that party holds a role,
+//                  grouped by letter, cascade-aware, click to jump to the row. The two views
+//                  cross-navigate. Merge fix: importing a JSON that lacks charts or business
+//                  cases no longer appends the seeded defaults for the missing section.
+//     0.15 alpha - Free-form (organization-agnostic) charts: the + tab button now opens a chooser
+//                  between an Organization chart (shared columns/roster, fixed 4 tiers) and a
+//                  Free-form chart with per-chart party columns (add/rename/remove in the table
+//                  header), renamable level names, and unlimited nesting depth. Roster-linked
+//                  features (column→directorate map, org badges, who's-behind-a-column) hide on
+//                  free charts; XML/Mermaid/Excel/PowerPoint/print exports adapt per chart.
 //     0.14 alpha - Business Case node cards: per-RACI-letter responsible executing party
 //                  (directorate → division → branch), shown on each card as nested, indented capsules
 //                  (deepest unit highlighted); card expands downward as boxes are checked; set from a
@@ -2897,7 +3040,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.14';
+const APP_VERSION = '0.16';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -3005,7 +3148,44 @@ function applyColumnLabels() {
 }
 const TIER_LABELS = ['Portfolio','Program','Project','Task'];
 const MAX_TIER = TIER_LABELS.length - 1;
-function columnsForTier(tier) { return COLS; } // hook: lower tiers may differ later
+
+// ---- Per-chart column/tier resolution (org vs free-form charts) ----
+// An ORG chart (chart.custom == null) uses the global COLS/COL_LABELS/TIER_LABELS and the fixed
+// 4-tier Portfolio→Task shape. A FREE-FORM chart carries its own organization-agnostic config:
+//   chart.custom = { cols: [{key,label,short}], tiers: ['Level 1', ...] }
+// with unlimited nesting depth (levels beyond custom.tiers auto-name as "Level N"). All chart-
+// scoped code resolves columns/labels/depth through these helpers; the chart param defaults to
+// the active chart. Business Cases keep using the global COLS directly — they're independent.
+function isFreeChart(c) { return !!((c || ac()).custom); }
+function chartCols(c) { const x = c || ac(); return x.custom ? x.custom.cols.map(cc => cc.key) : COLS; }
+function chartColDef(k, c) { const x = c || ac(); return x.custom ? x.custom.cols.find(cc => cc.key === k) : null; }
+function chartColLabel(k, c) {
+  const cc = chartColDef(k, c);
+  if (cc) return cc.label || 'Party';
+  return COL_LABELS[k] || k;
+}
+function chartColShort(k, c) {
+  const cc = chartColDef(k, c);
+  if (cc) return cc.short || deriveShort(cc.label);
+  return COL_SHORT[k] || k;
+}
+// Compact fallback abbreviation for a free column with no explicit short label.
+function deriveShort(label) {
+  const words = String(label || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '?';
+  if (words.length === 1) return words[0].slice(0, 5);
+  return words.map(w => w[0].toUpperCase()).join('').slice(0, 4);
+}
+function chartTierLabel(tier, c) {
+  const x = c || ac();
+  if (x.custom) {
+    const t = x.custom.tiers && x.custom.tiers[tier];
+    return (typeof t === 'string' && t.trim()) ? t.trim() : ('Level ' + (tier + 1));
+  }
+  return TIER_LABELS[tier] || ('Level ' + tier);
+}
+function chartMaxTier(c) { return (c || ac()).custom ? Infinity : MAX_TIER; }
+function columnsForTier(tier) { return chartCols(); } // hook: lower tiers may differ later
 
 // ---- Column ↔ roster directorate mapping (so a RACI cell can name WHO, not just which unit) ----
 // Each RACI column maps to one roster directorate; that directorate's lead (the Associate Director)
@@ -3044,27 +3224,32 @@ function inheritedOwnerCol(targetId) {
 // Details-panel "Who's responsible" block: each column with a role on this node → resolved person.
 function nodeWhoHtml(node) {
   const F = chartFw();
+  const free = isFreeChart();
   const inh = inheritedOwnerCol(node.id);
-  const cols = COLS.filter(k => normalizeRaci(node.raci[k] || '') || k === inh);
+  const cols = chartCols().filter(k => normalizeRaci(node.raci[k] || '') || k === inh);
   if (!cols.length) return `<div class="det-doc-empty">No roles assigned yet.</div>`;
   return `<div class="dw-list">` + cols.map(k => {
     const own = normalizeRaci(node.raci[k] || '');
     const showInherited = (k === inh && !own.includes(F.owner));
     const letters = showInherited ? normalizeRaci(own + F.owner) : own;
-    const who = columnPerson(k);
-    const person = !who ? `<span class="dw-note">column not mapped</span>`
+    // Free-form columns have no roster mapping, so there is no person to resolve.
+    const who = free ? null : columnPerson(k);
+    const person = free ? ''
+      : !who ? `<span class="dw-note">column not mapped</span>`
       : who.name ? `<span class="dw-person">👤 ${escapeHtml(who.name)}</span>`
       : `<span class="dw-note">no lead set</span>`;
     const inhTag = showInherited ? ` <span class="dw-inh" title="Inherited ${escapeHtml(F.meta[F.owner].label)} from the cascade">(inherited)</span>` : '';
     return `<div class="dw-row">
-        <div class="dw-col">${escapeHtml(COL_LABELS[k])}${inhTag}</div>
+        <div class="dw-col">${escapeHtml(chartColLabel(k))}${inhTag}</div>
         <div class="dw-chips">${renderChipsHtml(letters)}</div>
         <div class="dw-who">${person}</div>
       </div>`;
   }).join('') + `</div>`;
 }
 // Footer line for a cell popover: names the person behind this column (or how to set one).
+// Free-form charts have no roster behind their columns — no footer at all.
 function whoFooterHtml(col) {
+  if (isFreeChart()) return '';
   const who = columnPerson(col);
   if (!who) return `<div class="pop-who unmapped">${escapeHtml(COL_LABELS[col])} — not mapped <span class="pw-hint">(map columns in the Legend)</span></div>`;
   if (!who.name) return `<div class="pop-who nolead">${escapeHtml(who.actorLabel)} — no lead set <span class="pw-hint">(add in Roster)</span></div>`;
@@ -3093,9 +3278,9 @@ function normalizeRaci(s) {
   const set = new Set(String(s).toUpperCase().split('').filter(ch => ALL_ROLE_LETTERS.includes(ch)));
   return ALL_ROLE_LETTERS.filter(r => set.has(r)).join('');
 }
-// Columns where this node is Responsible.
+// Columns where this node is Responsible (resolved against the active chart's column set).
 function rColumns(node) {
-  return COLS.filter(k => normalizeRaci(node.raci[k] || '').includes('R'));
+  return chartCols().filter(k => normalizeRaci(node.raci[k] || '').includes('R'));
 }
 // The single R column that cascades down to become the children's Accountable:
 //   0 R's -> null; exactly 1 R -> that column; 2+ R's -> node.primaryR if still valid, else null
@@ -3108,10 +3293,11 @@ function primaryRColumn(node) {
 }
 
 // ---------- state ----------
-// An activity node. Tier (Portfolio/Program/Project/Task) is implied by depth in the tree.
-function makeNode(name) {
+// An activity node. Tier is implied by depth in the tree. `cols` defaults to the global org
+// columns; free-form charts pass their own chart-specific column keys.
+function makeNode(name, cols) {
   const raci = {};
-  COLS.forEach(k => { raci[k] = ''; });
+  (cols || COLS).forEach(k => { raci[k] = ''; });
   return { id: uid(), name: name || '', raci, status: DEFAULT_STATUS, description: '', documents: [], children: [] };
 }
 function makeDivision(name) { return { id: uid(), name: name || '', chief: null, branches: [] }; }
@@ -3257,12 +3443,23 @@ function makeChart(title, activities) {
     id: 'c_' + uid(),
     title: title || 'Untitled chart',
     framework: 'raci',
+    custom: null,               // null = org chart; free-form charts get { cols, tiers }
     activities: Array.isArray(activities) ? activities : [],
     drillPath: [],
     chartSize: null,
     chartZoom: 1,
     chartPos: {}
   };
+}
+// A free-form (organization-agnostic) chart: its own party columns, renamable level names,
+// unlimited nesting depth, and no roster/org linkage. Starts with four generic parties.
+function makeFreeChart(title) {
+  const c = makeChart(title, []);
+  c.custom = {
+    cols: ['Party A', 'Party B', 'Party C', 'Party D'].map(nm => ({ key: 'p_' + uid(), label: nm, short: '' })),
+    tiers: []                   // sparse level names by depth; '' / missing → auto "Level N"
+  };
+  return c;
 }
 // ---- Business Cases (tabletop-exercise node graphs) ----
 // A business case is a self-contained RACI matrix over its own task nodes, laid out as a node
@@ -3368,13 +3565,19 @@ function normalizeOrgRef(ref) {
   }
   return out;
 }
-function normalizeNodes(nodes, depth) {
+// opts (optional) carries a free-form chart's shape: { cols: [keys], maxTier: Infinity, free: true }.
+// Omitted → classic org-chart normalization over the global COLS with the fixed 4-tier cap.
+function normalizeNodes(nodes, depth, opts) {
   if (!Array.isArray(nodes)) return [];
+  const cols = (opts && opts.cols) || COLS;
+  const maxTier = (opts && opts.maxTier != null) ? opts.maxTier : MAX_TIER;
   nodes.forEach(n => {
     n.id = n.id || uid();
     n.name = typeof n.name === 'string' ? n.name : '';
     n.raci = (n.raci && typeof n.raci === 'object') ? n.raci : {};
-    COLS.forEach(k => { n.raci[k] = normalizeRaci(n.raci[k] || ''); });
+    cols.forEach(k => { n.raci[k] = normalizeRaci(n.raci[k] || ''); });
+    // Free charts own their column set outright — drop letters left by deleted columns.
+    if (opts && opts.free) Object.keys(n.raci).forEach(k => { if (!cols.includes(k)) delete n.raci[k]; });
     // Activity definition / description (free-form text — Slide 3 style).
     n.description = typeof n.description === 'string' ? n.description : '';
     // Kanban status (Task view). Backfills old data and imports lacking the field.
@@ -3388,13 +3591,36 @@ function normalizeNodes(nodes, depth) {
       dataUrl: typeof d.dataUrl === 'string' ? d.dataUrl : ''
     })) : [];
     // Optional roster assignment: Programs hold a Division, Projects hold a Branch. Chart nodes always
-    // carry at least a Division, so an actor-only ref is treated as unassigned here.
-    const ref = normalizeOrgRef(n.org);
-    if (ref && ref.divisionId) n.org = ref; else delete n.org;
-    if (depth >= MAX_TIER) n.children = [];
-    else n.children = normalizeNodes(Array.isArray(n.children) ? n.children : [], depth + 1);
+    // carry at least a Division, so an actor-only ref is treated as unassigned here. Free-form
+    // charts are org-agnostic — they never carry roster refs.
+    if (opts && opts.free) { delete n.org; }
+    else {
+      const ref = normalizeOrgRef(n.org);
+      if (ref && ref.divisionId) n.org = ref; else delete n.org;
+    }
+    if (depth >= maxTier) n.children = [];
+    else n.children = normalizeNodes(Array.isArray(n.children) ? n.children : [], depth + 1, opts);
   });
   return nodes;
+}
+// Validate/clean a free-form chart's { cols, tiers } config. Returns null (→ org chart) when the
+// shape is unusable, so a hand-edited import can never leave a chart with zero columns.
+function normalizeChartCustom(x) {
+  if (!x || typeof x !== 'object' || !Array.isArray(x.cols)) return null;
+  const seen = new Set();
+  const cols = [];
+  x.cols.forEach(cc => {
+    if (!cc || typeof cc !== 'object' || typeof cc.key !== 'string' || !cc.key || seen.has(cc.key)) return;
+    seen.add(cc.key);
+    cols.push({
+      key: cc.key,
+      label: (typeof cc.label === 'string' && cc.label.trim()) ? cc.label.trim() : 'Party',
+      short: (typeof cc.short === 'string') ? cc.short.trim() : ''
+    });
+  });
+  if (!cols.length) return null;
+  const tiers = Array.isArray(x.tiers) ? x.tiers.map(t => typeof t === 'string' ? t : '').slice(0, 64) : [];
+  return { cols, tiers };
 }
 function migrateState(s) {
   if (!s || typeof s !== 'object') return defaultState();
@@ -3424,11 +3650,15 @@ function migrateState(s) {
     s.activeChartId = wrap.id;
   }
   // Normalize every chart in the list
-  s.charts = s.charts.filter(c => c && typeof c === 'object').map(c => ({
+  s.charts = s.charts.filter(c => c && typeof c === 'object').map(c => {
+    const custom = normalizeChartCustom(c.custom);
+    return {
     id: typeof c.id === 'string' && c.id ? c.id : 'c_' + uid(),
     title: typeof c.title === 'string' ? c.title : 'Untitled chart',
     framework: CHART_FRAMEWORKS.includes(c.framework) ? c.framework : 'raci',
-    activities: normalizeNodes(Array.isArray(c.activities) ? c.activities : [], 0),
+    custom,
+    activities: normalizeNodes(Array.isArray(c.activities) ? c.activities : [], 0,
+      custom ? { cols: custom.cols.map(x => x.key), maxTier: Infinity, free: true } : null),
     drillPath: Array.isArray(c.drillPath) ? c.drillPath.filter(x => typeof x === 'string') : [],
     chartSize: (c.chartSize && typeof c.chartSize === 'object'
       && Number.isFinite(c.chartSize.w) && Number.isFinite(c.chartSize.h))
@@ -3444,7 +3674,8 @@ function migrateState(s) {
       }
       return cp;
     })()
-  }));
+    };
+  });
   if (!s.charts.length) s.charts.push(makeChart('Untitled chart', []));
   if (!s.charts.find(c => c.id === s.activeChartId)) s.activeChartId = s.charts[0].id;
   // Drop the now-redundant top-level per-chart keys (they've been wrapped into charts[0]).
@@ -3723,7 +3954,7 @@ function resolveCascade() {
   for (let i = 0; i < ac().drillPath.length; i++) {
     const id = ac().drillPath[i];
     const node = nodes.find(n => n.id === id);
-    if (!node || i >= MAX_TIER) break;
+    if (!node || i >= chartMaxTier()) break;
     charts[charts.length - 1].openId = id;
     // a Program contributes its Division, a Project its Branch, to everything below
     if (node.org) { if (node.org.branchId) acc.branch = node.org; else acc.division = node.org; }
@@ -3784,18 +4015,18 @@ function partyTreeHtml(hier) {
 }
 
 // ---------- mutations ----------
-function addRootActivity() { ac().activities.push(makeNode('')); saveState(); renderChart(); }
+function addRootActivity() { ac().activities.push(makeNode('', chartCols())); saveState(); renderChart(); }
 function addChildActivity(parentId) {
   const f = findNode(parentId);
-  if (!f || f.depth >= MAX_TIER) return;
-  f.node.children.push(makeNode(''));
+  if (!f || f.depth >= chartMaxTier()) return;
+  f.node.children.push(makeNode('', chartCols()));
   saveState(); renderChart();
 }
 function deleteNode(id) {
   const f = findNode(id);
   if (!f) return;
   const kids = countNodes(f.node.children);
-  const label = f.node.name || ('this ' + TIER_LABELS[f.depth].toLowerCase());
+  const label = f.node.name || ('this ' + chartTierLabel(f.depth).toLowerCase());
   if (!confirm(`Delete "${label}"${kids ? ` and its ${kids} sub-item${kids === 1 ? '' : 's'}` : ''}?`)) return;
   const idx = f.siblings.findIndex(n => n.id === id);
   if (idx >= 0) f.siblings.splice(idx, 1);
@@ -3815,13 +4046,54 @@ function renameNode(id, name) { const f = findNode(id); if (f) { f.node.name = n
 // auto-collapsing any tiers in front. Clicking the already-open one first collapses the
 // tiers in front of it (one click), then collapses itself (next click).
 function drillToggle(id, tier) {
-  if (tier >= MAX_TIER) return;
+  if (tier >= chartMaxTier()) return;
   const path = ac().drillPath;
   if (path[tier] === id) {
     ac().drillPath = path.length > tier + 1 ? path.slice(0, tier + 1) : path.slice(0, tier);
   } else {
     ac().drillPath = path.slice(0, tier).concat(id);
   }
+  saveState(); renderChart();
+}
+
+// ---- free-form chart structure edits (custom party columns + level names) ----
+function chartWalkNodes(nodes, fn) { (nodes || []).forEach(n => { fn(n); chartWalkNodes(n.children, fn); }); }
+function addChartCol() {
+  const c = ac(); if (!c.custom) return;
+  const col = { key: 'p_' + uid(), label: 'New party', short: '' };
+  c.custom.cols.push(col);
+  chartWalkNodes(c.activities, n => { n.raci[col.key] = ''; });
+  saveState(); renderChart();
+  // Focus the new header cell so the user can immediately type its real name.
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`.chart-block.focus .col-edit[data-col-edit="${col.key}"]`);
+    if (el) {
+      el.focus();
+      const r = document.createRange(); r.selectNodeContents(el);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+  });
+}
+function renameChartCol(key, label) {
+  const c = ac(); if (!c.custom) return;
+  const col = c.custom.cols.find(x => x.key === key); if (!col) return;
+  const nm = String(label || '').trim();
+  if (nm && nm !== col.label) { col.label = nm; saveState(); }
+  renderChart(); // also restores the old label if the edit was left empty
+}
+function deleteChartCol(key) {
+  const c = ac(); if (!c.custom || c.custom.cols.length <= 1) return;
+  const i = c.custom.cols.findIndex(x => x.key === key); if (i < 0) return;
+  if (!confirm(`Remove the "${c.custom.cols[i].label}" column? Its role letters on every row of this chart are discarded.`)) return;
+  c.custom.cols.splice(i, 1);
+  chartWalkNodes(c.activities, n => { delete n.raci[key]; if (n.primaryR === key) delete n.primaryR; });
+  saveState(); renderChart();
+}
+function renameTier(tier, label) {
+  const c = ac(); if (!c.custom) return;
+  if (!Array.isArray(c.custom.tiers)) c.custom.tiers = [];
+  while (c.custom.tiers.length <= tier) c.custom.tiers.push('');
+  c.custom.tiers[tier] = String(label || '').trim(); // '' falls back to the auto "Level N" name
   saveState(); renderChart();
 }
 
@@ -3853,8 +4125,9 @@ function setChartFramework(key) {
   saveState();
   render();
 }
-function addChart() {
-  const fresh = makeChart('Untitled chart', []);
+// kind: 'org' (default) = classic organization chart; 'free' = organization-agnostic free-form.
+function addChart(kind) {
+  const fresh = kind === 'free' ? makeFreeChart('Untitled chart') : makeChart('Untitled chart', []);
   state.charts.push(fresh);
   state.activeChartId = fresh.id;
   saveState();
@@ -3900,9 +4173,23 @@ function deleteChart(id) {
   saveState();
   render();
 }
+function openNewChartDialog() {
+  const ov = document.getElementById('newchart-overlay');
+  if (ov) ov.classList.add('open');
+}
+function closeNewChartDialog() {
+  const ov = document.getElementById('newchart-overlay');
+  if (ov) ov.classList.remove('open');
+}
 (function wireChartTabs() {
   document.addEventListener('click', e => {
-    if (e.target.closest('#chart-tab-add')) { addChart(); return; }
+    if (e.target.closest('#chart-tab-add')) { openNewChartDialog(); return; }
+    // New-chart chooser: pick a kind, cancel, or click the backdrop to dismiss.
+    const ncOpt = e.target.closest('[data-newchart]');
+    if (ncOpt) { closeNewChartDialog(); addChart(ncOpt.dataset.newchart); return; }
+    if (e.target.closest('#newchart-cancel')) { closeNewChartDialog(); return; }
+    const ncOv = document.getElementById('newchart-overlay');
+    if (ncOv && ncOv.classList.contains('open') && !e.target.closest('#newchart-card')) { closeNewChartDialog(); return; }
     const close = e.target.closest('[data-tab-close]');
     if (close) { e.stopPropagation(); deleteChart(close.getAttribute('data-tab-close')); return; }
     // Click on the label while editing should NOT switch tabs (it's already editing).
@@ -3939,29 +4226,40 @@ function renderLegend() {
   const F = chartFw();
   const rows = F.roles.map(l =>
     `<div class="legend-row"><span class="raci-chip ${l}">${l}</span><div><div class="label">${escapeHtml(F.meta[l].label)}</div><div class="desc">${escapeHtml(F.meta[l].desc)}</div></div></div>`).join('');
-  const mapRows = COLS.map(k => {
-    const cur = columnActorKey(k) || '';
-    const opts = `<option value="">— unmapped —</option>` +
-      ACTORS.map(a => `<option value="${a}"${a === cur ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[a])}</option>`).join('');
-    const who = columnPerson(k);
-    const name = (who && who.name) ? who.name : '';
-    return `<div class="lm-row">
-        <span class="lm-col" title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}</span>
-        <select class="legend-map" data-col="${k}" title="Map ${escapeHtml(COL_LABELS[k])} to a roster directorate">${opts}</select>
-        <span class="lm-name" title="Directorate lead (Associate Director)">${name ? '👤 ' + escapeHtml(name) : ''}</span>
-      </div>`;
-  }).join('');
+  // Column → roster directorate mapping only makes sense on an org chart; a free-form chart's
+  // columns are chart-specific and deliberately unlinked from the roster.
+  let mapSection;
+  if (isFreeChart()) {
+    mapSection = `<div class="legend-map-section">
+      <h4>Free-form chart</h4>
+      <div class="lm-note">This chart's party columns are chart-specific — rename them in the table header, add one with the <b>+</b> in the top-right corner, remove with <b>×</b>. Level names are renamable in each pane's heading, and rows can nest to any depth. Columns here are not linked to the organization roster.</div>
+    </div>`;
+  } else {
+    const mapRows = COLS.map(k => {
+      const cur = columnActorKey(k) || '';
+      const opts = `<option value="">— unmapped —</option>` +
+        ACTORS.map(a => `<option value="${a}"${a === cur ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[a])}</option>`).join('');
+      const who = columnPerson(k);
+      const name = (who && who.name) ? who.name : '';
+      return `<div class="lm-row">
+          <span class="lm-col" title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}</span>
+          <select class="legend-map" data-col="${k}" title="Map ${escapeHtml(COL_LABELS[k])} to a roster directorate">${opts}</select>
+          <span class="lm-name" title="Directorate lead (Associate Director)">${name ? '👤 ' + escapeHtml(name) : ''}</span>
+        </div>`;
+    }).join('');
+    mapSection = `<div class="legend-map-section">
+      <h4>Column → directorate</h4>
+      <div class="lm-note">Map each column to a roster directorate so its lead becomes the named person behind that column's roles (shown on cell hover and in the cell popover).</div>
+      ${mapRows}
+    </div>`;
+  }
   el.innerHTML = `
     <h3>${escapeHtml(F.name)} Legend</h3>
     <div class="legend-blurb">${escapeHtml(F.blurb)}</div>
     ${rows}
     <p>Click any column cell to toggle ${F.roles.join(' / ')}. A cell can hold none, one, or any combination — but only one <b>${F.owner}</b> (${escapeHtml(F.meta[F.owner].label)}) per row.</p>
     <p>Drill a row with <b>▸</b> to break it into the next tier. The Primary <b>${F.doer}</b> (${escapeHtml(F.meta[F.doer].label)}) on a row cascades down as the next level's ${escapeHtml(F.meta[F.owner].label)}.</p>
-    <div class="legend-map-section">
-      <h4>Column → directorate</h4>
-      <div class="lm-note">Map each column to a roster directorate so its lead becomes the named person behind that column's roles (shown on cell hover and in the cell popover).</div>
-      ${mapRows}
-    </div>`;
+    ${mapSection}`;
 }
 function render() {
   renderBrand();
@@ -3993,12 +4291,13 @@ function renderBreadcrumbs(charts) {
   if (!el) return;
   const last = charts.length - 1;
   const html = [];
+  const free = isFreeChart();
   charts.forEach((c, i) => {
     const isCurrent = i === last;
     const tierClass = 't' + Math.min(i, 3);
-    const tierLabel = i === 0 ? 'Portfolios' : TIER_LABELS[i - 1];
-    const name = i === 0 ? 'All Portfolios'
-      : escapeHtml(c.parent.name || ('Untitled ' + TIER_LABELS[i - 1]));
+    const tierLabel = i === 0 ? (free ? chartTierLabel(0) : 'Portfolios') : chartTierLabel(i - 1);
+    const name = i === 0 ? (free ? 'All activities' : 'All Portfolios')
+      : escapeHtml(c.parent.name || ('Untitled ' + chartTierLabel(i - 1)));
     if (i > 0) html.push('<span class="crumb-sep">›</span>');
     html.push(
       `<button class="crumb ${tierClass}${isCurrent ? ' current' : ''}" data-crumb-tier="${i}"${isCurrent ? ' disabled' : ''} title="${isCurrent ? 'Current level' : 'Jump to ' + escapeHtml(name)}">
@@ -4116,18 +4415,36 @@ function renderChartBlock(chart, idx, total) {
   if (sz && sz.w) layerStyle += `width:${sz.w}px; min-width:0; max-width:none;`;
   if (focus && sz && (sz.w || sz.h)) layerStyle += `overflow:auto;`;
   if (focus && sz && sz.h) layerStyle += `height:${sz.h}px;`;
+  const freeC = isFreeChart();
+  const tierLbl = chartTierLabel(tier);
+  // On a free-form chart the focused pane's level name is renamable in place.
+  const tierSpan = (freeC && focus)
+    ? `<span class="tier-edit" contenteditable="true" spellcheck="false" data-tier-edit="${tier}" title="Click to rename this level">${escapeHtml(tierLbl)}</span>`
+    : escapeHtml(tierLbl);
   const heading = tier === 0
-    ? 'Portfolio Activities'
-    : `${escapeHtml(parent.name || ('Untitled ' + TIER_LABELS[tier - 1]))} <span class="ch-sep">›</span> ${TIER_LABELS[tier]} Activities`;
+    ? (freeC ? `${tierSpan} Activities` : 'Portfolio Activities')
+    : `${escapeHtml(parent.name || ('Untitled ' + chartTierLabel(tier - 1)))} <span class="ch-sep">›</span> ${tierSpan} Activities`;
   const inbound = tier > 0 ? '<span class="ch-inbound">⤷</span> ' : '';
   const cols = columnsForTier(tier);
+  // Free-form charts edit their party columns right in the focused pane's header row.
+  const canEditCols = freeC && focus;
+  const colTh = k => {
+    const lbl = chartColLabel(k);
+    // Node view opener (whiteboard spec: "node view per task") — focused pane only.
+    const view = focus
+      ? `<button class="col-view" data-col-view="${k}" title="Node view — every activity where ${escapeHtml(lbl)} holds a role">👁</button>` : '';
+    if (!canEditCols) return `<th class="ch-col" title="${escapeHtml(lbl)}">${view}${escapeHtml(lbl)}</th>`;
+    const del = cols.length > 1
+      ? `<button class="col-del" data-col-del="${k}" title="Remove this party column (discards its letters on every row)">×</button>` : '';
+    return `<th class="ch-col col-editable" title="Click the name to rename this party">${view}${del}<span class="col-edit" contenteditable="true" spellcheck="false" data-col-edit="${k}">${escapeHtml(lbl)}</span></th>`;
+  };
   const header = `<tr>
       <th class="ch-toggle"></th>
-      <th class="ch-name">${TIER_LABELS[tier]} activity</th>
+      <th class="ch-name">${escapeHtml(tierLbl)} activity</th>
       <th class="ch-desc" title="Activity definition / description">Definition</th>
       <th class="ch-docs" title="Attached process documents">Documents</th>
-      ${cols.map(k => `<th class="ch-col" title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_LABELS[k])}</th>`).join('')}
-      <th class="ch-del"></th>
+      ${cols.map(colTh).join('')}
+      <th class="ch-del">${canEditCols ? '<button class="col-add" data-col-add="1" title="Add a party column">+</button>' : ''}</th>
     </tr>`;
   // Cascade rule: the designated R that flows down from the ancestors lands here as the single
   // inherited Accountable column (see resolveCascade). Every row in this breakdown inherits A there.
@@ -4135,10 +4452,10 @@ function renderChartBlock(chart, idx, total) {
   cols.forEach(k => { parentR[k] = (k === inheritedAcol); });
   const rows = nodes.length
     ? nodes.map(n => renderNodeRow(n, tier, openId === n.id, cols, inherited, parentR)).join('')
-    : `<tr class="ch-empty-row"><td colspan="${cols.length + 5}">No ${TIER_LABELS[tier].toLowerCase()} activities yet.</td></tr>`;
+    : `<tr class="ch-empty-row"><td colspan="${cols.length + 5}">No ${tierLbl.toLowerCase()} activities yet.</td></tr>`;
   const addBtn = tier === 0
-    ? `<button class="ch-add" data-add-root="1">+ Add ${TIER_LABELS[tier].toLowerCase()} activity</button>`
-    : `<button class="ch-add" data-add-child="${parent.id}">+ Add ${TIER_LABELS[tier].toLowerCase()} activity</button>`;
+    ? `<button class="ch-add" data-add-root="1">+ Add ${tierLbl.toLowerCase()} activity</button>`
+    : `<button class="ch-add" data-add-child="${parent.id}">+ Add ${tierLbl.toLowerCase()} activity</button>`;
   return `<div class="chart-block ${cls}" data-tier="${tier}" data-depth="${depth}" style="z-index:${idx + 1}; ${layerStyle}">
       <div class="chart-head" data-chart-head="${tier}" title="Drag to move this pane · double-click to snap it back">${inbound}${heading}</div>
       <table class="chart"><thead>${header}</thead><tbody>${rows}</tbody></table>
@@ -4167,7 +4484,7 @@ function cellChipsHtml(node, col, inheritedA) {
   return `<div class="cell-chips">${chips.join('')}</div>`;
 }
 function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
-  const leaf = tier >= MAX_TIER;
+  const leaf = tier >= chartMaxTier();
   const caret = leaf
     ? '<span class="ch-caret leaf">·</span>'
     : `<button class="ch-caret${isOpen ? ' open' : ''}" data-drill="${node.id}" data-tier="${tier}" title="${isOpen ? 'Collapse' : 'Drill into breakdown'}">${isOpen ? '▾' : '▸'}</button>`;
@@ -4175,7 +4492,7 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
   const needsPrimary = rColumns(node).length > 1 && !primaryRColumn(node);
   const cells = cols.map(k => {
     const who = columnPerson(k);
-    const tip = COL_LABELS[k] + (who && who.name ? ` — ${who.name}` : '');
+    const tip = chartColLabel(k) + (who && who.name ? ` — ${who.name}` : '');
     return `<td class="chart-cell${needsPrimary ? ' needs-primary' : ''}" data-id="${node.id}" data-col="${k}" title="${escapeHtml(tip)}">${cellChipsHtml(node, k, parentR && parentR[k])}</td>`;
   }).join('');
   const vio = _violationsByNodeId[node.id];
@@ -4185,7 +4502,7 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
   const vioRowClass = vio && vio.severity === 'err' ? ' violation-err' : '';
   return `<tr class="chart-row${isOpen ? ' open' : ''}${vioRowClass}" data-id="${node.id}">
       <td class="ch-toggle">${caret}</td>
-      <td class="ch-name"><span class="ch-name-edit" contenteditable="true" spellcheck="false" data-node-id="${node.id}" data-field="name" data-placeholder="${TIER_LABELS[tier]} name">${escapeHtml(node.name)}</span>${renderOrgRow(node, tier, inherited)}</td>
+      <td class="ch-name"><button class="row-view" data-row-view="${node.id}" title="Node view — how each party lands on this ${escapeHtml(chartTierLabel(tier).toLowerCase())}">👁</button><span class="ch-name-edit" contenteditable="true" spellcheck="false" data-node-id="${node.id}" data-field="name" data-placeholder="${escapeHtml(chartTierLabel(tier))} name">${escapeHtml(node.name)}</span>${renderOrgRow(node, tier, inherited)}</td>
       ${descCellHtml(node)}
       ${docsCellHtml(node)}
       ${cells}
@@ -4196,6 +4513,7 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
 // Programs assign a Division (editable); Projects assign a Branch (editable);
 // Tasks show the Division + Branch inherited from their Program/Project (read-only tooltip).
 function renderOrgRow(node, tier, inherited) {
+  if (isFreeChart()) return ''; // free-form charts carry no roster assignments
   const badge = (cls, ico, label, full, attrs) =>
     `<span class="org-badge ${cls}" title="${escapeHtml(full)}"${attrs || ''}><span class="ob-ico">${ico}</span>${escapeHtml(label)}</span>`;
   if (tier === 1) { // Program → Division (editable)
@@ -4296,6 +4614,7 @@ document.addEventListener('mouseup', () => {
 let chartDrag = null, dragSuppressClick = false;
 document.addEventListener('mousedown', e => {
   if (e.target.closest('#chart-resize')) return;       // resize grip owns its own drag
+  if (e.target.closest('.tier-edit')) return;          // editing a level name is not a drag
   const head = e.target.closest('.chart-head');
   if (!head) return;
   const block = head.closest('.chart-block');
@@ -4337,6 +4656,7 @@ document.addEventListener('mouseup', () => {
 });
 // double-click a pane header to snap it back into the nested cascade
 document.addEventListener('dblclick', e => {
+  if (e.target.closest('.tier-edit')) return;          // double-click selects text, not snap-back
   const head = e.target.closest('.chart-head');
   if (!head || state.viewMode !== 'chart') return;
   const block = head.closest('.chart-block');
@@ -4415,14 +4735,14 @@ function collectLeafActivities() {
     (function walk(nodes, depth, path) {
       (nodes || []).forEach(n => {
         if (n.children && n.children.length) {
-          walk(n.children, depth + 1, path.concat(n.name || ('Untitled ' + (TIER_LABELS[depth] || 'item'))));
+          walk(n.children, depth + 1, path.concat(n.name || ('Untitled ' + chartTierLabel(depth, chart))));
         } else {
           out.push({
             node: n,
             chartId: chart.id,
             chartTitle: chart.title,
             depth,
-            tierLabel: TIER_LABELS[depth] || ('Level ' + depth),
+            tierLabel: chartTierLabel(depth, chart),
             ancestors: path.slice()
           });
         }
@@ -5449,9 +5769,9 @@ function toggleRaciLetter(id, col, letter) {
   const adding = !cur.includes(letter);
   // Hard rule: only one explicit owner (Accountable) per row. Block a second in another column.
   if (letter === F.owner && adding) {
-    const otherA = COLS.find(k => k !== col && normalizeRaci(node.raci[k] || '').includes(F.owner));
+    const otherA = chartCols().find(k => k !== col && normalizeRaci(node.raci[k] || '').includes(F.owner));
     if (otherA) {
-      showToast(`Only one ${F.meta[F.owner].label} per row — ${COL_LABELS[otherA]} already holds the ${F.owner}. Clear it first.`, 'error');
+      showToast(`Only one ${F.meta[F.owner].label} per row — ${chartColLabel(otherA)} already holds the ${F.owner}. Clear it first.`, 'error');
       return;
     }
   }
@@ -5505,6 +5825,91 @@ function openRaciPopover(id, col, anchorEl) {
     if (btn.dataset.primary) { setPrimaryR(id, col); return; }
     toggleRaciLetter(id, col, btn.dataset.letter);
   });
+}
+
+// ---------- Node view (per-party task list — the whiteboard "node view per task") ----------
+// Every activity in the active chart where `colKey` holds a role, keyed by letter. Cascade-aware:
+// a node whose column inherits the owner letter from an ancestor's primary-doer flow-down is
+// included under that letter with `inherited: true`. Auto-default "I" on blank cells is NOT
+// listed — only explicit roles and the inherited owner, so the list shows real assignments.
+function collectColAssignments(colKey) {
+  const F = chartFw();
+  const out = {};
+  F.roles.forEach(l => { out[l] = []; });
+  (function walk(nodes, depth, path, inhA) {
+    (nodes || []).forEach(n => {
+      const own = normalizeRaci(n.raci[colKey] || '');
+      own.split('').forEach(l => { if (out[l]) out[l].push({ node: n, tier: depth, path, inherited: false }); });
+      if (inhA === colKey && !own.includes(F.owner)) out[F.owner].push({ node: n, tier: depth, path, inherited: true });
+      walk(n.children, depth + 1, path.concat(n.name || '(untitled)'), cascadeDown(n, inhA));
+    });
+  })(ac().activities, 0, [], null);
+  return out;
+}
+function openColViewPopover(colKey, anchorEl) {
+  closePopover();
+  const F = chartFw();
+  const groups = collectColAssignments(colKey);
+  const total = F.roles.reduce((s, l) => s + groups[l].length, 0);
+  const who = columnPerson(colKey); // null on free charts / unmapped columns
+  const sub = who && who.name ? `👤 ${escapeHtml(who.name)}` : `${total} assignment${total === 1 ? '' : 's'}`;
+  const groupHtml = F.roles.map(l => {
+    const items = groups[l];
+    if (!items.length) return '';
+    return `<div class="cv-group">
+        <div class="cv-group-head"><span class="raci-chip ${l}">${l}</span><span>${escapeHtml(F.meta[l].label)}</span><span class="cv-count">${items.length}</span></div>
+        ${items.map(it => {
+          const crumb = (it.path.length ? it.path.join(' › ') + ' › ' : '') + (it.node.name || '(untitled)');
+          const tip = crumb + (it.inherited ? ` — ${F.meta[F.owner].label} inherited from the cascade` : '') + ' · click to jump to this row';
+          return `<button type="button" class="cv-item" data-nodeview-jump="${it.node.id}" title="${escapeHtml(tip)}">
+              <span class="cv-name">${escapeHtml(it.node.name || '(untitled)')}${it.inherited ? ' <span class="cv-inh">(inherited)</span>' : ''}</span>
+              <span class="cv-tier">${escapeHtml(chartTierLabel(it.tier))}</span>
+            </button>`;
+        }).join('')}
+      </div>`;
+  }).join('');
+  const pop = document.createElement('div');
+  pop.className = 'raci-popover colview-popover';
+  pop.innerHTML = `<div class="cv-head">${escapeHtml(chartColLabel(colKey))} <span class="cv-sub">${sub}</span></div>`
+    + (total ? groupHtml : `<div class="cv-empty">No explicit assignments for this party yet.</div>`);
+  document.body.appendChild(pop);
+  placePopover(pop, anchorEl);
+  openPopover = pop;
+}
+// Shared placement for the node-view popovers: below the anchor, clamped to the viewport.
+function placePopover(pop, anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  let top = rect.bottom + 4 + window.scrollY;
+  let left = rect.left + rect.width / 2 - popRect.width / 2 + window.scrollX;
+  left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+  if (top + popRect.height > window.scrollY + window.innerHeight - 8) top = Math.max(8 + window.scrollY, rect.top - popRect.height - 4 + window.scrollY);
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
+}
+// Task node view — one matrix ROW pivoted into its own card (the whiteboard sketch's rows):
+// every party of the chart with this task's chips for it, exactly as the chart cells render them
+// (manual letters, inherited Accountable dashed, auto-Informed default dimmed). Clicking a party
+// row pivots to that party's node view — the two views are inverse cuts of the same matrix.
+function openTaskViewPopover(nodeId, anchorEl) {
+  closePopover();
+  const f = findNode(nodeId); if (!f) return;
+  const inh = inheritedOwnerCol(nodeId);
+  // findNode doesn't return the full ancestor chain — rebuild it from pathToNode's ids.
+  const anc = pathToNode(nodeId) || [];
+  const crumb = anc.map(id => { const a = findNode(id); return a ? (a.node.name || '(untitled)') : '?'; }).join(' › ');
+  const rows = chartCols().map(k => `
+    <button type="button" class="cv-item" data-taskview-col="${k}" title="${escapeHtml(chartColLabel(k))} — click to pivot to this party's node view">
+      <span class="cv-name">${escapeHtml(chartColLabel(k))}</span>
+      <span class="cv-chips">${cellChipsHtml(f.node, k, k === inh)}</span>
+    </button>`).join('');
+  const pop = document.createElement('div');
+  pop.className = 'raci-popover colview-popover';
+  pop.innerHTML = `<div class="cv-head">${escapeHtml(f.node.name || '(untitled)')}
+      <span class="cv-sub">${escapeHtml(chartTierLabel(f.depth))}${crumb ? ' · ' + escapeHtml(crumb) : ''}</span>
+    </div>${rows}`;
+  document.body.appendChild(pop);
+  placePopover(pop, anchorEl);
+  openPopover = pop;
 }
 
 // ---------- roster-assignment (org) popover ----------
@@ -5672,6 +6077,26 @@ document.addEventListener('click', e => {
   if (delNode) { deleteNode(delNode.dataset.delNode); return; }
   const drill = e.target.closest('[data-drill]');
   if (drill) { drillToggle(drill.dataset.drill, parseInt(drill.dataset.tier, 10) || 0); return; }
+  // Free-form chart party columns: add / remove from the focused pane's header row.
+  const colDel = e.target.closest('[data-col-del]');
+  if (colDel) { deleteChartCol(colDel.dataset.colDel); return; }
+  if (e.target.closest('[data-col-add]')) { addChartCol(); return; }
+  // Node views: 👁 on a column header = that party's task list; 👁 on a task row = that row
+  // pivoted into a per-party card. Entries cross-navigate between the two cuts.
+  const colView = e.target.closest('[data-col-view]');
+  if (colView) { openColViewPopover(colView.dataset.colView, colView); return; }
+  const rowView = e.target.closest('[data-row-view]');
+  if (rowView) { openTaskViewPopover(rowView.dataset.rowView, rowView); return; }
+  const nvJump = e.target.closest('[data-nodeview-jump]');
+  if (nvJump) { const id = nvJump.dataset.nodeviewJump; closePopover(); jumpToViolation(id); return; }
+  const tvCol = e.target.closest('[data-taskview-col]');
+  if (tvCol) {
+    const k = tvCol.dataset.taskviewCol;
+    // Re-anchor on the live column header if visible (the task popover is about to close).
+    const th = document.querySelector(`.chart-block.focus .col-view[data-col-view="${k}"]`) || tvCol;
+    openColViewPopover(k, th);
+    return;
+  }
   const orgEdit = e.target.closest('[data-org-edit]');
   if (orgEdit) { openOrgPopover(orgEdit.dataset.orgEdit, orgEdit.dataset.orgKind, orgEdit); return; }
   const cell = e.target.closest('.chart-cell');
@@ -5777,6 +6202,10 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const ncOv = document.getElementById('newchart-overlay');
+    if (ncOv && ncOv.classList.contains('open')) { closeNewChartDialog(); return; }
+  }
   if (e.key === 'Escape' && exportMenuOpen()) {
     closeExportMenu();
     document.getElementById('btn-export-menu').focus();
@@ -5802,6 +6231,8 @@ document.addEventListener('blur', e => {
   if (!el.matches || !el.matches('[contenteditable="true"]')) return;
   if (el.dataset.tabId && el.classList.contains('tab-label')) { renameChart(el.dataset.tabId, el.textContent.trim()); return; }
   if (el.dataset.nodeId && el.dataset.field === 'name') { renameNode(el.dataset.nodeId, el.textContent.trim()); return; }
+  if (el.dataset.colEdit) { renameChartCol(el.dataset.colEdit, el.textContent.trim()); return; }
+  if (el.classList.contains('tier-edit')) { renameTier(parseInt(el.dataset.tierEdit, 10) || 0, el.textContent.trim()); return; }
   if (el.dataset.bzName) {
     const t = bizTaskById(el.dataset.bzName);
     if (t) { const nm = el.textContent.trim(); if (t.name !== nm) { t.name = nm; saveState(); renderBizcase(); } }
@@ -5833,9 +6264,10 @@ async function exportJSON() {
 // Effective RACI for a node = own roles + an inherited A in the single column cascaded from above
 // (inheritedAcol; see resolveCascade). Inherited A only shows where the row has no explicit A.
 function effectiveRaci(node, inheritedAcol) {
-  const hasOwnA = COLS.some(k => normalizeRaci(node.raci[k] || '').includes('A'));
+  const cols = chartCols();
+  const hasOwnA = cols.some(k => normalizeRaci(node.raci[k] || '').includes('A'));
   const o = {};
-  COLS.forEach(k => {
+  cols.forEach(k => {
     let v = normalizeRaci(node.raci[k] || '');
     if (!hasOwnA && k === inheritedAcol && !v.includes('A')) v = normalizeRaci(v + 'A');
     // Auto-default: any blank cell is treated as Informed.
@@ -5851,24 +6283,27 @@ function fileBase() { return (ac().title || 'raci').replace(/\s+/g, '_'); }
 // ---------- XML export (full RACI tree + roster) ----------
 function exportXML() {
   const esc = s => escapeHtml(s == null ? '' : String(s));
+  const free = isFreeChart();
+  const CC = chartCols();
   const tagName = ['portfolio', 'program', 'project', 'task'];
   const node = (n, depth, inheritedAcol, pad) => {
     const eff = effectiveRaci(n, inheritedAcol);
-    const raci = COLS.filter(k => eff[k]).map(k => ` ${k}="${eff[k]}"`).join('');
+    const raci = CC.filter(k => eff[k]).map(k => ` ${k}="${eff[k]}"`).join('');
     let org = '';
     if (n.org) { const l = orgLabel(n.org); if (l) org = ` org="${esc(l.full)}"`; }
-    const tag = tagName[depth] || ('level' + depth);
+    // Free-form tiers are user-named (unsafe as XML tags) — use depth-generic tags there.
+    const tag = free ? ('level' + (depth + 1)) : (tagName[depth] || ('level' + depth));
     const open = `${pad}<${tag} name="${esc(n.name)}"${org}${raci}`;
     const kids = n.children || [];
     const down = cascadeDown(n, inheritedAcol);
     if (!kids.length) return open + '/>\n';
     return open + '>\n' + kids.map(c => node(c, depth + 1, down, pad + '  ')).join('') + `${pad}</${tag}>\n`;
   };
-  const cols = COLS.map(k => `    <column key="${k}" label="${esc(COL_LABELS[k])}"/>`).join('\n');
+  const cols = CC.map(k => `    <column key="${k}" label="${esc(chartColLabel(k))}"/>`).join('\n');
   const acts = (ac().activities || []).map(pf => node(pf, 0, null, '    ')).join('');
   const lead = l => (l && l.name) ? ` lead="${esc(l.name)}"` : '';
   const chief = l => (l && l.name) ? ` chief="${esc(l.name)}"` : '';
-  const roster = ACTORS.map(a => {
+  const roster = free ? '' : ACTORS.map(a => {
     const d = state.directorates[a] || { divisions: [] };
     const divs = (d.divisions || []).map(div => {
       const brs = (div.branches || []).map(br => {
@@ -5882,6 +6317,10 @@ function exportXML() {
     }).join('\n');
     return `    <directorate key="${a}" label="${esc(ACTOR_LABELS[a])}"${lead(d.lead)}>${divs ? '\n' + divs + '\n    ' : ''}</directorate>`;
   }).join('\n');
+  const rosterSection = free ? '' : `  <roster>
+${roster}
+  </roster>
+`;
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <raciTool title="${esc(ac().title || 'RACI')}">
   <columns>
@@ -5889,10 +6328,7 @@ ${cols}
   </columns>
   <activities>
 ${acts}  </activities>
-  <roster>
-${roster}
-  </roster>
-</raciTool>
+${rosterSection}</raciTool>
 `;
   download(`${fileBase()}.xml`, xml, 'application/xml');
 }
@@ -5905,8 +6341,8 @@ function exportMermaid() {
   let id = 0;
   const summary = (n, inheritedAcol) => {
     const eff = effectiveRaci(n, inheritedAcol);
-    const A = COLS.filter(k => eff[k].includes('A')).map(k => COL_SHORT[k]);
-    const R = COLS.filter(k => eff[k].includes('R')).map(k => COL_SHORT[k]);
+    const A = chartCols().filter(k => eff[k].includes('A')).map(k => chartColShort(k));
+    const R = chartCols().filter(k => eff[k].includes('R')).map(k => chartColShort(k));
     return (A.length ? `<br/>A: ${A.join(', ')}` : '') + (R.length ? `<br/>R: ${R.join(', ')}` : '');
   };
   const walk = (n, depth, parentMid, inheritedAcol) => {
@@ -5927,6 +6363,7 @@ function exportMermaid() {
 // ---------- Excel (.xlsx) export — one sheet per tier ----------
 // Flatten the tree into one table per level, carrying ancestor context + (inherited) roster org.
 function buildLevelSheets() {
+  if (isFreeChart()) return buildLevelSheetsFree();
   const colHdrs = COLS.map(k => COL_LABELS[k]);
   // Effective RACI = own roles + inherited A in the single column cascaded down from the ancestors.
   const raciCells = (node, inheritedAcol) => { const eff = effectiveRaci(node, inheritedAcol); return COLS.map(k => eff[k]); };
@@ -5960,6 +6397,39 @@ function buildLevelSheets() {
     { name: 'Project',   ...L.Project },
     { name: 'Task',      ...L.Task }
   ];
+}
+// Free-form variant: one sheet per depth actually present in the tree (any number of levels),
+// headers = the ancestor level names + this level's name + the chart's party columns. No org refs.
+function buildLevelSheetsFree() {
+  const c = ac();
+  const cols = chartCols(c);
+  const colHdrs = cols.map(k => chartColLabel(k, c));
+  const levels = [];
+  const ensure = d => {
+    if (!levels[d]) {
+      const lead = [];
+      for (let i = 0; i <= d; i++) lead.push(chartTierLabel(i, c));
+      levels[d] = { name: chartTierLabel(d, c), headers: lead.concat(colHdrs), rows: [] };
+    }
+    return levels[d];
+  };
+  const walk = (nodes, depth, path, inhA) => {
+    (nodes || []).forEach(n => {
+      const eff = effectiveRaci(n, inhA);
+      ensure(depth).rows.push([...path, n.name || '', ...cols.map(k => eff[k])]);
+      walk(n.children, depth + 1, path.concat(n.name || ''), cascadeDown(n, inhA));
+    });
+  };
+  walk(c.activities, 0, [], null);
+  // Excel sheet names: strip forbidden chars, cap at 31 chars, dedupe user-named collisions.
+  const seen = new Set();
+  return levels.filter(Boolean).map((s, i) => {
+    let base = s.name.replace(/[\\\/\?\*\[\]:]/g, ' ').trim().slice(0, 28) || ('Level ' + (i + 1));
+    let nm = base, j = 2;
+    while (seen.has(nm)) nm = base + ' ' + (j++);
+    seen.add(nm);
+    return { name: nm, headers: s.headers, rows: s.rows };
+  });
 }
 const _CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
 function crc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = _CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -6052,9 +6522,10 @@ function pptxBytes() {
   // Native PowerPoint table.
   const tableFrame = (id, headers, rows) => {
     const TW = 11582400, x = 304800, y = 1295400;
-    const nLead = headers.length - COLS.length;
+    const nRaci = chartCols().length;
+    const nLead = headers.length - nRaci;
     const raciW = 640000;
-    const leadW = Math.max(900000, Math.floor((TW - raciW * COLS.length) / Math.max(1, nLead)));
+    const leadW = Math.max(900000, Math.floor((TW - raciW * nRaci) / Math.max(1, nLead)));
     const widths = headers.map((_, i) => i < nLead ? leadW : raciW);
     const grid = `<a:tblGrid>${widths.map(w => `<a:gridCol w="${w}"/>`).join('')}</a:tblGrid>`;
     const cell = (txt, i, headerRow) => {
@@ -6158,11 +6629,12 @@ function recomputeViolations() {
   const F = chartFw();
   const OWNER = F.owner, DOER = F.doer;
   const ownerName = F.meta[OWNER].label, doerName = F.meta[DOER].label;
-  const tierName = i => TIER_LABELS[i] || ('Level ' + i);
-  const colLabel = k => COL_LABELS[k] || k;
-  const colsWith = (n, letter) => COLS.filter(k => normalizeRaci(n.raci && n.raci[k] || '').includes(letter));
+  const CC = chartCols();
+  const tierName = i => chartTierLabel(i);
+  const colLabel = k => chartColLabel(k);
+  const colsWith = (n, letter) => CC.filter(k => normalizeRaci(n.raci && n.raci[k] || '').includes(letter));
   // More than half the columns marked Consulted reads as a sign-off bottleneck.
-  const OVER_CONSULT = Math.floor(COLS.length / 2) + 1;
+  const OVER_CONSULT = Math.floor(CC.length / 2) + 1;
   const walk = (nodes, depth, ancestors, inheritedOwnerCol) => {
     (nodes || []).forEach(n => {
       const ownerCols = colsWith(n, OWNER);
@@ -6187,7 +6659,7 @@ function recomputeViolations() {
         message: `No ${doerName} (${DOER}) — no one is assigned to do this ${tierName(depth).toLowerCase()}.` });
       // 6. Over-consulting — the most common RACI anti-pattern.
       if (consultCols.length >= OVER_CONSULT) issues.push({ severity: 'warn', rule: 'overConsulted',
-        message: `Over-consulted: ${consultCols.length} of ${COLS.length} parties marked Consulted (C). Each C is a sign-off bottleneck — keep consults lean.` });
+        message: `Over-consulted: ${consultCols.length} of ${CC.length} parties marked Consulted (C). Each C is a sign-off bottleneck — keep consults lean.` });
       if (issues.length) {
         const severity = issues.some(i => i.severity === 'err') ? 'err' : 'warn';
         const entry = {
@@ -6226,7 +6698,7 @@ function jumpToViolation(nodeId) {
   const anc = pathToNode(nodeId);
   if (!anc) return;
   // Drill so the row is visible in the focused (deepest) chart.
-  ac().drillPath = anc.slice(0, MAX_TIER);
+  ac().drillPath = anc.slice(0, chartMaxTier());
   saveState();
   renderChart();
   requestAnimationFrame(() => {
@@ -6328,7 +6800,7 @@ function renderDetails() {
   const f = findNode(_activeNodeId);
   if (!f) { _activeNodeId = null; renderDetails(); return; }
   const n = f.node;
-  const tier = TIER_LABELS[f.depth] || ('Level ' + f.depth);
+  const tier = chartTierLabel(f.depth);
   const docs = (n.documents || []);
   const docList = docs.length
     ? `<ul class="det-doc-list">${docs.map(d => `
@@ -6669,13 +7141,21 @@ function importJSON(file, merge) {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      const incoming = migrateState(JSON.parse(ev.target.result));
+      const raw = JSON.parse(ev.target.result);
+      // migrateState backfills a missing/empty section with seeded defaults (a blank chart, the
+      // demo business case). Fine for a full load — but a merge must only append what the FILE
+      // actually carried, so record that before migration (which mutates `raw` in place).
+      const hadCharts = (raw && Array.isArray(raw.charts) && raw.charts.length > 0) || (raw && Array.isArray(raw.activities));
+      const hadBiz = raw && Array.isArray(raw.bizCases) && raw.bizCases.length > 0;
+      const incoming = migrateState(raw);
       if (merge) {
-        incoming.charts.forEach(c => { c.id = 'c_' + uid(); state.charts.push(c); });
-        (incoming.bizCases || []).forEach(b => { b.id = 'b_' + uid(); state.bizCases.push(b); });
+        const mCharts = hadCharts ? incoming.charts : [];
+        const mBiz = hadBiz ? (incoming.bizCases || []) : [];
+        mCharts.forEach(c => { c.id = 'c_' + uid(); state.charts.push(c); });
+        mBiz.forEach(b => { b.id = 'b_' + uid(); state.bizCases.push(b); });
         eachDocInState(incoming, doc => { if (doc && doc.dataUrl) idbPutDoc(doc.id, doc.dataUrl); });
-        if (incoming.charts.length) state.activeChartId = incoming.charts[0].id;
-        showToast(`Merged ${incoming.charts.length} chart(s) and ${(incoming.bizCases || []).length} business case(s) into your workspace.`, 'suggest');
+        if (mCharts.length) state.activeChartId = mCharts[0].id;
+        showToast(`Merged ${mCharts.length} chart(s) and ${mBiz.length} business case(s) into your workspace.`, 'suggest');
       } else {
         state = incoming;
       }
@@ -6705,7 +7185,7 @@ window.addEventListener('beforeprint', () => {
     sub = `${bizFw().name} · ${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'} · tabletop exercise`;
   } else {
     title = ac().title || 'RACI chart';
-    sub = `${chartFw().name} responsibility matrix · ${COLS.map(k => COL_SHORT[k]).join(' · ')}`;
+    sub = `${chartFw().name} responsibility matrix · ${chartCols().map(k => chartColShort(k)).join(' · ')}`;
   }
   ph.innerHTML = `<div class="ph-title">${escapeHtml(title)}</div><div class="ph-sub">${escapeHtml(sub)}</div>`;
 });

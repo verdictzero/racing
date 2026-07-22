@@ -1,0 +1,44 @@
+{
+  "charts": [
+    {
+      "id": "c_whiteboard1",
+      "title": "Whiteboard RACI (transcribed)",
+      "framework": "raci",
+      "custom": {
+        "cols": [
+          { "key": "p_hq",   "label": "HQ",              "short": "HQ" },
+          { "key": "p_cos",  "label": "Chief of Staff",  "short": "CoS" },
+          { "key": "p_mm",   "label": "Mission Manager", "short": "MM" },
+          { "key": "p_misc", "label": "Infra / Cyber / etc.", "short": "I/C" }
+        ],
+        "tiers": ["Task"]
+      },
+      "activities": [
+        {
+          "id": "wb_t1",
+          "name": "Task 1",
+          "raci": { "p_hq": "C", "p_cos": "I", "p_mm": "R", "p_misc": "A" },
+          "description": "Transcribed from the whiteboard sketch (2026-07-21)."
+        },
+        {
+          "id": "wb_t2",
+          "name": "Task 2",
+          "raci": { "p_hq": "A", "p_cos": "R", "p_mm": "A", "p_misc": "C" },
+          "description": "Transcribed from the whiteboard sketch (2026-07-21). CAVEAT: this row read as TWO Accountables (HQ and Mission Manager) — one is likely an A/R misread in the original ink. The rule-violation pin on this row marks it for re-checking against the sketch."
+        },
+        {
+          "id": "wb_t3",
+          "name": "Task 3",
+          "raci": { "p_hq": "C", "p_cos": "I", "p_mm": "R", "p_misc": "R" },
+          "description": "Transcribed from the whiteboard sketch (2026-07-21). CAVEAT: the C/I and A/R distinctions on this row were hard to read — letters are best-guess. Two Responsibles with no designated primary will show a cascade warning until one is starred (or one turns out to be a misread)."
+        },
+        {
+          "id": "wb_t4",
+          "name": "Task 4",
+          "raci": { "p_hq": "R", "p_cos": "A", "p_mm": "A", "p_misc": "R" },
+          "description": "Transcribed from the whiteboard sketch (2026-07-21). CAVEAT: best-guess reading — this row carries TWO Accountables (Chief of Staff and Mission Manager) and two Responsibles, so at least one letter is probably misread. The violation pin marks it for re-checking."
+        }
+      ]
+    }
+  ]
+}
