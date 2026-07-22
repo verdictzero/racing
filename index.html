@@ -960,7 +960,7 @@ td.row-del button:hover { background: var(--err); color: #fff; }
 #legend .legend-row .desc { color: var(--text-dim); font-size: 11px; }
 #legend p { color: var(--text-dim); font-size: 11px; line-height: 1.5; margin: 14px 0 0; }
 
-/* ===== Business Case "Responsible Party" right rail — scrub directorate → division → branch ===== */
+/* ===== Business Case "Responsible Party" right rail — scrub directorate → division → branch → team ===== */
 #bz-party-panel {
   width: 320px; flex-shrink: 0; background: var(--bg-2); border-left: 1px solid var(--border);
   padding: 14px 14px 18px; overflow-y: auto; font-size: 12px; display: none;
@@ -976,6 +976,8 @@ body.show-bz-party[data-view="bizcase"] #bz-party-panel { display: block; }
 #bz-party-close:hover { background: var(--err); color: #fff; border-color: var(--err); }
 .bzp-context { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
 .bzp-context .raci-chip { width: 24px; height: 24px; font-size: 13px; flex: 0 0 auto; }
+.bzp-context .cell-chips { display: inline-flex; gap: 3px; flex: 0 0 auto; }
+.bzp-context .cell-chips.empty { color: var(--text-dim); }
 .bzp-ctx-text { min-width: 0; }
 .bzp-ctx-role { font-weight: 700; }
 .bzp-ctx-task { color: var(--text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1817,6 +1819,14 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 }
 .bz-node-name:focus { background: var(--bg); box-shadow: 0 0 0 1px var(--accent); cursor: text; }
 .bz-node-name:empty::before { content: attr(data-placeholder); color: var(--text-dim); }
+/* Task description — the step's purpose / entry criteria / deliverables, editable in place.
+   Deliberately quiet: dim single block under the head; placeholder invites the first edit. */
+.bz-node-desc {
+  padding: 3px 9px 4px; font-size: 10.5px; line-height: 1.45; color: var(--text-dim);
+  cursor: text; white-space: pre-wrap; word-break: break-word;
+}
+.bz-node-desc:empty::before { content: attr(data-placeholder); opacity: 0.55; font-style: italic; }
+.bz-node-desc:focus { outline: none; background: var(--bg); box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
 .bz-node-del {
   flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; padding: 0;
   background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; border-radius: 3px;
@@ -1833,9 +1843,11 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-cell .cell-chips.empty { color: var(--text-dim); font-size: 11px; }
 .bz-cell .raci-chip { width: 16px; height: 16px; font-size: 9px; border-radius: 3px; }
 
-/* Per-letter responsible-party rows below the RACI grid. Present only when RACI is assigned, so the
+/* Per-column responsible-party rows below the RACI grid. Present only when RACI is assigned, so the
    card grows downward on first assignment (node height is auto). */
 .bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 4px; }
+.bz-party-row .bz-party-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; flex: 0 0 auto; min-width: 26px; margin-top: 3px; }
+.bz-party-row .cell-chips { display: inline-flex; gap: 2px; flex: 0 0 auto; margin-top: 1px; }
 .bz-party-row {
   display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left;
   padding: 4px 5px; border: none; border-radius: 5px; background: transparent; color: var(--text);
@@ -1853,7 +1865,8 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-party-lbl { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.45; }
 .bz-party-lvl.k-dir > .bz-party-lbl { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-dim); }
 .bz-party-lvl.k-div > .bz-party-lbl,
-.bz-party-lvl.k-branch > .bz-party-lbl { font-size: 10px; color: var(--text); }
+.bz-party-lvl.k-branch > .bz-party-lbl,
+.bz-party-lvl.k-team > .bz-party-lbl { font-size: 10px; color: var(--text); }
 .bz-party-lvl.is-leaf { border-color: rgba(81,207,102,0.55); background: rgba(81,207,102,0.10); }
 .bz-party-lvl.is-leaf > .bz-party-lbl { color: var(--accent); font-weight: 600; }
 
@@ -2461,6 +2474,14 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.17 alpha - Integration groundwork (docs/integration-roadmap.md, Phase 0): removed the dead
+//                  Kanban/Workflow/Lens/Tree/Heatmap code; whoFooterHtml takes its chart context
+//                  explicitly (bizcase popovers no longer lose the who-footer when the active chart
+//                  tab happens to be free-form); roster refs deepen to teams (normalizeOrgRef
+//                  teamId + Team select in the Responsible Party sidebar); bizcase task.parties
+//                  re-keyed from per-RACI-letter to per-COLUMN (lossless migration — a letter's
+//                  party lands on every column holding that letter; card rows and the sidebar now
+//                  target a column); bizcase task descriptions editable in place on the card.
 //     0.16 alpha - Node views (from the whiteboard spec "node view per task"): 👁 on a task ROW
 //                  pivots that row into its own card — every party with the row's chips exactly as
 //                  the cells render them (inherited A dashed, default-I dimmed); 👁 on a column
@@ -2499,7 +2520,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.16';
+const APP_VERSION = '0.17';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -2706,9 +2727,12 @@ function nodeWhoHtml(node) {
   }).join('') + `</div>`;
 }
 // Footer line for a cell popover: names the person behind this column (or how to set one).
-// Free-form charts have no roster behind their columns — no footer at all.
-function whoFooterHtml(col) {
-  if (isFreeChart()) return '';
+// `free` is the CALLER's chart context: free-form charts have no roster behind their columns —
+// no footer at all. Callers pass it explicitly because reading isFreeChart()/ac() here is wrong
+// when the caller is the bizcase popover — bizcase columns are always the global roster-mapped
+// COLS, and the active chart tab's type is unrelated state there.
+function whoFooterHtml(col, free) {
+  if (free) return '';
   const who = columnPerson(col);
   if (!who) return `<div class="pop-who unmapped">${escapeHtml(COL_LABELS[col])} — not mapped <span class="pw-hint">(map columns in the Legend)</span></div>`;
   if (!who.name) return `<div class="pop-who nolead">${escapeHtml(who.actorLabel)} — no lead set <span class="pw-hint">(add in Roster)</span></div>`;
@@ -2933,7 +2957,9 @@ function makeBizCase(name) {
 function makeBizTask(name) {
   const raci = {};
   COLS.forEach(k => { raci[k] = ''; });
-  // parties: per-RACI-LETTER responsible executing party — { [roleLetter]: {actor,divisionId?,branchId?} }.
+  // parties: per-COLUMN responsible executing party — { [colKey]: {actor,divisionId?,branchId?,teamId?} }.
+  // Re-keyed from per-RACI-letter in v0.17 so a task where two columns share a letter can name a
+  // distinct executing unit for each, matching how the chart matrix is keyed.
   // Keyed by the role letter (R/A/C/I…), NOT by column: whichever column(s) hold that letter, one org
   // path names who executes it. Set from the Business Case "Responsible Party" sidebar.
   return { id: 't_' + uid(), name: name || '', raci, parties: {}, description: '', status: DEFAULT_STATUS, x: 0, y: 0 };
@@ -3012,8 +3038,10 @@ function abc() {
 // render fns/CSS removed in v0.17. A stale saved viewMode coerces to 'chart'.
 const ALL_VIEW_MODES = ['chart','roster','bizcase'];
 
-// Validate/clean a roster ref {actor, divisionId?, branchId?}. Returns a fresh cleaned ref or null.
-// actor is required; divisionId is optional; branchId is only kept when a divisionId is present.
+// Validate/clean a roster ref {actor, divisionId?, branchId?, teamId?}. Returns a fresh cleaned
+// ref or null. actor is required; each deeper id is only kept when its parent id is present
+// (divisionId → branchId → teamId), so a ref is always a contiguous path from the directorate down.
+// teamId (added v0.17) lets assignments resolve to a roster team — "my tasks" = "my team's tasks".
 // (IDs are not checked against the live roster here — dangling refs degrade gracefully at display time
 // via orgLabel/partyLabel, exactly like node.org.)
 function normalizeOrgRef(ref) {
@@ -3021,7 +3049,10 @@ function normalizeOrgRef(ref) {
   const out = { actor: ref.actor };
   if (typeof ref.divisionId === 'string' && ref.divisionId) {
     out.divisionId = ref.divisionId;
-    if (typeof ref.branchId === 'string' && ref.branchId) out.branchId = ref.branchId;
+    if (typeof ref.branchId === 'string' && ref.branchId) {
+      out.branchId = ref.branchId;
+      if (typeof ref.teamId === 'string' && ref.teamId) out.teamId = ref.teamId;
+    }
   }
   return out;
 }
@@ -3211,14 +3242,25 @@ function migrateState(s) {
       const raci = (t.raci && typeof t.raci === 'object') ? t.raci : {};
       COLS.forEach(k => { raci[k] = normalizeRaci(raci[k] || ''); });
       Object.keys(raci).forEach(k => { if (!COLS.includes(k)) delete raci[k]; });
-      // Responsible parties keyed by RACI role letter → validated roster ref. Drop unknown letters and
-      // invalid refs (dangling ids survive here and degrade gracefully at display time, like node.org).
+      // Responsible parties keyed by COLUMN → validated roster ref (re-keyed in v0.17; the letter
+      // keys of the pre-0.17 shape are migrated below). Drop unknown keys and invalid refs
+      // (dangling ids survive here and degrade gracefully at display time, like node.org).
       const parties = {};
       const rawParties = (t.parties && typeof t.parties === 'object') ? t.parties : {};
-      Object.keys(rawParties).forEach(l => {
+      Object.keys(rawParties).forEach(k => {                    // pass 1: current per-column keys
+        if (!COLS.includes(k)) return;
+        const ref = normalizeOrgRef(rawParties[k]);
+        if (ref) parties[k] = ref;
+      });
+      Object.keys(rawParties).forEach(l => {                    // pass 2: legacy per-LETTER keys
         if (!ALL_ROLE_LETTERS.includes(l)) return;
         const ref = normalizeOrgRef(rawParties[l]);
-        if (ref) parties[l] = ref;
+        if (!ref) return;
+        // Copy the letter's ref onto every column whose cell holds that letter — lossless in
+        // effect, since the old model could never distinguish two columns sharing a letter.
+        COLS.forEach(c => {
+          if (!parties[c] && normalizeRaci(raci[c] || '').includes(l)) parties[c] = ref;
+        });
       });
       return {
         id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
@@ -3354,7 +3396,7 @@ function applySnapshot(json) {
     // party, or close it if undo/redo removed the targeted task).
     if (bizPartyTarget) {
       const tt = bizTaskById(bizPartyTarget.taskId);
-      if (tt) { bizPartyDraft = (tt.parties && tt.parties[bizPartyTarget.letter]) ? { ...tt.parties[bizPartyTarget.letter] } : null; renderBizPartyPanel(); }
+      if (tt) { bizPartyDraft = (tt.parties && tt.parties[bizPartyTarget.col]) ? { ...tt.parties[bizPartyTarget.col] } : null; renderBizPartyPanel(); }
       else closeBizPartyPanel();
     }
   } finally { _restoringHistory = false; }
@@ -3426,9 +3468,19 @@ function resolveCascade() {
   if (valid.length !== ac().drillPath.length) ac().drillPath = valid;
   return charts;
 }
-// Resolve a stored roster ref {actor,divisionId[,branchId]} into display strings.
+// Resolve a stored roster ref {actor,divisionId[,branchId[,teamId]]} into display strings.
 function orgLabel(org) {
   if (!org) return null;
+  if (org.teamId) {
+    const tm = findTeam(org.actor, org.divisionId, org.branchId, org.teamId);
+    if (!tm) return null;
+    const d = findDivision(org.actor, org.divisionId);
+    const b = findBranch(org.actor, org.divisionId, org.branchId);
+    const lead = tm.chief && tm.chief.name ? ` · Lead: ${tm.chief.name}` : '';
+    const tmName = tm.name || 'Unnamed team';
+    return { short: tmName,
+             full: `${ACTOR_LABELS[org.actor]} › ${(d && d.name) || '—'} › ${(b && b.name) || '—'} › ${tmName}${lead}` };
+  }
   if (org.branchId) {
     const b = findBranch(org.actor, org.divisionId, org.branchId);
     if (!b) return null;
@@ -3453,8 +3505,8 @@ function partyLabel(ref) {
   if (ref.divisionId) return orgLabel(ref);   // division / branch depth (null if the unit was deleted)
   return { short: ACTOR_LABELS[ref.actor] || ref.actor, full: ACTOR_LABELS[ref.actor] || ref.actor };
 }
-// Break a valid party ref into its hierarchy levels (directorate → division → branch), only as deep as
-// the ref goes. Returns null for an invalid/dangling ref (caller then renders the "unset" state).
+// Break a valid party ref into its hierarchy levels (directorate → division → branch → team), only as
+// deep as the ref goes. Returns null for an invalid/dangling ref (caller then renders the "unset" state).
 function partyHierarchy(ref) {
   if (!partyLabel(ref)) return null;          // reuse the same validity/dangling check as the label
   const out = [{ kind: 'dir', name: ACTOR_LABELS[ref.actor] || ref.actor }];
@@ -3464,6 +3516,10 @@ function partyHierarchy(ref) {
     if (ref.branchId) {
       const b = findBranch(ref.actor, ref.divisionId, ref.branchId);
       out.push({ kind: 'branch', name: (b && b.name) || 'Untitled branch' });
+      if (ref.teamId) {
+        const tm = findTeam(ref.actor, ref.divisionId, ref.branchId, ref.teamId);
+        out.push({ kind: 'team', name: (tm && tm.name) || 'Unnamed team' });
+      }
     }
   }
   return out;
@@ -4210,11 +4266,6 @@ function bizSelectorHtml() {
 
 // Distinct RACI role letters assigned anywhere on a task (de-duplicated across the 7 columns), returned
 // in the active framework's canonical role order. Each such letter gets one responsible-party slot.
-function bizAssignedLetters(t) {
-  const set = new Set();
-  COLS.forEach(k => normalizeRaci(t.raci[k] || '').split('').forEach(l => set.add(l)));
-  return bizFw().roles.filter(l => set.has(l));
-}
 function bizNodeHtml(t) {
   const cells = COLS.map(k => {
     const norm = normalizeRaci(t.raci[k] || '');
@@ -4227,21 +4278,22 @@ function bizNodeHtml(t) {
   const outCount = abc().edges.reduce((n, e) => n + (e.from === t.id ? 1 : 0), 0);
   const isDecision = outCount >= 2;
   const badge = isDecision ? `<span class="bz-decision-badge" title="Decision point — ${outCount} outgoing paths">⑂ ${outCount}</span>` : '';
-  // Responsible-party rows: one per assigned RACI letter. Appears only once a box is checked, so the
-  // card grows downward on first assignment. Clicking a row opens the Responsible Party sidebar.
-  const letters = bizAssignedLetters(t);
-  const F = bizFw();
-  const parties = letters.length ? `<div class="bz-node-parties">${letters.map(L => {
-    const ref = (t.parties || {})[L];
+  // Responsible-party rows: one per column that holds any RACI letters. Appears only once a box is
+  // checked, so the card grows downward on first assignment. Clicking a row opens the Responsible
+  // Party sidebar targeting that (task, column).
+  const partyCols = COLS.filter(k => normalizeRaci(t.raci[k] || ''));
+  const parties = partyCols.length ? `<div class="bz-node-parties">${partyCols.map(k => {
+    const letters = normalizeRaci(t.raci[k] || '');
+    const ref = (t.parties || {})[k];
     const hier = ref ? partyHierarchy(ref) : null;
     const lbl = ref ? partyLabel(ref) : null;
-    const active = bizPartyTarget && bizPartyTarget.taskId === t.id && bizPartyTarget.letter === L;
-    const roleLabel = F.meta[L] ? F.meta[L].label : L;
-    const tip = hier ? `${roleLabel} — ${lbl.full}` : `${roleLabel} — set responsible party`;
+    const active = bizPartyTarget && bizPartyTarget.taskId === t.id && bizPartyTarget.col === k;
+    const tip = hier ? `${COL_LABELS[k]} (${letters}) — ${lbl.full}` : `${COL_LABELS[k]} (${letters}) — set responsible party`;
     return `<button class="bz-party-row${active ? ' active' : ''}${hier ? '' : ' is-unset'}" type="button"
-        data-bz-party="${t.id}" data-letter="${L}"
+        data-bz-party="${t.id}" data-col="${k}"
         title="${escapeHtml(tip)} (click to change)">
-        <span class="raci-chip ${L}">${L}</span>
+        <span class="bz-party-col">${escapeHtml(COL_SHORT[k])}</span>
+        ${renderChipsHtml(letters)}
         ${hier
           ? `<span class="bz-party-tree">${partyTreeHtml(hier)}</span>`
           : `<span class="bz-party-label">+ set responsible party</span>`}
@@ -4255,6 +4307,8 @@ function bizNodeHtml(t) {
       ${badge}
       <button class="bz-node-del" data-bz-del-task="${t.id}" title="Delete task">×</button>
     </div>
+    <div class="bz-node-desc" contenteditable="true" spellcheck="false" data-bz-desc="${t.id}"
+      data-placeholder="＋ description — purpose, entry criteria, deliverables">${escapeHtml(t.description || '')}</div>
     <div class="bz-node-body">${cells}</div>
     ${parties}
   </div>`;
@@ -4397,7 +4451,7 @@ function bizPopoverInnerHtml(t, col) {
   const set = new Set(normalizeRaci(t.raci[col] || '').split(''));
   return F.roles.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}" title="${escapeHtml(F.meta[r].label)} — ${escapeHtml(F.meta[r].desc)}">${r}</button>`).join('')
     + `<button class="clear" data-clear="1" title="Clear">✕</button>`
-    + whoFooterHtml(col);
+    + whoFooterHtml(col, false);
 }
 function bizRefreshPopover(taskId, col) {
   if (openPopover && openPopover.dataset.biz && openPopover.dataset.id === taskId && openPopover.dataset.col === col) {
@@ -4417,11 +4471,13 @@ function bizToggleRaci(taskId, col, letter) {
   }
   t.raci[col] = normalizeRaci(adding ? cur + letter : cur.replace(letter, ''));
   saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
+  renderBizPartyPanel();   // its header mirrors this column's letters (no-op when closed)
 }
 function bizClearRaci(taskId, col) {
   const t = bizTaskById(taskId); if (!t) return;
   t.raci[col] = '';
   saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
+  renderBizPartyPanel();   // its header mirrors this column's letters (no-op when closed)
 }
 function openBizRaciPopover(taskId, col, anchorEl) {
   closePopover();
@@ -4955,16 +5011,16 @@ let openPopover = null;
 function closePopover() { if (openPopover) { openPopover.remove(); openPopover = null; } }
 
 // ===== Business Case "Responsible Party" sidebar =====
-// Targets one (task, RACI letter). Lets the user scrub directorate → division → branch and commit an org
-// ref to task.parties[letter]. The panel lives outside #ws-main, so it survives renderBizcase() rebuilds;
+// Targets one (task, column). Lets the user scrub directorate → division → branch → team and commit an org
+// ref to task.parties[col]. The panel lives outside #ws-main, so it survives renderBizcase() rebuilds;
 // only renderBizPartyPanel() rebuilds the panel body. bizPartyDraft holds the in-progress selection
 // (seeded from the committed party when the panel opens; updated as the cascading selects change).
-let bizPartyTarget = null;   // { taskId, letter }
-let bizPartyDraft = null;    // { actor, divisionId?, branchId? } currently shown in the selects
-function openBizPartyPanel(taskId, letter) {
+let bizPartyTarget = null;   // { taskId, col }
+let bizPartyDraft = null;    // { actor, divisionId?, branchId?, teamId? } currently shown in the selects
+function openBizPartyPanel(taskId, col) {
   const t = bizTaskById(taskId); if (!t) return;
-  bizPartyTarget = { taskId, letter };
-  bizPartyDraft = (t.parties && t.parties[letter]) ? { ...t.parties[letter] } : null;
+  bizPartyTarget = { taskId, col };
+  bizPartyDraft = (t.parties && t.parties[col]) ? { ...t.parties[col] } : null;
   document.body.classList.add('show-bz-party');
   renderBizPartyPanel();
   renderBizcase();            // reflect the .active row highlight on the card
@@ -4981,16 +5037,16 @@ function bizPartyAssign() {
   const ref = normalizeOrgRef(bizPartyDraft);
   if (!ref) { showToast('Pick at least a directorate first.', 'error'); return; }
   t.parties = t.parties || {};
-  t.parties[bizPartyTarget.letter] = ref;
+  t.parties[bizPartyTarget.col] = ref;
   saveState(); renderBizcase();
   const lbl = partyLabel(ref);
-  showToast(`${bizPartyTarget.letter} → ${lbl ? lbl.short : 'party set'}`);
+  showToast(`${COL_SHORT[bizPartyTarget.col] || bizPartyTarget.col} → ${lbl ? lbl.short : 'party set'}`);
   renderBizPartyPanel();
 }
 function bizPartyClear() {
   if (!bizPartyTarget) return;
   const t = bizTaskById(bizPartyTarget.taskId); if (!t) { closeBizPartyPanel(); return; }
-  if (t.parties) delete t.parties[bizPartyTarget.letter];
+  if (t.parties) delete t.parties[bizPartyTarget.col];
   bizPartyDraft = null;
   saveState(); renderBizcase(); renderBizPartyPanel();
 }
@@ -4999,12 +5055,16 @@ function renderBizPartyPanel() {
   if (!body || !bizPartyTarget) return;
   const t = bizTaskById(bizPartyTarget.taskId);
   if (!t) { closeBizPartyPanel(); return; }
-  const L = bizPartyTarget.letter, F = bizFw();
-  const roleLabel = F.meta[L] ? F.meta[L].label : L;
+  const col = bizPartyTarget.col, F = bizFw();
+  const colLetters = normalizeRaci(t.raci[col] || '');
+  const roleDesc = colLetters
+    ? colLetters.split('').map(l => (F.meta[l] ? F.meta[l].label : l)).join(' + ')
+    : 'No role letters set';
   const d0 = bizPartyDraft || {};
   const actor = ACTORS.includes(d0.actor) ? d0.actor : '';
   const divId = actor && d0.divisionId ? d0.divisionId : '';
   const brId  = divId && d0.branchId ? d0.branchId : '';
+  const tmId  = brId && d0.teamId ? d0.teamId : '';
   const dirOpts = `<option value="">— select directorate —</option>` +
     ACTORS.map(k => `<option value="${k}"${k === actor ? ' selected' : ''}>${escapeHtml(ACTOR_LABELS[k])}</option>`).join('');
   const divList = (actor && state.directorates[actor]) ? state.directorates[actor].divisions : [];
@@ -5013,15 +5073,18 @@ function renderBizPartyPanel() {
   const brList = (actor && divId) ? ((findDivision(actor, divId) || {}).branches || []) : [];
   const brOpts = `<option value="">— whole division —</option>` +
     brList.map(b => `<option value="${b.id}"${b.id === brId ? ' selected' : ''}>${escapeHtml(b.name || 'Untitled branch')}</option>`).join('');
-  const previewRef = actor ? Object.assign({ actor }, divId ? { divisionId: divId } : {}, brId ? { branchId: brId } : {}) : null;
+  const tmList = (actor && divId && brId) ? ((findBranch(actor, divId, brId) || {}).teams || []) : [];
+  const tmOpts = `<option value="">— whole branch —</option>` +
+    tmList.map(tm => `<option value="${tm.id}"${tm.id === tmId ? ' selected' : ''}>${escapeHtml(tm.name || 'Unnamed team')}</option>`).join('');
+  const previewRef = actor ? Object.assign({ actor }, divId ? { divisionId: divId } : {}, brId ? { branchId: brId } : {}, tmId ? { teamId: tmId } : {}) : null;
   const lbl = previewRef ? partyLabel(previewRef) : null;
-  const committed = !!(t.parties && t.parties[L]);
+  const committed = !!(t.parties && t.parties[col]);
   body.innerHTML = `
     <div class="bzp-context">
-      <span class="raci-chip ${L}">${L}</span>
+      ${renderChipsHtml(colLetters)}
       <div class="bzp-ctx-text">
-        <div class="bzp-ctx-role">${escapeHtml(roleLabel)}</div>
-        <div class="bzp-ctx-task">${escapeHtml(t.name || 'Untitled task')}</div>
+        <div class="bzp-ctx-role">${escapeHtml(COL_LABELS[col] || col)}</div>
+        <div class="bzp-ctx-task">${escapeHtml(roleDesc)} · ${escapeHtml(t.name || 'Untitled task')}</div>
       </div>
     </div>
     <div class="bzp-field"><label>Directorate</label>
@@ -5030,6 +5093,8 @@ function renderBizPartyPanel() {
       <select data-bz-party-sel="division"${actor ? '' : ' disabled'}>${divOpts}</select></div>
     <div class="bzp-field"><label>Branch</label>
       <select data-bz-party-sel="branch"${divId ? '' : ' disabled'}>${brOpts}</select></div>
+    <div class="bzp-field"><label>Team</label>
+      <select data-bz-party-sel="team"${brId ? '' : ' disabled'}>${tmOpts}</select></div>
     <div class="bzp-preview${lbl ? ' set' : ''}">${lbl ? escapeHtml(lbl.full) : 'No party selected yet — scrub the hierarchy above.'}</div>
     <div class="bzp-actions">
       <button type="button" id="bz-party-assign" data-bz-party-assign="1"${actor ? '' : ' disabled'}>Assign</button>
@@ -5067,7 +5132,7 @@ function popoverInnerHtml(node, col) {
     const on = primaryRColumn(node) === col;
     html += `<button class="primary-r${on ? ' on' : ''}" data-primary="1" title="Cascade this ${F.doer} down as the ${F.meta[F.owner].label} for the next level">${on ? '★ Cascading' : '☆ Cascade ' + F.doer}</button>`;
   }
-  return html + whoFooterHtml(col);
+  return html + whoFooterHtml(col, isFreeChart());
 }
 function refreshPopover(id, col) {
   if (!openPopover || openPopover.dataset.id !== id || openPopover.dataset.col !== col) return;
@@ -5320,7 +5385,7 @@ document.addEventListener('click', e => {
     if (bzCell) { openBizRaciPopover(bzCell.dataset.bzCell, bzCell.dataset.col, bzCell); return; }
     // Responsible-party rows on a card + the sidebar's own buttons (panel only shows in bizcase view).
     const bzParty = e.target.closest('[data-bz-party]');
-    if (bzParty) { openBizPartyPanel(bzParty.dataset.bzParty, bzParty.dataset.letter); return; }
+    if (bzParty) { openBizPartyPanel(bzParty.dataset.bzParty, bzParty.dataset.col); return; }
     if (e.target.closest('#bz-party-close')) { closeBizPartyPanel(); return; }
     if (e.target.closest('[data-bz-party-assign]')) { bizPartyAssign(); return; }
     if (e.target.closest('[data-bz-party-clear]')) { bizPartyClear(); return; }
@@ -5443,8 +5508,8 @@ document.addEventListener('change', e => {
     render();
     return;
   }
-  // Responsible-party sidebar: cascading directorate → division → branch. Update the working draft and
-  // rebuild the panel (dependent selects repopulate, deeper levels reset).
+  // Responsible-party sidebar: cascading directorate → division → branch → team. Update the working
+  // draft and rebuild the panel (dependent selects repopulate, deeper levels reset).
   const pSel = e.target.closest('[data-bz-party-sel]');
   if (pSel) {
     const kind = pSel.dataset.bzPartySel, val = pSel.value, d = bizPartyDraft || {};
@@ -5452,6 +5517,10 @@ document.addEventListener('change', e => {
     else if (kind === 'division') bizPartyDraft = val ? { actor: d.actor, divisionId: val } : (d.actor ? { actor: d.actor } : null);
     else if (kind === 'branch') bizPartyDraft = (d.actor && d.divisionId)
       ? (val ? { actor: d.actor, divisionId: d.divisionId, branchId: val } : { actor: d.actor, divisionId: d.divisionId })
+      : d;
+    else if (kind === 'team') bizPartyDraft = (d.actor && d.divisionId && d.branchId)
+      ? (val ? { actor: d.actor, divisionId: d.divisionId, branchId: d.branchId, teamId: val }
+             : { actor: d.actor, divisionId: d.divisionId, branchId: d.branchId })
       : d;
     renderBizPartyPanel();
     return;
@@ -5499,6 +5568,11 @@ document.addEventListener('blur', e => {
   if (el.dataset.bzName) {
     const t = bizTaskById(el.dataset.bzName);
     if (t) { const nm = el.textContent.trim(); if (t.name !== nm) { t.name = nm; saveState(); renderBizcase(); } }
+    return;
+  }
+  if (el.dataset.bzDesc) {
+    const t = bizTaskById(el.dataset.bzDesc);
+    if (t) { const d = el.textContent.trim(); if (t.description !== d) { t.description = d; saveState(); } }
     return;
   }
   if (el.dataset.field === 'dir-name' && el.dataset.actor) { commitDirectorateName(el.dataset.actor, el.textContent.trim()); return; }
