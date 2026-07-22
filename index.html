@@ -743,6 +743,11 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
 }
 .violation-pin:hover { transform: scale(1.15); }
 .violation-pin.warn { background: var(--warn); color: #000; }
+/* Flow-card pin: same badge, anchored to the card's top-left corner (cards are absolutely
+   positioned on the canvas, so the pin rides the card through pan/zoom/drag). */
+.bz-node .violation-pin.bz-pin { top: -8px; left: -8px; right: auto; cursor: default; }
+/* Explicit owner letter contradicting the cascaded owner column — branch override (warn ring) */
+.raci-chip.override { box-shadow: inset 0 0 0 2px var(--warn); }
 /* Rows with hard ERRORS get a persistent red tint + side bar so the line itself is flagged. */
 .chart-row.violation-err > td {
   background: rgba(250, 82, 82, 0.10);
@@ -1891,6 +1896,10 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 4px; }
 .bz-party-row .bz-party-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; flex: 0 0 auto; min-width: 26px; margin-top: 3px; }
 .bz-party-row .cell-chips { display: inline-flex; gap: 2px; flex: 0 0 auto; margin-top: 1px; }
+/* Default party inherited from the anchored chart's org context — dashed until set explicitly */
+.bz-party-row.is-inherited .bz-party-lvl { border-style: dashed; opacity: 0.8; }
+.bz-party-row.is-inherited .bz-party-lvl.is-leaf { border-color: rgba(34, 184, 207, 0.55); background: rgba(34, 184, 207, 0.08); }
+.bz-party-row.is-inherited .bz-party-lvl.is-leaf > .bz-party-lbl { color: var(--p); font-weight: 600; }
 .bz-party-row {
   display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left;
   padding: 4px 5px; border: none; border-radius: 5px; background: transparent; color: var(--text);
@@ -2527,6 +2536,19 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.19 alpha - Inherited context + warn-only reconciliation (roadmap Phase 2): anchored flow
+//                  steps render the chart cascade — the anchor's cascaded owner column shows as a
+//                  dashed inherited owner chip on any step without an explicit owner (cards AND
+//                  table pane); an explicit owner on a different column renders with a warn ring
+//                  (branch override — allowed, flagged, never blocked). Party rows fall back to a
+//                  dashed default from the anchor's org context (columnActor directorate narrowed
+//                  by ancestor Division/Branch), which also pre-seeds the sidebar. New flow-rule
+//                  pass in the violations engine (multi-owner ERR; no-owner/no-doer, owner-vs-
+//                  cascade override, unlabeled decision branches, disconnected steps, doer with
+//                  no party — all WARN), linting the active case in the flow view and every flow
+//                  anchored to the active chart elsewhere; pins on flow cards; toast popover
+//                  entries jump into the flow. Create-from-task no longer bakes the owner letter
+//                  into the first step (the cascade now renders it as inherited).
 //     0.18 alpha - Anchored flows (roadmap Phase 1): a business case can anchor to one org-chart
 //                  Task row (bizCase.anchor {chartId,nodeId}). The Task row's ⤵ caret continues
 //                  the drill: open the attached flow, create one seeded from the row's effective
@@ -2583,7 +2605,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.18';
+const APP_VERSION = '0.19';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -3064,6 +3086,37 @@ function resolveAnchor(b) {
   const node = chart ? nodeInChart(chart, b.anchor.nodeId) : null;
   return node ? { chart, node } : null;
 }
+// Cascade context flowing INTO an anchored flow's steps (v0.19; recomputed per render/lint, never
+// persisted). ownerCol is exactly the column cascadeDown() would hand the anchor's children if the
+// drill kept going: the anchor row's primary doer column, else the owner column the row itself
+// inherits. Steps that name no owner of their own show it as a dashed inherited chip; an explicit
+// owner on a different column is a branch override (visually flagged + warn, never blocked).
+// orgRefs = ancestors' (+ the anchor's) roster refs, shallow → deep, for default step parties.
+function bizAnchorCtx(b) {
+  const an = resolveAnchor(b);
+  if (!an) return null;
+  const inh = inheritedOwnerColIn(an.chart, an.node.id);
+  const ownerCol = cascadeDown(an.node, inh);
+  const ancIds = pathToNodeIn(an.chart, an.node.id) || [];
+  const orgRefs = ancIds.map(id => nodeInChart(an.chart, id)).concat([an.node])
+    .map(n => n && normalizeOrgRef(n.org)).filter(Boolean);
+  return { chart: an.chart, node: an.node, ownerCol, orgRefs };
+}
+// Anchor context of the ACTIVE case, refreshed at the top of renderBizcase (mirrors the
+// _violationsByNodeId recompute-per-render pattern).
+let _bizAnchorCtx = null;
+// Default executing party for a step column on an anchored flow: the column's mapped directorate,
+// narrowed by the deepest anchor-ancestor org ref inside that same directorate. Shown as dashed
+// capsules until the user assigns an explicit party.
+function bizDefaultPartyFor(ctx, col) {
+  if (!ctx) return null;
+  const a = columnActorKey(col);
+  if (!a) return null;
+  let ref = { actor: a };
+  ctx.orgRefs.forEach(r => { if (r.actor === a) ref = { ...r }; });
+  return ref;
+}
+function bizDefaultParty(col) { return bizDefaultPartyFor(_bizAnchorCtx, col); }
 function seedBizCase() {
   const bc = makeBizCase('Cyber Incident Response (Tabletop)');
   bc.description = 'Example tabletop: who is R / A / C / I at each step — including a decision point that branches into more than one path.';
@@ -3906,8 +3959,8 @@ function render() {
   if (state.viewMode === 'roster') renderRoster();
   else if (state.viewMode === 'bizcase') renderBizcase();
   else renderChart();
-  // Keep the violations toast accurate in the roster view (chart recomputes inside renderChart;
-  // the bizcase view has its own independent RACI and no chart-cell violations to track).
+  // Keep the violations toast accurate in the roster view (renderChart and renderBizcase each
+  // recompute for themselves — the bizcase view runs the flow rules as of v0.19).
   if (state.viewMode !== 'chart' && state.viewMode !== 'bizcase') { recomputeViolations(); renderViolationsUI(); }
 }
 function updateViewTabs() {
@@ -4402,14 +4455,36 @@ function bizSelectorHtml() {
     <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · Ctrl/Cmd+scroll to zoom</span>`;
 }
 
+// Step-cell chips for the ACTIVE case: explicit letters, plus — on an anchored flow — the dashed
+// owner inherited from the chart cascade when the step names no owner of its own, and a warn ring
+// on an explicit owner that contradicts the cascaded owner column (branch override: allowed,
+// visually distinct, and flagged by the flow rules — decision 4a in docs/integration-roadmap.md).
+function bizStepChips(t, col) {
+  const F = bizFw();
+  const norm = normalizeRaci(t.raci[col] || '');
+  const ctx = _bizAnchorCtx;
+  const chips = norm.split('').filter(Boolean).map(l => {
+    const override = !!(ctx && ctx.ownerCol && l === F.owner && col !== ctx.ownerCol);
+    const tip = override ? ` title="${escapeHtml(`${F.meta[F.owner].label} set here, but the chart cascade puts ownership on ${COL_LABELS[ctx.ownerCol]} — branch override`)}"` : '';
+    return `<span class="raci-chip ${l}${override ? ' override' : ''}"${tip}>${l}</span>`;
+  });
+  if (ctx && ctx.ownerCol === col && !COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.owner))) {
+    chips.push(`<span class="raci-chip ${F.owner} inherited" title="${escapeHtml(`${F.meta[F.owner].label} — inherited from the chart cascade (${COL_LABELS[col]})`)}">${F.owner}</span>`);
+  }
+  if (!chips.length) return `<div class="cell-chips empty">·</div>`;
+  return `<div class="cell-chips">${chips.join('')}</div>`;
+}
 function bizNodeHtml(t) {
   const cells = COLS.map(k => {
-    const norm = normalizeRaci(t.raci[k] || '');
     return `<div class="bz-cell" data-bz-cell="${t.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">
       <span class="bz-cell-col">${escapeHtml(COL_SHORT[k])}</span>
-      ${renderChipsHtml(norm)}
+      ${bizStepChips(t, k)}
     </div>`;
   }).join('');
+  const vio = _violationsByBizTaskId[t.id];
+  const pin = vio
+    ? `<span class="violation-pin bz-pin ${vio.severity === 'err' ? '' : 'warn'}" title="${escapeHtml(vio.issues.map(i => i.message).join('\n'))}">!</span>`
+    : '';
   // A task with 2+ outgoing edges is a DECISION POINT (branches into more than one path).
   const outCount = abc().edges.reduce((n, e) => n + (e.from === t.id ? 1 : 0), 0);
   const isDecision = outCount >= 2;
@@ -4421,11 +4496,20 @@ function bizNodeHtml(t) {
   const parties = partyCols.length ? `<div class="bz-node-parties">${partyCols.map(k => {
     const letters = normalizeRaci(t.raci[k] || '');
     const ref = (t.parties || {})[k];
-    const hier = ref ? partyHierarchy(ref) : null;
-    const lbl = ref ? partyLabel(ref) : null;
+    let hier = ref ? partyHierarchy(ref) : null;
+    let lbl = ref ? partyLabel(ref) : null;
+    // No explicit party → on an anchored flow, fall back to the chart-context default (dashed).
+    let inherited = false;
+    if (!hier) {
+      const def = bizDefaultParty(k);
+      const defHier = def ? partyHierarchy(def) : null;
+      if (defHier) { hier = defHier; lbl = partyLabel(def); inherited = true; }
+    }
     const active = bizPartyTarget && bizPartyTarget.taskId === t.id && bizPartyTarget.col === k;
-    const tip = hier ? `${COL_LABELS[k]} (${letters}) — ${lbl.full}` : `${COL_LABELS[k]} (${letters}) — set responsible party`;
-    return `<button class="bz-party-row${active ? ' active' : ''}${hier ? '' : ' is-unset'}" type="button"
+    const tip = !hier ? `${COL_LABELS[k]} (${letters}) — set responsible party`
+      : inherited ? `${COL_LABELS[k]} (${letters}) — ${lbl.full} (default from the chart context — click to assign explicitly)`
+      : `${COL_LABELS[k]} (${letters}) — ${lbl.full}`;
+    return `<button class="bz-party-row${active ? ' active' : ''}${hier ? '' : ' is-unset'}${inherited ? ' is-inherited' : ''}" type="button"
         data-bz-party="${t.id}" data-col="${k}"
         title="${escapeHtml(tip)} (click to change)">
         <span class="bz-party-col">${escapeHtml(COL_SHORT[k])}</span>
@@ -4438,6 +4522,7 @@ function bizNodeHtml(t) {
   return `<div class="bz-node${isDecision ? ' bz-node--decision' : ''}" data-bz-node="${t.id}" style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
     <span class="bz-socket in" data-bz-socket="in" data-bz-node-id="${t.id}" title="Input"></span>
     <span class="bz-socket out" data-bz-socket="out" data-bz-node-id="${t.id}" title="Output — drag onto another box to connect (draw more than one to branch)"></span>
+    ${pin}
     <div class="bz-node-head">
       <span class="bz-node-name" contenteditable="true" spellcheck="false" data-bz-name="${t.id}" data-placeholder="Task name">${escapeHtml(t.name)}</span>
       ${badge}
@@ -4456,7 +4541,7 @@ function bizTableHtml() {
     `<th title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}</th>`).join('');
   const rows = b.tasks.length ? b.tasks.map(t => {
     const cells = COLS.map(k =>
-      `<td class="bz-tcell" data-bz-cell="${t.id}" data-col="${k}">${renderChipsHtml(normalizeRaci(t.raci[k] || ''))}</td>`).join('');
+      `<td class="bz-tcell" data-bz-cell="${t.id}" data-col="${k}">${bizStepChips(t, k)}</td>`).join('');
     return `<tr><th class="bz-trow" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}</th>${cells}</tr>`;
   }).join('') : `<tr><td class="bz-tempty" colspan="${COLS.length + 1}">No tasks yet.</td></tr>`;
   return `<div class="bz-table-head"><h3>RACI table</h3><span class="bz-meta">click a cell to edit</span></div>
@@ -4535,6 +4620,9 @@ function bizCharterHtml(b) {
 function renderBizcase() {
   const main = document.getElementById('ws-main');
   const b = abc();
+  _bizAnchorCtx = bizAnchorCtx(b);          // cascade context for chips/parties, before card HTML
+  recomputeViolations();                    // flow rules feed the card pins built just below
+  renderViolationsUI();
   const nodes = b.tasks.map(bizNodeHtml).join('');
   const tablePane = b.showTable ? `<aside class="bz-table-pane" id="bz-table">${bizTableHtml()}</aside>` : '';
   const empty = b.tasks.length ? '' :
@@ -5202,7 +5290,9 @@ let bizPartyDraft = null;    // { actor, divisionId?, branchId?, teamId? } curre
 function openBizPartyPanel(taskId, col) {
   const t = bizTaskById(taskId); if (!t) return;
   bizPartyTarget = { taskId, col };
-  bizPartyDraft = (t.parties && t.parties[col]) ? { ...t.parties[col] } : null;
+  // Seed the draft from the committed party; on an anchored flow with none set, from the
+  // chart-context default (the dashed capsules the card is already showing).
+  bizPartyDraft = (t.parties && t.parties[col]) ? { ...t.parties[col] } : (bizDefaultParty(col) || null);
   document.body.classList.add('show-bz-party');
   renderBizPartyPanel();
   renderBizcase();            // reflect the .active row highlight on the card
@@ -5587,20 +5677,16 @@ function openFlowPopover(nodeId, anchorEl) {
     }
   });
 }
-// New anchored flow whose first step inherits the Task row's effective RACI: manual letters per
-// column, plus the cascaded owner letter on the inherited-A column when the row has no explicit
-// owner of its own — the same effective reading the cell chips show.
+// New anchored flow whose first step copies the Task row's manual letters. The owner is NOT
+// baked in: anchored steps display the cascaded owner as a dashed inherited chip (v0.19), so
+// writing it here would read as an explicit branch override of the very context it came from.
 function createFlowFromNode(nodeId) {
   const chart = ac();
   const f = findNode(nodeId); if (!f) return;
-  const F = chartFw();
   const b = makeBizCase(`${f.node.name || 'Untitled task'} — flow`);
   b.anchor = { chartId: chart.id, nodeId };
   const t = makeBizTask(f.node.name || '');
   COLS.forEach(k => { t.raci[k] = normalizeRaci(f.node.raci[k] || ''); });
-  const hasOwner = COLS.some(k => t.raci[k].includes(F.owner));
-  const inh = inheritedOwnerCol(nodeId);
-  if (!hasOwner && inh && COLS.includes(inh)) t.raci[inh] = normalizeRaci(t.raci[inh] + F.owner);
   t.x = 60; t.y = 80;
   b.tasks.push(t);
   state.bizCases.push(b);
@@ -6260,6 +6346,7 @@ function exportPPTX() {
 //   • overConsulted     (WARN)  — more than half the columns marked Consulted (sign-off bottleneck)
 let _violations = [];
 let _violationsByNodeId = Object.create(null);
+let _violationsByBizTaskId = Object.create(null);
 // Validate the active chart against responsibility-matrix best practice. Framework-aware (RACI /
 // RASCI share owner=A, doer=R) and cascade-aware (a row "has an owner" if it carries an explicit
 // owner letter OR inherits one from an ancestor's Primary-doer cascade). Checks, per the RACI
@@ -6268,6 +6355,7 @@ let _violationsByNodeId = Object.create(null);
 function recomputeViolations() {
   _violations = [];
   _violationsByNodeId = Object.create(null);
+  _violationsByBizTaskId = Object.create(null);
   const F = chartFw();
   const OWNER = F.owner, DOER = F.doer;
   const ownerName = F.meta[OWNER].label, doerName = F.meta[DOER].label;
@@ -6322,6 +6410,63 @@ function recomputeViolations() {
     });
   };
   walk(ac().activities, 0, [], null);
+  // ---- Flow rules (v0.19, warn-only per decision 4a) ----
+  // In the bizcase view: lint the case being worked on (anchored or standalone). Elsewhere:
+  // lint every flow anchored to the ACTIVE chart, so the exec's toast carries flow hygiene for
+  // the chart they're reviewing without dragging in unrelated tabletop sketches.
+  const flowCases = state.viewMode === 'bizcase'
+    ? [abc()]
+    : state.bizCases.filter(b => b.anchor && b.anchor.chartId === ac().id);
+  flowCases.forEach(b => lintFlow(b));
+}
+// Per-step best-practice pass over one business case. Cascade-aware via bizAnchorCtx: an
+// inherited owner satisfies the owner rule; an explicit owner elsewhere is a flagged override.
+function lintFlow(b) {
+  const F = fw(b.framework);
+  const OWNER = F.owner, DOER = F.doer;
+  const ctx = bizAnchorCtx(b);
+  const inhOwner = ctx && ctx.ownerCol;
+  const outBy = Object.create(null), touched = Object.create(null);
+  b.edges.forEach(e => {
+    (outBy[e.from] = outBy[e.from] || []).push(e);
+    touched[e.from] = touched[e.to] = true;
+  });
+  b.tasks.forEach(t => {
+    const colsWith = letter => COLS.filter(k => normalizeRaci(t.raci[k] || '').includes(letter));
+    const ownerCols = colsWith(OWNER);
+    const doerCols = colsWith(DOER);
+    const issues = [];
+    if (ownerCols.length > 1) issues.push({ severity: 'err', rule: 'multipleOwner',
+      message: `Multiple ${F.meta[OWNER].label} (${OWNER}) assignments: ${ownerCols.map(k => COL_LABELS[k]).join(', ')}. Only one ${OWNER} per step.` });
+    else if (ownerCols.length === 0 && !inhOwner) issues.push({ severity: 'warn', rule: 'flowNoOwner',
+      message: `No ${F.meta[OWNER].label} (${OWNER}) on this step${b.anchor ? ' — and the chart cascade provides none' : ' — standalone flows inherit none'}.` });
+    if (ownerCols.length === 1 && inhOwner && ownerCols[0] !== inhOwner) issues.push({ severity: 'warn', rule: 'flowOwnerOverride',
+      message: `${F.meta[OWNER].label} (${OWNER}) sits on ${COL_LABELS[ownerCols[0]]}, but the chart cascade puts ownership on ${COL_LABELS[inhOwner]} — branch override (allowed, but re-check against the chart).` });
+    if (doerCols.length === 0) issues.push({ severity: 'warn', rule: 'flowNoDoer',
+      message: `No ${F.meta[DOER].label} (${DOER}) — no one is assigned to do this step.` });
+    const outs = outBy[t.id] || [];
+    if (outs.length >= 2 && outs.some(e => !(e.label || '').trim())) issues.push({ severity: 'warn', rule: 'decisionUnlabeled',
+      message: `Decision point with ${outs.length} branches, but not every branch is labeled — name each path's condition.` });
+    if (b.tasks.length > 1 && !touched[t.id]) issues.push({ severity: 'warn', rule: 'flowDisconnected',
+      message: `Disconnected step — no handoffs in or out. Connect it into the flow (or delete it).` });
+    const partyless = doerCols.filter(k => !(t.parties && t.parties[k]) && !bizDefaultPartyFor(ctx, k));
+    if (partyless.length) issues.push({ severity: 'warn', rule: 'flowPartyMissing',
+      message: `${F.meta[DOER].label} column${partyless.length === 1 ? '' : 's'} ${partyless.map(k => COL_LABELS[k]).join(', ')} ha${partyless.length === 1 ? 's' : 've'} no responsible party — assign who executes (directorate → … → team).` });
+    if (issues.length) {
+      const entry = {
+        kind: 'flow',
+        bizCaseId: b.id,
+        taskId: t.id,
+        name: t.name || '(untitled step)',
+        tierLabel: 'Flow step',
+        ancestors: [{ id: null, name: b.name || 'Untitled case' }],
+        severity: issues.some(i => i.severity === 'err') ? 'err' : 'warn',
+        issues
+      };
+      _violations.push(entry);
+      _violationsByBizTaskId[t.id] = entry;
+    }
+  });
 }
 // Build an ancestor-id path so drilling it puts the target node's row in the focused chart.
 // pathToNodeIn works on any chart (charter strips resolve anchors on non-active charts).
@@ -6379,8 +6524,11 @@ function renderViolationsUI() {
       ? v.ancestors.map(a => escapeHtml(a.name)).join(' › ') + ' › '
       : '';
     const msgs = v.issues.map(i => `<div class="vp-msg">${escapeHtml(i.message)}</div>`).join('');
-    return `<div class="vp-item" data-violation-jump="${v.nodeId}" title="Jump to this row">
-      <span class="vp-sev ${v.severity === 'err' ? '' : 'warn'}">⚠</span>
+    const jumpAttr = v.kind === 'flow'
+      ? `data-bzvio-jump="${v.bizCaseId}|${v.taskId}" title="Jump to this flow step"`
+      : `data-violation-jump="${v.nodeId}" title="Jump to this row"`;
+    return `<div class="vp-item" ${jumpAttr}>
+      <span class="vp-sev ${v.severity === 'err' ? '' : 'warn'}">${v.kind === 'flow' ? '⤵' : '⚠'}</span>
       <div class="vp-body">
         <div class="vp-title">${escapeHtml(v.name)}</div>
         <div class="vp-meta">${escapeHtml(v.tierLabel)}${crumb ? ' · ' + crumb.slice(0, -3) : ''}</div>
@@ -6404,6 +6552,13 @@ function renderViolationsUI() {
       const id = jump.getAttribute('data-violation-jump');
       document.getElementById('violations-popover').classList.remove('open');
       jumpToViolation(id);
+      return;
+    }
+    const bjump = e.target.closest('[data-bzvio-jump]');
+    if (bjump) {
+      const [caseId, taskId] = bjump.getAttribute('data-bzvio-jump').split('|');
+      document.getElementById('violations-popover').classList.remove('open');
+      bizJumpToTask(caseId, taskId);
       return;
     }
     // Click outside popover closes it.
