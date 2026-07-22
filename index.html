@@ -1820,7 +1820,7 @@ body[data-view="bizcase"] #btn-arrange,
 body[data-view="bizcase"] #btn-details,
 body[data-view="bizcase"] #btn-legend { display: none !important; }
 
-/* ===== My Work view (org-unit work lens, v0.21) ===== */
+/* ===== Work view (org-unit work lens, v0.21; renamed from "My Work" in v0.24) ===== */
 body[data-view="work"] #chart-tabs,
 body[data-view="work"] #drill-crumbs,
 body[data-view="work"] #details,
@@ -2637,7 +2637,7 @@ body[data-view="roster"] #legend { display: none; }
     <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
     <button data-view="bizcase">Business Case Task Flow</button>
-    <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">My Work</button>
+    <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Work</button>
   </div>
   <div class="actions">
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
@@ -2695,6 +2695,7 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.24 alpha - Renamed the "My Work" view to "Work" (tab, view heading, run-book print title).
 //     0.23 alpha - Flow cards gain separate Description / Entry criteria / Exit criteria blocks,
 //                  each edited in place (entry = what must be true to start; exit = what done
 //                  looks like). Fields ride into My Work cards, the XLSX Flows sheet (two new
@@ -2801,7 +2802,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.23';
+const APP_VERSION = '0.24';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -3643,7 +3644,7 @@ function migrateState(s) {
     s.directorates[k] = d;
   });
   s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'chart';
-  s.workScope = normalizeOrgRef(s.workScope);   // My Work unit selection (v0.21); null = unset
+  s.workScope = normalizeOrgRef(s.workScope);   // Work-view unit selection (v0.21); null = unset
   s.collapsedDirectorates = (s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object') ? s.collapsedDirectorates : {};
   s.showLegend = !!s.showLegend;
   s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
@@ -4257,7 +4258,7 @@ function renderLegend() {
     ${mapSection}
     ${artSection}`;
 }
-// ========== My Work view (v0.21) — the org-unit work lens ==========
+// ========== Work view (v0.21) — the org-unit work lens ==========
 // Pick a roster path (directorate → … → team); see every chart row and flow step that lands on
 // it, each rendered as a work order: role letters, ancestry, inputs (what + from whom), outputs
 // (what + to whom), and a jump link. "Lands on" = the assignment ref and the scope lie on the
@@ -4380,7 +4381,7 @@ function renderWork() {
     </div>`;
   if (!scope) {
     main.innerHTML = `<div class="wk-wrap">
-      <div class="wk-header"><h2>My Work</h2>${picker}</div>
+      <div class="wk-header"><h2>Work</h2>${picker}</div>
       <div class="wk-empty">Pick your unit above — directorate, then as deep as you sit — to see every chart activity and flow step that lands on it, with each task's inputs and outputs.</div>
     </div>`;
     return;
@@ -4419,7 +4420,7 @@ function renderWork() {
     ? `<div class="wk-group"><h3>${title} <span class="wk-count">${list.length}</span></h3><div class="wk-hint">${hint}</div><div class="wk-cards">${list.map(card).join('')}</div></div>`
     : '';
   main.innerHTML = `<div class="wk-wrap">
-    <div class="wk-header"><h2>My Work</h2>${picker}
+    <div class="wk-header"><h2>Work</h2>${picker}
       <span class="wk-scope-lbl">${escapeHtml((partyLabel(scope) || {}).full || '')}</span>
       <button id="wk-print" type="button" title="Print this list as the unit's run book">🖨 Run book</button>
     </div>
@@ -6517,7 +6518,7 @@ document.addEventListener('change', e => {
     saveState(); renderChart(); renderDetails();
     return;
   }
-  // My Work scope picker: cascading directorate → division → branch → team.
+  // Work-view scope picker: cascading directorate → division → branch → team.
   const wsSel = e.target.closest('[data-work-scope]');
   if (wsSel) {
     const kind = wsSel.dataset.workScope, val = wsSel.value, d = state.workScope || {};
@@ -7871,7 +7872,7 @@ window.addEventListener('beforeprint', () => {
   let title, sub;
   if (state.viewMode === 'work') {
     // The run book: this unit's work orders, printed as the branch/team handout.
-    title = 'My Work — run book';
+    title = 'Work — run book';
     sub = state.workScope ? ((partyLabel(state.workScope) || {}).full || '') : 'No unit selected';
   } else if (state.viewMode === 'bizcase') {
     const b = abc();
