@@ -1873,6 +1873,10 @@ body[data-view="work"] #ws-main { padding: 0; overflow: auto; }
 .wk-role.inh { opacity: 0.75; }
 .wk-role.inh .raci-chip { border: 1px dashed var(--text-dim); }
 .wk-desc { color: var(--text-dim); font-size: 12px; line-height: 1.5; margin-top: 6px; }
+.wk-crit { color: var(--text-dim); font-size: 11.5px; line-height: 1.5; margin-top: 4px; display: flex; gap: 7px; align-items: baseline; }
+.wk-crit-lbl { flex: 0 0 auto; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.wk-crit-lbl.entry { color: var(--c); }
+.wk-crit-lbl.exit  { color: var(--accent); }
 .wk-io-block { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 7px; display: flex; flex-direction: column; gap: 3px; }
 .wk-io { font-size: 12px; line-height: 1.45; }
 .wk-io b { font-weight: 600; }
@@ -1977,6 +1981,21 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 }
 .bz-node-desc:empty::before { content: attr(data-placeholder); opacity: 0.55; font-style: italic; }
 .bz-node-desc:focus { outline: none; background: var(--bg); box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
+/* Entry / exit criteria — separate labeled blocks under the description (v0.23) */
+.bz-node-crit { padding: 0 9px 4px; display: flex; flex-direction: column; gap: 2px; }
+.bz-crit-row { display: flex; align-items: flex-start; gap: 6px; }
+.bz-crit-lbl {
+  flex: 0 0 auto; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-dim); margin-top: 3px; min-width: 40px;
+}
+.bz-crit-lbl.entry { color: var(--c); }
+.bz-crit-lbl.exit  { color: var(--accent); }
+.bz-crit-edit {
+  flex: 1; min-width: 0; font-size: 10.5px; line-height: 1.45; color: var(--text-dim);
+  cursor: text; white-space: pre-wrap; word-break: break-word; border-radius: 3px; padding: 1px 3px;
+}
+.bz-crit-edit:empty::before { content: attr(data-placeholder); opacity: 0.5; font-style: italic; }
+.bz-crit-edit:focus { outline: none; background: var(--bg); box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
 .bz-node-del {
   flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; padding: 0;
   background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; border-radius: 3px;
@@ -2676,6 +2695,10 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.23 alpha - Flow cards gain separate Description / Entry criteria / Exit criteria blocks,
+//                  each edited in place (entry = what must be true to start; exit = what done
+//                  looks like). Fields ride into My Work cards, the XLSX Flows sheet (two new
+//                  columns), and XML <step entry= exit=>.
 //     0.22 alpha - Export parity (roadmap Phase 5, roadmap complete): anchored flows and the
 //                  deliverable registry reach every structured export. XLSX gains a Flows sheet
 //                  (chart-task ancestry, step, roles, parties to team depth, derived IO, next/
@@ -2778,7 +2801,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.22';
+const APP_VERSION = '0.23';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -3291,7 +3314,9 @@ function makeBizTask(name) {
   // Re-keyed from per-RACI-letter in v0.17 so a task where two columns share a letter can name a
   // distinct executing unit for each, matching how the chart matrix is keyed. Set from the
   // Business Case "Responsible Party" sidebar.
-  return { id: 't_' + uid(), name: name || '', raci, parties: {}, description: '', status: DEFAULT_STATUS, x: 0, y: 0 };
+  // description / entry / exit (v0.23): the step's purpose, what must be true to START it, and
+  // what DONE looks like — three separate blocks edited in place on the card.
+  return { id: 't_' + uid(), name: name || '', raci, parties: {}, description: '', entry: '', exit: '', status: DEFAULT_STATUS, x: 0, y: 0 };
 }
 // A directed handoff edge between two task boxes. Future hook: optional from/to ports per box.
 // label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
@@ -3675,6 +3700,8 @@ function migrateState(s) {
         raci,
         parties,
         description: typeof t.description === 'string' ? t.description : '',
+        entry: typeof t.entry === 'string' ? t.entry : '',
+        exit: typeof t.exit === 'string' ? t.exit : '',
         status: TASK_STATUS_KEYS.includes(t.status) ? t.status : DEFAULT_STATUS,
         x: Number.isFinite(t.x) ? t.x : 0,
         y: Number.isFinite(t.y) ? t.y : 0
@@ -4322,6 +4349,7 @@ function collectWorkItems(scope) {
         meta: `Flow step · ${b.name || 'Untitled case'}${crumbBase ? ' ⚓ ' + crumbBase : ''}`,
         unit: '',
         roles, description: t.description || '',
+        entry: t.entry || '', exit: t.exit || '',
         inputs, outputs
       });
     });
@@ -4379,6 +4407,8 @@ function renderWork() {
       <div class="wk-meta">${escapeHtml(it.meta)}</div>
       ${chips ? `<div class="wk-roles">${chips}</div>` : ''}
       ${it.description ? `<div class="wk-desc">${escapeHtml(it.description)}</div>` : ''}
+      ${it.entry ? `<div class="wk-crit"><span class="wk-crit-lbl entry">▶ entry</span>${escapeHtml(it.entry)}</div>` : ''}
+      ${it.exit ? `<div class="wk-crit"><span class="wk-crit-lbl exit">■ exit</span>${escapeHtml(it.exit)}</div>` : ''}
       ${(it.inputs.length || it.outputs.length) ? `<div class="wk-io-block">${ioLine(it.inputs, 'in')}${ioLine(it.outputs, 'out')}</div>` : ''}
     </div>`;
   };
@@ -4990,7 +5020,11 @@ function bizNodeHtml(t) {
       <button class="bz-node-del" data-bz-del-task="${t.id}" title="Delete task">×</button>
     </div>
     <div class="bz-node-desc" contenteditable="true" spellcheck="false" data-bz-desc="${t.id}"
-      data-placeholder="＋ description — purpose, entry criteria, deliverables">${escapeHtml(t.description || '')}</div>
+      data-placeholder="＋ description — what this step is for">${escapeHtml(t.description || '')}</div>
+    <div class="bz-node-crit">
+      <div class="bz-crit-row"><span class="bz-crit-lbl entry" title="Entry criteria — what must be true before this step can start">▶ entry</span><span class="bz-crit-edit" contenteditable="true" spellcheck="false" data-bz-entry="${t.id}" data-placeholder="＋ entry criteria">${escapeHtml(t.entry || '')}</span></div>
+      <div class="bz-crit-row"><span class="bz-crit-lbl exit" title="Exit criteria — what done looks like; what must be true to hand off">■ exit</span><span class="bz-crit-edit" contenteditable="true" spellcheck="false" data-bz-exit="${t.id}" data-placeholder="＋ exit criteria">${escapeHtml(t.exit || '')}</span></div>
+    </div>
     <div class="bz-node-body">${cells}</div>
     ${ioHtml}
     ${parties}
@@ -6583,6 +6617,16 @@ document.addEventListener('blur', e => {
     if (t) { const d = el.textContent.trim(); if (t.description !== d) { t.description = d; saveState(); } }
     return;
   }
+  if (el.dataset.bzEntry) {
+    const t = bizTaskById(el.dataset.bzEntry);
+    if (t) { const v = el.textContent.trim(); if (t.entry !== v) { t.entry = v; saveState(); } }
+    return;
+  }
+  if (el.dataset.bzExit) {
+    const t = bizTaskById(el.dataset.bzExit);
+    if (t) { const v = el.textContent.trim(); if (t.exit !== v) { t.exit = v; saveState(); } }
+    return;
+  }
   if (el.dataset.artName) {
     const a = artifactById(el.dataset.artName);
     if (a) { const nm = el.textContent.trim(); if (nm && nm !== a.name) { a.name = nm; saveState(); render(); } }
@@ -6670,7 +6714,7 @@ function buildFlowRows(chart) {
     bizTopoOrder(b).forEach(t => {
       const io = bizTaskIO(b, t.id);
       rows.push([
-        anc, b.name || '', t.name || '', t.description || '',
+        anc, b.name || '', t.name || '', t.description || '', t.entry || '', t.exit || '',
         flowRolesText(t), flowPartiesText(ctx, t),
         io.inputs.map(artifactLabel).join(', '),
         io.outputs.map(artifactLabel).join(', '),
@@ -6680,7 +6724,7 @@ function buildFlowRows(chart) {
   });
   return rows;
 }
-const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Step', 'Description', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Step', 'Description', 'Entry criteria', 'Exit criteria', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
 function buildDeliverableRows() {
   const uses = computeArtifactUses();
   return state.artifacts.map(a => [
@@ -6706,7 +6750,7 @@ function exportXML() {
       const inner =
         io.inputs.map(aid => `${pad}    <input deliverable="${esc(artifactLabel(aid))}"/>\n`).join('') +
         io.outputs.map(aid => `${pad}    <output deliverable="${esc(artifactLabel(aid))}"/>\n`).join('');
-      const open = `${pad}  <step name="${esc(t.name)}"${t.description ? ` description="${esc(t.description)}"` : ''}${flowRolesText(t) ? ` roles="${esc(flowRolesText(t))}"` : ''}${flowPartiesText(ctx, t) ? ` parties="${esc(flowPartiesText(ctx, t))}"` : ''}`;
+      const open = `${pad}  <step name="${esc(t.name)}"${t.description ? ` description="${esc(t.description)}"` : ''}${t.entry ? ` entry="${esc(t.entry)}"` : ''}${t.exit ? ` exit="${esc(t.exit)}"` : ''}${flowRolesText(t) ? ` roles="${esc(flowRolesText(t))}"` : ''}${flowPartiesText(ctx, t) ? ` parties="${esc(flowPartiesText(ctx, t))}"` : ''}`;
       return inner ? open + '>\n' + inner + `${pad}  </step>\n` : open + '/>\n';
     }).join('');
     const handoffs = b.edges.map(e =>
