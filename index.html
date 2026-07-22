@@ -204,6 +204,24 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
   border-radius: 4px; padding: 3px 5px; font-size: 11px; width: 100%; cursor: pointer;
 }
 #legend .lm-row .lm-name { grid-column: 2; font-size: 10.5px; color: var(--accent); margin-top: 1px; min-height: 13px; }
+/* Deliverables registry rows (v0.20) */
+#legend .art-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+#legend .art-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; padding: 2px 4px; border-radius: 3px; cursor: text;
+}
+#legend .art-name:focus { outline: none; background: var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+#legend .art-type { background: var(--bg-3); color: var(--text-dim); border: 1px solid var(--border); border-radius: 4px; font: inherit; font-size: 10px; padding: 2px 3px; }
+#legend .art-refs { flex: 0 0 auto; font-size: 10px; color: var(--text-dim); }
+#legend .art-refs.orphan { color: var(--warn); font-style: italic; }
+#legend .art-del { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font: inherit; font-size: 13px; padding: 0 3px; }
+#legend .art-del:hover:not(:disabled) { color: var(--err); }
+#legend .art-del:disabled { opacity: 0.3; cursor: not-allowed; }
+#legend .art-new {
+  background: transparent; border: 1px dashed var(--border); color: var(--text-dim); border-radius: 4px;
+  padding: 4px 8px; font: inherit; font-size: 11px; cursor: pointer; width: 100%;
+}
+#legend .art-new:hover { color: var(--accent); border-color: var(--accent); }
 /* Details-panel "Who's responsible" rows */
 .dw-list { display: flex; flex-direction: column; gap: 7px; }
 .dw-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "col chips" "who who"; gap: 2px 8px; align-items: center;
@@ -1098,6 +1116,26 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   font-size: 11px; color: var(--text-dim); font-style: italic;
   padding: 4px 0 8px;
 }
+/* Boundary IO chips + picker in the Details rail (v0.20) */
+.det-io-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 20px; }
+.det-io-chip {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  background: var(--bg-3); border: 1px solid rgba(81, 207, 102, 0.45); border-radius: 10px;
+  padding: 1px 4px 1px 8px; font-size: 11px; color: var(--accent);
+}
+.det-io-rm { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font: inherit; font-size: 12px; padding: 0 2px; }
+.det-io-rm:hover { color: var(--err); }
+.det-io-none { color: var(--text-dim); font-size: 11px; font-style: italic; }
+.det-io-add {
+  width: 100%; background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 4px 6px; font: inherit; font-size: 12px; cursor: pointer;
+}
+/* Consumes/Produces block in the row-eye node view */
+.colview-popover .cv-io-block { border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 5px; }
+.colview-popover .cv-io { font-size: 11px; line-height: 1.5; color: var(--text); }
+.colview-popover .cv-io-src { color: var(--text-dim); font-size: 10px; }
+.colview-popover .cv-io-src.none { color: var(--warn); font-style: italic; }
+
 /* Task flow section — flows anchored to the active Task row */
 .det-flow-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .det-flow { display: flex; align-items: center; gap: 8px; }
@@ -1896,6 +1934,12 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 4px; }
 .bz-party-row .bz-party-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; flex: 0 0 auto; min-width: 26px; margin-top: 3px; }
 .bz-party-row .cell-chips { display: inline-flex; gap: 2px; flex: 0 0 auto; margin-top: 1px; }
+/* Step IO lines — deliverables derived from the step's handoff edges (v0.20) */
+.bz-node-io { border-top: 1px solid var(--border); padding: 4px 9px 5px; display: flex; flex-direction: column; gap: 2px; }
+.bz-io-line { font-size: 10px; line-height: 1.4; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bz-io-line.in  { color: var(--c); }
+.bz-io-line.out { color: var(--accent); }
+
 /* Default party inherited from the anchored chart's org context — dashed until set explicitly */
 .bz-party-row.is-inherited .bz-party-lvl { border-style: dashed; opacity: 0.8; }
 .bz-party-row.is-inherited .bz-party-lvl.is-leaf { border-color: rgba(34, 184, 207, 0.55); background: rgba(34, 184, 207, 0.08); }
@@ -1959,6 +2003,27 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-edge-popover .bz-ep-input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; font-size: 12px; }
 .bz-edge-popover .bz-ep-del { background: var(--bg-3); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font: inherit; font-size: 12px; cursor: pointer; }
 .bz-edge-popover .bz-ep-del:hover { background: var(--err); color: #fff; border-color: var(--err); }
+/* Deliverables on a handoff (v0.20) */
+.bz-edge-popover .bz-ep-arts { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; }
+.bz-edge-popover .bz-ep-art {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  background: var(--bg-3); border: 1px solid rgba(81, 207, 102, 0.45); border-radius: 10px;
+  padding: 1px 4px 1px 8px; font-size: 11px; color: var(--accent);
+}
+.bz-edge-popover .bz-ep-art-rm { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font: inherit; font-size: 12px; padding: 0 2px; }
+.bz-edge-popover .bz-ep-art-rm:hover { color: var(--err); }
+.bz-edge-popover .bz-ep-art-none { color: var(--text-dim); font-size: 11px; font-style: italic; }
+.bz-edge-popover .bz-ep-art-add {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 6px; font: inherit; font-size: 12px; cursor: pointer;
+}
+/* Flow-table "Hands off" chips */
+.bz-flow-hand { max-width: 180px; }
+.bz-flow-art {
+  display: inline-block; background: var(--bg-3); border: 1px solid rgba(81, 207, 102, 0.45);
+  border-radius: 10px; padding: 0 7px; font-size: 10px; color: var(--accent); margin: 1px 2px 1px 0;
+}
+.bz-flow-art-none { color: var(--text-dim); opacity: 0.6; }
 
 /* Flow / branches table */
 .bz-flow-h { margin-top: 6px; border-top: 1px solid var(--border); }
@@ -2224,6 +2289,16 @@ table.chart td.chart-cell { padding: 14px 20px; }
 .ch-caret.flow { color: var(--text-dim); opacity: 0.55; }
 .ch-caret.flow:hover { opacity: 1; color: var(--p); background: var(--bg-3); }
 .ch-caret.flow.has-flow { opacity: 1; color: var(--p); font-weight: 700; }
+/* Flow-health roll-up chip beside a Task row's name (exec read on the anchored flows) */
+.flow-health {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; flex: 0 0 auto;
+  border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px;
+  background: var(--bg-3); color: var(--text); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer;
+}
+.flow-health.green { color: var(--accent); border-color: rgba(81, 207, 102, 0.5); }
+.flow-health.amber { color: var(--warn); border-color: rgba(252, 196, 25, 0.5); }
+.flow-health.red   { color: var(--err); border-color: rgba(250, 82, 82, 0.5); }
+.flow-health:hover { background: var(--bg-4); }
 .chart-row.open > td { background: var(--bg-3); }
 .chart-row.open > td.ch-toggle { box-shadow: inset 3px 0 0 var(--accent); }
 .ch-name-edit { outline: none; display: block; padding: 2px 5px; border-radius: 3px; min-height: 18px; }
@@ -2536,6 +2611,18 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.20 alpha - Artifact spine (roadmap Phase 3): global deliverable registry (state.artifacts:
+//                  name/type/ownerRef/description; managed in the Legend with ref-counts, orphan
+//                  flags, and reference-guarded delete). Chart rows declare boundary IO
+//                  (node.inputs/outputs, edited in the Details rail); flow edges become typed
+//                  handoffs (edge.artifactIds, set in the edge popover with create-inline); a
+//                  step's IO is DERIVED from its edges (single source of truth) and shown on the
+//                  card; the Flow/branches table gains a Hands-off column and topological row
+//                  order. Rules: input-with-no-producer (chart rows), handoff-without-deliverable
+//                  (flows). Exec roll-up: Task rows with anchored flows show a flow-health % chip
+//                  (owners + doers + typed handoffs). Import-merge dedupes artifacts by name+type,
+//                  remaps all IO refs, and drops any left dangling. Row-eye popover gains
+//                  Consumes/Produces with from-whom / to-whom resolution.
 //     0.19 alpha - Inherited context + warn-only reconciliation (roadmap Phase 2): anchored flow
 //                  steps render the chart cascade — the anchor's cascaded owner column shows as a
 //                  dashed inherited owner chip on any step without an explicit owner (cards AND
@@ -2605,7 +2692,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.19';
+const APP_VERSION = '0.20';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -2871,7 +2958,7 @@ function primaryRColumn(node) {
 function makeNode(name, cols) {
   const raci = {};
   (cols || COLS).forEach(k => { raci[k] = ''; });
-  return { id: uid(), name: name || '', raci, status: DEFAULT_STATUS, description: '', documents: [], children: [] };
+  return { id: uid(), name: name || '', raci, status: DEFAULT_STATUS, description: '', documents: [], inputs: [], outputs: [], children: [] };
 }
 function makeDivision(name) { return { id: uid(), name: name || '', chief: null, branches: [] }; }
 function makeBranch(name) { return { id: uid(), name: name || '', chief: null, teams: [] }; }
@@ -3045,6 +3132,71 @@ function makeBizCase(name) {
   return { id: 'b_' + uid(), name: name || 'Untitled business case', description: '', framework: 'raci',
     anchor: null, tasks: [], edges: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
 }
+// ---- Artifacts: the global deliverable registry (v0.20) ----
+// One named entity per real-world deliverable ("Triage Report", "ATO decision"). Chart nodes
+// declare boundary IO against it (node.inputs/outputs = artifact ids); flow edges carry it as a
+// typed handoff (edge.artifactIds — "A hands X to B"). A flow step's own IO is DERIVED from its
+// edges (bizTaskIO), never stored, so there is exactly one source of truth inside a flow.
+// ownerRef/doc exist in the model for the roadmap's later steps (owner picker, attached spec);
+// normalization keeps them but no UI writes them yet.
+const ARTIFACT_TYPES = ['document', 'data', 'decision', 'approval', 'briefing', 'other'];
+function makeArtifact(name, type) {
+  return { id: 'a_' + uid(), name: name || 'Untitled deliverable',
+    type: ARTIFACT_TYPES.includes(type) ? type : 'other', ownerRef: null, description: '', doc: null };
+}
+function artifactById(id) { return state.artifacts.find(a => a.id === id) || null; }
+function artifactLabel(id) { const a = artifactById(id); return a ? (a.name || 'Untitled deliverable') : '(missing deliverable)'; }
+// Every place an artifact is produced/consumed, across ALL charts and flows. Recomputed each
+// render (in recomputeViolations) into _artifactUses — powers rules, ref-counts, and IO displays.
+function computeArtifactUses() {
+  const use = { producers: Object.create(null), consumers: Object.create(null) };
+  const add = (m, aid, u) => { (m[aid] = m[aid] || []).push(u); };
+  state.charts.forEach(c => (function walk(ns) {
+    (ns || []).forEach(n => {
+      (n.outputs || []).forEach(aid => add(use.producers, aid, { kind: 'chartNode', chartId: c.id, id: n.id, name: n.name || '(untitled)' }));
+      (n.inputs || []).forEach(aid => add(use.consumers, aid, { kind: 'chartNode', chartId: c.id, id: n.id, name: n.name || '(untitled)' }));
+      walk(n.children);
+    });
+  })(c.activities));
+  state.bizCases.forEach(b => b.edges.forEach(e => (e.artifactIds || []).forEach(aid => {
+    const from = b.tasks.find(t => t.id === e.from), to = b.tasks.find(t => t.id === e.to);
+    add(use.producers, aid, { kind: 'bizTask', bizCaseId: b.id, id: e.from, name: (from && from.name) || '(untitled step)' });
+    add(use.consumers, aid, { kind: 'bizTask', bizCaseId: b.id, id: e.to, name: (to && to.name) || '(untitled step)' });
+  })));
+  return use;
+}
+let _artifactUses = { producers: Object.create(null), consumers: Object.create(null) };
+// A flow step's IO, derived from its edges: inputs = artifacts arriving on incoming handoffs,
+// outputs = artifacts leaving on outgoing ones.
+function bizTaskIO(b, taskId) {
+  const inp = new Set(), out = new Set();
+  b.edges.forEach(e => (e.artifactIds || []).forEach(aid => {
+    if (e.to === taskId) inp.add(aid);
+    if (e.from === taskId) out.add(aid);
+  }));
+  return { inputs: [...inp], outputs: [...out] };
+}
+// Flow-health roll-up for a chart Task row's anchored flows: % of health checks passing —
+// every step has an owner (explicit or cascade-inherited) and a doer, every handoff names a
+// deliverable. null when the row has no flows.
+function flowHealth(chartId, nodeId) {
+  const flows = flowsForNode(chartId, nodeId);
+  if (!flows.length) return null;
+  let ok = 0, total = 0;
+  flows.forEach(b => {
+    const ctx = bizAnchorCtx(b);
+    const F = fw(b.framework);
+    b.edges.forEach(e => { total++; if ((e.artifactIds || []).length) ok++; });
+    b.tasks.forEach(t => {
+      total++;
+      if (COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.owner)) || (ctx && ctx.ownerCol)) ok++;
+      total++;
+      if (COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.doer))) ok++;
+    });
+  });
+  const pct = total ? Math.round(ok / total * 100) : 100;
+  return { pct, cls: pct >= 80 ? 'green' : pct >= 40 ? 'amber' : 'red' };
+}
 // A task box. Carries its OWN raci over the same 7 COLS, stored here (not on chart nodes).
 function makeBizTask(name) {
   const raci = {};
@@ -3057,7 +3209,7 @@ function makeBizTask(name) {
 }
 // A directed handoff edge between two task boxes. Future hook: optional from/to ports per box.
 // label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
-function makeBizEdge(from, to, label) { return { id: 'e_' + uid(), from, to, label: label || '' }; }
+function makeBizEdge(from, to, label) { return { id: 'e_' + uid(), from, to, label: label || '', artifactIds: [] }; }
 
 // ---- Anchored-flow helpers (chart ↔ business case link, added v0.18) ----
 function chartById(id) { return state.charts.find(c => c.id === id) || null; }
@@ -3153,6 +3305,7 @@ function defaultState() {
     charts: [demo],
     activeChartId: demo.id,
     bizCases: [bc],
+    artifacts: [],
     activeBizCaseId: bc.id,
     actorLabels: { ...ACTOR_LABELS_DEFAULT },
     columnLabels: { ...COL_LABELS_DEFAULT },
@@ -3265,6 +3418,18 @@ function normalizeChartCustom(x) {
 }
 function migrateState(s) {
   if (!s || typeof s !== 'object') return defaultState();
+  // ---- Artifacts (global deliverable registry, v0.20) ----
+  // Normalized FIRST so the charts/bizCases blocks below can drop dangling artifact refs.
+  s.artifacts = (Array.isArray(s.artifacts) ? s.artifacts : []).filter(a => a && typeof a === 'object').map(a => ({
+    id: typeof a.id === 'string' && a.id ? a.id : 'a_' + uid(),
+    name: typeof a.name === 'string' && a.name ? a.name : 'Untitled deliverable',
+    type: ARTIFACT_TYPES.includes(a.type) ? a.type : 'other',
+    ownerRef: normalizeOrgRef(a.ownerRef),
+    description: typeof a.description === 'string' ? a.description : '',
+    doc: (a.doc && typeof a.doc === 'object' && typeof a.doc.id === 'string') ? a.doc : null
+  }));
+  const _artIds = new Set(s.artifacts.map(a => a.id));
+  const cleanIO = arr => (Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && _artIds.has(x)) : []);
   // ---- Charts migration ----
   // Old shape: top-level { title, activities, drillPath, chartSize, chartZoom, chartPos, ... }.
   // New shape: { charts: [{id,title,activities,drillPath,chartSize,chartZoom,chartPos}], activeChartId, ... }.
@@ -3318,6 +3483,10 @@ function migrateState(s) {
     };
   });
   if (!s.charts.length) s.charts.push(makeChart('Untitled chart', []));
+  // Boundary IO (v0.20): backfill inputs/outputs on every node and drop refs to deleted artifacts.
+  s.charts.forEach(c => (function walk(ns) {
+    (ns || []).forEach(n => { n.inputs = cleanIO(n.inputs); n.outputs = cleanIO(n.outputs); walk(n.children); });
+  })(c.activities));
   if (!s.charts.find(c => c.id === s.activeChartId)) s.activeChartId = s.charts[0].id;
   // Drop the now-redundant top-level per-chart keys (they've been wrapped into charts[0]).
   ['title','activities','drillPath','chartSize','chartZoom','chartPos'].forEach(k => { delete s[k]; });
@@ -3428,7 +3597,8 @@ function migrateState(s) {
     // Drop edges referencing deleted tasks, self-loops, and duplicates — keeps delete logic trivial.
     const edges = (Array.isArray(b.edges) ? b.edges : []).filter(ed =>
       ed && typeof ed === 'object' && ids.has(ed.from) && ids.has(ed.to) && ed.from !== ed.to
-    ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to, label: typeof ed.label === 'string' ? ed.label : '' }))
+    ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to,
+                   label: typeof ed.label === 'string' ? ed.label : '', artifactIds: cleanIO(ed.artifactIds) }))
      .filter(ed => { const key = ed.from + '>' + ed.to; if (seen.has(key)) return false; seen.add(key); return true; });
     // Anchor (v0.18): keep only when it resolves against the already-normalized s.charts —
     // a dangling anchor degrades the flow to standalone, never deletes flow data. Walked with a
@@ -3505,6 +3675,7 @@ function idbDelDoc(id) { return idbTx('readwrite', s => s.delete(id)).then(() =>
 function eachDocInState(st, cb) {
   const walk = ns => (ns || []).forEach(n => { (n.documents || []).forEach(cb); if (n.children) walk(n.children); });
   (st.charts || []).forEach(c => walk(c.activities));
+  (st.artifacts || []).forEach(a => { if (a.doc) cb(a.doc); });   // artifact spec docs (v0.20)
 }
 // After load / undo: migrate any inline dataUrls into IDB (back-compat) and hydrate any missing ones.
 function syncDocsWithIdb() {
@@ -3941,13 +4112,35 @@ function renderLegend() {
       ${mapRows}
     </div>`;
   }
+  // Deliverables registry — global across charts and flows. Ref-counts computed fresh here
+  // (renderLegend runs before the view renderers refresh _artifactUses).
+  const uses = computeArtifactUses();
+  const artRows = state.artifacts.map(a => {
+    const p = (uses.producers[a.id] || []).length;
+    const cns = (uses.consumers[a.id] || []).length;
+    const refs = p + cns;
+    const typeOpts = ARTIFACT_TYPES.map(tp => `<option value="${tp}"${tp === a.type ? ' selected' : ''}>${tp}</option>`).join('');
+    return `<div class="art-row">
+        <span class="art-name" contenteditable="true" spellcheck="false" data-art-name="${a.id}">${escapeHtml(a.name)}</span>
+        <select class="art-type" data-art-type="${a.id}" title="Deliverable type">${typeOpts}</select>
+        <span class="art-refs${refs ? '' : ' orphan'}" title="${p} producer(s) · ${cns} consumer(s)${refs ? '' : ' — orphan: nothing produces or consumes it yet'}">${refs ? `${p}▸ ${cns}◂` : 'orphan'}</span>
+        <button class="art-del" type="button" data-art-del="${a.id}"${refs ? ' disabled title="Referenced — remove its uses first"' : ' title="Delete deliverable"'}>×</button>
+      </div>`;
+  }).join('');
+  const artSection = `<div class="legend-map-section">
+      <h4>Deliverables</h4>
+      <div class="lm-note">Shared registry of deliverables. Attach one to a flow handoff (click an edge) or declare it as a row's input/output (Details rail). ▸ producers · ◂ consumers.</div>
+      ${artRows || ''}
+      <button class="art-new" type="button" id="art-new">＋ New deliverable</button>
+    </div>`;
   el.innerHTML = `
     <h3>${escapeHtml(F.name)} Legend</h3>
     <div class="legend-blurb">${escapeHtml(F.blurb)}</div>
     ${rows}
     <p>Click any column cell to toggle ${F.roles.join(' / ')}. A cell can hold none, one, or any combination — but only one <b>${F.owner}</b> (${escapeHtml(F.meta[F.owner].label)}) per row.</p>
     <p>Drill a row with <b>▸</b> to break it into the next tier. The Primary <b>${F.doer}</b> (${escapeHtml(F.meta[F.doer].label)}) on a row cascades down as the next level's ${escapeHtml(F.meta[F.owner].label)}.</p>
-    ${mapSection}`;
+    ${mapSection}
+    ${artSection}`;
 }
 function render() {
   renderBrand();
@@ -4173,13 +4366,17 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
   const leaf = tier >= chartMaxTier();
   // Task-tier rows (org charts only reach `leaf` — free charts drill forever) continue the drill
   // into an anchored task FLOW instead of child rows: ⤵ opens/creates/attaches a business case.
-  let caret;
+  let caret, healthChip = '';
   if (leaf) {
     const flows = flowsForNode(ac().id, node.id);
     caret = `<button class="ch-caret flow${flows.length ? ' has-flow' : ''}" data-flow-btn="${node.id}"
       title="${flows.length
         ? escapeHtml(`Task flow — ${flows.length === 1 ? `"${flows[0].name}"` : flows.length + ' attached flows'} (click to open)`)
         : 'Continue the drill into a task flow — create or attach one'}">⤵</button>`;
+    // Exec roll-up: % of the anchored flows' health checks passing (owners, doers, typed handoffs).
+    const fh = flows.length ? flowHealth(ac().id, node.id) : null;
+    if (fh) healthChip = `<button class="flow-health ${fh.cls}" data-flow-btn="${node.id}"
+      title="Flow health ${fh.pct}% — steps with an owner and a doer, handoffs naming a deliverable. Click for the flow.">⤵ ${fh.pct}%</button>`;
   } else {
     caret = `<button class="ch-caret${isOpen ? ' open' : ''}" data-drill="${node.id}" data-tier="${tier}" title="${isOpen ? 'Collapse' : 'Drill into breakdown'}">${isOpen ? '▾' : '▸'}</button>`;
   }
@@ -4197,7 +4394,7 @@ function renderNodeRow(node, tier, isOpen, cols, inherited, parentR) {
   const vioRowClass = vio && vio.severity === 'err' ? ' violation-err' : '';
   return `<tr class="chart-row${isOpen ? ' open' : ''}${vioRowClass}" data-id="${node.id}">
       <td class="ch-toggle">${caret}</td>
-      <td class="ch-name"><button class="row-view" data-row-view="${node.id}" title="Node view — how each party lands on this ${escapeHtml(chartTierLabel(tier).toLowerCase())}">👁</button><span class="ch-name-edit" contenteditable="true" spellcheck="false" data-node-id="${node.id}" data-field="name" data-placeholder="${escapeHtml(chartTierLabel(tier))} name">${escapeHtml(node.name)}</span>${renderOrgRow(node, tier, inherited)}</td>
+      <td class="ch-name"><button class="row-view" data-row-view="${node.id}" title="Node view — how each party lands on this ${escapeHtml(chartTierLabel(tier).toLowerCase())}">👁</button><span class="ch-name-edit" contenteditable="true" spellcheck="false" data-node-id="${node.id}" data-field="name" data-placeholder="${escapeHtml(chartTierLabel(tier))} name">${escapeHtml(node.name)}</span>${healthChip}${renderOrgRow(node, tier, inherited)}</td>
       ${descCellHtml(node)}
       ${docsCellHtml(node)}
       ${cells}
@@ -4485,6 +4682,11 @@ function bizNodeHtml(t) {
   const pin = vio
     ? `<span class="violation-pin bz-pin ${vio.severity === 'err' ? '' : 'warn'}" title="${escapeHtml(vio.issues.map(i => i.message).join('\n'))}">!</span>`
     : '';
+  // Derived IO: what this step consumes/produces, read straight off its handoff edges.
+  const io = bizTaskIO(abc(), t.id);
+  const ioHtml = (io.inputs.length || io.outputs.length) ? `<div class="bz-node-io">${
+    io.inputs.length ? `<div class="bz-io-line in" title="Inputs — deliverables arriving on incoming handoffs">⇥ ${io.inputs.map(aid => escapeHtml(artifactLabel(aid))).join(', ')}</div>` : ''}${
+    io.outputs.length ? `<div class="bz-io-line out" title="Outputs — deliverables leaving on outgoing handoffs">↦ ${io.outputs.map(aid => escapeHtml(artifactLabel(aid))).join(', ')}</div>` : ''}</div>` : '';
   // A task with 2+ outgoing edges is a DECISION POINT (branches into more than one path).
   const outCount = abc().edges.reduce((n, e) => n + (e.from === t.id ? 1 : 0), 0);
   const isDecision = outCount >= 2;
@@ -4531,6 +4733,7 @@ function bizNodeHtml(t) {
     <div class="bz-node-desc" contenteditable="true" spellcheck="false" data-bz-desc="${t.id}"
       data-placeholder="＋ description — purpose, entry criteria, deliverables">${escapeHtml(t.description || '')}</div>
     <div class="bz-node-body">${cells}</div>
+    ${ioHtml}
     ${parties}
   </div>`;
 }
@@ -4550,26 +4753,46 @@ function bizTableHtml() {
 }
 // Tabular view of the branching flow: one row per outgoing path. A step with 2+ outgoing rows is a
 // decision point (badged). Endpoints show "— end —". The condition cell edits the edge label.
+// Kahn topological order over the flow graph so the table reads start → finish. Ties keep
+// insertion order; cycle members (no valid topo position) append at the end in insertion order.
+function bizTopoOrder(b) {
+  const inDeg = Object.create(null);
+  b.tasks.forEach(t => { inDeg[t.id] = 0; });
+  b.edges.forEach(e => { if (e.from !== e.to && inDeg[e.to] != null && inDeg[e.from] != null) inDeg[e.to]++; });
+  const order = [], seen = new Set();
+  const queue = b.tasks.filter(t => !inDeg[t.id]).map(t => t.id);
+  while (queue.length) {
+    const id = queue.shift();
+    if (seen.has(id)) continue;
+    seen.add(id); order.push(id);
+    b.edges.filter(e => e.from === id).forEach(e => { if (--inDeg[e.to] === 0) queue.push(e.to); });
+  }
+  b.tasks.forEach(t => { if (!seen.has(t.id)) order.push(t.id); });
+  return order.map(id => b.tasks.find(t => t.id === id));
+}
 function bizFlowTableHtml() {
   const b = abc();
   if (!b.tasks.length) return '';
   const nameOf = id => { const t = b.tasks.find(x => x.id === id); return t ? (t.name || 'Untitled task') : '—'; };
   let body = '';
-  b.tasks.forEach(t => {
+  bizTopoOrder(b).forEach(t => {
     const outs = b.edges.filter(e => e.from === t.id);
     const decision = outs.length >= 2;
     const stepCell = `<th class="bz-flow-step${decision ? ' is-decision' : ''}" rowspan="${Math.max(1, outs.length)}" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}${decision ? `<span class="bz-flow-fork" title="Decision point — ${outs.length} paths">⑂ decision</span>` : ''}</th>`;
     if (!outs.length) {
-      body += `<tr>${stepCell}<td class="bz-flow-cond-cell"><span class="bz-flow-end">— end —</span></td><td class="bz-flow-next">—</td></tr>`;
+      body += `<tr>${stepCell}<td class="bz-flow-cond-cell"><span class="bz-flow-end">— end —</span></td><td class="bz-flow-hand">—</td><td class="bz-flow-next">—</td></tr>`;
     } else {
       outs.forEach((e, i) => {
         const cond = `<input class="bz-flow-cond" data-bz-edge-cond="${e.id}" value="${escapeHtml(e.label || '')}" placeholder="${decision ? 'condition…' : '(then)'}" spellcheck="false">`;
-        body += `<tr>${i === 0 ? stepCell : ''}<td class="bz-flow-cond-cell">${cond}</td><td class="bz-flow-next">${escapeHtml(nameOf(e.to))}</td></tr>`;
+        const hand = (e.artifactIds || []).length
+          ? (e.artifactIds || []).map(aid => `<span class="bz-flow-art">${escapeHtml(artifactLabel(aid))}</span>`).join(' ')
+          : '<span class="bz-flow-art-none" title="No deliverable named — click the edge on the canvas to add one">—</span>';
+        body += `<tr>${i === 0 ? stepCell : ''}<td class="bz-flow-cond-cell">${cond}</td><td class="bz-flow-hand">${hand}</td><td class="bz-flow-next">${escapeHtml(nameOf(e.to))}</td></tr>`;
       });
     }
   });
-  return `<div class="bz-table-head bz-flow-h"><h3>Flow / branches</h3><span class="bz-meta">⑂ = decision · edit a condition</span></div>
-    <table class="bz-table bz-flow-table"><thead><tr><th class="bz-th-task">Step</th><th>Path / condition</th><th>Next step</th></tr></thead><tbody>${body}</tbody></table>`;
+  return `<div class="bz-table-head bz-flow-h"><h3>Flow / branches</h3><span class="bz-meta">⑂ = decision · edit a condition · rows in flow order</span></div>
+    <table class="bz-table bz-flow-table"><thead><tr><th class="bz-th-task">Step</th><th>Path / condition</th><th>Hands off</th><th>Next step</th></tr></thead><tbody>${body}</tbody></table>`;
 }
 
 // Charter strip for an ANCHORED flow: the exec context every step lives under — chart ancestry
@@ -4775,34 +4998,75 @@ function openBizRaciPopover(taskId, col, anchorEl) {
 // Edge popover: name the branch condition (decision label) or delete the handoff.
 function openBizEdgePopover(edgeId, clientX, clientY) {
   closePopover();
-  const edge = abc().edges.find(x => x.id === edgeId); if (!edge) return;
+  if (!abc().edges.find(x => x.id === edgeId)) return;
   const pop = document.createElement('div');
   pop.className = 'bz-edge-popover';
   pop.dataset.edge = edgeId;
-  pop.innerHTML = `
-    <label class="bz-ep-label">Path / condition</label>
-    <input class="bz-ep-input" type="text" value="${escapeHtml(edge.label || '')}" placeholder="e.g. Yes / No / If escalated" spellcheck="false">
-    <button class="bz-ep-del" type="button" title="Delete this handoff">🗑 Delete handoff</button>`;
   document.body.appendChild(pop);
+  // build() (re)fills the popover so the deliverable list can refresh in place after an
+  // add/remove without closing — the canvas re-renders underneath, the popover survives.
+  const build = focusInput => {
+    const edge = abc().edges.find(x => x.id === edgeId);
+    if (!edge) { closePopover(); return; }
+    const arts = edge.artifactIds || [];
+    const chips = arts.map(aid =>
+      `<span class="bz-ep-art" title="${escapeHtml(artifactLabel(aid))}">${escapeHtml(artifactLabel(aid))}<button type="button" class="bz-ep-art-rm" data-rm-art="${aid}" title="Remove from this handoff">×</button></span>`).join('');
+    const opts = state.artifacts.filter(a => !arts.includes(a.id))
+      .map(a => `<option value="${a.id}">${escapeHtml(a.name)} (${a.type})</option>`).join('');
+    pop.innerHTML = `
+      <label class="bz-ep-label">Path / condition</label>
+      <input class="bz-ep-input" type="text" value="${escapeHtml(edge.label || '')}" placeholder="e.g. Yes / No / If escalated" spellcheck="false">
+      <label class="bz-ep-label">Deliverables handed off</label>
+      <div class="bz-ep-arts">${chips || '<span class="bz-ep-art-none">none yet</span>'}</div>
+      <select class="bz-ep-art-add">
+        <option value="">＋ add deliverable…</option>${opts}
+        <option value="__new">＋ new deliverable…</option>
+      </select>
+      <button class="bz-ep-del" type="button" title="Delete this handoff">🗑 Delete handoff</button>`;
+    const input = pop.querySelector('.bz-ep-input');
+    if (focusInput) { input.focus(); input.select(); }
+    input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } });
+    input.addEventListener('change', () => {
+      const ed = abc().edges.find(x => x.id === edgeId);
+      if (ed) { ed.label = input.value.trim(); saveState(); renderBizcase(); }
+      closePopover();
+    });
+    pop.querySelector('.bz-ep-art-add').addEventListener('change', ev => {
+      const val = ev.target.value;
+      const ed = abc().edges.find(x => x.id === edgeId);
+      if (!ed || !val) return;
+      let aid = val;
+      if (val === '__new') {
+        const nm = (window.prompt('New deliverable name:') || '').trim();
+        if (!nm) { build(false); return; }
+        const existing = state.artifacts.find(a => a.name.trim().toLowerCase() === nm.toLowerCase());
+        const art = existing || makeArtifact(nm);
+        if (!existing) state.artifacts.push(art);
+        aid = art.id;
+      }
+      ed.artifactIds = ed.artifactIds || [];
+      if (!ed.artifactIds.includes(aid)) ed.artifactIds.push(aid);
+      saveState(); renderBizcase(); build(false);
+    });
+    pop.querySelectorAll('[data-rm-art]').forEach(btn => btn.addEventListener('mousedown', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      const ed = abc().edges.find(x => x.id === edgeId);
+      if (ed) { ed.artifactIds = (ed.artifactIds || []).filter(x => x !== btn.dataset.rmArt); saveState(); renderBizcase(); }
+      build(false);
+    }));
+    // mousedown (not click) + preventDefault so the input doesn't blur/commit and steal the delete.
+    pop.querySelector('.bz-ep-del').addEventListener('mousedown', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      const b = abc(); b.edges = b.edges.filter(x => x.id !== edgeId); saveState(); renderBizcase(); closePopover();
+    });
+  };
+  build(true);
   const popRect = pop.getBoundingClientRect();
   let left = Math.max(8, Math.min(clientX - popRect.width / 2, window.innerWidth - popRect.width - 8));
   let top = clientY + 10;
   if (top + popRect.height > window.innerHeight - 8) top = Math.max(8, clientY - popRect.height - 10);
   pop.style.left = (left + window.scrollX) + 'px'; pop.style.top = (top + window.scrollY) + 'px';
   openPopover = pop;
-  const input = pop.querySelector('.bz-ep-input');
-  input.focus(); input.select();
-  input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } });
-  input.addEventListener('change', () => {
-    const ed = abc().edges.find(x => x.id === edgeId);
-    if (ed) { ed.label = input.value.trim(); saveState(); renderBizcase(); }
-    closePopover();
-  });
-  // mousedown (not click) + preventDefault so the input doesn't blur/commit and steal the delete.
-  pop.querySelector('.bz-ep-del').addEventListener('mousedown', ev => {
-    ev.preventDefault(); ev.stopPropagation();
-    const b = abc(); b.edges = b.edges.filter(x => x.id !== edgeId); saveState(); renderBizcase(); closePopover();
-  });
 }
 
 // ---- bizcase mutations ----
@@ -5560,11 +5824,25 @@ function openTaskViewPopover(nodeId, anchorEl) {
       <span class="cv-name">⤵ ${escapeHtml(b.name || 'Untitled')}</span>
       <span class="cv-chips">${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'}</span>
     </button>`).join('');
+  // Consumes/Produces: the row's declared boundary IO, resolved against producers/consumers.
+  const ioLines = [];
+  (f.node.inputs || []).forEach(aid => {
+    const prod = (_artifactUses.producers[aid] || []).filter(u => u.id !== nodeId);
+    ioLines.push(`<div class="cv-io">⇥ ${escapeHtml(artifactLabel(aid))}${prod.length
+      ? ` <span class="cv-io-src">from ${escapeHtml(prod.map(u => u.name).join(', '))}</span>`
+      : ' <span class="cv-io-src none">no producer</span>'}</div>`);
+  });
+  (f.node.outputs || []).forEach(aid => {
+    const cons = (_artifactUses.consumers[aid] || []).filter(u => u.id !== nodeId);
+    ioLines.push(`<div class="cv-io">↦ ${escapeHtml(artifactLabel(aid))}${cons.length
+      ? ` <span class="cv-io-src">to ${escapeHtml(cons.map(u => u.name).join(', '))}</span>` : ''}</div>`);
+  });
+  const ioFoot = ioLines.length ? `<div class="cv-io-block">${ioLines.join('')}</div>` : '';
   const pop = document.createElement('div');
   pop.className = 'raci-popover colview-popover';
   pop.innerHTML = `<div class="cv-head">${escapeHtml(f.node.name || '(untitled)')}
       <span class="cv-sub">${escapeHtml(chartTierLabel(f.depth))}${crumb ? ' · ' + escapeHtml(crumb) : ''}</span>
-    </div>${rows}${flowFoot}`;
+    </div>${rows}${ioFoot}${flowFoot}`;
   document.body.appendChild(pop);
   placePopover(pop, anchorEl);
   openPopover = pop;
@@ -5759,6 +6037,39 @@ document.addEventListener('click', e => {
   if (chJump) { jumpToChartNode(chJump.dataset.chartId, chJump.dataset.nodeId); return; }
   const bzDetach = e.target.closest('[data-bz-detach]');
   if (bzDetach) { detachFlow(bzDetach.dataset.bzDetach); return; }
+  // ---- Deliverables (artifact registry + node boundary IO, v0.20) ----
+  const ioRm = e.target.closest('[data-io-rm]');
+  if (ioRm) {
+    const f = _activeNodeId && findNode(_activeNodeId);
+    if (f) {
+      const key = ioRm.dataset.ioKind === 'in' ? 'inputs' : 'outputs';
+      f.node[key] = (f.node[key] || []).filter(x => x !== ioRm.dataset.ioRm);
+      saveState(); renderChart(); renderDetails();
+    }
+    return;
+  }
+  if (e.target.closest('#art-new')) {
+    const nm = (window.prompt('New deliverable name:') || '').trim();
+    if (nm) {
+      const existing = state.artifacts.find(a => a.name.trim().toLowerCase() === nm.toLowerCase());
+      if (existing) { showToast(`"${existing.name}" already exists in the registry.`, 'suggest'); }
+      else { state.artifacts.push(makeArtifact(nm)); saveState(); showToast(`Deliverable "${nm}" added.`); }
+      render();
+    }
+    return;
+  }
+  const artDel = e.target.closest('[data-art-del]');
+  if (artDel) {
+    const a = artifactById(artDel.dataset.artDel);
+    if (a) {
+      const uses = computeArtifactUses();
+      const refs = (uses.producers[a.id] || []).length + (uses.consumers[a.id] || []).length;
+      if (refs) { showToast('Deliverable is referenced — remove its uses first.', 'error'); return; }
+      state.artifacts = state.artifacts.filter(x => x.id !== a.id);
+      saveState(); render();
+    }
+    return;
+  }
   // ---- Business Case (node-graph) handlers ----
   if (state.viewMode === 'bizcase') {
     // A box drag just ended — swallow the trailing click if it lands on a node (don't open a cell).
@@ -5891,6 +6202,34 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const cfSel = e.target.closest('#chart-framework');
   if (cfSel) { setChartFramework(cfSel.value); return; }
+  // Node boundary IO: add a deliverable to the active node's inputs/outputs (Details rail).
+  const ioAdd = e.target.closest('[data-io-add]');
+  if (ioAdd) {
+    const val = ioAdd.value;
+    const f = _activeNodeId && findNode(_activeNodeId);
+    if (!val || !f) { if (ioAdd.value) ioAdd.value = ''; return; }
+    let aid = val;
+    if (val === '__new') {
+      const nm = (window.prompt('New deliverable name:') || '').trim();
+      if (!nm) { renderDetails(); return; }
+      const existing = state.artifacts.find(a => a.name.trim().toLowerCase() === nm.toLowerCase());
+      const art = existing || makeArtifact(nm);
+      if (!existing) state.artifacts.push(art);
+      aid = art.id;
+    }
+    const key = ioAdd.dataset.ioAdd === 'in' ? 'inputs' : 'outputs';
+    f.node[key] = f.node[key] || [];
+    if (!f.node[key].includes(aid)) f.node[key].push(aid);
+    saveState(); renderChart(); renderDetails();
+    return;
+  }
+  // Registry: change a deliverable's type in the Legend.
+  const artType = e.target.closest('[data-art-type]');
+  if (artType) {
+    const a = artifactById(artType.dataset.artType);
+    if (a && ARTIFACT_TYPES.includes(artType.value)) { a.type = artType.value; saveState(); }
+    return;
+  }
   const lmSel = e.target.closest('.legend-map');
   if (lmSel) {
     const col = lmSel.dataset.col;
@@ -5964,6 +6303,11 @@ document.addEventListener('blur', e => {
   if (el.dataset.bzDesc) {
     const t = bizTaskById(el.dataset.bzDesc);
     if (t) { const d = el.textContent.trim(); if (t.description !== d) { t.description = d; saveState(); } }
+    return;
+  }
+  if (el.dataset.artName) {
+    const a = artifactById(el.dataset.artName);
+    if (a) { const nm = el.textContent.trim(); if (nm && nm !== a.name) { a.name = nm; saveState(); render(); } }
     return;
   }
   if (el.dataset.field === 'dir-name' && el.dataset.actor) { commitDirectorateName(el.dataset.actor, el.textContent.trim()); return; }
@@ -6356,6 +6700,7 @@ function recomputeViolations() {
   _violations = [];
   _violationsByNodeId = Object.create(null);
   _violationsByBizTaskId = Object.create(null);
+  _artifactUses = computeArtifactUses();   // artifact rules + ref-counts share this render's index
   const F = chartFw();
   const OWNER = F.owner, DOER = F.doer;
   const ownerName = F.meta[OWNER].label, doerName = F.meta[DOER].label;
@@ -6390,6 +6735,11 @@ function recomputeViolations() {
       // 6. Over-consulting — the most common RACI anti-pattern.
       if (consultCols.length >= OVER_CONSULT) issues.push({ severity: 'warn', rule: 'overConsulted',
         message: `Over-consulted: ${consultCols.length} of ${CC.length} parties marked Consulted (C). Each C is a sign-off bottleneck — keep consults lean.` });
+      // 7. Declared input no one produces (v0.20) — the supply chain breaks upstream of this row.
+      const orphanIn = (n.inputs || []).filter(aid => artifactById(aid)
+        && !(_artifactUses.producers[aid] || []).some(u => !(u.kind === 'chartNode' && u.id === n.id)));
+      if (orphanIn.length) issues.push({ severity: 'warn', rule: 'inputNoProducer',
+        message: `Input${orphanIn.length === 1 ? '' : 's'} ${orphanIn.map(artifactLabel).map(x => `"${x}"`).join(', ')} ha${orphanIn.length === 1 ? 's' : 've'} no producer — nothing anywhere declares ${orphanIn.length === 1 ? 'it' : 'them'} as an output or handoff.` });
       if (issues.length) {
         const severity = issues.some(i => i.severity === 'err') ? 'err' : 'warn';
         const entry = {
@@ -6447,6 +6797,9 @@ function lintFlow(b) {
     const outs = outBy[t.id] || [];
     if (outs.length >= 2 && outs.some(e => !(e.label || '').trim())) issues.push({ severity: 'warn', rule: 'decisionUnlabeled',
       message: `Decision point with ${outs.length} branches, but not every branch is labeled — name each path's condition.` });
+    const bare = outs.filter(e => !(e.artifactIds || []).length);
+    if (bare.length) issues.push({ severity: 'warn', rule: 'handoffWithoutArtifact',
+      message: `${bare.length} outgoing handoff${bare.length === 1 ? '' : 's'} carr${bare.length === 1 ? 'ies' : 'y'} no deliverable — click the edge and name what is handed off.` });
     if (b.tasks.length > 1 && !touched[t.id]) issues.push({ severity: 'warn', rule: 'flowDisconnected',
       message: `Disconnected step — no handoffs in or out. Connect it into the flow (or delete it).` });
     const partyless = doerCols.filter(k => !(t.parties && t.parties[k]) && !bizDefaultPartyFor(ctx, k));
@@ -6628,6 +6981,28 @@ function renderDetails() {
       <button class="det-upload" type="button" data-flow-btn="${n.id}">⤵ Create / attach flow</button>
     </div>`;
   }
+  // Boundary IO: what this activity consumes/produces, declared against the deliverable registry.
+  const ioSection = (kind, label, ids) => {
+    const chips = (ids || []).map(aid => {
+      const others = kind === 'in'
+        ? (_artifactUses.producers[aid] || []).filter(u => u.id !== n.id)
+        : (_artifactUses.consumers[aid] || []).filter(u => u.id !== n.id);
+      const rel = kind === 'in'
+        ? (others.length ? ` — from: ${others.map(u => u.name).join(', ')}` : ' — no producer anywhere')
+        : (others.length ? ` — consumed by: ${others.map(u => u.name).join(', ')}` : '');
+      return `<span class="det-io-chip" title="${escapeHtml(artifactLabel(aid) + rel)}">${escapeHtml(artifactLabel(aid))}<button type="button" class="det-io-rm" data-io-rm="${aid}" data-io-kind="${kind}" title="Remove">×</button></span>`;
+    }).join('');
+    const opts = state.artifacts.filter(a => !(ids || []).includes(a.id))
+      .map(a => `<option value="${a.id}">${escapeHtml(a.name)} (${a.type})</option>`).join('');
+    return `<div class="det-section">
+      <h4>${label}</h4>
+      <div class="det-io-list">${chips || '<span class="det-io-none">none declared</span>'}</div>
+      <select class="det-io-add" data-io-add="${kind}">
+        <option value="">＋ add deliverable…</option>${opts}
+        <option value="__new">＋ new deliverable…</option>
+      </select>
+    </div>`;
+  };
   body.innerHTML = `
     <span class="det-tier">${escapeHtml(tier)} activity</span>
     <div class="det-name">${escapeHtml(n.name || '(untitled)')}</div>
@@ -6636,6 +7011,8 @@ function renderDetails() {
       ${nodeWhoHtml(n)}
     </div>
     ${flowSection}
+    ${ioSection('in', 'Inputs — consumes', n.inputs)}
+    ${ioSection('out', 'Outputs — produces', n.outputs)}
     <div class="det-section">
       <h4>Definition</h4>
       <textarea id="det-desc" placeholder="Describe what this activity covers — purpose, scope, decisions, hand-offs.">${escapeHtml(n.description || '')}</textarea>
@@ -6965,10 +7342,29 @@ function importJSON(file, merge) {
       // actually carried, so record that before migration (which mutates `raw` in place).
       const hadCharts = (raw && Array.isArray(raw.charts) && raw.charts.length > 0) || (raw && Array.isArray(raw.activities));
       const hadBiz = raw && Array.isArray(raw.bizCases) && raw.bizCases.length > 0;
+      const hadArts = raw && Array.isArray(raw.artifacts) && raw.artifacts.length > 0;
       const incoming = migrateState(raw);
       if (merge) {
         const mCharts = hadCharts ? incoming.charts : [];
         const mBiz = hadBiz ? (incoming.bizCases || []) : [];
+        // Artifacts merge by IDENTITY where possible: an incoming deliverable with the same
+        // name+type as an existing one maps onto it (registry stays deduplicated); the rest are
+        // re-minted under fresh ids. All incoming IO refs are then remapped, and anything still
+        // dangling is dropped (the post-merge invariant: no ref without a registry entry).
+        const artIdMap = {};
+        (hadArts ? (incoming.artifacts || []) : []).forEach(a => {
+          const dup = state.artifacts.find(x => x.name.trim().toLowerCase() === a.name.trim().toLowerCase() && x.type === a.type);
+          if (dup) { artIdMap[a.id] = dup.id; return; }
+          const old = a.id;
+          a.id = 'a_' + uid();
+          artIdMap[old] = a.id;
+          state.artifacts.push(a);
+        });
+        const remapIO = arr => (arr || []).map(x => artIdMap[x] || x).filter(x => state.artifacts.some(a => a.id === x));
+        mCharts.forEach(c => (function walk(ns) {
+          (ns || []).forEach(n => { n.inputs = remapIO(n.inputs); n.outputs = remapIO(n.outputs); walk(n.children); });
+        })(c.activities));
+        mBiz.forEach(b => b.edges.forEach(ed => { ed.artifactIds = remapIO(ed.artifactIds); }));
         // Charts are re-minted under fresh ids (node ids inside are preserved), so incoming flow
         // anchors must follow: remap through old→new; an anchor pointing at a chart the file
         // didn't carry survives only if it resolves against a chart already in this workspace
