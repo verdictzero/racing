@@ -76,7 +76,7 @@ Confirmed by code audit (7 agents, 2026-07-22):
 2. Inherited party defaults on cards from anchor org refs + `columnActor` (dashed capsules until explicitly set).
 3. Flow-rule pass feeding the existing violations UI; pins on flow cards; include bizcase in the `render()` recompute (remove the skip at 4278).
 
-### Phase 3 — Artifact spine (decision 2a)
+### Phase 3 — Artifact spine (decision 2a) ✅ DONE (v0.20)
 1. `state.artifacts` registry + management UI (reference counts, orphan flags, delete guarded when referenced).
 2. `inputs[]`/`outputs[]` on chart nodes and biz tasks; `artifactIds[]` on edges; edge popover multi-select ("adopt into producer outputs / consumer inputs" one-click fixer).
 3. Flow table: "Hands off" column; topological row order from in-degree-0 tasks (replacing insertion order, 4969).
@@ -93,6 +93,12 @@ Confirmed by code audit (7 agents, 2026-07-22):
 1. XLSX Flows sheet (step, parties to team depth, inputs, outputs, condition) keyed by anchor ancestry; Artifacts sheet.
 2. PPTX: one slide per anchored flow's step table. XML: `<flow>` under the anchored activity + `<artifacts>` section. Mermaid: flow graph export.
 3. Fix `fileBase` (6281) to use the bizcase name when exporting from the bizcase view.
+
+## Implementation deviations (recorded as built)
+
+- **Flow-step IO is derived-only** (from `edge.artifactIds`), never stored on biz tasks — the roadmap's "never stored redundantly" line won over the data-model sketch that gave biz tasks `inputs[]/outputs[]`. Chart nodes keep stored boundary IO (no edges exist at chart level to derive from).
+- **`outputNeverConsumed` is not a violation** — terminal deliverables are legitimate, so unconsumed artifacts surface as registry annotations (orphan flag / ref-counts) instead of warnings, avoiding the warn-storm risk the designers flagged.
+- Artifact `ownerRef`/`doc` exist in the model but have no UI yet (owner picker and attached spec docs ride a later phase).
 
 ## Known limitations accepted for now
 
