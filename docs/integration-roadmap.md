@@ -71,7 +71,7 @@ Confirmed by code audit (7 agents, 2026-07-22):
 4. `bizJumpToTask`; Details rail "Linked flows" section; row-eye popover flow chip; selector grouped Attached/Standalone.
 5. `importJSON` merge (7140-68): remap `anchor.chartId` through the old→new chart-id map.
 
-### Phase 2 — Inherited context + warn-only reconciliation (decision 4a)
+### Phase 2 — Inherited context + warn-only reconciliation (decision 4a) ✅ DONE (v0.19)
 1. Anchored flows render cascade-aware chips (dashed inherited A; explicit overrides visually distinct).
 2. Inherited party defaults on cards from anchor org refs + `columnActor` (dashed capsules until explicitly set).
 3. Flow-rule pass feeding the existing violations UI; pins on flow cards; include bizcase in the `render()` recompute (remove the skip at 4278).
