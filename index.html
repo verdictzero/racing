@@ -309,7 +309,9 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
 }
 #chart-tab-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(81,207,102,0.06); }
 
-.actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+/* The actions cluster grows to fill the header's leftover width (rather than sitting
+   right-aligned with a dead gap before it); its buttons stretch to share that width. */
+.actions { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
 button {
   background: var(--bg-3);
   color: var(--text);
@@ -1507,19 +1509,31 @@ input[type="file"] { display: none; }
 }
 
 /* ===== Top-bar responsive reflow ===== */
-/* Below ~820px the view tabs drop to their own full-width row; the logo/brand keep the top row
-   with the actions cluster pushed to the right. */
+/* Every toolbar button flexes: it grows to help fill its row and shrinks so more buttons stay on a
+   row before wrapping. Combined with the growing .actions cluster this keeps the bar packed —
+   buttons change width, stack, and reflow as the header narrows, with no ragged dead-space edges.
+   The Save/Load pair is given a larger share so it stays prominent. */
+.actions button, .actions .export-menu { flex: 1 1 auto; min-width: max-content; }
+.actions #btn-export, .actions #btn-import { flex-grow: 1.6; }
+.actions .export-menu #btn-export-menu { width: 100%; justify-content: center; }
+.actions .actions-divider { flex: 0 0 auto; min-width: 0; }
+.view-tabs button.tab-help { justify-content: center; }
+
+/* Below ~820px the tabs and actions each take a full-width row of their own; their buttons stretch
+   to fill it so no width is wasted. The logo + brand keep the top row. */
 @media (max-width: 820px) {
+  .actions { flex: 1 1 100%; order: 2; }
   .view-tabs { margin-left: 0; flex: 1 1 100%; order: 3; }
-  .actions { order: 2; }
+  .view-tabs button { flex: 1 1 auto; }
 }
-/* Tighter still: the actions cluster gets its own left-aligned row and header chrome compacts. */
+/* Tighter still: compact the header chrome so the buttons get more of the width, and let buttons
+   shrink past their label width (ellipsis) rather than forcing another wrap. */
 @media (max-width: 560px) {
   header { padding: 8px 10px; gap: 10px; }
-  .actions { flex: 1 1 100%; margin-left: 0; justify-content: flex-start; order: 4; }
   #app-logo { height: 28px; }
   #app-brand { padding: 0; }
   #app-brand .brand-name { font-size: 13px; }
+  .actions button { min-width: 0; }
 }
 
 /* ===== View-mode side-rail visibility ===== */
@@ -3473,8 +3487,9 @@ const ACCENT = '#51cf66';
 //                  The Help tab is set apart from the data views by a divider + ? glyph. Top bar
 //                  now reflows responsively: the header wraps, the long "Business Case Task Flow"
 //                  label shortens to "Biz Case" under 900px, tabs drop to their own row under
-//                  820px, and the actions cluster gets a left-aligned row under 560px — no
-//                  horizontal overflow at narrow widths.
+//                  820px, and the actions cluster grows to fill the leftover width with its
+//                  buttons flexing (changing width, stacking, and reflowing) to pack each row
+//                  edge-to-edge — no horizontal overflow and minimal dead space at any width.
 //     0.25 alpha - Renamed the "Work" view to "Tasks" (tab, view heading, run-book title). The
 //                  Tasks landing is now a big-button drill chooser (directorate → division → branch
 //                  → team) instead of four small dropdowns — pick a unit, or drill and "see tasks"
