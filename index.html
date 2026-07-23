@@ -1536,6 +1536,73 @@ input[type="file"] { display: none; }
   .actions button { min-width: 0; }
 }
 
+/* ===== Ultrawide three-zone shell =====
+   Narrow (default): <header> is a normal wrapping top bar (rules above); #tool-rail and
+   #brand-zone are inert wrappers (display:contents) so brand + actions still sit inline. The
+   view tabs, brand, and actions order via flex `order` into [brand][tabs][actions].
+   Wide (>=1200px): the header dissolves (display:contents) and its pieces reflow into a CSS grid
+   — breadcrumbs across the top, view tabs as a dedicated LEFT rail, brand + actions as a RIGHT
+   rail flanking the main content. Breadcrumbs stay up top in both. */
+#app-frame { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+#brand-zone { display: flex; align-items: center; gap: 12px; order: -1; }
+#tool-rail { display: contents; }
+.view-tabs { order: 0; }
+.actions { order: 1; }
+
+@media (min-width: 1200px) {
+  :root { --tab-rail-w: 178px; --tool-rail-w: 210px; }
+  #app-frame {
+    display: grid;
+    grid-template-columns: var(--tab-rail-w) minmax(0, 1fr) var(--tool-rail-w);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "charttabs charttabs charttabs"
+      "crumbs    crumbs    crumbs"
+      "tabs      main      tools";
+  }
+  header { display: contents; }
+  #chart-tabs { grid-area: charttabs; }
+  #drill-crumbs { grid-area: crumbs; border-bottom: 1px solid var(--border); }
+  #view-tabs { grid-area: tabs; }
+  #tool-rail { grid-area: tools; }
+  main { grid-area: main; min-width: 0; min-height: 0; }
+
+  /* LEFT rail — view tabs stacked vertically */
+  #view-tabs {
+    flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+    gap: 3px; padding: 12px 10px; margin: 0; border-radius: 0;
+    background: var(--bg-2); border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  #view-tabs button {
+    text-align: left; width: 100%; padding: 9px 12px; font-size: 13px;
+    border-radius: 6px; flex: 0 0 auto; white-space: normal;
+  }
+  #view-tabs button.tab-help { justify-content: flex-start; }
+  #view-tabs .vt-sep { width: auto; height: 1px; align-self: stretch; margin: 7px 6px; }
+  #view-tabs .vt-lg { display: inline; }   /* room for the full label in the rail */
+  #view-tabs .vt-sm { display: none; }
+
+  /* RIGHT rail — brand on top, actions stacked below */
+  #tool-rail {
+    display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+    padding: 12px 12px 16px; overflow-y: auto;
+    background: var(--bg-2); border-left: 1px solid var(--border);
+  }
+  #brand-zone { order: 0; gap: 10px; padding: 0 2px 10px; border-bottom: 1px solid var(--border); }
+  #tool-rail .actions {
+    order: 1; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+    gap: 6px; margin: 0; justify-content: flex-start;
+  }
+  #tool-rail .actions button,
+  #tool-rail .actions .export-menu { flex: 0 0 auto; width: 100%; min-width: 0; }
+  #tool-rail .actions .export-menu #btn-export-menu { width: 100%; justify-content: center; }
+  #tool-rail .actions .actions-divider {
+    width: auto; height: 1px; align-self: stretch; margin: 4px 2px;
+  }
+  #tool-rail .export-menu-list { right: 0; left: auto; }
+}
+
 /* ===== View-mode side-rail visibility ===== */
 body[data-view="roster"] #ws-sidebar,
 body[data-view="roster"] #legend { display: none; }
@@ -2354,8 +2421,8 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
    so the scroll container sizes correctly */
 .cascade-zoom { position: relative; }
 
-/* zoom control overlay (chart view only) */
-#zoom-ctl {
+/* zoom control overlay — shared by the chart (raci) view and the node (bizcase) canvas */
+.zoom-ctl {
   position: absolute;
   right: 18px;
   bottom: 18px;
@@ -2370,16 +2437,17 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
   box-shadow: 0 6px 18px -4px rgba(0,0,0,0.6);
 }
 body[data-view="chart"] #zoom-ctl { display: inline-flex; }
-#zoom-ctl button {
+body[data-view="bizcase"] #bz-zoom-ctl { display: inline-flex; }
+.zoom-ctl button {
   width: 30px; height: 28px; padding: 0;
   font-size: 16px; line-height: 1; border-radius: 5px;
 }
-#zoom-ctl .zoom-level {
+.zoom-ctl .zoom-level {
   min-width: 48px; text-align: center; font-size: 12px;
   color: var(--text-dim); cursor: pointer; user-select: none;
   font-variant-numeric: tabular-nums;
 }
-#zoom-ctl .zoom-level:hover { color: var(--text); }
+.zoom-ctl .zoom-level:hover { color: var(--text); }
 
 /* drag handle to dynamically resize the focused chart (positioned by layoutCascade).
    Sits above the chart's glow + content as a beveled tab with dense diagonal hashes. */
@@ -2722,8 +2790,9 @@ body[data-view="roster"] #legend { display: none; }
   /* Hide all interactive chrome — leave just the matrix. */
   header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover,
   #save-nag, #splash-overlay, #newchart-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
-  #zoom-ctl, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
+  #zoom-ctl, #bz-zoom-ctl, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
   [data-del-node], [data-bz-del-task] { display: none !important; }
+  #app-frame { display: block !important; }
   main, #ws-main { display: block !important; overflow: visible !important; position: static !important;
     padding: 0 !important; height: auto !important; }
   /* Flatten the zoomed/absolute cascade into a normal vertical flow that paginates cleanly. */
@@ -2814,9 +2883,8 @@ body[data-view="roster"] #legend { display: none; }
   </div>
 </div>
 <img id="bg-watermark" src="ASIC-LOGO-2026.png" alt="" aria-hidden="true">
+<div id="app-frame">
 <header>
-  <img id="app-logo" src="ASIC-LOGO-2026.png" alt="ASIC — Army Software & Innovation Center" title="ASIC — Army Software & Innovation Center">
-  <div id="app-brand" title="ASIC RACI Tool"><span class="brand-name"></span><span class="brand-ver"></span></div>
   <div class="view-tabs" id="view-tabs">
     <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
@@ -2824,6 +2892,11 @@ body[data-view="roster"] #legend { display: none; }
     <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Tasks</button>
     <span class="vt-sep" aria-hidden="true"></span>
     <button data-view="help" class="tab-help" title="Field guide: how nested RACI charts work and why accountability cascades from Portfolio down to Task"><span class="vt-help-ico" aria-hidden="true">?</span>Help</button>
+  </div>
+  <div id="tool-rail">
+  <div id="brand-zone">
+    <img id="app-logo" src="ASIC-LOGO-2026.png" alt="ASIC — Army Software & Innovation Center" title="ASIC — Army Software & Innovation Center">
+    <div id="app-brand" title="ASIC RACI Tool"><span class="brand-name"></span><span class="brand-ver"></span></div>
   </div>
   <div class="actions">
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
@@ -2846,6 +2919,7 @@ body[data-view="roster"] #legend { display: none; }
     </div>
     <button id="btn-reset" title="Restore the built-in demo dataset">Reset</button>
     <button id="btn-clear" title="Wipe all activities and roster data — blank slate">Clear</button>
+  </div>
   </div>
 </header>
 <div id="chart-tabs" role="tablist" aria-label="RACI chart tabs"></div>
@@ -2870,6 +2944,7 @@ body[data-view="roster"] #legend { display: none; }
     <div id="bz-party-body"><!-- filled by renderBizPartyPanel() --></div>
   </aside>
 </main>
+</div><!-- /#app-frame -->
 <!-- Embedded field guide: docs/nested-raci.html, mirrored inline so the Help tab is
      fully self-contained (no external fetch). Rendered into an isolated <iframe srcdoc>
      by renderHelp(); the doc keeps its own styles, isolated from the app. If you edit
@@ -5427,7 +5502,7 @@ function renderChart() {
   }
   const blocks = charts.map((c, i) => renderChartBlock(c, i, charts.length)).join('');
   main.innerHTML = `<div class="cascade-zoom" id="cascade-zoom"><div class="cascade" id="cascade">${blocks}<svg class="cascade-svg" id="cascade-svg" aria-hidden="true"></svg><div class="chart-resize" id="chart-resize" title="Drag to resize the charts"></div></div></div>
-    <div id="zoom-ctl">
+    <div id="zoom-ctl" class="zoom-ctl">
       <button id="zoom-out" title="Zoom out">−</button>
       <span class="zoom-level" id="zoom-level" title="Reset zoom">${Math.round((ac().chartZoom || 1) * 100)}%</span>
       <button id="zoom-in" title="Zoom in">+</button>
@@ -5800,9 +5875,10 @@ function setZoom(z) {
   applyZoom();
 }
 function zoomBy(delta) { setZoom((ac().chartZoom || 1) + delta); }
-// Ctrl/Cmd + wheel zooms the chart
+// Scroll wheel zooms the chart (plain wheel — Ctrl/Cmd still works too). Scoped to #ws-main; the
+// details/legend panels are its siblings, so they keep normal scroll.
 document.addEventListener('wheel', e => {
-  if (state.viewMode !== 'chart' || !(e.ctrlKey || e.metaKey)) return;
+  if (state.viewMode !== 'chart') return;
   if (!e.target.closest('#ws-main')) return;
   e.preventDefault();
   zoomBy(e.deltaY < 0 ? 0.1 : -0.1);
@@ -6008,7 +6084,7 @@ function bizSelectorHtml() {
     <span class="bz-sep" aria-hidden="true"></span>
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
     <button id="bz-toggle-table" class="${b.showTable ? 'active' : ''}" title="Show/hide the RACI table pane">▦ Table</button>
-    <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · Ctrl/Cmd+scroll to zoom</span>`;
+    <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · scroll to zoom · drag canvas to pan</span>`;
 }
 
 // Step-cell chips for the ACTIVE case: explicit letters, plus — on an anchored flow — the dashed
@@ -6224,6 +6300,12 @@ function renderBizcase() {
             <svg class="bz-edges" id="bz-edges" xmlns="http://www.w3.org/2000/svg"></svg>
             ${nodes}
           </div>
+          <div id="bz-zoom-ctl" class="zoom-ctl">
+            <button id="bz-zoom-out" title="Zoom out">−</button>
+            <span class="zoom-level" id="bz-zoom-level" title="Reset to 100%">${Math.round((b.view.zoom || 1) * 100)}%</span>
+            <button id="bz-zoom-in" title="Zoom in">+</button>
+            <button id="bz-zoom-fit" title="Fit all tasks in view">⤢</button>
+          </div>
         </div>
         ${tablePane}
       </div>
@@ -6236,6 +6318,44 @@ function bizApplyTransform() {
   const v = abc().view;
   const world = document.getElementById('bz-world');
   if (world) world.style.transform = `translate(${v.panX}px, ${v.panY}px) scale(${v.zoom})`;
+}
+function bizZoomLabel() {
+  const el = document.getElementById('bz-zoom-level');
+  if (el) el.textContent = Math.round((abc().view.zoom || 1) * 100) + '%';
+}
+// Zoom to `next`, holding the point (cx,cy) in canvas-space fixed. Omit cx/cy to anchor on centre.
+function bizZoomTo(next, cx, cy) {
+  const v = abc().view;
+  const old = v.zoom || 1;
+  next = Math.min(BZ_ZOOM_MAX, Math.max(BZ_ZOOM_MIN, next));
+  if (Math.abs(next - old) < 1e-4) return;
+  const cv = document.getElementById('bz-canvas');
+  if (cx == null && cv) { const r = cv.getBoundingClientRect(); cx = r.width / 2; cy = r.height / 2; }
+  cx = cx || 0; cy = cy || 0;
+  v.panX = cx - ((cx - v.panX) * (next / old));
+  v.panY = cy - ((cy - v.panY) * (next / old));
+  v.zoom = next;
+  bizApplyTransform(); bizZoomLabel(); saveState();
+}
+function bizZoomBy(factor) { bizZoomTo((abc().view.zoom || 1) * factor); }
+// Fit every task box within the canvas, centred, with a little breathing room.
+function bizFit() {
+  const b = abc(), v = b.view;
+  const cv = document.getElementById('bz-canvas'), world = document.getElementById('bz-world');
+  const nodes = world ? [...world.querySelectorAll('.bz-node')] : [];
+  if (!cv || !nodes.length) { v.zoom = 1; v.panX = 40; v.panY = 40; bizApplyTransform(); bizZoomLabel(); saveState(); return; }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    minX = Math.min(minX, n.offsetLeft); minY = Math.min(minY, n.offsetTop);
+    maxX = Math.max(maxX, n.offsetLeft + n.offsetWidth); maxY = Math.max(maxY, n.offsetTop + n.offsetHeight);
+  });
+  const pad = 56, r = cv.getBoundingClientRect();
+  const bw = (maxX - minX) + pad * 2, bh = (maxY - minY) + pad * 2;
+  const z = Math.min(BZ_ZOOM_MAX, Math.max(BZ_ZOOM_MIN, Math.min(r.width / bw, r.height / bh)));
+  v.zoom = z;
+  v.panX = r.width / 2 - ((minX + maxX) / 2) * z;
+  v.panY = r.height / 2 - ((minY + maxY) / 2) * z;
+  bizApplyTransform(); bizZoomLabel(); saveState();
 }
 
 // Cubic bezier between two socket points, with horizontal tangents (Blender-noodle look).
@@ -6508,6 +6628,7 @@ document.addEventListener('mousedown', e => {
   }
   if (e.target.closest('[data-bz-edge]')) return;  // edge click handled on click
   if (e.target.closest('.bz-node')) return;        // cell click handled on click
+  if (e.target.closest('#bz-zoom-ctl')) return;    // zoom buttons — not a pan origin
   if (e.target.closest('#bz-canvas')) {            // empty canvas → pan
     const v = abc().view;
     bizPan = { sx: e.clientX, sy: e.clientY, ox: v.panX, oy: v.panY, moved: false };
@@ -6562,21 +6683,13 @@ document.addEventListener('mouseup', e => {
     bizPan = null;
   }
 });
-// Cursor-anchored zoom (Ctrl/Cmd + wheel), mirroring the chart zoom.
+// Cursor-anchored zoom on plain scroll wheel (Ctrl/Cmd still works too), mirroring the chart zoom.
 document.addEventListener('wheel', e => {
-  if (state.viewMode !== 'bizcase' || !(e.ctrlKey || e.metaKey)) return;
+  if (state.viewMode !== 'bizcase') return;
   if (!e.target.closest('#bz-canvas')) return;
   e.preventDefault();
-  const v = abc().view;
-  const old = v.zoom || 1;
-  const next = Math.min(BZ_ZOOM_MAX, Math.max(BZ_ZOOM_MIN, old * (e.deltaY < 0 ? 1.1 : 0.9)));
-  if (next === old) return;
   const r = document.getElementById('bz-canvas').getBoundingClientRect();
-  const cx = e.clientX - r.left, cy = e.clientY - r.top;
-  v.panX = cx - ((cx - v.panX) * (next / old));
-  v.panY = cy - ((cy - v.panY) * (next / old));
-  v.zoom = next;
-  bizApplyTransform(); saveState();
+  bizZoomTo((abc().view.zoom || 1) * (e.deltaY < 0 ? 1.1 : 0.9), e.clientX - r.left, e.clientY - r.top);
 }, { passive: false });
 
 function countOrgUnits(d) {
@@ -7461,6 +7574,10 @@ document.addEventListener('click', e => {
     if (e.target.closest('#bz-del')) { bizDeleteCase(); return; }
     if (e.target.closest('#bz-add-task')) { bizAddTask(); return; }
     if (e.target.closest('#bz-toggle-table')) { bizToggleTable(); return; }
+    if (e.target.closest('#bz-zoom-in')) { bizZoomBy(1.1); return; }
+    if (e.target.closest('#bz-zoom-out')) { bizZoomBy(1 / 1.1); return; }
+    if (e.target.closest('#bz-zoom-fit')) { bizFit(); return; }
+    if (e.target.closest('#bz-zoom-level')) { bizZoomTo(1); return; }
     const bzDelTask = e.target.closest('[data-bz-del-task]');
     if (bzDelTask) { bizDeleteTask(bzDelTask.dataset.bzDelTask); return; }
     const bzEdge = e.target.closest('[data-bz-edge]');
