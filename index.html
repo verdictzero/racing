@@ -39,6 +39,8 @@ body {
 header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;      /* let the logo/brand/tabs/actions reflow onto multiple rows when narrow */
+  row-gap: 8px;
   padding: 10px 14px;
   background: var(--bg-2);
   border-bottom: 1px solid var(--border);
@@ -1463,6 +1465,8 @@ input[type="file"] { display: none; }
 /* ===== View tabs ===== */
 .view-tabs {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;          /* tabs wrap among themselves before forcing header overflow */
   gap: 2px;
   background: var(--bg-3);
   padding: 2px;
@@ -1476,8 +1480,47 @@ input[type="file"] { display: none; }
   font-size: 12px;
   border-radius: 3px;
   color: var(--text-dim);
+  white-space: nowrap;      /* never break a tab label across lines */
 }
 .view-tabs button.active { background: var(--bg); color: var(--text); font-weight: 600; }
+/* Responsive label for the long "Business Case Task Flow" tab — shortens before it can wrap. */
+.view-tabs .vt-sm { display: none; }
+/* Help is a reference/utility tab, set apart from the data views by a divider + a ? glyph. */
+.view-tabs .vt-sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 3px 5px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+.view-tabs button.tab-help { display: inline-flex; align-items: center; gap: 5px; }
+.view-tabs button.tab-help .vt-help-ico {
+  display: inline-grid; place-items: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  border: 1px solid currentColor; opacity: 0.85;
+}
+.view-tabs button.tab-help.active { color: var(--accent); }
+@media (max-width: 900px) {
+  .view-tabs .vt-lg { display: none; }
+  .view-tabs .vt-sm { display: inline; }
+}
+
+/* ===== Top-bar responsive reflow ===== */
+/* Below ~820px the view tabs drop to their own full-width row; the logo/brand keep the top row
+   with the actions cluster pushed to the right. */
+@media (max-width: 820px) {
+  .view-tabs { margin-left: 0; flex: 1 1 100%; order: 3; }
+  .actions { order: 2; }
+}
+/* Tighter still: the actions cluster gets its own left-aligned row and header chrome compacts. */
+@media (max-width: 560px) {
+  header { padding: 8px 10px; gap: 10px; }
+  .actions { flex: 1 1 100%; margin-left: 0; justify-content: flex-start; order: 4; }
+  #app-logo { height: 28px; }
+  #app-brand { padding: 0; }
+  #app-brand .brand-name { font-size: 13px; }
+}
 
 /* ===== View-mode side-rail visibility ===== */
 body[data-view="roster"] #ws-sidebar,
@@ -2763,9 +2806,10 @@ body[data-view="roster"] #legend { display: none; }
   <div class="view-tabs" id="view-tabs">
     <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
-    <button data-view="bizcase">Business Case Task Flow</button>
+    <button data-view="bizcase" title="Business Case Task Flow"><span class="vt-lg">Business Case Task Flow</span><span class="vt-sm">Biz Case</span></button>
     <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Tasks</button>
-    <button data-view="help" title="Field guide: how nested RACI charts work and why accountability cascades from Portfolio down to Task">Help</button>
+    <span class="vt-sep" aria-hidden="true"></span>
+    <button data-view="help" class="tab-help" title="Field guide: how nested RACI charts work and why accountability cascades from Portfolio down to Task"><span class="vt-help-ico" aria-hidden="true">?</span>Help</button>
   </div>
   <div class="actions">
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
@@ -3426,6 +3470,11 @@ const ACCENT = '#51cf66';
 //                  <iframe srcdoc> so its stylesheet stays sealed off from the app. renderHelp()
 //                  mounts the frame once and reuses it; help view hides the app chrome (chart
 //                  tabs, crumbs, legend, details, violations toast) like the other non-chart views.
+//                  The Help tab is set apart from the data views by a divider + ? glyph. Top bar
+//                  now reflows responsively: the header wraps, the long "Business Case Task Flow"
+//                  label shortens to "Biz Case" under 900px, tabs drop to their own row under
+//                  820px, and the actions cluster gets a left-aligned row under 560px — no
+//                  horizontal overflow at narrow widths.
 //     0.25 alpha - Renamed the "Work" view to "Tasks" (tab, view heading, run-book title). The
 //                  Tasks landing is now a big-button drill chooser (directorate → division → branch
 //                  → team) instead of four small dropdowns — pick a unit, or drill and "see tasks"
