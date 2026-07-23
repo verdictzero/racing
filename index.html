@@ -1600,7 +1600,13 @@ input[type="file"] { display: none; }
   #tool-rail .actions .actions-divider {
     width: auto; height: 1px; align-self: stretch; margin: 4px 2px;
   }
-  #tool-rail .export-menu-list { right: 0; left: auto; }
+  /* In the rail, #tool-rail is a scroll container (overflow-y:auto also clips overflow-x per spec),
+     so the absolutely-positioned Export flyout would be clipped. Fit it to the rail width and open
+     it UPWARD (Export sits near the rail's bottom) so it clears both clip edges. */
+  #tool-rail .export-menu-list {
+    left: 0; right: 0; min-width: 0;
+    top: auto; bottom: calc(100% + 4px);
+  }
 }
 
 /* ===== View-mode side-rail visibility ===== */
