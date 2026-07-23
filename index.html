@@ -1516,6 +1516,57 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
     margin-right: auto;
   }
 }
+
+/* ===== Roster: Explore (boxes) mode — the primary drill layout (v0.25) ===== */
+.roster-header .rost-modes {
+  margin-left: auto; display: inline-flex; gap: 2px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 7px; padding: 2px;
+}
+.rost-modes button { background: transparent; border: none; color: var(--text-dim); font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 5px; cursor: pointer; }
+.rost-modes button:hover { color: var(--text); }
+.rost-modes button.active { background: var(--bg-4); color: var(--text); }
+.roster-explore { padding: 18px 20px 60px; }
+.rost-inner { max-width: 1120px; margin: 0 auto; }
+.rost-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; margin-bottom: 14px; }
+.rost-crumb { background: transparent; border: none; color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer; padding: 3px 8px; border-radius: 5px; }
+.rost-crumb:not(:disabled):hover { background: var(--bg-3); color: var(--p); }
+.rost-crumb.current { color: var(--text); font-weight: 600; cursor: default; }
+.rost-crumb:disabled { cursor: default; }
+.rost-crumb-sep { color: var(--text-dim); font-size: 11px; }
+.rost-hint { color: var(--text-dim); font-size: 12px; margin-bottom: 12px; }
+.rost-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.rost-box {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; cursor: pointer; color: var(--text);
+  transition: border-color 0.12s, background 0.12s, transform 0.06s;
+}
+.rost-box:hover { border-color: var(--accent); background: var(--bg-3); }
+.rost-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rost-box:active { transform: translateY(1px); }
+.rost-box.k-dir { border-left: 3px solid var(--p); }
+.rost-box-del { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; line-height: 1; padding: 0; visibility: hidden; }
+.rost-box:hover .rost-box-del { visibility: visible; }
+.rost-box-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+.rost-box-name { font-size: 18px; font-weight: 700; line-height: 1.2; padding-right: 22px; }
+.rost-box-stat { font-size: 12px; color: var(--text-dim); }
+.rost-box-lead { font-size: 11.5px; color: var(--text); }
+.rost-box-lead.vacant { color: var(--text-dim); font-style: italic; }
+.rost-box-go { margin-top: 3px; font-size: 12px; font-weight: 600; color: var(--p); }
+.rost-box:hover .rost-box-go { color: var(--accent); }
+.rost-add {
+  display: flex; align-items: center; justify-content: center; min-height: 104px;
+  background: transparent; border: 1px dashed var(--border); border-radius: 12px;
+  color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer;
+}
+.rost-add:hover { border-color: var(--accent); color: var(--accent); }
+.rost-unit-head { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.rost-uh-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rost-uh-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); flex: 0 0 auto; }
+.rost-uh-name { font-size: 18px; font-weight: 700; margin: 0; }
+.rost-uh-stat { color: var(--text-dim); font-size: 12px; margin-left: auto; flex: 0 0 auto; }
+.rost-uh-lead { margin-top: 10px; }
+.rost-people-box { display: flex; flex-direction: column; gap: 6px; max-width: 660px; }
 .directorate {
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -1882,11 +1933,59 @@ body[data-view="work"] #ws-main { padding: 0; overflow: auto; }
 .wk-io b { font-weight: 600; }
 .wk-io-src { color: var(--text-dim); font-size: 11px; }
 .wk-io-src.none { color: var(--warn); font-style: italic; }
+#wk-restart {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
+}
+#wk-restart:hover { border-color: var(--accent); color: var(--accent); }
 @media print {
   .wk-header { position: static; }
-  .wk-picker, #wk-print { display: none !important; }
+  .wk-picker, #wk-print, #wk-restart { display: none !important; }
   .wk-card { break-inside: avoid; border-color: #bbb; }
 }
+
+/* ===== Tasks-view big-button chooser (v0.25) — the friendly landing before a unit is picked ===== */
+.wk-choose-wrap { padding: 24px 20px 60px; }
+.wk-choose { max-width: 1060px; margin: 0 auto; }
+.wkc-intro h3 { margin: 0 0 5px; font-size: 21px; font-weight: 700; }
+.wkc-intro p { margin: 0 0 18px; color: var(--text-dim); font-size: 13px; line-height: 1.55; max-width: 700px; }
+.wkc-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; margin-bottom: 14px; }
+.wkc-crumb {
+  background: transparent; border: none; color: var(--text-dim); font: inherit; font-size: 13px;
+  cursor: pointer; padding: 3px 8px; border-radius: 5px;
+}
+.wkc-crumb:not(:disabled):hover { background: var(--bg-3); color: var(--p); }
+.wkc-crumb.current { color: var(--text); font-weight: 600; cursor: default; }
+.wkc-crumb:disabled { cursor: default; }
+.wkc-crumb-sep { color: var(--text-dim); font-size: 11px; }
+.wkc-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.wkc-back {
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--text); font: inherit;
+  font-size: 13px; padding: 10px 15px; border-radius: 8px; cursor: pointer;
+}
+.wkc-back:hover { border-color: var(--text-dim); }
+.wkc-see {
+  background: var(--accent); border: 1px solid var(--accent); color: #08240f; font: inherit;
+  font-size: 14px; font-weight: 600; padding: 11px 20px; border-radius: 8px; cursor: pointer;
+}
+.wkc-see b { font-weight: 800; }
+.wkc-see:hover { filter: brightness(1.08); }
+.wkc-pick-lbl { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; margin: 2px 0 12px; }
+.wkc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.wkc-box {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px; text-align: left;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 17px 19px; cursor: pointer; font: inherit; color: var(--text);
+  transition: border-color 0.12s, background 0.12s, transform 0.06s;
+}
+.wkc-box:hover { border-color: var(--accent); background: var(--bg-3); }
+.wkc-box:active { transform: translateY(1px); }
+.wkc-box-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+.wkc-box-name { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.wkc-box-stat { font-size: 12px; color: var(--text-dim); }
+.wkc-box-go { margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--p); }
+.wkc-box:hover .wkc-box-go { color: var(--accent); }
+.wkc-none { color: var(--text-dim); font-size: 13px; padding: 8px 2px; }
 
 .bz-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .bz-toolbar {
@@ -1981,8 +2080,12 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 }
 .bz-node-desc:empty::before { content: attr(data-placeholder); opacity: 0.55; font-style: italic; }
 .bz-node-desc:focus { outline: none; background: var(--bg); box-shadow: inset 0 0 0 1px var(--accent); color: var(--text); }
-/* Entry / exit criteria — separate labeled blocks under the description (v0.23) */
-.bz-node-crit { padding: 0 9px 4px; display: flex; flex-direction: column; gap: 2px; }
+/* Entry / exit criteria — inset, recessed panel for visual contrast against the card (v0.25) */
+.bz-node-crit {
+  margin: 3px 9px 7px; padding: 7px 9px; display: flex; flex-direction: column; gap: 5px;
+  background: var(--bg-cell); border: 1px solid var(--border); border-radius: 7px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.22);
+}
 .bz-crit-row { display: flex; align-items: flex-start; gap: 6px; }
 .bz-crit-lbl {
   flex: 0 0 auto; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
@@ -2001,10 +2104,15 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
   background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; border-radius: 3px;
 }
 .bz-node-del:hover { background: var(--err); color: #fff; }
-.bz-node-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 7px 8px; }
+/* RACI grid — inset, recessed panel (cells sit as raised chips on the darker panel) (v0.25) */
+.bz-node-body {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+  margin: 0 9px 7px; padding: 7px; background: var(--bg-cell);
+  border: 1px solid var(--border); border-radius: 7px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.22);
+}
 .bz-cell {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 3px 1px; border-radius: 4px; cursor: pointer; background: var(--bg-cell);
+  padding: 3px 1px; border-radius: 4px; cursor: pointer; background: var(--bg-3);
 }
 .bz-cell:hover { background: var(--bg-4); }
 .bz-cell-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; }
@@ -2014,11 +2122,16 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 
 /* Per-column responsible-party rows below the RACI grid. Present only when RACI is assigned, so the
    card grows downward on first assignment (node height is auto). */
-.bz-node-parties { border-top: 1px solid var(--border); padding: 5px 7px; display: flex; flex-direction: column; gap: 4px; }
+/* Responsible-party rows — inset, recessed panel matching the criteria / grid boxes (v0.25) */
+.bz-node-parties {
+  margin: 0 9px 8px; padding: 6px 7px; display: flex; flex-direction: column; gap: 4px;
+  background: var(--bg-cell); border: 1px solid var(--border); border-radius: 7px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.22);
+}
 .bz-party-row .bz-party-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; flex: 0 0 auto; min-width: 26px; margin-top: 3px; }
 .bz-party-row .cell-chips { display: inline-flex; gap: 2px; flex: 0 0 auto; margin-top: 1px; }
 /* Step IO lines — deliverables derived from the step's handoff edges (v0.20) */
-.bz-node-io { border-top: 1px solid var(--border); padding: 4px 9px 5px; display: flex; flex-direction: column; gap: 2px; }
+.bz-node-io { margin: 0 9px 7px; padding: 1px 2px; display: flex; flex-direction: column; gap: 2px; }
 .bz-io-line { font-size: 10px; line-height: 1.4; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bz-io-line.in  { color: var(--c); }
 .bz-io-line.out { color: var(--accent); }
@@ -2637,7 +2750,7 @@ body[data-view="roster"] #legend { display: none; }
     <button data-view="chart">Chart</button>
     <button data-view="roster">Roster</button>
     <button data-view="bizcase">Business Case Task Flow</button>
-    <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Work</button>
+    <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Tasks</button>
   </div>
   <div class="actions">
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
@@ -2695,6 +2808,16 @@ const ACCENT = '#51cf66';
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.25 alpha - Renamed the "Work" view to "Tasks" (tab, view heading, run-book title). The
+//                  Tasks landing is now a big-button drill chooser (directorate → division → branch
+//                  → team) instead of four small dropdowns — pick a unit, or drill and "see tasks"
+//                  at any level; the work list keeps a compact refine picker + "Choose a different
+//                  unit". Roster gains an Explore (boxes) mode — the new default: directorates as big
+//                  boxes; click one to break it out into its divisions (siblings hidden), drill down
+//                  to branch/team/people with a breadcrumb; the old stacked tree stays as "Full
+//                  hierarchy". Entry/Exit criteria labels lose their ▶/■ glyphs (plain ENTRY/EXIT).
+//                  Business Case node cards group their entry/exit criteria, RACI grid, and
+//                  responsible-party rows into inset, recessed shaded panels for visual contrast.
 //     0.24 alpha - Renamed the "My Work" view to "Work" (tab, view heading, run-book print title).
 //     0.23 alpha - Flow cards gain separate Description / Entry criteria / Exit criteria blocks,
 //                  each edited in place (entry = what must be true to start; exit = what done
@@ -2802,7 +2925,7 @@ const ACCENT = '#51cf66';
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.24';
+const APP_VERSION = '0.25';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -3426,6 +3549,7 @@ function defaultState() {
     columnActor: defaultColumnActor(),
     directorates: d.directorates,
     collapsedDirectorates: {},
+    rosterMode: 'explore',
     viewMode: 'chart',
     showLegend: false
   };
@@ -3646,6 +3770,7 @@ function migrateState(s) {
   s.viewMode = ALL_VIEW_MODES.includes(s.viewMode) ? s.viewMode : 'chart';
   s.workScope = normalizeOrgRef(s.workScope);   // Work-view unit selection (v0.21); null = unset
   s.collapsedDirectorates = (s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object') ? s.collapsedDirectorates : {};
+  s.rosterMode = (s.rosterMode === 'full' || s.rosterMode === 'explore') ? s.rosterMode : 'explore';  // Roster layout (v0.25)
   s.showLegend = !!s.showLegend;
   s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
   ACTORS.forEach(k => { if (typeof s.actorLabels[k] !== 'string' || !s.actorLabels[k].trim()) s.actorLabels[k] = ACTOR_LABELS_DEFAULT[k]; });
@@ -4357,6 +4482,107 @@ function collectWorkItems(scope) {
   });
   return items;
 }
+// Transient: where the Tasks-view big-button chooser is currently drilled — a *browse* ref, never a
+// committed scope. null = top (directorate boxes). Not persisted; resets to top on reload.
+let _workBrowse = null;
+// One-line count summary for an org unit. Shared by the Tasks chooser boxes and the Roster boxes.
+function orgUnitStat(kind, u) {
+  const plur = (n, s, p) => `${n} ${n === 1 ? s : (p || s + 's')}`;
+  if (kind === 'dir')  { const c = countOrgUnits(u); return `${plur(c.divisions,'division')} · ${plur(c.branches,'branch','branches')} · ${plur(c.teams,'team')} · ${plur(c.people,'person','people')}`; }
+  if (kind === 'div')  { let br = u.branches.length, tm = 0, pe = u.chief ? 1 : 0; u.branches.forEach(b => { if (b.chief) pe++; tm += b.teams.length; b.teams.forEach(t => { if (t.chief) pe++; pe += t.people.length; }); }); return `${plur(br,'branch','branches')} · ${plur(tm,'team')} · ${plur(pe,'person','people')}`; }
+  if (kind === 'br')   { let tm = u.teams.length, pe = u.chief ? 1 : 0; u.teams.forEach(t => { if (t.chief) pe++; pe += t.people.length; }); return `${plur(tm,'team')} · ${plur(pe,'person','people')}`; }
+  if (kind === 'team') { const pe = (u.chief ? 1 : 0) + u.people.length; return `${plur(pe,'person','people')}`; }
+  return '';
+}
+// Serialize / parse a contiguous org ref as a "|"-joined path (ids are "|"-safe, like the roster attrs).
+function refStr(ref) { return [ref.actor, ref.divisionId, ref.branchId, ref.teamId].filter(Boolean).join('|'); }
+function refFromStr(s) {
+  const [actor, divisionId, branchId, teamId] = s.split('|');
+  const r = { actor };
+  if (divisionId) r.divisionId = divisionId;
+  if (branchId) r.branchId = branchId;
+  if (teamId) r.teamId = teamId;
+  return r;
+}
+// A single big drill/see box in the Tasks chooser. Units with drillable children drill in; leaves see.
+function workBoxBtn(kind, ref, name, stat, hasChildren) {
+  const attr = hasChildren ? `data-work-drill="${refStr(ref)}"` : `data-work-see="${refStr(ref)}"`;
+  const go = hasChildren ? 'open ▸' : 'see tasks →';
+  const kindLabel = { dir: 'Directorate', div: 'Division', br: 'Branch', team: 'Team' }[kind];
+  return `<button class="wkc-box k-${kind}" ${attr} title="${escapeHtml((hasChildren ? 'Open ' : 'See tasks for ') + name)}">
+      <span class="wkc-box-kind">${kindLabel}</span>
+      <span class="wkc-box-name">${escapeHtml(name)}</span>
+      <span class="wkc-box-stat">${stat}</span>
+      <span class="wkc-box-go">${go}</span>
+    </button>`;
+}
+function workCommitBtn(ref, name) {
+  return `<button class="wkc-see" data-work-see="${refStr(ref)}" title="See every task that lands on ${escapeHtml(name)}">▶ See all tasks for <b>${escapeHtml(name)}</b></button>`;
+}
+// The Tasks landing: a friendly big-button drill (directorate → division → branch → team). Reads the
+// transient _workBrowse level; clicking a box either drills deeper or commits state.workScope.
+function workChooserHtml() {
+  const b = _workBrowse;
+  // Breadcrumb of the current browse level (ancestors clickable).
+  const crumbs = [`<button class="wkc-crumb${b ? '' : ' current'}"${b ? ' data-work-goto=""' : ' disabled'}>All directorates</button>`];
+  if (b) {
+    crumbs.push('<span class="wkc-crumb-sep">▸</span>');
+    const dirCur = !b.divisionId;
+    crumbs.push(`<button class="wkc-crumb${dirCur ? ' current' : ''}"${dirCur ? ' disabled' : ` data-work-goto="${b.actor}"`}>${escapeHtml(ACTOR_LABELS[b.actor])}</button>`);
+    if (b.divisionId) {
+      const d = findDivision(b.actor, b.divisionId);
+      crumbs.push('<span class="wkc-crumb-sep">▸</span>');
+      const dCur = !b.branchId;
+      crumbs.push(`<button class="wkc-crumb${dCur ? ' current' : ''}"${dCur ? ' disabled' : ` data-work-goto="${b.actor}|${b.divisionId}"`}>${escapeHtml((d && d.name) || 'Untitled division')}</button>`);
+      if (b.branchId) {
+        const br = findBranch(b.actor, b.divisionId, b.branchId);
+        crumbs.push('<span class="wkc-crumb-sep">▸</span>');
+        crumbs.push(`<button class="wkc-crumb current" disabled>${escapeHtml((br && br.name) || 'Untitled branch')}</button>`);
+      }
+    }
+  }
+  // Children of the current level + a commit-at-this-level action.
+  let kindLabel, children = [], commit = '';
+  if (!b) {
+    kindLabel = 'Directorate';
+    children = ACTORS.map(a => {
+      const d = state.directorates[a];
+      return workBoxBtn('dir', { actor: a }, ACTOR_LABELS[a], orgUnitStat('dir', d), d.divisions.length > 0);
+    });
+  } else if (!b.divisionId) {
+    const d = state.directorates[b.actor];
+    kindLabel = 'Division';
+    children = d.divisions.map(div =>
+      workBoxBtn('div', { actor: b.actor, divisionId: div.id }, div.name || 'Untitled division', orgUnitStat('div', div), div.branches.length > 0));
+    commit = workCommitBtn({ actor: b.actor }, ACTOR_LABELS[b.actor]);
+  } else if (!b.branchId) {
+    const d = findDivision(b.actor, b.divisionId);
+    kindLabel = 'Branch';
+    children = (d ? d.branches : []).map(br =>
+      workBoxBtn('br', { actor: b.actor, divisionId: b.divisionId, branchId: br.id }, br.name || 'Untitled branch', orgUnitStat('br', br), br.teams.length > 0));
+    commit = workCommitBtn({ actor: b.actor, divisionId: b.divisionId }, (d && d.name) || 'this division');
+  } else {
+    const br = findBranch(b.actor, b.divisionId, b.branchId);
+    kindLabel = 'Team';
+    children = (br ? br.teams : []).map(tm =>
+      workBoxBtn('team', { actor: b.actor, divisionId: b.divisionId, branchId: b.branchId, teamId: tm.id }, tm.name || 'Unnamed team', orgUnitStat('team', tm), false));
+    commit = workCommitBtn({ actor: b.actor, divisionId: b.divisionId, branchId: b.branchId }, (br && br.name) || 'this branch');
+  }
+  const grid = children.length
+    ? `<div class="wkc-grid">${children.join('')}</div>`
+    : `<div class="wkc-none">No ${kindLabel.toLowerCase()}s here yet.${b ? ' Use “See all tasks” above to see everything that lands on this unit.' : ''}</div>`;
+  const actions = b
+    ? `<div class="wkc-actions"><button class="wkc-back" data-work-back>◀ Back</button>${commit}</div>`
+    : '';
+  return `<div class="wk-choose">
+      <div class="wkc-intro"><h3>Whose tasks do you want to see?</h3>
+        <p>Pick a directorate, then drill in as deep as you like — division, branch, team. You'll see every chart activity and flow step that lands on that unit, with each task's inputs and outputs.</p></div>
+      <div class="wkc-crumbs">${crumbs.join('')}</div>
+      ${actions}
+      <div class="wkc-pick-lbl">Pick a ${kindLabel.toLowerCase()}:</div>
+      ${grid}
+    </div>`;
+}
 function renderWork() {
   const main = document.getElementById('ws-main');
   _artifactUses = computeArtifactUses();     // fresh from-whom / to-whom resolution for the cards
@@ -4381,8 +4607,8 @@ function renderWork() {
     </div>`;
   if (!scope) {
     main.innerHTML = `<div class="wk-wrap">
-      <div class="wk-header"><h2>Work</h2>${picker}</div>
-      <div class="wk-empty">Pick your unit above — directorate, then as deep as you sit — to see every chart activity and flow step that lands on it, with each task's inputs and outputs.</div>
+      <div class="wk-header"><h2>Tasks</h2></div>
+      <div class="wk-choose-wrap">${workChooserHtml()}</div>
     </div>`;
     return;
   }
@@ -4408,8 +4634,8 @@ function renderWork() {
       <div class="wk-meta">${escapeHtml(it.meta)}</div>
       ${chips ? `<div class="wk-roles">${chips}</div>` : ''}
       ${it.description ? `<div class="wk-desc">${escapeHtml(it.description)}</div>` : ''}
-      ${it.entry ? `<div class="wk-crit"><span class="wk-crit-lbl entry">▶ entry</span>${escapeHtml(it.entry)}</div>` : ''}
-      ${it.exit ? `<div class="wk-crit"><span class="wk-crit-lbl exit">■ exit</span>${escapeHtml(it.exit)}</div>` : ''}
+      ${it.entry ? `<div class="wk-crit"><span class="wk-crit-lbl entry">entry</span>${escapeHtml(it.entry)}</div>` : ''}
+      ${it.exit ? `<div class="wk-crit"><span class="wk-crit-lbl exit">exit</span>${escapeHtml(it.exit)}</div>` : ''}
       ${(it.inputs.length || it.outputs.length) ? `<div class="wk-io-block">${ioLine(it.inputs, 'in')}${ioLine(it.outputs, 'out')}</div>` : ''}
     </div>`;
   };
@@ -4420,7 +4646,9 @@ function renderWork() {
     ? `<div class="wk-group"><h3>${title} <span class="wk-count">${list.length}</span></h3><div class="wk-hint">${hint}</div><div class="wk-cards">${list.map(card).join('')}</div></div>`
     : '';
   main.innerHTML = `<div class="wk-wrap">
-    <div class="wk-header"><h2>Work</h2>${picker}
+    <div class="wk-header"><h2>Tasks</h2>
+      <button id="wk-restart" type="button" data-work-restart title="Go back to the big picker and choose a different unit">↩ Choose a different unit</button>
+      ${picker}
       <span class="wk-scope-lbl">${escapeHtml((partyLabel(scope) || {}).full || '')}</span>
       <button id="wk-print" type="button" title="Print this list as the unit's run book">🖨 Run book</button>
     </div>
@@ -4891,17 +5119,149 @@ function autoArrange() {
   requestAnimationFrame(frame);
 }
 
+// Transient: where the Roster "Explore" (boxes) view is drilled. null = top (directorate boxes).
+// Not persisted; resets to the directorate grid on reload.
+let _rosterPick = null;
+// Trim _rosterPick to its deepest still-existing unit (a delete may have removed the current or an
+// ancestor unit) — this doubles as the "navigate up after delete" behavior.
+function normalizeRosterPick() {
+  const p = _rosterPick;
+  if (!p || !ACTORS.includes(p.actor)) { _rosterPick = p && ACTORS.includes(p.actor) ? { actor: p.actor } : null; }
+  if (!_rosterPick) return;
+  const out = { actor: _rosterPick.actor };
+  if (p.divisionId && findDivision(p.actor, p.divisionId)) {
+    out.divisionId = p.divisionId;
+    if (p.branchId && findBranch(p.actor, p.divisionId, p.branchId)) {
+      out.branchId = p.branchId;
+      if (p.teamId && findTeam(p.actor, p.divisionId, p.branchId, p.teamId)) out.teamId = p.teamId;
+    }
+  }
+  _rosterPick = out;
+}
 function renderRoster() {
   const main = document.getElementById('ws-main');
+  const mode = state.rosterMode === 'full' ? 'full' : 'explore';
+  const modeBtns = `<div class="rost-modes" role="tablist" aria-label="Roster layout">
+      <button data-roster-mode="explore" class="${mode === 'explore' ? 'active' : ''}" title="Big boxes — drill directorate → division → branch → team">▦ Explore</button>
+      <button data-roster-mode="full" class="${mode === 'full' ? 'active' : ''}" title="The whole org tree at once, everything editable inline">☰ Full hierarchy</button>
+    </div>`;
+  const body = mode === 'full'
+    ? `<div class="roster-body">${ACTORS.map(k => renderDirectoratePanel(k)).join('')}</div>`
+    : rosterExploreHtml();
   main.innerHTML = `
     <div class="roster-header">
       <h2>Roster</h2>
       <span class="meta">Org structure under each directorate (shared across workstreams). Divisions, branches, and people are all optional.</span>
+      ${modeBtns}
     </div>
-    <div class="roster-body">
-      ${ACTORS.map(k => renderDirectoratePanel(k)).join('')}
-    </div>
+    ${body}
   `;
+}
+// A big drillable box for a child unit (division / branch / team). Carries the same delete/edit data
+// hooks as the full tree, so the existing roster handlers keep working. Container is a div (not a
+// button) so it can hold the × delete button; the drill click is caught by [data-roster-drill].
+function rosterBoxBtn(kind, ref, name, stat, leadLine, delAttr) {
+  const kindLabel = { div: 'Division', br: 'Branch', team: 'Team' }[kind];
+  const go = kind === 'team' ? 'open people ▸' : 'open ▸';
+  return `<div class="rost-box k-${kind}" data-roster-drill="${refStr(ref)}" tabindex="0" role="button" title="Open ${escapeHtml(name)}">
+      <button class="rost-box-del del-icon" ${delAttr} title="Delete ${escapeHtml(kindLabel.toLowerCase())}">×</button>
+      <span class="rost-box-kind">${kindLabel}</span>
+      <span class="rost-box-name">${escapeHtml(name)}</span>
+      <span class="rost-box-stat">${stat}</span>
+      ${leadLine}
+      <span class="rost-box-go">${go}</span>
+    </div>`;
+}
+// The header strip for a drilled-in unit: editable name (same contenteditable hooks as the tree),
+// stats, and its lead slot. `nameHtml` is prebuilt so each level can wire the right data-field.
+function rosterUnitHead(kindLabel, nameHtml, stat, leadHtml) {
+  return `<div class="rost-unit-head">
+      <div class="rost-uh-top"><span class="rost-uh-kind">${kindLabel}</span>${nameHtml}<span class="rost-uh-stat">${stat}</span></div>
+      <div class="rost-uh-lead">${leadHtml}</div>
+    </div>`;
+}
+function rosterExploreHtml() {
+  normalizeRosterPick();
+  const p = _rosterPick;
+  // Breadcrumb path.
+  const crumbs = [`<button class="rost-crumb${p ? '' : ' current'}"${p ? ' data-roster-goto=""' : ' disabled'}>All directorates</button>`];
+  if (p) {
+    crumbs.push('<span class="rost-crumb-sep">▸</span>');
+    const dirCur = !p.divisionId;
+    crumbs.push(`<button class="rost-crumb${dirCur ? ' current' : ''}"${dirCur ? ' disabled' : ` data-roster-goto="${p.actor}"`}>${escapeHtml(ACTOR_LABELS[p.actor])}</button>`);
+    if (p.divisionId) {
+      const d = findDivision(p.actor, p.divisionId);
+      crumbs.push('<span class="rost-crumb-sep">▸</span>');
+      const dCur = !p.branchId;
+      crumbs.push(`<button class="rost-crumb${dCur ? ' current' : ''}"${dCur ? ' disabled' : ` data-roster-goto="${p.actor}|${p.divisionId}"`}>${escapeHtml((d && d.name) || 'Untitled division')}</button>`);
+      if (p.branchId) {
+        const br = findBranch(p.actor, p.divisionId, p.branchId);
+        crumbs.push('<span class="rost-crumb-sep">▸</span>');
+        const bCur = !p.teamId;
+        crumbs.push(`<button class="rost-crumb${bCur ? ' current' : ''}"${bCur ? ' disabled' : ` data-roster-goto="${p.actor}|${p.divisionId}|${p.branchId}"`}>${escapeHtml((br && br.name) || 'Untitled branch')}</button>`);
+        if (p.teamId) {
+          const tm = findTeam(p.actor, p.divisionId, p.branchId, p.teamId);
+          crumbs.push('<span class="rost-crumb-sep">▸</span>');
+          crumbs.push(`<button class="rost-crumb current" disabled>${escapeHtml((tm && tm.name) || 'Unnamed team')}</button>`);
+        }
+      }
+    }
+  }
+  const crumbBar = `<div class="rost-crumbs">${crumbs.join('')}</div>`;
+  let inner;
+  if (!p) {
+    // Top level — the six directorates as big boxes (fixed set, no delete/add).
+    inner = `<div class="rost-hint">Click a directorate to break it out into its divisions.</div>
+      <div class="rost-grid">${ACTORS.map(a => {
+        const d = state.directorates[a];
+        const lead = d.lead && d.lead.name ? `<span class="rost-box-lead">AD: ${escapeHtml(d.lead.name)}</span>` : `<span class="rost-box-lead vacant">AD — vacant</span>`;
+        return `<div class="rost-box k-dir" data-roster-drill="${a}" tabindex="0" role="button" title="Open ${escapeHtml(ACTOR_LABELS[a])}">
+            <span class="rost-box-kind">Directorate</span>
+            <span class="rost-box-name">${escapeHtml(ACTOR_LABELS[a])}</span>
+            <span class="rost-box-stat">${orgUnitStat('dir', d)}</span>
+            ${lead}
+            <span class="rost-box-go">open ▸</span>
+          </div>`;
+      }).join('')}</div>`;
+  } else if (!p.divisionId) {
+    // A directorate — its divisions as boxes.
+    const a = p.actor, d = state.directorates[a];
+    const nameHtml = `<h3 class="dir-name-edit rost-uh-name" contenteditable="true" spellcheck="false" data-actor="${a}" data-field="dir-name" title="Click to rename this directorate">${escapeHtml(ACTOR_LABELS[a])}</h3>`;
+    const head = rosterUnitHead('Directorate', nameHtml, orgUnitStat('dir', d), renderLeadSlot(a, null, null, null, 'AD', d.lead));
+    const boxes = d.divisions.map(div => {
+      const lead = div.chief && div.chief.name ? `<span class="rost-box-lead">DC: ${escapeHtml(div.chief.name)}</span>` : '';
+      return rosterBoxBtn('div', { actor: a, divisionId: div.id }, div.name || 'Untitled division', orgUnitStat('div', div), lead, `data-del-division="${a}|${div.id}"`);
+    }).join('');
+    inner = head + `<div class="rost-grid">${boxes}<button class="rost-add" data-add-division="${a}">+ Add division</button></div>`;
+  } else if (!p.branchId) {
+    // A division — its branches as boxes.
+    const a = p.actor, dId = p.divisionId, d = findDivision(a, dId);
+    const nameHtml = `<span class="div-name rost-uh-name" contenteditable="true" spellcheck="false" data-actor="${a}" data-division-id="${dId}" data-field="div-name">${escapeHtml(d.name)}</span>`;
+    const head = rosterUnitHead('Division', nameHtml, orgUnitStat('div', d), renderLeadSlot(a, dId, null, null, 'DC', d.chief));
+    const boxes = d.branches.map(br => {
+      const lead = br.chief && br.chief.name ? `<span class="rost-box-lead">BC: ${escapeHtml(br.chief.name)}</span>` : '';
+      return rosterBoxBtn('br', { actor: a, divisionId: dId, branchId: br.id }, br.name || 'Untitled branch', orgUnitStat('br', br), lead, `data-del-branch="${a}|${dId}|${br.id}"`);
+    }).join('');
+    inner = head + `<div class="rost-grid">${boxes}<button class="rost-add" data-add-branch="${a}|${dId}">+ Add branch</button></div>`;
+  } else if (!p.teamId) {
+    // A branch — its teams as boxes.
+    const a = p.actor, dId = p.divisionId, bId = p.branchId, br = findBranch(a, dId, bId);
+    const nameHtml = `<span class="branch-name rost-uh-name" contenteditable="true" spellcheck="false" data-actor="${a}" data-division-id="${dId}" data-branch-id="${bId}" data-field="branch-name">${escapeHtml(br.name)}</span>`;
+    const head = rosterUnitHead('Branch', nameHtml, orgUnitStat('br', br), renderLeadSlot(a, dId, bId, null, 'BC', br.chief));
+    const boxes = br.teams.map(tm => {
+      const lead = tm.chief && tm.chief.name ? `<span class="rost-box-lead">TL: ${escapeHtml(tm.chief.name)}</span>` : '';
+      return rosterBoxBtn('team', { actor: a, divisionId: dId, branchId: bId, teamId: tm.id }, tm.name || 'Unnamed team', orgUnitStat('team', tm), lead, `data-del-team="${a}|${dId}|${bId}|${tm.id}"`);
+    }).join('');
+    inner = head + `<div class="rost-grid">${boxes}<button class="rost-add" data-add-team="${a}|${dId}|${bId}">+ Add team</button></div>`;
+  } else {
+    // A team — its people (leaf level; reuse the tree's person rows + lead slot).
+    const a = p.actor, dId = p.divisionId, bId = p.branchId, tId = p.teamId, tm = findTeam(a, dId, bId, tId);
+    const nameHtml = `<span class="team-name rost-uh-name" contenteditable="true" spellcheck="false" data-actor="${a}" data-division-id="${dId}" data-branch-id="${bId}" data-team-id="${tId}" data-field="team-name">${escapeHtml(tm.name)}</span>`;
+    const head = rosterUnitHead('Team', nameHtml, orgUnitStat('team', tm), renderLeadSlot(a, dId, bId, tId, 'TL', tm.chief));
+    const people = tm.people.map(pp => renderPersonRow(a, dId, bId, tId, pp)).join('');
+    inner = head + `<div class="rost-people-box">${people}<button class="add-person" data-add-person="${a}|${dId}|${bId}|${tId}">+ Add person</button></div>`;
+  }
+  return `<div class="roster-explore"><div class="rost-inner">${crumbBar}${inner}</div></div>`;
 }
 
 // ========== Business Case node-graph view (tabletop exercises) ==========
@@ -5023,8 +5383,8 @@ function bizNodeHtml(t) {
     <div class="bz-node-desc" contenteditable="true" spellcheck="false" data-bz-desc="${t.id}"
       data-placeholder="＋ description — what this step is for">${escapeHtml(t.description || '')}</div>
     <div class="bz-node-crit">
-      <div class="bz-crit-row"><span class="bz-crit-lbl entry" title="Entry criteria — what must be true before this step can start">▶ entry</span><span class="bz-crit-edit" contenteditable="true" spellcheck="false" data-bz-entry="${t.id}" data-placeholder="＋ entry criteria">${escapeHtml(t.entry || '')}</span></div>
-      <div class="bz-crit-row"><span class="bz-crit-lbl exit" title="Exit criteria — what done looks like; what must be true to hand off">■ exit</span><span class="bz-crit-edit" contenteditable="true" spellcheck="false" data-bz-exit="${t.id}" data-placeholder="＋ exit criteria">${escapeHtml(t.exit || '')}</span></div>
+      <div class="bz-crit-row"><span class="bz-crit-lbl entry" title="Entry criteria — what must be true before this step can start">entry</span><span class="bz-crit-edit" contenteditable="true" spellcheck="false" data-bz-entry="${t.id}" data-placeholder="＋ entry criteria">${escapeHtml(t.entry || '')}</span></div>
+      <div class="bz-crit-row"><span class="bz-crit-lbl exit" title="Exit criteria — what done looks like; what must be true to hand off">exit</span><span class="bz-crit-edit" contenteditable="true" spellcheck="false" data-bz-exit="${t.id}" data-placeholder="＋ exit criteria">${escapeHtml(t.exit || '')}</span></div>
     </div>
     <div class="bz-node-body">${cells}</div>
     ${ioHtml}
@@ -6343,6 +6703,24 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('#wk-print')) { window.print(); return; }
+  // ---- Tasks-view big-button chooser ----
+  const wkDrill = e.target.closest('[data-work-drill]');
+  if (wkDrill) { _workBrowse = refFromStr(wkDrill.dataset.workDrill); renderWork(); return; }
+  const wkSee = e.target.closest('[data-work-see]');
+  if (wkSee) { state.workScope = normalizeOrgRef(refFromStr(wkSee.dataset.workSee)); _workBrowse = null; saveState(); renderWork(); return; }
+  const wkGoto = e.target.closest('[data-work-goto]');
+  if (wkGoto) { const v = wkGoto.dataset.workGoto; _workBrowse = v ? refFromStr(v) : null; renderWork(); return; }
+  if (e.target.closest('[data-work-back]')) {
+    const b = _workBrowse;
+    _workBrowse = !b ? null : b.branchId ? { actor: b.actor, divisionId: b.divisionId } : b.divisionId ? { actor: b.actor } : null;
+    renderWork(); return;
+  }
+  if (e.target.closest('[data-work-restart]')) {
+    const s = state.workScope;
+    _workBrowse = !s ? null : s.teamId ? { actor: s.actor, divisionId: s.divisionId, branchId: s.branchId }
+      : s.branchId ? { actor: s.actor, divisionId: s.divisionId } : s.divisionId ? { actor: s.actor } : null;
+    state.workScope = null; saveState(); renderWork(); return;
+  }
   if (e.target.closest('#art-new')) {
     const nm = (window.prompt('New deliverable name:') || '').trim();
     if (nm) {
@@ -6490,6 +6868,17 @@ document.addEventListener('click', e => {
   if (addLead) { const [a, d, b, t, role] = addLead.dataset.addLead.split('|'); setLead(a, d || null, b || null, t || null, role); return; }
   const delLead = e.target.closest('[data-del-lead]');
   if (delLead) { const [a, d, b, t, role] = delLead.dataset.delLead.split('|'); removeLead(a, d || null, b || null, t || null, role); return; }
+  // Roster layout: switch Explore (boxes) ↔ Full hierarchy.
+  const rMode = e.target.closest('[data-roster-mode]');
+  if (rMode) { state.rosterMode = rMode.dataset.rosterMode === 'full' ? 'full' : 'explore'; saveState(); renderRoster(); return; }
+  // Roster breadcrumb jump (empty value = back to the directorate grid).
+  const rGoto = e.target.closest('[data-roster-goto]');
+  if (rGoto) { const v = rGoto.dataset.rosterGoto; _rosterPick = v ? refFromStr(v) : null; renderRoster(); return; }
+  // Roster box drill-in (checked AFTER the delete/add handlers so the × on a box wins).
+  const rDrill = e.target.closest('[data-roster-drill]');
+  if (rDrill && !e.target.closest('button') && !e.target.closest('[contenteditable="true"]')) {
+    _rosterPick = refFromStr(rDrill.dataset.rosterDrill); renderRoster(); return;
+  }
 
   if (openPopover && !e.target.closest('.raci-popover') && !e.target.closest('.org-popover') && !e.target.closest('.bz-edge-popover')) closePopover();
 });
@@ -7872,7 +8261,7 @@ window.addEventListener('beforeprint', () => {
   let title, sub;
   if (state.viewMode === 'work') {
     // The run book: this unit's work orders, printed as the branch/team handout.
-    title = 'Work — run book';
+    title = 'Tasks — run book';
     sub = state.workScope ? ((partyLabel(state.workScope) || {}).full || '') : 'No unit selected';
   } else if (state.viewMode === 'bizcase') {
     const b = abc();
