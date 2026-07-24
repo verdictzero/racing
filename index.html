@@ -1610,7 +1610,7 @@ input[type="file"] { display: none; }
 .actions { order: 1; }
 
 @media (min-width: 1200px) {
-  :root { --tab-rail-w: 178px; --tool-rail-w: 210px; }
+  :root { --tab-rail-w: 224px; --tool-rail-w: 210px; }
   #app-frame {
     display: grid;
     grid-template-columns: var(--tab-rail-w) minmax(0, 1fr) var(--tool-rail-w);
@@ -1630,13 +1630,22 @@ input[type="file"] { display: none; }
   /* LEFT rail — view tabs stacked vertically */
   #view-tabs {
     flex-direction: column; align-items: stretch; flex-wrap: nowrap;
-    gap: 3px; padding: 12px 10px; margin: 0; border-radius: 0;
+    gap: 9px; padding: 12px 10px; margin: 0; border-radius: 0;
     background: var(--bg-2); border-right: 1px solid var(--border);
     overflow-y: auto;
   }
+  /* Rail tabs as pills: unselected = light raised pill, active = dark pressed pill w/ accent edge,
+     nudged right so the selection also reads by indentation. */
   #view-tabs button {
-    text-align: left; width: 100%; padding: 9px 12px; font-size: 13px;
-    border-radius: 6px; flex: 0 0 auto; white-space: normal;
+    text-align: left; width: 100%; padding: 9px 14px; font-size: 13px;
+    border-radius: 7px; flex: 0 0 auto; white-space: normal;
+    background: var(--bg-3); border: 1px solid var(--border); color: var(--text-dim);
+    transition: margin 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  }
+  #view-tabs button:hover { background: var(--bg-4); color: var(--text); }
+  #view-tabs button.active {
+    background: var(--bg); color: var(--text); border-color: var(--accent);
+    margin-left: 14px; width: calc(100% - 14px);
   }
   #view-tabs button.tab-help { justify-content: flex-start; }
   #view-tabs .vt-sep { width: auto; height: 1px; align-self: stretch; margin: 7px 6px; }
@@ -1650,7 +1659,7 @@ input[type="file"] { display: none; }
     display: flex; align-items: center; margin: -12px -10px 10px; padding: 27px 14px;
     font-size: 15px; font-weight: 800; text-transform: uppercase;
     letter-spacing: 1.5px; color: var(--text);
-    background: var(--bg-3);
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
   }
 
