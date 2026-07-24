@@ -2920,6 +2920,19 @@ table.chart th.ch-del .col-add:hover { color: var(--accent); border-color: var(-
 .flow-popover .op-item.on { color: var(--p); }
 .flow-popover .fp-create { color: var(--accent); }
 .flow-popover .fp-meta { color: var(--text-dim); font-size: 10px; margin-left: 6px; font-weight: 400; }
+/* ❐ Templates popover (flow toolbar) — save the task list once, stamp it out anywhere */
+.tpl-popover { min-width: 320px; }
+.tpl-popover .tpl-save { color: var(--accent); }
+.tpl-popover .fp-meta { color: var(--text-dim); font-size: 10px; margin-left: 6px; font-weight: 400; }
+.tpl-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 10px; border-radius: 4px; }
+.tpl-row:hover { background: var(--bg-3); }
+.tpl-row .tpl-name { flex: 1; min-width: 0; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tpl-row .tpl-act {
+  flex: 0 0 auto; background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
+  border-radius: 4px; font: inherit; font-size: 11px; padding: 3px 7px; cursor: pointer; white-space: nowrap;
+}
+.tpl-row .tpl-act:hover { border-color: var(--accent); color: #fff; }
+.tpl-row .tpl-del:hover { border-color: var(--err); color: var(--err); }
 .ch-add {
   display: block; margin: 0; width: 100%;
   background: transparent; border: none; border-top: 1px dashed var(--border);
@@ -4496,6 +4509,17 @@ document.querySelectorAll('#app-logo, #bg-watermark').forEach(el => { el.src = A
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.28 alpha - Flow task lists become reusable: the flow toolbar gains a ❐ Templates button —
+//                  copy the active flow's task list (steps with RACI, parties, descriptions,
+//                  entry/exit criteria, and canvas layout; handoffs with labels + deliverable
+//                  refs) into a named template, then stamp any saved template out as a brand-new
+//                  flow or insert its steps into the current flow (always fresh ids, statuses
+//                  reset to the default, inserted steps laid out below the existing ones).
+//                  Templates never capture the anchor (they're chart-agnostic blueprints), live
+//                  in state.flowTemplates (persisted, exported with the JSON snapshot, and
+//                  appended on Merge with deliverable refs remapped), and are managed from the
+//                  same popover (save / ＋ flow / ⇥ insert / delete). migrateState now runs cases
+//                  and templates through one shared normFlowGraph() task-list scrubber.
 //     0.27 alpha - Help gains a second field guide: "Chart, Flow & Tasks — how it fits together"
 //                  (docs/chart-flows-tasks.html, part two of the field-guide series) explaining how
 //                  the org chart, anchored Business Case flows, and the Tasks lens interlock — the
@@ -4643,7 +4667,7 @@ document.querySelectorAll('#app-logo, #bg-watermark').forEach(el => { el.src = A
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.27';
+const APP_VERSION = '0.28';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -5164,6 +5188,41 @@ function makeBizTask(name) {
 // label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
 function makeBizEdge(from, to, label) { return { id: 'e_' + uid(), from, to, label: label || '', artifactIds: [] }; }
 
+// ---- Flow templates (v0.28): a reusable, named copy of a flow's task list ----
+// A template captures the steps (names, RACI, parties, descriptions, entry/exit criteria, canvas
+// layout) and the handoff edges (labels + deliverable refs) — but NOT the anchor (a template is
+// deliberately chart-agnostic) and NOT step statuses (a template is a blueprint; every copy
+// stamped from it starts fresh at the default status). Instantiation always mints fresh ids and
+// remaps the edges, so one template can be stamped out any number of times — as a new flow or
+// into the middle of an existing one — without id collisions.
+function makeFlowTemplate(name, b) {
+  const tasks = JSON.parse(JSON.stringify(b.tasks || []));
+  tasks.forEach(t => { t.status = DEFAULT_STATUS; });
+  return { id: 'ft_' + uid(), name: name || 'Untitled template',
+    tasks, edges: JSON.parse(JSON.stringify(b.edges || [])) };
+}
+function flowTemplateById(id) { return (state.flowTemplates || []).find(t => t.id === id) || null; }
+// Fresh-id clone of a template's graph, shifted by (dx, dy). Edges follow their endpoints through
+// the id remap; any edge whose endpoint is missing (shouldn't survive normalization) is dropped.
+function instantiateFlowTemplate(tpl, dx, dy) {
+  const idMap = {};
+  const tasks = (tpl.tasks || []).map(src => {
+    const t = JSON.parse(JSON.stringify(src));
+    idMap[src.id] = 't_' + uid();
+    t.id = idMap[src.id];
+    t.status = DEFAULT_STATUS;
+    t.x = Math.round((t.x || 0) + dx);
+    t.y = Math.round((t.y || 0) + dy);
+    return t;
+  });
+  const edges = (tpl.edges || []).filter(e => idMap[e.from] && idMap[e.to]).map(src => {
+    const e = JSON.parse(JSON.stringify(src));
+    e.id = 'e_' + uid(); e.from = idMap[src.from]; e.to = idMap[src.to];
+    return e;
+  });
+  return { tasks, edges };
+}
+
 // ---- Anchored-flow helpers (chart ↔ business case link, added v0.18) ----
 function chartById(id) { return state.charts.find(c => c.id === id) || null; }
 // Recursive node finder over an arbitrary chart's activity tree (findNode() only sees ac()).
@@ -5258,6 +5317,7 @@ function defaultState() {
     charts: [demo],
     activeChartId: demo.id,
     bizCases: [bc],
+    flowTemplates: [],
     artifacts: [],
     workScope: null,
     activeBizCaseId: bc.id,
@@ -5385,6 +5445,56 @@ function migrateState(s) {
   }));
   const _artIds = new Set(s.artifacts.map(a => a.id));
   const cleanIO = arr => (Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && _artIds.has(x)) : []);
+  // Shared task-list normalizer for anything that carries a flow graph — business cases and the
+  // reusable flow templates (v0.28) run their {tasks, edges} through the exact same scrubber.
+  const normFlowGraph = (rawTasks, rawEdges) => {
+    const tasks = (Array.isArray(rawTasks) ? rawTasks : []).filter(t => t && typeof t === 'object').map(t => {
+      const raci = (t.raci && typeof t.raci === 'object') ? t.raci : {};
+      COLS.forEach(k => { raci[k] = normalizeRaci(raci[k] || ''); });
+      Object.keys(raci).forEach(k => { if (!COLS.includes(k)) delete raci[k]; });
+      // Responsible parties keyed by COLUMN → validated roster ref (re-keyed in v0.17; the letter
+      // keys of the pre-0.17 shape are migrated below). Drop unknown keys and invalid refs
+      // (dangling ids survive here and degrade gracefully at display time, like node.org).
+      const parties = {};
+      const rawParties = (t.parties && typeof t.parties === 'object') ? t.parties : {};
+      Object.keys(rawParties).forEach(k => {                    // pass 1: current per-column keys
+        if (!COLS.includes(k)) return;
+        const ref = normalizeOrgRef(rawParties[k]);
+        if (ref) parties[k] = ref;
+      });
+      Object.keys(rawParties).forEach(l => {                    // pass 2: legacy per-LETTER keys
+        if (!ALL_ROLE_LETTERS.includes(l)) return;
+        const ref = normalizeOrgRef(rawParties[l]);
+        if (!ref) return;
+        // Copy the letter's ref onto every column whose cell holds that letter — lossless in
+        // effect, since the old model could never distinguish two columns sharing a letter.
+        COLS.forEach(c => {
+          if (!parties[c] && normalizeRaci(raci[c] || '').includes(l)) parties[c] = ref;
+        });
+      });
+      return {
+        id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
+        name: typeof t.name === 'string' ? t.name : '',
+        raci,
+        parties,
+        description: typeof t.description === 'string' ? t.description : '',
+        entry: typeof t.entry === 'string' ? t.entry : '',
+        exit: typeof t.exit === 'string' ? t.exit : '',
+        status: TASK_STATUS_KEYS.includes(t.status) ? t.status : DEFAULT_STATUS,
+        x: Number.isFinite(t.x) ? t.x : 0,
+        y: Number.isFinite(t.y) ? t.y : 0
+      };
+    });
+    const ids = new Set(tasks.map(t => t.id));
+    const seen = new Set();
+    // Drop edges referencing deleted tasks, self-loops, and duplicates — keeps delete logic trivial.
+    const edges = (Array.isArray(rawEdges) ? rawEdges : []).filter(ed =>
+      ed && typeof ed === 'object' && ids.has(ed.from) && ids.has(ed.to) && ed.from !== ed.to
+    ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to,
+                   label: typeof ed.label === 'string' ? ed.label : '', artifactIds: cleanIO(ed.artifactIds) }))
+     .filter(ed => { const key = ed.from + '>' + ed.to; if (seen.has(key)) return false; seen.add(key); return true; });
+    return { tasks, edges };
+  };
   // ---- Charts migration ----
   // Old shape: top-level { title, activities, drillPath, chartSize, chartZoom, chartPos, ... }.
   // New shape: { charts: [{id,title,activities,drillPath,chartSize,chartZoom,chartPos}], activeChartId, ... }.
@@ -5514,51 +5624,7 @@ function migrateState(s) {
   s.bizCases = Array.isArray(s.bizCases) ? s.bizCases : [];
   s.bizCases = s.bizCases.filter(b => b && typeof b === 'object').map(b => {
     const view = (b.view && typeof b.view === 'object') ? b.view : {};
-    const tasks = (Array.isArray(b.tasks) ? b.tasks : []).filter(t => t && typeof t === 'object').map(t => {
-      const raci = (t.raci && typeof t.raci === 'object') ? t.raci : {};
-      COLS.forEach(k => { raci[k] = normalizeRaci(raci[k] || ''); });
-      Object.keys(raci).forEach(k => { if (!COLS.includes(k)) delete raci[k]; });
-      // Responsible parties keyed by COLUMN → validated roster ref (re-keyed in v0.17; the letter
-      // keys of the pre-0.17 shape are migrated below). Drop unknown keys and invalid refs
-      // (dangling ids survive here and degrade gracefully at display time, like node.org).
-      const parties = {};
-      const rawParties = (t.parties && typeof t.parties === 'object') ? t.parties : {};
-      Object.keys(rawParties).forEach(k => {                    // pass 1: current per-column keys
-        if (!COLS.includes(k)) return;
-        const ref = normalizeOrgRef(rawParties[k]);
-        if (ref) parties[k] = ref;
-      });
-      Object.keys(rawParties).forEach(l => {                    // pass 2: legacy per-LETTER keys
-        if (!ALL_ROLE_LETTERS.includes(l)) return;
-        const ref = normalizeOrgRef(rawParties[l]);
-        if (!ref) return;
-        // Copy the letter's ref onto every column whose cell holds that letter — lossless in
-        // effect, since the old model could never distinguish two columns sharing a letter.
-        COLS.forEach(c => {
-          if (!parties[c] && normalizeRaci(raci[c] || '').includes(l)) parties[c] = ref;
-        });
-      });
-      return {
-        id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
-        name: typeof t.name === 'string' ? t.name : '',
-        raci,
-        parties,
-        description: typeof t.description === 'string' ? t.description : '',
-        entry: typeof t.entry === 'string' ? t.entry : '',
-        exit: typeof t.exit === 'string' ? t.exit : '',
-        status: TASK_STATUS_KEYS.includes(t.status) ? t.status : DEFAULT_STATUS,
-        x: Number.isFinite(t.x) ? t.x : 0,
-        y: Number.isFinite(t.y) ? t.y : 0
-      };
-    });
-    const ids = new Set(tasks.map(t => t.id));
-    const seen = new Set();
-    // Drop edges referencing deleted tasks, self-loops, and duplicates — keeps delete logic trivial.
-    const edges = (Array.isArray(b.edges) ? b.edges : []).filter(ed =>
-      ed && typeof ed === 'object' && ids.has(ed.from) && ids.has(ed.to) && ed.from !== ed.to
-    ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to,
-                   label: typeof ed.label === 'string' ? ed.label : '', artifactIds: cleanIO(ed.artifactIds) }))
-     .filter(ed => { const key = ed.from + '>' + ed.to; if (seen.has(key)) return false; seen.add(key); return true; });
+    const { tasks, edges } = normFlowGraph(b.tasks, b.edges);
     // Anchor (v0.18): keep only when it resolves against the already-normalized s.charts —
     // a dangling anchor degrades the flow to standalone, never deletes flow data. Walked with a
     // local finder because nodeInChart/chartById read the global `state`, not this `s`.
@@ -5588,6 +5654,19 @@ function migrateState(s) {
   });
   if (!s.bizCases.length) s.bizCases = [seedBizCase()];
   if (!s.bizCases.find(b => b.id === s.activeBizCaseId)) s.activeBizCaseId = s.bizCases[0].id;
+
+  // ---- Flow templates (v0.28): reusable copies of a flow's task list ----
+  // Same graph scrubber as the cases above. Templates never carry an anchor or a view — they're
+  // blueprints, not live flows — so those keys are simply not part of the normalized shape.
+  s.flowTemplates = (Array.isArray(s.flowTemplates) ? s.flowTemplates : [])
+    .filter(tp => tp && typeof tp === 'object').map(tp => {
+      const { tasks, edges } = normFlowGraph(tp.tasks, tp.edges);
+      return {
+        id: typeof tp.id === 'string' && tp.id ? tp.id : 'ft_' + uid(),
+        name: typeof tp.name === 'string' && tp.name.trim() ? tp.name : 'Untitled template',
+        tasks, edges
+      };
+    });
   return s;
 }
 function loadState() {
@@ -7106,6 +7185,7 @@ function bizSelectorHtml() {
     <select id="bz-framework" title="Decision framework — DACI / RAPID fit decision points better than RACI">${fwOpts}</select>
     <span class="bz-sep" aria-hidden="true"></span>
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
+    <button id="bz-templates" title="Reusable templates — copy this flow's task list into a template, then stamp any template out as a new flow or into this one">❐ Templates${state.flowTemplates.length ? ` (${state.flowTemplates.length})` : ''}</button>
     <button id="bz-toggle-table" class="${b.showTable ? 'active' : ''}" title="Show/hide the RACI table pane">▦ Table</button>
     <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · scroll to zoom · drag canvas to pan</span>`;
 }
@@ -7750,6 +7830,83 @@ function bizDeleteCase() {
 function bizToggleTable() {
   abc().showTable = !abc().showTable;
   saveState(); renderBizcase();
+}
+
+// ---- flow templates: copy the active task list into a template, reuse it anywhere ----
+function bizSaveTemplate() {
+  const b = abc();
+  if (!b.tasks.length) { showToast('This flow has no steps to copy yet — add a task first.', 'error'); return; }
+  const nm = prompt('Template name:', b.name || 'Untitled template');
+  if (nm == null) return;
+  const tpl = makeFlowTemplate(nm.trim() || b.name || 'Untitled template', b);
+  state.flowTemplates.push(tpl);
+  saveState(); renderBizcase();
+  showToast(`Template "${tpl.name}" saved (${tpl.tasks.length} step${tpl.tasks.length === 1 ? '' : 's'}) — reuse it from ❐ Templates.`);
+}
+function bizNewFlowFromTemplate(tplId) {
+  const tpl = flowTemplateById(tplId); if (!tpl) return;
+  const c = makeBizCase(tpl.name);
+  const g = instantiateFlowTemplate(tpl, 0, 0);
+  c.tasks = g.tasks; c.edges = g.edges;
+  state.bizCases.push(c);
+  state.activeBizCaseId = c.id;
+  saveState(); renderBizcase();
+  showToast(`New flow "${c.name}" created from the template — rename it and anchor it to a chart task if it implements one.`);
+}
+function bizInsertTemplate(tplId) {
+  const tpl = flowTemplateById(tplId); if (!tpl) return;
+  const b = abc();
+  // Stamp the template's steps below everything already on the canvas, keeping the template's
+  // own internal layout (and left alignment with the existing steps) intact.
+  let dx = 0, dy = 0;
+  if (b.tasks.length && tpl.tasks.length) {
+    dx = Math.min(...b.tasks.map(t => t.x)) - Math.min(...tpl.tasks.map(t => t.x));
+    dy = Math.max(...b.tasks.map(t => t.y)) + 320 - Math.min(...tpl.tasks.map(t => t.y));
+  }
+  const g = instantiateFlowTemplate(tpl, dx, dy);
+  b.tasks.push(...g.tasks); b.edges.push(...g.edges);
+  saveState(); renderBizcase();
+  showToast(`${g.tasks.length} step${g.tasks.length === 1 ? '' : 's'} from "${tpl.name}" added below the existing steps.`);
+}
+function bizDeleteTemplate(tplId) {
+  const tpl = flowTemplateById(tplId); if (!tpl) return;
+  if (!confirm(`Delete template "${tpl.name}"? Flows already stamped from it keep their steps.`)) return;
+  state.flowTemplates = state.flowTemplates.filter(t => t.id !== tplId);
+  saveState(); renderBizcase();
+}
+// The ❐ Templates popover: save the current task list as a template, or reuse a saved one.
+function openBizTemplatePopover(anchorEl) {
+  closePopover();
+  const b = abc();
+  const pop = document.createElement('div');
+  pop.className = 'org-popover tpl-popover';
+  const meta = t => `${t.tasks.length} step${t.tasks.length === 1 ? '' : 's'} · ${t.edges.length} handoff${t.edges.length === 1 ? '' : 's'}`;
+  let html = `<button class="op-item tpl-save" data-tpl-save="1" title="Copy this flow's task list into a reusable template">＋ Save “${escapeHtml(b.name || 'Untitled')}” as a template <span class="fp-meta">${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'}</span></button>`;
+  if (state.flowTemplates.length) {
+    html += `<div class="op-group">Saved templates</div>`;
+    html += state.flowTemplates.map(t => `<div class="tpl-row">
+      <span class="tpl-name" title="${escapeHtml((t.name || 'Untitled template') + ' — ' + meta(t))}">${escapeHtml(t.name)} <span class="fp-meta">${escapeHtml(meta(t))}</span></span>
+      <button class="tpl-act" data-tpl-new="${t.id}" title="Create a new flow from this template">＋ flow</button>
+      <button class="tpl-act" data-tpl-insert="${t.id}" title="Stamp this template's steps into the current flow">⇥ insert</button>
+      <button class="tpl-act tpl-del" data-tpl-del="${t.id}" title="Delete this template">×</button>
+    </div>`).join('');
+  } else {
+    html += `<div class="op-empty">No templates yet — save this flow's task list once, reuse it everywhere.</div>`;
+  }
+  pop.innerHTML = html;
+  document.body.appendChild(pop);
+  placePopover(pop, anchorEl);
+  openPopover = pop;
+  pop.addEventListener('click', e => {
+    e.stopPropagation();
+    const btn = e.target.closest('button[data-tpl-save],button[data-tpl-new],button[data-tpl-insert],button[data-tpl-del]');
+    if (!btn) return;
+    closePopover();
+    if (btn.dataset.tplSave) { bizSaveTemplate(); return; }
+    if (btn.dataset.tplNew) { bizNewFlowFromTemplate(btn.dataset.tplNew); return; }
+    if (btn.dataset.tplInsert) { bizInsertTemplate(btn.dataset.tplInsert); return; }
+    if (btn.dataset.tplDel) { bizDeleteTemplate(btn.dataset.tplDel); }
+  });
 }
 
 // ---- bizcase canvas interactions (each guarded to viewMode === 'bizcase') ----
@@ -8745,6 +8902,8 @@ document.addEventListener('click', e => {
     if (e.target.closest('#bz-del')) { bizDeleteCase(); return; }
     if (e.target.closest('#bz-add-task')) { bizAddTask(); return; }
     if (e.target.closest('#bz-toggle-table')) { bizToggleTable(); return; }
+    const bzTpl = e.target.closest('#bz-templates');
+    if (bzTpl) { openBizTemplatePopover(bzTpl); return; }
     if (e.target.closest('#bz-zoom-in')) { bizZoomBy(1.1); return; }
     if (e.target.closest('#bz-zoom-out')) { bizZoomBy(1 / 1.1); return; }
     if (e.target.closest('#bz-zoom-fit')) { bizFit(); return; }
@@ -10216,10 +10375,12 @@ function importJSON(file, merge) {
       const hadCharts = (raw && Array.isArray(raw.charts) && raw.charts.length > 0) || (raw && Array.isArray(raw.activities));
       const hadBiz = raw && Array.isArray(raw.bizCases) && raw.bizCases.length > 0;
       const hadArts = raw && Array.isArray(raw.artifacts) && raw.artifacts.length > 0;
+      const hadTpls = raw && Array.isArray(raw.flowTemplates) && raw.flowTemplates.length > 0;
       const incoming = migrateState(raw);
       if (merge) {
         const mCharts = hadCharts ? incoming.charts : [];
         const mBiz = hadBiz ? (incoming.bizCases || []) : [];
+        const mTpls = hadTpls ? (incoming.flowTemplates || []) : [];
         // Artifacts merge by IDENTITY where possible: an incoming deliverable with the same
         // name+type as an existing one maps onto it (registry stays deduplicated); the rest are
         // re-minted under fresh ids. All incoming IO refs are then remapped, and anything still
@@ -10238,6 +10399,13 @@ function importJSON(file, merge) {
           (ns || []).forEach(n => { n.inputs = remapIO(n.inputs); n.outputs = remapIO(n.outputs); walk(n.children); });
         })(c.activities));
         mBiz.forEach(b => b.edges.forEach(ed => { ed.artifactIds = remapIO(ed.artifactIds); }));
+        // Flow templates (v0.28) merge by simple append under fresh ids; their handoff
+        // deliverable refs follow the artifact remap like any other edge.
+        mTpls.forEach(tp => {
+          tp.id = 'ft_' + uid();
+          tp.edges.forEach(ed => { ed.artifactIds = remapIO(ed.artifactIds); });
+          state.flowTemplates.push(tp);
+        });
         // Charts are re-minted under fresh ids (node ids inside are preserved), so incoming flow
         // anchors must follow: remap through old→new; an anchor pointing at a chart the file
         // didn't carry survives only if it resolves against a chart already in this workspace
@@ -10254,7 +10422,7 @@ function importJSON(file, merge) {
         });
         eachDocInState(incoming, doc => { if (doc && doc.dataUrl) idbPutDoc(doc.id, doc.dataUrl); });
         if (mCharts.length) state.activeChartId = mCharts[0].id;
-        showToast(`Merged ${mCharts.length} chart(s) and ${mBiz.length} business case(s) into your workspace.`, 'suggest');
+        showToast(`Merged ${mCharts.length} chart(s), ${mBiz.length} business case(s)${mTpls.length ? ` and ${mTpls.length} flow template(s)` : ''} into your workspace.`, 'suggest');
       } else {
         state = incoming;
       }
