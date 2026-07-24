@@ -1,0 +1,493 @@
+{
+  "_TEMPLATE_GUIDE": [
+    "════════════════════════════════════════════════════════════════════════════",
+    "ASIC RACI TOOL — MASTER IMPORT TEMPLATE (covers every importable structure)",
+    "════════════════════════════════════════════════════════════════════════════",
+    "HOW TO USE: edit the sections below, then 📂 Load (replaces your workspace) or",
+    "⧉ Merge (appends this file's charts/business cases; deliverables dedupe by",
+    "name+type). Every top-level section is OPTIONAL — anything missing is seeded",
+    "with defaults. This _TEMPLATE_GUIDE block is ignored by the app; delete it",
+    "whenever you like.",
+    "",
+    "ID RULES: ids are free-form strings; they only need to be consistent WITHIN",
+    "this file. Cross-references that must line up: (1) node.org / task parties /",
+    "artifact ownerRef / workScope reference directorate-division-branch-team ids",
+    "defined in 'directorates'; (2) bizCase anchor references a chart id + node id;",
+    "(3) inputs/outputs/artifactIds reference artifact ids. Dangling refs never",
+    "break an import — they are dropped (artifact refs) or degrade gracefully",
+    "(org refs, anchors → standalone).",
+    "",
+    "── charts[] ────────────────────────────────────────────────────────────────",
+    "ORG CHART (custom: null): fixed 4 tiers Portfolio→Program→Project→Task via",
+    "nested children[] (deeper levels are trimmed). RACI cells live in node.raci,",
+    "keyed by the 7 fixed org columns: hq, cos, mission, infra, cyber, sw,",
+    "contacts. Cell values are letter strings ('A', 'R', 'RA', 'CI', ...).",
+    "framework: 'raci' | 'rasci'. Valid letters overall: R D A S P C I — letters",
+    "outside the chart's framework are kept but flagged by the rule engine.",
+    "Per node (all optional except name/raci/children): description; status",
+    "('todo'|'doing'|'done'); primaryR (when a row holds 2+ R's, names the column",
+    "whose R cascades down as the children's A); org {actor, divisionId,",
+    "branchId?, teamId?} — the unit badge (divisionId required or the ref is",
+    "dropped; org charts only); inputs/outputs (artifact-id arrays = boundary IO);",
+    "documents [{id,name,type,size,dataUrl}] with base64 dataUrl (stored in",
+    "IndexedDB after load, embedded again on Save).",
+    "Per chart view-state (optional): drillPath (node-id chain to open drilled),",
+    "chartZoom (0.4–2.5), chartSize {w,h}|null, chartPos {tierIndex:{x,y}} for",
+    "manually dragged panes.",
+    "LEGACY SHAPE: a file with top-level {title, activities} and no charts[] still",
+    "loads — it is wrapped into charts[0] automatically.",
+    "",
+    "FREE-FORM CHART (custom: {...}): org-agnostic. custom.cols defines the party",
+    "columns [{key,label,short}] — node.raci is keyed by THESE keys; custom.tiers",
+    "names the levels (any depth). No org refs, no roster links (rows never appear",
+    "in the Tasks view).",
+    "",
+    "── bizCases[] (Business Case task flows) ──────────────────────────────────",
+    "framework: 'raci' | 'daci' | 'rapid'. anchor: {chartId, nodeId} ties the flow",
+    "to one org-chart Task row ('this flow implements that task') — owner and",
+    "default parties then cascade in and flow-health rolls up; anchor: null = a",
+    "standalone tabletop exercise. tasks[] are the step boxes: raci keyed by the 7",
+    "org columns; parties maps a column key → roster ref {actor, divisionId?,",
+    "branchId?, teamId?} (the executing unit for that column's role); description /",
+    "entry / exit are the card's three text blocks; status; x/y canvas position.",
+    "edges[] are directed handoffs {from, to} between task ids; label is the",
+    "branch condition ('Yes', 'No', 'approved', ...); artifactIds name the",
+    "deliverables that change hands (a step's IO is derived from its edges).",
+    "Self-loops and duplicate from→to pairs are dropped.",
+    "",
+    "── artifacts[] (deliverable registry) ─────────────────────────────────────",
+    "One entry per real-world deliverable, referenced everywhere by id.",
+    "type: 'document' | 'data' | 'decision' | 'approval' | 'briefing' | 'other'.",
+    "ownerRef: roster ref or null. On Merge, artifacts dedupe by name+type.",
+    "",
+    "── directorates (the roster) ──────────────────────────────────────────────",
+    "Exactly these 6 keys: ocio, mission, infra, cyber, sw, vendor. Each:",
+    "{lead: {id,name}|null, divisions: [{id, name, chief, branches: [{id, name,",
+    "chief, teams: [{id, name, chief, people: [{id, name, title}]}]}]}]}.",
+    "Depth is optional — divisions may have no branches, branches no teams.",
+    "",
+    "── labels & mappings ───────────────────────────────────────────────────────",
+    "actorLabels: display name per directorate key (shown in Roster/pickers).",
+    "columnLabels / columnShort: full + abbreviated header per org column key.",
+    "columnActor: org column key → directorate key (or null) — this mapping powers",
+    "roster-linked defaults (e.g. a flow step's default executing party).",
+    "",
+    "── view preferences (all optional) ────────────────────────────────────────",
+    "viewMode: 'chart'|'roster'|'bizcase'|'work'|'help'; activeChartId;",
+    "activeBizCaseId; showLegend; rosterMode: 'explore'|'full';",
+    "collapsedDirectorates {actorKey:true}; workScope: roster ref preselecting the",
+    "Tasks view's unit (or null).",
+    "════════════════════════════════════════════════════════════════════════════"
+  ],
+
+  "charts": [
+    {
+      "id": "c_org_main",
+      "title": "EXAMPLE — Org RACI chart",
+      "framework": "raci",
+      "custom": null,
+      "drillPath": [],
+      "chartZoom": 1,
+      "chartSize": null,
+      "chartPos": {},
+      "activities": [
+        {
+          "id": "n_pf1",
+          "name": "Portfolio Activity — Modernize Logistics",
+          "raci": { "hq": "A", "cos": "C", "mission": "I", "infra": "I", "cyber": "I", "sw": "R", "contacts": "I" },
+          "status": "doing",
+          "description": "Top-tier portfolio activity. One A per row; the R here cascades down as the next tier's A.",
+          "documents": [],
+          "inputs": [],
+          "outputs": [ "a_brief" ],
+          "children": [
+            {
+              "id": "n_prog1",
+              "name": "Program Activity — Inventory Platform",
+              "raci": { "hq": "I", "cos": "I", "mission": "R", "infra": "C", "cyber": "I", "sw": "R", "contacts": "I" },
+              "status": "doing",
+              "description": "Two R's on this row — primaryR names which column's R cascades down as the children's A.",
+              "primaryR": "sw",
+              "org": { "actor": "sw", "divisionId": "d_sw_sus" },
+              "documents": [],
+              "inputs": [],
+              "outputs": [],
+              "children": [
+                {
+                  "id": "n_proj1",
+                  "name": "Project Activity — Barcode Scanning",
+                  "raci": { "hq": "I", "cos": "I", "mission": "C", "infra": "I", "cyber": "C", "sw": "R", "contacts": "I" },
+                  "status": "todo",
+                  "description": "Project row assigned to a Branch (org ref goes one level deeper than the Program's Division).",
+                  "org": { "actor": "sw", "divisionId": "d_sw_sus", "branchId": "br_sw_scan" },
+                  "documents": [],
+                  "inputs": [],
+                  "outputs": [],
+                  "children": [
+                    {
+                      "id": "n_task1",
+                      "name": "Task — Integrate scanner SDK",
+                      "raci": { "hq": "I", "cos": "I", "mission": "I", "infra": "I", "cyber": "C", "sw": "R", "contacts": "I" },
+                      "status": "doing",
+                      "description": "Deepest tier. This node is the anchor target of the 'SDK Integration' flow below. It consumes and produces registered deliverables (boundary IO) and carries an attached document.",
+                      "documents": [
+                        {
+                          "id": "doc_sop_example",
+                          "name": "example-attached-doc.txt",
+                          "type": "text/plain",
+                          "size": 11,
+                          "dataUrl": "data:text/plain;base64,SGVsbG8gUkFDSSE="
+                        }
+                      ],
+                      "inputs": [ "a_sdk_pkg" ],
+                      "outputs": [ "a_test_rep" ],
+                      "children": []
+                    },
+                    {
+                      "id": "n_task2",
+                      "name": "Task — Site survey",
+                      "raci": { "hq": "I", "cos": "I", "mission": "R", "infra": "C", "cyber": "I", "sw": "A", "contacts": "I" },
+                      "status": "done",
+                      "description": "A sibling task with its own explicit A (overrides the cascaded owner — flagged, not blocked).",
+                      "documents": [],
+                      "inputs": [],
+                      "outputs": [],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "n_prog2",
+              "name": "Program Activity — Fleet Telematics",
+              "raci": { "hq": "I", "cos": "I", "mission": "R", "infra": "I", "cyber": "I", "sw": "C", "contacts": "I" },
+              "status": "todo",
+              "description": "Minimal sibling program (no org ref, no children yet).",
+              "documents": [],
+              "inputs": [],
+              "outputs": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "n_pf2",
+          "name": "Portfolio Activity — Cyber Posture",
+          "raci": { "hq": "A", "cos": "I", "mission": "I", "infra": "I", "cyber": "R", "contacts": "I", "sw": "I" },
+          "status": "todo",
+          "description": "Second top-level row consuming a decision deliverable produced elsewhere.",
+          "documents": [],
+          "inputs": [ "a_ato" ],
+          "outputs": [],
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "c_free_gov",
+      "title": "EXAMPLE — Free-form chart (custom columns)",
+      "framework": "rasci",
+      "custom": {
+        "cols": [
+          { "key": "sponsor", "label": "Executive Sponsor", "short": "SPON" },
+          { "key": "pmo", "label": "Program Office", "short": "PMO" },
+          { "key": "legal", "label": "Legal Review", "short": "LEG" },
+          { "key": "field", "label": "Field Units", "short": "FLD" }
+        ],
+        "tiers": [ "Initiative", "Workstream", "Action" ]
+      },
+      "drillPath": [],
+      "chartZoom": 1,
+      "chartSize": null,
+      "chartPos": {},
+      "activities": [
+        {
+          "id": "nf_init1",
+          "name": "Initiative — Policy Refresh",
+          "raci": { "sponsor": "A", "pmo": "R", "legal": "C", "field": "I" },
+          "status": "todo",
+          "description": "Free-form charts key raci by custom.cols keys, nest to any depth, and carry no org refs.",
+          "documents": [],
+          "inputs": [],
+          "outputs": [],
+          "children": [
+            {
+              "id": "nf_ws1",
+              "name": "Workstream — Draft Directive",
+              "raci": { "sponsor": "I", "pmo": "A", "legal": "RS", "field": "C" },
+              "status": "doing",
+              "description": "RASCI framework example — the S (Support) letter is valid here.",
+              "documents": [],
+              "inputs": [],
+              "outputs": [],
+              "children": [
+                {
+                  "id": "nf_act1",
+                  "name": "Action — Circulate for comment",
+                  "raci": { "sponsor": "I", "pmo": "R", "legal": "A", "field": "S" },
+                  "status": "todo",
+                  "description": "",
+                  "documents": [],
+                  "inputs": [],
+                  "outputs": [],
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "activeChartId": "c_org_main",
+
+  "bizCases": [
+    {
+      "id": "b_flow_sdk",
+      "name": "EXAMPLE — SDK Integration (anchored flow)",
+      "description": "Anchored to the org chart's 'Task — Integrate scanner SDK' row: the row's cascaded owner shows through on steps with no explicit owner, and its org ancestry seeds default parties.",
+      "framework": "raci",
+      "anchor": { "chartId": "c_org_main", "nodeId": "n_task1" },
+      "showTable": false,
+      "view": { "panX": 0, "panY": 0, "zoom": 1 },
+      "tasks": [
+        {
+          "id": "t_req",
+          "name": "Request vendor SDK",
+          "raci": { "hq": "", "cos": "", "mission": "", "infra": "", "cyber": "", "sw": "I", "contacts": "R" },
+          "parties": {
+            "contacts": { "actor": "vendor", "divisionId": "d_ven_primes" }
+          },
+          "description": "No explicit A on this step — the anchored chart's owner is inherited (shown dashed).",
+          "entry": "Contract vehicle in place",
+          "exit": "SDK package received",
+          "status": "done",
+          "x": 40, "y": 60
+        },
+        {
+          "id": "t_sec",
+          "name": "Security review",
+          "raci": { "hq": "", "cos": "", "mission": "", "infra": "", "cyber": "RA", "sw": "I", "contacts": "" },
+          "parties": {
+            "cyber": { "actor": "cyber", "divisionId": "d_cyb_soc", "branchId": "br_cyb_ir", "teamId": "tm_cyb_ir_watch" }
+          },
+          "description": "Explicit A on a different column than the inherited owner = branch override (warned, never blocked). Party ref demonstrates full team depth.",
+          "entry": "SDK package received",
+          "exit": "Security memo signed",
+          "status": "doing",
+          "x": 380, "y": 60
+        },
+        {
+          "id": "t_int",
+          "name": "Integrate & test",
+          "raci": { "hq": "", "cos": "", "mission": "", "infra": "", "cyber": "C", "sw": "R", "contacts": "" },
+          "parties": {
+            "sw": { "actor": "sw", "divisionId": "d_sw_sus", "branchId": "br_sw_scan" }
+          },
+          "description": "Decision point — the two outgoing edges carry Yes/No branch labels.",
+          "entry": "Security memo signed",
+          "exit": "All test suites green",
+          "status": "todo",
+          "x": 720, "y": 60
+        },
+        {
+          "id": "t_deploy",
+          "name": "Deploy to pilot site",
+          "raci": { "hq": "I", "cos": "", "mission": "C", "infra": "R", "cyber": "", "sw": "C", "contacts": "" },
+          "parties": {
+            "infra": { "actor": "infra", "divisionId": "d_inf_net" }
+          },
+          "description": "",
+          "entry": "Tests passed",
+          "exit": "Pilot site live",
+          "status": "todo",
+          "x": 1060, "y": 60
+        }
+      ],
+      "edges": [
+        { "id": "e_req_sec", "from": "t_req", "to": "t_sec", "label": "", "artifactIds": [ "a_sdk_pkg" ] },
+        { "id": "e_sec_int", "from": "t_sec", "to": "t_int", "label": "approved", "artifactIds": [ "a_sec_memo" ] },
+        { "id": "e_int_deploy", "from": "t_int", "to": "t_deploy", "label": "Yes", "artifactIds": [ "a_test_rep" ] },
+        { "id": "e_int_req", "from": "t_int", "to": "t_req", "label": "No — rework", "artifactIds": [] }
+      ]
+    },
+    {
+      "id": "b_flow_tabletop",
+      "name": "EXAMPLE — Standalone tabletop (DACI)",
+      "description": "anchor: null keeps this a standalone exercise — no inherited context, no roll-up. DACI framework: Driver, Approver, Contributor, Informed.",
+      "framework": "daci",
+      "anchor": null,
+      "showTable": false,
+      "view": { "panX": 0, "panY": 0, "zoom": 1 },
+      "tasks": [
+        {
+          "id": "t_tt_frame",
+          "name": "Frame the decision",
+          "raci": { "hq": "A", "cos": "D", "mission": "C", "infra": "", "cyber": "", "sw": "C", "contacts": "I" },
+          "parties": {},
+          "description": "DACI letters: D drives, A approves.",
+          "entry": "",
+          "exit": "Options paper drafted",
+          "status": "todo",
+          "x": 40, "y": 80
+        },
+        {
+          "id": "t_tt_decide",
+          "name": "Decision brief",
+          "raci": { "hq": "A", "cos": "D", "mission": "I", "infra": "I", "cyber": "I", "sw": "I", "contacts": "I" },
+          "parties": {},
+          "description": "",
+          "entry": "Options paper drafted",
+          "exit": "Course of action signed",
+          "status": "todo",
+          "x": 420, "y": 80
+        }
+      ],
+      "edges": [
+        { "id": "e_tt_1", "from": "t_tt_frame", "to": "t_tt_decide", "label": "", "artifactIds": [ "a_brief" ] }
+      ]
+    }
+  ],
+  "activeBizCaseId": "b_flow_sdk",
+
+  "artifacts": [
+    { "id": "a_sdk_pkg",  "name": "SDK package",        "type": "document", "ownerRef": null, "description": "Vendor-delivered SDK bundle.", "doc": null },
+    { "id": "a_sec_memo", "name": "Security memo",      "type": "approval", "ownerRef": { "actor": "cyber", "divisionId": "d_cyb_soc" }, "description": "Signed security review outcome.", "doc": null },
+    { "id": "a_test_rep", "name": "Test report",        "type": "data",     "ownerRef": null, "description": "Integration test results.", "doc": null },
+    { "id": "a_ato",      "name": "ATO decision",       "type": "decision", "ownerRef": { "actor": "cyber", "divisionId": "d_cyb_soc" }, "description": "Authority to Operate determination.", "doc": null },
+    { "id": "a_brief",    "name": "Portfolio brief",    "type": "briefing", "ownerRef": { "actor": "ocio", "divisionId": "d_ocio_gov" }, "description": "Quarterly leadership briefing.", "doc": null },
+    { "id": "a_misc",     "name": "Working notes",      "type": "other",    "ownerRef": null, "description": "Anything that doesn't fit the other types.", "doc": null }
+  ],
+
+  "directorates": {
+    "ocio": {
+      "lead": { "id": "L_ocio", "name": "Lead Example (Dir A)" },
+      "divisions": [
+        {
+          "id": "d_ocio_gov", "name": "Governance Division",
+          "chief": { "id": "ch_ocio_gov", "name": "Chief Example" },
+          "branches": [
+            {
+              "id": "br_ocio_pol", "name": "Policy Branch", "chief": null,
+              "teams": [
+                {
+                  "id": "tm_ocio_pol_a", "name": "Policy Team A", "chief": null,
+                  "people": [
+                    { "id": "p_ocio_1", "name": "Person One", "title": "Policy Analyst" },
+                    { "id": "p_ocio_2", "name": "Person Two", "title": "Records Officer" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "mission": {
+      "lead": null,
+      "divisions": [
+        {
+          "id": "d_mis_ops", "name": "Operations Division", "chief": null,
+          "branches": [
+            { "id": "br_mis_field", "name": "Field Ops Branch", "chief": null, "teams": [] }
+          ]
+        }
+      ]
+    },
+    "infra": {
+      "lead": null,
+      "divisions": [
+        {
+          "id": "d_inf_net", "name": "Network Division", "chief": null,
+          "branches": [
+            { "id": "br_inf_dc", "name": "Data Center Branch", "chief": null, "teams": [] }
+          ]
+        }
+      ]
+    },
+    "cyber": {
+      "lead": { "id": "L_cyber", "name": "Lead Example (Dir D)" },
+      "divisions": [
+        {
+          "id": "d_cyb_soc", "name": "SOC Division", "chief": null,
+          "branches": [
+            {
+              "id": "br_cyb_ir", "name": "Incident Response Branch",
+              "chief": { "id": "ch_cyb_ir", "name": "Branch Chief Example" },
+              "teams": [
+                {
+                  "id": "tm_cyb_ir_watch", "name": "Watch Floor Team", "chief": null,
+                  "people": [
+                    { "id": "p_cyb_1", "name": "Watch Officer", "title": "IR Lead" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "sw": {
+      "lead": null,
+      "divisions": [
+        {
+          "id": "d_sw_sus", "name": "Sustainment Systems Division",
+          "chief": { "id": "ch_sw_sus", "name": "Division Chief Example" },
+          "branches": [
+            {
+              "id": "br_sw_scan", "name": "Scanning Branch", "chief": null,
+              "teams": [
+                {
+                  "id": "tm_sw_scan_dev", "name": "Scanner Dev Team", "chief": { "id": "ch_sw_dev", "name": "Team Lead Example" },
+                  "people": [
+                    { "id": "p_sw_1", "name": "Dev One", "title": "Software Engineer" },
+                    { "id": "p_sw_2", "name": "Dev Two", "title": "Test Engineer" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "vendor": {
+      "lead": null,
+      "divisions": [
+        { "id": "d_ven_primes", "name": "Prime Contractors Division", "chief": null, "branches": [] }
+      ]
+    }
+  },
+
+  "actorLabels": {
+    "ocio": "DIRECTORATE A",
+    "mission": "DIRECTORATE B",
+    "infra": "DIRECTORATE C",
+    "cyber": "DIRECTORATE D",
+    "sw": "DIRECTORATE E",
+    "vendor": "DIRECTORATE F"
+  },
+  "columnLabels": {
+    "hq": "Director / HQ",
+    "cos": "Chief of Staff",
+    "mission": "Mission Mgmt Dir.",
+    "infra": "Infrastructure Dir.",
+    "cyber": "Cyber & EW Dir.",
+    "sw": "Software & Support Dir.",
+    "contacts": "Contracts"
+  },
+  "columnShort": {
+    "hq": "HQ", "cos": "CoS", "mission": "MMD", "infra": "Infra",
+    "cyber": "C&EW", "sw": "S&S", "contacts": "Contr"
+  },
+  "columnActor": {
+    "hq": "ocio", "cos": "ocio", "mission": "mission", "infra": "infra",
+    "cyber": "cyber", "sw": "sw", "contacts": "vendor"
+  },
+
+  "viewMode": "chart",
+  "showLegend": false,
+  "rosterMode": "explore",
+  "collapsedDirectorates": {},
+  "workScope": { "actor": "sw", "divisionId": "d_sw_sus", "branchId": "br_sw_scan" }
+}

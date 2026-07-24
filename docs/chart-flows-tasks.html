@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A visual field guide to how the RACI chart, Business Case task flows, and the Tasks view fit together — anchors, inherited owners, deliverable handoffs, and the per-unit work lens.">
+<title>Chart, Flow &amp; Tasks — how it fits together</title>
+<style>
+  :root{
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+    /* light (default) */
+    --paper:#eaeef5; --card:#ffffff; --inset:#f1f4fb; --line:#d3dae8; --line-soft:#e2e7f1;
+    --ink:#182031; --muted:#586377; --faint:#8992a5;
+    --accent:#0c7f8f; --accent-ink:#0a5b66; --accent-soft:#0c7f8f18;
+    --r:#2f7fd6; --a:#d83f3f; --c:#e0a406; --c-ink:#241a02; --i:#5b6673;
+    --grid: rgba(24,50,84,.055);
+    --shadow: 0 1px 2px rgba(20,32,55,.05), 0 10px 28px rgba(20,32,55,.07);
+    --ring: 0 0 0 2px var(--card), 0 0 0 4px var(--accent);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0e121a; --card:#171c27; --inset:#10141d; --line:#28303f; --line-soft:#1f2734;
+      --ink:#e9edf6; --muted:#9aa6ba; --faint:#69748a;
+      --accent:#38cddd; --accent-ink:#7ce0ec; --accent-soft:#38cddd1c;
+      --r:#4dabf7; --a:#fa5252; --c:#fcc419; --c-ink:#241a02; --i:#7a8494;
+      --grid: rgba(120,165,225,.06);
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
+      --ring: 0 0 0 2px var(--card), 0 0 0 4px var(--accent);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0e121a; --card:#171c27; --inset:#10141d; --line:#28303f; --line-soft:#1f2734;
+    --ink:#e9edf6; --muted:#9aa6ba; --faint:#69748a;
+    --accent:#38cddd; --accent-ink:#7ce0ec; --accent-soft:#38cddd1c;
+    --r:#4dabf7; --a:#fa5252; --c:#fcc419; --c-ink:#241a02; --i:#7a8494;
+    --grid: rgba(120,165,225,.06);
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:17px; line-height:1.72;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  ::selection{ background:var(--accent-soft); }
+  a{ color:var(--accent-ink); text-underline-offset:3px; text-decoration-thickness:1px; }
+  em{ font-style:normal; color:var(--accent-ink); font-weight:600; }
+  b, strong{ font-weight:700; }
+
+  .wrap{ max-width:820px; margin:0 auto; padding:0 22px; }
+  .bleed{ max-width:920px; margin-left:auto; margin-right:auto; padding:0 22px; }
+
+  .eyebrow{
+    font-family:var(--mono); font-size:.72rem; font-weight:600; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--accent-ink); margin:0 0 .9rem;
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative; overflow:hidden; border-bottom:1px solid var(--line-soft);
+    background:
+      radial-gradient(circle at 1px 1px, var(--grid) 1px, transparent 0) 0 0 / 26px 26px,
+      linear-gradient(180deg, var(--accent-soft), transparent 60%);
+  }
+  .hero-inner{ padding:clamp(56px, 9vw, 104px) 0 clamp(40px,6vw,64px); }
+  h1{
+    font-size:clamp(2.4rem, 6.2vw, 4rem); line-height:1.02; letter-spacing:-.025em;
+    font-weight:800; margin:0 0 1rem; text-wrap:balance;
+  }
+  .lede{
+    font-size:clamp(1.12rem, 2.1vw, 1.34rem); line-height:1.6; color:var(--muted);
+    max-width:38ch; margin:0 0 2.4rem;
+  }
+  .lede b{ color:var(--ink); }
+  .hero-cap{
+    font-family:var(--mono); font-size:.78rem; color:var(--faint); letter-spacing:.02em;
+    margin:1.6rem 0 0; display:flex; align-items:center; gap:.5rem;
+  }
+  .hero-cap::before{ content:""; width:26px; height:1px; background:var(--line); display:inline-block; }
+
+  /* the chart-row -> anchored-flow motif */
+  .handoff{
+    display:flex; flex-direction:column; align-items:stretch; gap:0;
+    max-width:470px; padding:16px; background:var(--card);
+    border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow);
+  }
+  .hrow{
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--inset); border:1px solid var(--line-soft); border-radius:11px;
+  }
+  .hrow-tier{
+    font-family:var(--mono); font-size:.62rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--faint); flex:0 0 auto; width:58px;
+  }
+  .hrow-name{ font-weight:650; font-size:.96rem; flex:1; min-width:0; }
+  .hrow-chips{ display:inline-flex; gap:5px; flex:0 0 auto; }
+  .hbadge{
+    align-self:center; display:flex; flex-direction:column; align-items:center; gap:5px; margin:5px 0;
+  }
+  .hb-line{ display:flex; align-items:center; gap:10px; }
+  .hb-arrow{ font-family:var(--mono); font-size:.72rem; color:var(--muted); letter-spacing:.04em; }
+  .hb-cap{ font-family:var(--mono); font-size:.68rem; color:var(--faint); text-align:center; }
+  .carry-chip{ box-shadow:var(--ring); }
+  .hero-strip{ display:flex; flex-direction:column; gap:0; }
+  .hstep{
+    display:flex; align-items:center; gap:10px; padding:8px 12px;
+    background:var(--inset); border:1px solid var(--line-soft); border-radius:9px;
+    font-size:.82rem; font-weight:600;
+  }
+  .hstep .hrow-tier{ width:auto; }
+  .hedge{
+    display:flex; align-items:center; gap:8px; margin:2px 0 2px 22px;
+    font-family:var(--mono); font-size:.66rem; color:var(--muted);
+  }
+  .hedge .rail{ width:2px; height:16px; background:linear-gradient(var(--accent), var(--line)); border-radius:2px; }
+
+  /* ---------- chips ---------- */
+  .chip{
+    display:inline-grid; place-items:center; width:1.55em; height:1.55em; border-radius:.34em;
+    font-family:var(--mono); font-weight:700; font-size:.82em; line-height:1; color:#fff;
+    flex:0 0 auto;
+  }
+  .chip.sm{ width:1.35em; height:1.35em; font-size:.72em; vertical-align:-.15em; }
+  .chip.r{ background:var(--r); }
+  .chip.a{ background:var(--a); }
+  .chip.c{ background:var(--c); color:var(--c-ink); }
+  .chip.i{ background:var(--i); }
+  /* dashed = inherited from the anchored chart, not set on the step itself */
+  .chip.dash{ background:transparent; border:1.5px dashed currentColor; }
+  .chip.dash.a{ color:var(--a); }
+  .chip.dash.r{ color:var(--r); }
+  /* amber ring = branch override (explicit owner disagrees with the inherited one) */
+  .chip.ring-warn{ box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--c); }
+
+  /* anchor pill + deliverable tag + party capsule */
+  .apill{
+    display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:.64rem;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--accent-ink);
+    background:var(--accent-soft); border:1px dashed var(--accent); border-radius:999px; padding:2px 10px;
+    white-space:nowrap;
+  }
+  .dtag{
+    display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:.68rem;
+    color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:7px;
+    padding:2px 8px; white-space:nowrap;
+  }
+  .dtag .dt-type{ font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); }
+  .pcap{
+    display:inline-flex; align-items:center; font-family:var(--mono); font-size:.64rem; color:var(--muted);
+    border:1px dashed var(--line); border-radius:6px; padding:1px 8px; white-space:nowrap;
+  }
+  .pcap.set{ border-style:solid; border-color:var(--accent); color:var(--accent-ink); background:var(--accent-soft); }
+
+  /* ---------- generic sections ---------- */
+  section{ padding:clamp(46px,7vw,78px) 0; }
+  section + section{ border-top:1px solid var(--line-soft); }
+  h2{
+    font-size:clamp(1.5rem,3vw,2rem); line-height:1.12; letter-spacing:-.018em;
+    font-weight:750; margin:0 0 .5rem; text-wrap:balance;
+  }
+  h2 .lead-num{
+    font-family:var(--mono); font-size:.8rem; color:var(--accent-ink); font-weight:600;
+    letter-spacing:.06em; display:block; margin-bottom:.5rem;
+  }
+  .sub{ color:var(--muted); max-width:60ch; margin:0 0 2rem; }
+  p{ margin:0 0 1.15rem; max-width:64ch; }
+  p:last-child{ margin-bottom:0; }
+
+  .thesis{
+    font-size:clamp(1.2rem,2.4vw,1.5rem); line-height:1.5; font-weight:600; letter-spacing:-.01em;
+    color:var(--ink); max-width:34ch; border-left:3px solid var(--accent); padding:2px 0 2px 22px;
+    text-wrap:balance;
+  }
+  .thesis b{ color:var(--accent-ink); }
+
+  /* lens panels */
+  .compare{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:.5rem; }
+  .compare.three{ grid-template-columns:1fr 1fr 1fr; }
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:18px 18px 20px; box-shadow:var(--shadow); min-width:0;
+  }
+  .panel h3{ margin:0 0 4px; font-size:1rem; }
+  .panel .cap{ font-family:var(--mono); font-size:.68rem; color:var(--faint); letter-spacing:.04em; text-transform:uppercase; }
+  .panel .lens-q{ font-size:.9rem; color:var(--accent-ink); font-weight:650; margin:0 0 .6rem; }
+  .panel p{ font-size:.86rem; color:var(--muted); line-height:1.55; }
+  .panel .mini-art{
+    margin:12px 0 10px; padding:10px 12px; background:var(--inset); border:1px solid var(--line-soft);
+    border-radius:9px; display:flex; flex-direction:column; gap:5px;
+    font-family:var(--mono); font-size:.66rem; color:var(--muted);
+  }
+  .mini-art .ma-row{ display:flex; align-items:center; gap:7px; white-space:nowrap; }
+  .mini-art .ma-row .grow{ flex:1; overflow:hidden; text-overflow:ellipsis; }
+
+  /* legend */
+  .legend{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:.5rem; }
+  .leg{
+    display:flex; gap:13px; align-items:flex-start; background:var(--card);
+    border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .leg .glyph{
+    flex:0 0 auto; width:1.9em; height:1.9em; display:grid; place-items:center; margin-top:2px;
+    background:var(--inset); border:1px solid var(--line); border-radius:8px; font-size:1em;
+  }
+  .leg-name{ font-weight:700; margin:0; font-size:.98rem; }
+  .leg-name .role{ font-family:var(--mono); font-weight:500; font-size:.7rem; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; margin-left:6px; }
+  .leg p{ margin:.15rem 0 0; font-size:.86rem; color:var(--muted); line-height:1.5; }
+  .leg.star{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), var(--shadow); }
+  .leg .tag{ font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); background:var(--accent-soft); border-radius:5px; padding:1px 6px; margin-left:6px; }
+
+  /* the rule */
+  .rule-eq{
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:.5rem 0 0;
+    font-family:var(--mono); font-size:1.02rem; color:var(--ink);
+    background:var(--inset); border:1px solid var(--line); border-radius:12px; padding:18px 20px;
+  }
+  .rule-eq .who{ color:var(--muted); font-size:.82rem; }
+  .rule-eq .arrow{ color:var(--accent-ink); font-weight:700; }
+
+  /* what-cascades trio */
+  .flows3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:1.4rem; }
+  .flowcard{
+    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:15px 16px;
+    box-shadow:var(--shadow);
+  }
+  .flowcard .dirn{
+    font-family:var(--mono); font-size:.62rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); display:flex; align-items:center; gap:7px; margin-bottom:6px;
+  }
+  .flowcard h3{ margin:0 0 4px; font-size:.96rem; }
+  .flowcard p{ margin:0; font-size:.84rem; color:var(--muted); line-height:1.5; }
+
+  /* ---------- worked example centerpiece ---------- */
+  .cascade{ margin-top:.5rem; }
+  .thread-hint{
+    font-family:var(--mono); font-size:.74rem; color:var(--muted); margin:0 0 20px;
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  }
+  .thread-hint .chip{ font-size:.7em; }
+  .lvl{
+    position:relative; background:var(--card); border:1px solid var(--line); border-radius:15px;
+    box-shadow:var(--shadow); padding:16px 18px; margin-left:calc(var(--i,0) * 34px);
+  }
+  .lvl-h{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .lvl-tier{
+    font-family:var(--mono); font-size:.64rem; letter-spacing:.16em; text-transform:uppercase;
+    color:#fff; background:var(--accent); border-radius:5px; padding:3px 8px; flex:0 0 auto;
+  }
+  .lvl-name{ margin:0; font-size:1.12rem; font-weight:750; letter-spacing:-.01em; }
+  .lvl-owner{
+    margin-left:auto; display:inline-flex; align-items:center; gap:7px;
+    font-size:.82rem; color:var(--muted); font-family:var(--mono);
+  }
+  .lvl-owner .who-b{ color:var(--ink); font-weight:600; }
+  .lvl-rows{ display:flex; flex-direction:column; gap:8px; }
+  .mrow{
+    display:flex; align-items:center; gap:14px; padding:11px 13px; border-radius:10px;
+    background:var(--inset); border:1px solid var(--line-soft); flex-wrap:wrap;
+  }
+  .mrow.is-drill{ border-color:var(--accent); background:var(--accent-soft); }
+  .mrow-name{ font-size:.9rem; flex:1 1 190px; min-width:150px; }
+  .mrow-name b{ font-weight:700; }
+  .mrow-raci{ display:flex; gap:12px; flex-wrap:wrap; }
+  .cell{ display:inline-flex; align-items:center; gap:6px; }
+  .cell .who{ font-family:var(--mono); font-size:.68rem; color:var(--muted); white-space:nowrap; }
+  .cell.carry .chip{ box-shadow:var(--ring); }
+  .cell.carry .who{ color:var(--accent-ink); font-weight:600; }
+  .mrow.muted{ opacity:.62; }
+  .mrow.muted .mrow-mini{ margin-left:auto; font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; color:var(--faint); }
+  .lvl-f{ margin-top:12px; padding-top:11px; border-top:1px dashed var(--line); }
+  .carry-note{ font-size:.8rem; color:var(--muted); display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .carry-note b{ color:var(--ink); }
+  .done-note{ font-size:.8rem; color:var(--accent-ink); display:inline-flex; align-items:center; gap:8px; font-weight:600; }
+
+  .drop{
+    display:flex; align-items:center; gap:12px; height:40px;
+    margin-left:calc((var(--i,0) * 34px) + 26px);
+  }
+  .drop-line{ width:2px; height:100%; background:linear-gradient(var(--accent), var(--line)); border-radius:2px; }
+  .drop-cap{ font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); }
+
+  /* flow steps inside the example */
+  .fsteps{ display:flex; flex-direction:column; gap:0; }
+  .fstep{
+    background:var(--inset); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px;
+  }
+  .fstep.override{ border-color:var(--c); }
+  .fstep-h{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .fstep-name{ font-size:.9rem; font-weight:700; flex:1 1 150px; min-width:120px; }
+  .fstep-chips{ display:inline-flex; gap:11px; flex-wrap:wrap; }
+  .fstep-sub{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:7px; }
+  .crit{ font-family:var(--mono); font-size:.64rem; color:var(--muted); }
+  .crit b{ font-size:.56rem; letter-spacing:.12em; color:var(--faint); font-weight:600; }
+  .ov-tag{
+    font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--c-ink); background:var(--c); border-radius:5px; padding:1px 6px;
+  }
+  .fedge{
+    display:flex; align-items:center; gap:9px; margin:3px 0 3px 22px; min-height:30px;
+    font-family:var(--mono); font-size:.68rem; color:var(--muted);
+  }
+  .fedge .rail{ width:2px; align-self:stretch; background:linear-gradient(var(--accent), var(--line)); border-radius:2px; }
+  .fedge .cond{ color:var(--accent-ink); font-weight:600; }
+  .fbranch{
+    display:flex; flex-direction:column; gap:4px; margin:3px 0 3px 22px;
+    font-family:var(--mono); font-size:.68rem; color:var(--muted);
+  }
+  .fbranch .b-line{ display:flex; align-items:center; gap:8px; }
+  .fbranch .b-cond{ color:var(--accent-ink); font-weight:700; min-width:34px; }
+
+  /* work-order card (Tasks lens) */
+  .wo{
+    background:var(--inset); border:1px solid var(--line-soft); border-radius:11px; padding:12px 14px;
+  }
+  .wo-h{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .wo-name{ font-weight:750; font-size:.94rem; flex:1 1 150px; }
+  .wo-rel{
+    font-family:var(--mono); font-size:.58rem; letter-spacing:.12em; text-transform:uppercase;
+    color:#fff; background:var(--accent); border-radius:5px; padding:2px 7px;
+  }
+  .wo-meta{ font-family:var(--mono); font-size:.66rem; color:var(--faint); margin-top:3px; overflow-wrap:anywhere; }
+  .wo-roles{ display:flex; gap:11px; flex-wrap:wrap; margin-top:9px; }
+  .wo-io{ margin-top:10px; display:flex; flex-direction:column; gap:5px; }
+  .wo-io .io-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.76rem; color:var(--muted); }
+  .wo-io .io-k{
+    font-family:var(--mono); font-size:.56rem; letter-spacing:.14em; color:var(--faint);
+    width:28px; flex:0 0 auto;
+  }
+
+  /* two shared languages */
+  .benefits{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:.5rem; }
+  .benefit{
+    background:var(--card); border:1px solid var(--line); border-radius:13px; padding:18px 19px;
+    box-shadow:var(--shadow);
+  }
+  .benefit h3{ margin:0 0 5px; font-size:1rem; display:flex; align-items:center; gap:9px; }
+  .benefit h3::before{
+    content:""; width:9px; height:9px; border-radius:3px; background:var(--accent); flex:0 0 auto;
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  .benefit p{ margin:0 0 .6rem; font-size:.88rem; color:var(--muted); line-height:1.55; }
+  .benefit p:last-child{ margin-bottom:0; }
+
+  /* gut-check callout */
+  .callout{
+    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:12px; padding:20px 22px; box-shadow:var(--shadow); margin-top:.5rem;
+  }
+  .callout h3{ margin:0 0 .5rem; font-size:1.05rem; }
+  .callout p{ font-size:.94rem; }
+  .callout .warn{ color:var(--a); font-weight:700; }
+
+  footer.foot{
+    border-top:1px solid var(--line-soft); padding:40px 0 60px; color:var(--faint);
+    font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  }
+  footer.foot b{ color:var(--muted); font-weight:600; }
+  .foot-flow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; color:var(--muted); }
+  .foot-flow span{ color:var(--faint); }
+
+  /* ---------- motion ---------- */
+  .js .reveal{ opacity:0; transform:translateY(14px); }
+  .js .reveal.in{ opacity:1; transform:none; transition:opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1); }
+  @keyframes glowAnchor{ 0%,100%{ box-shadow:0 0 0 0 rgba(56,205,221,0);} 45%{ box-shadow:0 0 0 6px var(--accent-soft);} }
+  .js .handoff .glow-anchor{ animation:glowAnchor 2.1s ease-in-out 1 .5s; }
+
+  @media (prefers-reduced-motion: reduce){
+    .js .reveal{ opacity:1 !important; transform:none !important; }
+    .js .handoff .glow-anchor{ animation:none; }
+  }
+
+  a:focus-visible, [tabindex]:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+
+  @media (max-width:760px){
+    .compare.three{ grid-template-columns:1fr; }
+    .flows3{ grid-template-columns:1fr; }
+  }
+  @media (max-width:640px){
+    body{ font-size:16px; }
+    .compare, .legend, .benefits{ grid-template-columns:1fr; }
+    .lvl{ margin-left:calc(var(--i,0) * 16px); }
+    .drop{ margin-left:calc((var(--i,0) * 16px) + 20px); }
+    .hb-cap{ position:static; display:block; margin-top:4px; }
+    .lvl-owner{ margin-left:0; width:100%; }
+    h1{ letter-spacing:-.02em; }
+  }
+</style>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <p class="eyebrow">A field guide · part two</p>
+    <h1>One task, three lenses</h1>
+    <p class="lede">The <b>Chart</b> says who owns the work. A <b>Flow</b> says how one task actually runs, step by step. And <b>Tasks</b> flips both around to answer the question your team really asks: <em>what lands on us?</em></p>
+
+    <div class="handoff" role="img" aria-label="A chart Task row, 'Integrate scanner SDK', anchors a flow whose steps continue below it: Request vendor SDK, hands off SDK package, then Security review.">
+      <div class="hrow">
+        <span class="hrow-tier">Task</span>
+        <span class="hrow-name">Integrate scanner SDK</span>
+        <span class="hrow-chips">
+          <span class="chip a">A</span>
+          <span class="chip r">R</span>
+          <span class="chip c">C</span>
+          <span class="chip i">I</span>
+        </span>
+      </div>
+      <div class="hbadge">
+        <span class="hb-line">
+          <span class="apill glow-anchor">⚓ anchor</span>
+        </span>
+        <span class="hb-cap">the drill continues below the chart</span>
+      </div>
+      <div class="hero-strip">
+        <div class="hstep"><span class="hrow-tier">Step 1</span> Request vendor SDK <span class="hrow-chips"><span class="chip a dash sm">A</span><span class="chip r sm">R</span></span></div>
+        <div class="hedge"><span class="rail"></span> hands off → <span class="dtag">📄 SDK package</span></div>
+        <div class="hstep"><span class="hrow-tier">Step 2</span> Security review <span class="hrow-chips"><span class="chip a sm ring-warn">A</span><span class="chip r sm">R</span></span></div>
+      </div>
+    </div>
+
+    <p class="hero-cap">Portfolio → Program → Project → Task → its steps — the drill doesn't stop at the bottom of the chart.</p>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">Start here</p>
+      <p class="thesis">The chart's deepest row is a <b>Task</b>. An anchored <b>flow</b> continues the same drill into that task's steps — carrying the chart's accountability with it — and <b>Tasks</b> reads it all back, one org unit at a time.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">The problem</span>Two questions the chart can't answer</h2>
+      <p class="sub">Part one of this guide showed how a nested RACI keeps ownership honest at every altitude. But some questions live outside the grid.</p>
+      <p><b>“How does this task actually get done?”</b> A Task row tells you who owns it and who does it — not the sequence, the handoffs, the decision points, or what counts as <em>started</em> and <em>finished</em>. That detail is below the chart's resolution, and stuffing it in as more tiers would bury the accountability picture the chart exists to show.</p>
+      <p><b>“What's on our plate?”</b> One branch's work is scattered <em>sideways</em> across every tier of every chart — a row here, a step there. No single matrix shows it, because matrices are organized by the work, not by the unit doing it.</p>
+      <p>So the tool adds two more lenses instead of stretching the chart: <b>flows</b> drill below the deepest tier, and <b>Tasks</b> reads across everything.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">The three lenses</span>Same work, three ways to look at it</h2>
+      <p class="sub">Chart, Flow, and Tasks aren't three databases — they're three angles on one body of work.</p>
+      <div class="compare three">
+        <div class="panel">
+          <span class="cap">Chart · accountability</span>
+          <h3>Who owns what</h3>
+          <p class="lens-q">“Who answers for this?”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow">Portfolio activity</span><span class="chip a sm">A</span><span class="chip r sm">R</span></div>
+            <div class="ma-row" style="padding-left:12px"><span class="grow">Program activity</span><span class="chip a sm">A</span><span class="chip r sm">R</span></div>
+            <div class="ma-row" style="padding-left:24px"><span class="grow">Project activity</span><span class="chip a sm">A</span><span class="chip r sm">R</span></div>
+          </div>
+          <p>The nested cascade from part one: a small matrix at every tier, one <b>A</b> per row, the parent's doer becoming the child's owner. Rows carry org badges — which division or branch the work sits with.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">Flow · execution</span>
+          <h3>How one task runs</h3>
+          <p class="lens-q">“What happens, in what order?”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow">Step · Request SDK</span><span class="chip r sm">R</span></div>
+            <div class="ma-row">↓ <span class="dtag">📄 SDK package</span></div>
+            <div class="ma-row"><span class="grow">Step · Security review</span><span class="chip r sm">R</span></div>
+            <div class="ma-row">↓ Yes / No ⧫</div>
+          </div>
+          <p>A Business Case task flow: steps wired by handoff arrows, with decision branches. Each step carries its <b>own</b> RACI over the same seven columns — plus the actual org unit executing each column's role.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">Tasks · workload</span>
+          <h3>What lands on us</h3>
+          <p class="lens-q">“What's our plate look like?”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow"><b>Scanning Branch</b></span></div>
+            <div class="ma-row"><span class="grow">▸ chart row · Integrate SDK</span><span class="chip r sm">R</span></div>
+            <div class="ma-row"><span class="grow">▸ flow step · Integrate &amp; test</span><span class="chip r sm">R</span></div>
+          </div>
+          <p>Not a dataset at all — a lens. Pick a unit and see every chart row <em>and</em> flow step that lands on it, each as a work order with its inputs, outputs, and a jump link back to the source. Printable as a run book.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Reference</span>The moving parts of a flow</h2>
+      <p class="sub">Four pieces, and only four. If part one's key was the four letters, this is the flow's.</p>
+      <div class="legend">
+        <div class="leg star">
+          <span class="glyph" aria-hidden="true">▢</span>
+          <div>
+            <p class="leg-name">Step <span class="role">a box</span><span class="tag">own raci</span></p>
+            <p>One box of real work. It has its own RACI row over the same seven columns as the chart — and, per column, the <b>executing party</b>: the actual division, branch, or team doing that role.</p>
+          </div>
+        </div>
+        <div class="leg star">
+          <span class="glyph" aria-hidden="true">→</span>
+          <div>
+            <p class="leg-name">Handoff <span class="role">an arrow</span><span class="tag">carries a deliverable</span></p>
+            <p>A directed edge between two steps that <em>names what changes hands</em> — a document, a decision, a data set. A step's inputs and outputs are derived from its arrows, so there's one source of truth.</p>
+          </div>
+        </div>
+        <div class="leg">
+          <span class="glyph" aria-hidden="true">⧫</span>
+          <div>
+            <p class="leg-name">Decision <span class="role">labeled branches</span></p>
+            <p>A step whose outgoing arrows carry conditions — <em>Yes</em>, <em>No</em>, <em>If escalated</em>. Unlabeled branches out of a decision get flagged; every path should say when it's taken.</p>
+          </div>
+        </div>
+        <div class="leg">
+          <span class="glyph" aria-hidden="true">⇥</span>
+          <div>
+            <p class="leg-name">Entry / Exit <span class="role">the gates</span></p>
+            <p>What must be true to <b>start</b> the step, and what <b>done</b> looks like. They ride along everywhere the step appears — cards, exports, and the Tasks work orders.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">The move</span>The anchor: “this flow implements that task”</h2>
+      <p class="sub">A flow can float free — a tabletop exercise, a what-if. The move that ties the system together is <em>anchoring</em> it to one chart Task row.</p>
+      <div class="rule-eq">
+        <span class="who">chart Task row</span>
+        <span class="apill">⚓ anchor</span>
+        <span class="who">flow</span>
+        <span class="arrow">⇒</span>
+        <span class="who">the flow becomes the <b>continuation of the drill</b></span>
+      </div>
+      <p style="margin-top:1.4rem">Once anchored, the flow isn't a separate document that happens to mention the same work — it's the next level down, and context moves across the boundary in both directions:</p>
+      <div class="flows3">
+        <div class="flowcard">
+          <span class="dirn">flows down ↓</span>
+          <h3>The owner rides along</h3>
+          <p>The Task row's cascaded doer becomes each step's <b>inherited owner</b> — shown as a dashed <span class="chip a dash sm">A</span> on any step that doesn't name its own. Exactly the R→A hand-off from part one, continued past the chart's edge.</p>
+        </div>
+        <div class="flowcard">
+          <span class="dirn">flows down ↓</span>
+          <h3>Parties pre-fill</h3>
+          <p>The anchor's org ancestry — its division and branch badges — seeds each step's executing party as a dashed default, so the work reaches the right unit before anyone has confirmed a single assignment.</p>
+        </div>
+        <div class="flowcard">
+          <span class="dirn">rolls up ↑</span>
+          <h3>Health reports back</h3>
+          <p>The Task row wears a <b>flow-health %</b> chip: every step has an owner and a doer, every handoff names its deliverable. An exec reads flow discipline without ever opening the flow.</p>
+        </div>
+      </div>
+      <p style="margin-top:1.4rem">And when a step <em>does</em> name its own owner on a different column than the inherited one, that's a <b>branch override</b> — it renders with an amber ring <span class="chip a sm ring-warn" aria-label="Accountable chip with warning ring">A</span>, warned but never blocked. Same philosophy as part one's gut-check: accountability may jump tracks, but never silently.</p>
+      <p>Anchors also fail soft: delete the task, the chart, or import a file that doesn't carry it, and the flow simply degrades to standalone. Flow data is never lost to a broken link.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="bleed">
+      <h2><span class="lead-num">Worked example</span>One task, all the way through</h2>
+      <p class="sub">Part one followed accountability down to the task “Integrate scanner SDK.” Watch that same task pass through all three lenses.</p>
+      <p class="thread-hint">
+        <span class="chip a dash sm">A</span> dashed = inherited from the anchor
+        <span aria-hidden="true">·</span>
+        <span class="chip a sm ring-warn">A</span> amber ring = branch override
+        <span aria-hidden="true">·</span>
+        <span class="dtag">📄 deliverable</span> rides the arrows
+      </p>
+
+      <div class="cascade">
+        <article class="lvl reveal" style="--i:0">
+          <header class="lvl-h">
+            <span class="lvl-tier">Chart</span>
+            <h3 class="lvl-name">Project · Barcode Scanning</h3>
+            <span class="lvl-owner"><span class="chip a">A</span> <span class="who-b">Scanning Lead</span> owns it</span>
+          </header>
+          <div class="lvl-rows">
+            <div class="mrow is-drill">
+              <span class="mrow-name">Task · <b>Integrate scanner SDK</b></span>
+              <span class="mrow-raci">
+                <span class="cell"><span class="chip a">A</span><span class="who">Scanning Lead</span></span>
+                <span class="cell carry"><span class="chip r">R</span><span class="who">S&amp;S Dir.</span></span>
+                <span class="cell"><span class="chip c">C</span><span class="who">Cyber &amp; EW</span></span>
+              </span>
+              <span class="apill">⚓ 1 flow · health 78%</span>
+            </div>
+            <div class="mrow muted">
+              <span class="mrow-name">Task · Site survey</span>
+              <span class="mrow-mini">A · R · C · I</span>
+            </div>
+          </div>
+          <footer class="lvl-f"><span class="carry-note"><span class="chip r sm">R</span> <b>Software &amp; Support Dir.</b> does this task — so it rides into the flow below as every step's default owner. The row's org badge, <b>Sustainment Systems Div. › Scanning Branch</b>, rides along as the default party.</span></footer>
+        </article>
+
+        <div class="drop" aria-hidden="true"><span class="drop-line"></span><span class="drop-cap">⚓ anchor — drill continues</span></div>
+
+        <article class="lvl reveal" style="--i:1">
+          <header class="lvl-h">
+            <span class="lvl-tier">Flow</span>
+            <h3 class="lvl-name">SDK Integration</h3>
+            <span class="lvl-owner"><span class="apill">⚓ Modernize Logistics › … › Integrate scanner SDK</span></span>
+          </header>
+          <div class="fsteps">
+            <div class="fstep">
+              <div class="fstep-h">
+                <span class="fstep-name">1 · Request vendor SDK</span>
+                <span class="fstep-chips">
+                  <span class="cell"><span class="chip a dash">A</span><span class="who">S&amp;S · inherited</span></span>
+                  <span class="cell"><span class="chip r">R</span><span class="who">Contracts</span></span>
+                </span>
+              </div>
+              <div class="fstep-sub">
+                <span class="pcap">party · S&amp;S › Sustainment Systems Div. › Scanning Branch (default)</span>
+              </div>
+            </div>
+            <div class="fedge"><span class="rail"></span> hands off → <span class="dtag">📄 SDK package <span class="dt-type">document</span></span></div>
+            <div class="fstep override">
+              <div class="fstep-h">
+                <span class="fstep-name">2 · Security review</span>
+                <span class="fstep-chips">
+                  <span class="cell"><span class="chip a ring-warn">A</span><span class="who">Cyber &amp; EW</span></span>
+                  <span class="cell"><span class="chip r">R</span><span class="who">Cyber &amp; EW</span></span>
+                </span>
+                <span class="ov-tag">branch override</span>
+              </div>
+              <div class="fstep-sub">
+                <span class="crit"><b>ENTRY</b> SDK package received</span>
+                <span class="crit"><b>EXIT</b> security memo signed</span>
+              </div>
+            </div>
+            <div class="fedge"><span class="rail"></span> <span class="cond">approved</span> → <span class="dtag">✓ Security memo <span class="dt-type">approval</span></span></div>
+            <div class="fstep">
+              <div class="fstep-h">
+                <span class="fstep-name">3 · Integrate &amp; test</span>
+                <span class="fstep-chips">
+                  <span class="cell"><span class="chip a dash">A</span><span class="who">S&amp;S · inherited</span></span>
+                  <span class="cell"><span class="chip r">R</span><span class="who">S&amp;S</span></span>
+                </span>
+              </div>
+              <div class="fstep-sub">
+                <span class="pcap set">party · S&amp;S › Sustainment Systems Div. › Scanning Branch</span>
+                <span class="crit"><b>EXIT</b> all test suites green</span>
+              </div>
+            </div>
+            <div class="fbranch" aria-label="Decision: Passed? Yes leads to Deploy to pilot site, No loops back to Integrate and test.">
+              <div class="b-line">⧫ <b>Passed?</b></div>
+              <div class="b-line"><span class="b-cond">Yes →</span> 4 · Deploy to pilot site <span class="dtag">📊 Test report <span class="dt-type">data</span></span></div>
+              <div class="b-line"><span class="b-cond">No →</span> back to 3 · Integrate &amp; test</div>
+            </div>
+          </div>
+          <footer class="lvl-f"><span class="carry-note">Steps 1 and 3 never named an owner — the chart's <b>S&amp;S</b> shows through, dashed. Step 2 deliberately moved ownership to <b>Cyber &amp; EW</b>: ringed and flagged, not blocked.</span></footer>
+        </article>
+
+        <div class="drop" aria-hidden="true"><span class="drop-line"></span><span class="drop-cap">the same work, read sideways</span></div>
+
+        <article class="lvl terminal reveal" style="--i:2">
+          <header class="lvl-h">
+            <span class="lvl-tier">Tasks</span>
+            <h3 class="lvl-name">Scanning Branch — work orders</h3>
+            <span class="lvl-owner"><span class="who-b">2 items</span> land here</span>
+          </header>
+          <div class="lvl-rows">
+            <div class="wo">
+              <div class="wo-h">
+                <span class="wo-name">Integrate &amp; test</span>
+                <span class="wo-rel">direct</span>
+              </div>
+              <div class="wo-meta">Flow step · SDK Integration ⚓ Modernize Logistics › … › Integrate scanner SDK</div>
+              <div class="wo-roles">
+                <span class="cell"><span class="chip r">R</span><span class="who">S&amp;S › … › Scanning Branch</span></span>
+                <span class="cell"><span class="chip a dash">A</span><span class="who">S&amp;S · inherited</span></span>
+              </div>
+              <div class="wo-io">
+                <div class="io-row"><span class="io-k">IN</span><span class="dtag">✓ Security memo</span> from “Security review” (Cyber &amp; EW)</div>
+                <div class="io-row"><span class="io-k">OUT</span><span class="dtag">📊 Test report</span> to “Passed?”</div>
+              </div>
+            </div>
+            <div class="mrow muted">
+              <span class="mrow-name">Task · Integrate scanner SDK <span style="font-size:.7em; color:var(--faint)">— the chart row itself, matched by its org badge</span></span>
+              <span class="mrow-mini">chart row</span>
+            </div>
+          </div>
+          <footer class="lvl-f" style="border-top:none; padding-top:2px;">
+            <span class="done-note">One click prints this list as the branch's run book — the unit's handout for the whole exercise.</span>
+          </footer>
+        </article>
+      </div>
+
+      <div class="thread-read" style="margin-top:26px; background:var(--inset); border:1px solid var(--line); border-radius:12px; padding:16px 18px; font-size:.92rem; color:var(--muted);">
+        <b>Read it end to end:</b> the chart hands the task to <b>Software &amp; Support Dir.</b> → the anchored flow spells out <em>how</em> — request, review, integrate, decide — with the chart's owner showing through on every step that stays quiet, and one deliberate exception rung in amber → and the Tasks lens hands <b>Scanning Branch</b> a work order that says exactly what arrives, from whom, and what must leave, to whom. Three lenses, one thread.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">The connective tissue</span>Two languages everything speaks</h2>
+      <p class="sub">The lenses can only line up because they share two vocabularies. Everything else is presentation.</p>
+      <div class="compare">
+        <div class="panel">
+          <span class="cap">Who — the roster</span>
+          <h3>One org tree behind everything</h3>
+          <p>Directorate → division → branch → team, defined once in the Roster. Chart rows wear org badges from it, flow steps name executing parties from it, and the Tasks view picks a unit from it. Because it's the same tree, “lands on Scanning Branch” means the same thing in all three lenses.</p>
+          <p><b>The fine print:</b> free-form charts trade this away — custom columns, no roster links — so their rows never reach the Tasks view. Org work belongs in org charts.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">What — the deliverable registry</span>
+          <h3>One name per real-world artifact</h3>
+          <p>“Security memo” or “Test report” is registered once, then referenced everywhere: chart rows declare what they consume and produce at their boundaries; flow handoffs carry it arrow by arrow; a step's inputs and outputs are <em>derived</em> from its arrows, never typed twice.</p>
+          <p>That single spine is what lets a Tasks work order say not just <em>what</em> arrives but <em>from whom</em> — the registry knows every producer and consumer across all charts and flows.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Payoff</span>Why three lenses beat one big one</h2>
+      <p class="sub">Each lens stays simple because the other two exist.</p>
+      <div class="benefits">
+        <div class="benefit"><h3>The drill never dead-ends</h3><p>Portfolio → … → Task → its steps. The ⤵ caret on a Task row keeps going where the chart stops, without bloating the chart with execution detail.</p></div>
+        <div class="benefit"><h3>Context follows the work</h3><p>Anchored steps inherit their owner and default parties from the chart. Nobody re-keys accountability into the flow — it shows through, dashed, until someone decides otherwise.</p></div>
+        <div class="benefit"><h3>Overrides are visible</h3><p>Moving a step's ownership off the inherited column is allowed — and ringed in amber everywhere it appears. Accountability can jump tracks, but never silently.</p></div>
+        <div class="benefit"><h3>Health rolls up</h3><p>The flow-health chip totals owners, doers, and named handoffs into one % on the chart row. Discipline at the bottom is legible at the top.</p></div>
+        <div class="benefit"><h3>No magic arrows</h3><p>Every handoff names its deliverable, so “then the work moves along” always answers <em>what, exactly, moved</em>. Handoffs without one get flagged.</p></div>
+        <div class="benefit"><h3>Every unit gets a run book</h3><p>The Tasks lens turns both structures into a per-unit work-order list — printable as the handout a branch actually takes into the exercise.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Gut-check</span>Keeping the three lenses honest</h2>
+      <div class="callout">
+        <h3>Four habits make the whole system pay off</h3>
+        <p><b>Anchor flows to the task they implement.</b> A floating flow is fine for a tabletop what-if — but only an anchored one inherits owners, seeds parties, and reports health back to the chart.</p>
+        <p><b>Let the inherited owner stand</b> unless the override is deliberate. The amber ring is a <span class="warn">question</span>, not an error: <em>did accountability really change hands here?</em></p>
+        <p><b>Name a deliverable on every handoff, a doer and party on every step.</b> That's exactly what the health chip counts — and exactly what makes a Tasks work order worth printing.</p>
+        <p><b>Keep org work in org charts.</b> Free-form charts have no roster links, so their rows can never land on a unit's plate. If a team should see it in Tasks, it belongs in an org chart.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap">
+      <div><b>Chart, Flow &amp; Tasks</b> — a field guide, part two. Part one covers the nested cascade itself.</div>
+      <div class="foot-flow">Chart <span>⚓</span> Flow <span>→</span> Tasks — one thread, three lenses.</div>
+    </div>
+  </footer>
+</main>
+
+<script>
+  document.documentElement.classList.add('js');
+  (function(){
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var items = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+    if (reduce || !('IntersectionObserver' in window)){
+      items.forEach(function(el){ el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.16, rootMargin: '0px 0px -8% 0px' });
+    items.forEach(function(el){ io.observe(el); });
+  })();
+</script>
+</body>
+</html>
