@@ -4733,12 +4733,12 @@ const COL_LABELS_DEFAULT = {
   mission:  'Mission Mgmt Dir.',
   infra:    'Infrastructure Dir.',
   cyber:    'Cyber & EW Dir.',
-  sw:       'Software & Support Dir.',
-  contacts: 'Contracts'
+  sw:       'Software & Support Dir. (HQ)',
+  contacts: 'Contract Management Office'
 };
 const COL_SHORT_DEFAULT = {
   hq: 'HQ', cos: 'CoS', mission: 'MMD', infra: 'Infra',
-  cyber: 'C&EW', sw: 'S&S', contacts: 'Contr'
+  cyber: 'C&EW', sw: 'S&S', contacts: 'CMO'
 };
 // Mutable working copies — synced from state.columnLabels / state.columnShort via applyColumnLabels().
 const COL_LABELS = { ...COL_LABELS_DEFAULT };
@@ -5009,7 +5009,28 @@ function seedRaci(s) {
   return raci;
 }
 const SEED_PROJ_SUFFIX = ['Project A','Project B','Project C','Project D','Project E','Project F'];
-const N_PORTFOLIOS = 12; // really deep demo tree (Portfolio › Program › Project › Task)
+// The demo's TOP TIER is fixed, not generated: the eleven SPM portfolio activities/decisions from
+// the ASIC PG framework, with their real RACI over the seven COLS. Tiers below it (Program ›
+// Project › Task) stay procedurally seeded, so the tree is still deep enough to demo the drill.
+// Letters are written column-order: hq, cos, mission, infra, cyber, sw, contacts.
+const SEED_TOP_TIER = [
+  ['Strategic Portfolio Vision & Objectives',           'A','R','C','C','C','C','I'],
+  ['Portfolio Intake & Requirement Validation',         'A','I','R','C','C','C','C'],
+  ['Prioritization & Investment Decisions',             'A','C','R','C','C','C','C'],
+  ['Funding Allocation & Budget Approval',              'A','R','I','I','I','I','C'],
+  ['Cross-Directorate Resource Balancing',              'A','R','C','C','C','C','I'],
+  ['Capacity Management',                               'A','C','R','C','C','C','I'],
+  ['Portfolio-Level Risk & Dependency Mgmt',            'A','C','R','C','C','C','I'],
+  ['Performance Reporting & Portfolio Reviews',         'A','I','R','C','C','C','C'],
+  ['Strategic Partnership / New Opportunity Approval',  'A','C','R','C','C','C','I'],
+  ['Portfolio Change Control (Add/Cancel Initiative)',  'A','C','R','C','C','C','C'],
+  ['Contracts Management (Services & Licenses)',        'A','C','C','C','C','C','R']
+];
+function topTierRaci(row) {
+  const raci = {};
+  COLS.forEach((k, i) => { raci[k] = normalizeRaci(row[i + 1] || ''); });
+  return raci;
+}
 function seedData() {
   _nameI = 0; _seedTitleI = 0;
   const dirs = seedRoster();
@@ -5021,8 +5042,9 @@ function seedData() {
   }));
   let s = 0, gp = 0;
   const activities = [];
-  for (let p = 1; p <= N_PORTFOLIOS; p++) {
-    const pf = makeNode(`Portfolio Activity ${p}`); pf.raci = seedRaci(s++); pf.children = [];
+  for (let p = 1; p <= SEED_TOP_TIER.length; p++) {
+    const row = SEED_TOP_TIER[p - 1];
+    const pf = makeNode(row[0]); pf.raci = topTierRaci(row); pf.children = [];
     const nProg = 3 + (p % 2); // 3..4 programs
     for (let m = 1; m <= nProg; m++) {
       const prog = makeNode(`Program Activity ${p}.${m}`); prog.raci = seedRaci(s++); prog.children = [];
