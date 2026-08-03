@@ -60,12 +60,16 @@ header {
   flex-shrink: 0;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
 }
-/* desaturated, very faint ASIC watermark behind the RACI chart screen */
+/* Desaturated, very faint ASIC watermark tucked into the bottom-right corner of the chart
+   pane. It stays position:fixed so it doesn't drift while the cascade scrolls, but the offsets
+   and size are custom properties that positionWatermark() keeps in sync with #ws-main's visible
+   box — that way the emblem never slides under the pane's scrollbars or out into the right-hand
+   rails (tools, Details, Legend). The fallbacks below only cover the first frame. */
 #bg-watermark {
   position: fixed;
-  right: 3vw;
-  bottom: 4vh;
-  width: 25vw;
+  right: var(--wm-right, 20px);
+  bottom: var(--wm-bottom, 20px);
+  width: var(--wm-w, 18vw);
   height: auto;
   z-index: 0;
   pointer-events: none;
@@ -74,6 +78,9 @@ header {
   display: none;
 }
 body[data-view="chart"] #bg-watermark { display: block; }
+/* Belt and braces: the right rails paint above the watermark (z-index 0) regardless of what its
+   measured geometry says, so it can never bleed over a side panel even for a frame. */
+#details, #legend, #bz-party-panel { position: relative; z-index: 1; }
 /* complementary (ASIC blue + crimson) gradient behind the RACI chart screen */
 body[data-view="chart"] {
   background:
@@ -1663,11 +1670,14 @@ input[type="file"] { display: none; }
     border-bottom: 1px solid var(--border);
   }
 
-  /* RIGHT rail — brand on top, actions stacked below */
+  /* RIGHT rail — brand on top, actions stacked below.
+     <header> is display:contents here, so the rail no longer inherits the header's z-index 20 —
+     it needs its own layer to stay above the background watermark (z-index 0) sitting beside it. */
   #tool-rail {
     display: flex; flex-direction: column; align-items: stretch; gap: 10px;
     padding: 12px 12px 16px; overflow-y: auto;
     background: var(--bg-2); border-left: 1px solid var(--border);
+    position: relative; z-index: 1;
   }
   #brand-zone { order: 0; gap: 10px; padding: 0 2px 10px; border-bottom: 1px solid var(--border); }
   #tool-rail .actions {
@@ -6802,6 +6812,35 @@ window.addEventListener('resize', () => {
   if (state.viewMode === 'chart') { layoutCascade(); drawConnectors(); }
   else if (state.viewMode === 'bizcase') drawBizMinimap();   // viewport rect tracks the canvas size
 });
+
+// ---- ASIC watermark: pin it inside the chart pane's bottom-right corner ----
+// #bg-watermark is fixed to the viewport so it holds still while the cascade scrolls, which means
+// its offsets have to be re-derived from #ws-main whenever that pane changes shape — opening the
+// Details or Legend rail, resizing the window, or a scrollbar appearing all move the corner it
+// belongs in. offset* − client* is the scrollbar gutter (0 where the OS overlays its scrollbars),
+// so subtracting it keeps the emblem off the scrollbar instead of half-buried under it.
+const WM_INSET = 18;                 // px of breathing room from the pane's inner corner
+const WM_ASPECT = 1000 / 1190;       // the emblem is portrait, so height binds on short panes
+function positionWatermark() {
+  const wm = document.getElementById('bg-watermark');
+  const pane = document.getElementById('ws-main');
+  if (!wm || !pane) return;
+  const r = pane.getBoundingClientRect();
+  const gutterX = pane.offsetWidth - pane.clientWidth;    // vertical scrollbar
+  const gutterY = pane.offsetHeight - pane.clientHeight;  // horizontal scrollbar
+  // A corner mark, not a backdrop: at most a third of the pane wide and half of it tall.
+  const w = Math.max(90, Math.min(300,
+    (pane.clientWidth - 2 * WM_INSET) / 3,
+    (pane.clientHeight - 2 * WM_INSET) * WM_ASPECT / 2));
+  wm.style.setProperty('--wm-w', Math.round(w) + 'px');
+  wm.style.setProperty('--wm-right', Math.round(Math.max(0, window.innerWidth - r.right + gutterX + WM_INSET)) + 'px');
+  wm.style.setProperty('--wm-bottom', Math.round(Math.max(0, window.innerHeight - r.bottom + gutterY + WM_INSET)) + 'px');
+}
+// One observer covers every way the pane can change size (window resize, view switch, rail
+// toggle, scrollbar appearing); the resize listener is the fallback where it isn't supported.
+if (window.ResizeObserver) new ResizeObserver(positionWatermark).observe(document.getElementById('ws-main'));
+window.addEventListener('resize', positionWatermark);
+positionWatermark();
 
 // ---- dynamic chart resize (drag the bottom-right grip on the focused layer) ----
 let chartResize = null;
