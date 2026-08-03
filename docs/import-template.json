@@ -9,6 +9,11 @@
     "with defaults. This _TEMPLATE_GUIDE block is ignored by the app; delete it",
     "whenever you like.",
     "",
+    "NOT HAND-EDITING? The app's 🤖 Ingest Kit button downloads the same spec as a",
+    "Markdown briefing you hand to an LLM alongside your raw notes/spreadsheet, so",
+    "it writes the file for you. It also embeds YOUR workspace's live column keys,",
+    "roster ids and deliverables, which this static template cannot.",
+    "",
     "ID RULES: ids are free-form strings; they only need to be consistent WITHIN",
     "this file. Cross-references that must line up: (1) node.org / task parties /",
     "artifact ownerRef / workScope reference directorate-division-branch-team ids",
@@ -473,12 +478,12 @@
     "mission": "Mission Mgmt Dir.",
     "infra": "Infrastructure Dir.",
     "cyber": "Cyber & EW Dir.",
-    "sw": "Software & Support Dir.",
-    "contacts": "Contracts"
+    "sw": "Software & Support Dir. (HQ)",
+    "contacts": "Contract Management Office"
   },
   "columnShort": {
     "hq": "HQ", "cos": "CoS", "mission": "MMD", "infra": "Infra",
-    "cyber": "C&EW", "sw": "S&S", "contacts": "Contr"
+    "cyber": "C&EW", "sw": "S&S", "contacts": "CMO"
   },
   "columnActor": {
     "hq": "ocio", "cos": "ocio", "mission": "mission", "infra": "infra",
