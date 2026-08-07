@@ -2771,6 +2771,234 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-tcell .raci-chip { width: 20px; height: 20px; font-size: 11px; }
 .bz-tempty { text-align: center; color: var(--text-dim); padding: 14px; }
 
+/* ===================== Flow gallery · nested flows · groups (v0.30) =====================
+   Everything below is built on the same tokens as the rest of the app, so the three themes
+   pick it up without a second definition. Three surfaces:
+     .bz-gallery   the browsable list of every flow in the workspace, drag source for nesting
+     .bz-node--sub a box that stands in for another flow, with one socket per exposed entry/exit
+     .bz-group     a frame around steps that stay in this flow (collapsible into one box)     */
+
+/* ---- gallery rail ---- */
+.bz-gallery {
+  flex: 0 0 236px; min-width: 0; display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 10px 12px; overflow: hidden;
+  background: var(--bg); border-right: 1px solid var(--border);
+}
+.bz-gal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bz-gal-head h3 {
+  margin: 0; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text-dim);
+}
+#bz-gal-close {
+  width: 20px; height: 20px; line-height: 1; padding: 0; border-radius: 4px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border); color: var(--text-dim); font: inherit; font-size: 14px;
+}
+#bz-gal-close:hover { background: var(--err); color: var(--on-err); border-color: var(--err); }
+#bz-gal-filter {
+  background: var(--bg-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 5px 8px; font: inherit; font-size: 12px; min-width: 0;
+}
+#bz-gal-filter:focus { outline: none; border-color: var(--accent); }
+.bz-gal-hint { font-size: 10px; color: var(--text-dim); line-height: 1.4; }
+.bz-gal-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+.bz-gal-none { color: var(--text-dim); font-style: italic; font-size: 11.5px; padding: 8px 2px; }
+.bz-gal-card {
+  display: flex; flex-direction: column; gap: 5px; padding: 8px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
+  cursor: grab; box-shadow: 0 2px 8px rgba(var(--shadow-rgb),0.3);
+}
+.bz-gal-card:hover { border-color: var(--accent); background: var(--bg-3); }
+.bz-gal-card:active { cursor: grabbing; }
+.bz-gal-card.is-active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent), 0 2px 8px rgba(var(--shadow-rgb),0.3); }
+/* Blocked = nesting it would close a reference loop. Still openable, just not draggable. */
+.bz-gal-card.is-blocked { cursor: default; }
+.bz-gal-card.is-blocked:hover { border-color: var(--border); }
+svg.bz-gal-thumb, .bz-gal-thumb {
+  width: 100%; height: 52px; display: block; border-radius: 4px;
+  background: var(--bg-cell); border: 1px solid var(--border);
+}
+svg.bz-gal-thumb line { stroke: var(--text-dim); stroke-width: 0.7; opacity: 0.7; }
+svg.bz-gal-thumb rect { fill: var(--accent); opacity: 0.75; }
+svg.bz-gal-thumb rect.is-sub { fill: var(--p); }
+.bz-gal-thumb.is-empty {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim); font-size: 10px; font-style: italic;
+}
+.bz-gal-name { font-size: 12px; font-weight: 600; line-height: 1.3; display: flex; align-items: baseline; gap: 6px; }
+.bz-gal-open {
+  flex: 0 0 auto; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  background: var(--accent); color: var(--on-accent); border-radius: 3px; padding: 1px 4px;
+}
+.bz-gal-meta { display: flex; flex-wrap: wrap; gap: 7px; font-size: 10px; color: var(--text-dim); }
+.bz-gal-meta .is-sub { color: var(--p); }
+.bz-gal-meta .is-reused { color: var(--c); }
+.bz-gal-anchor {
+  font-size: 10px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bz-gal-acts { display: flex; gap: 5px; }
+.bz-gal-acts button {
+  flex: 1; padding: 4px 6px; font: inherit; font-size: 11px; cursor: pointer; border-radius: 4px;
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+}
+.bz-gal-acts button:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.bz-gal-acts button:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Drop feedback while a gallery card is being dragged over the canvas. */
+body.bz-embedding .bz-canvas { cursor: copy; }
+.bz-canvas.drop-target { box-shadow: inset 0 0 0 2px var(--p); }
+
+/* ---- nested-flow box ---- */
+/* Cyan (--p) throughout, the same hue the noodles into and out of a nested flow use, so a glance
+   at the canvas separates "a step happens here" from "another whole flow happens here". */
+.bz-node--sub { border-color: rgba(var(--p-rgb), 0.6); }
+.bz-node--sub .bz-node-head {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--p) 20%, var(--bg-2)), var(--bg-2));
+}
+.bz-node--sub.is-broken { border-color: var(--err); }
+.bz-sub-glyph { flex: 0 0 auto; color: var(--p); font-size: 12px; }
+.bz-sub-open {
+  flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; padding: 0; border-radius: 3px;
+  background: transparent; border: none; color: var(--p); font-size: 12px; cursor: pointer;
+}
+.bz-sub-open:hover { background: var(--p); color: var(--on-p); }
+.bz-sub-ref { margin: 5px 9px 2px; display: flex; flex-direction: column; gap: 1px; }
+.bz-sub-ref-name {
+  font: inherit; font-size: 11px; font-weight: 600; color: var(--p); cursor: pointer;
+  background: none; border: none; border-bottom: 1px dashed rgba(var(--p-rgb), 0.5);
+  padding: 0; text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  align-self: flex-start; max-width: 100%;
+}
+.bz-sub-ref-name:hover { border-bottom-style: solid; }
+.bz-sub-ref-meta { font-size: 9.5px; color: var(--text-dim); }
+.bz-sub-broken { margin: 6px 9px 9px; font-size: 10.5px; line-height: 1.45; color: var(--err-ink); }
+.bz-sub-repoint {
+  display: block; margin-top: 6px; padding: 4px 8px; font: inherit; font-size: 11px; cursor: pointer;
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
+}
+.bz-sub-repoint:hover { border-color: var(--p); color: var(--p); }
+/* Mating points. The panel is inset like the criteria / RACI panels, so its sockets have to reach
+   back out past that inset to sit on the card edge where every other socket sits — hence the
+   -17px (9px card margin + 8px socket overhang). */
+.bz-sub-ports, .bz-grp-body {
+  margin: 3px 9px 8px; padding: 6px 7px; display: flex; flex-direction: column; gap: 2px;
+  background: var(--bg-cell); border: 1px solid var(--border); border-radius: 7px;
+  box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb),0.22);
+}
+.bz-port-h {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+  font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-dim); margin: 2px 0 1px;
+}
+.bz-port-h.in { color: var(--c); }
+.bz-port-h.out { color: var(--accent); }
+.bz-port-h .bz-port-n { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-dim); font-size: 8.5px; }
+.bz-port-row { position: relative; display: flex; align-items: center; gap: 5px; min-height: 17px; }
+.bz-port-row.is-off .bz-port-name { color: var(--text-dim); opacity: 0.6; text-decoration: line-through; }
+.bz-port-tgl {
+  flex: 0 0 auto; width: 14px; height: 14px; line-height: 1; padding: 0; border: none; border-radius: 3px;
+  background: transparent; color: var(--text-dim); font: inherit; font-size: 10px; cursor: pointer;
+}
+.bz-port-tgl[aria-pressed="true"] { color: var(--accent); }
+.bz-port-tgl:hover { background: var(--bg-4); color: var(--text); }
+.bz-port-name {
+  flex: 1; min-width: 0; font-size: 10px; line-height: 1.35; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bz-socket.is-port { width: 11px; height: 11px; top: 50%; margin-top: -5.5px; transform: none; }
+.bz-socket.is-port.in { left: -17px; border-color: var(--c); }
+.bz-socket.is-port.out { right: -17px; }
+.bz-socket.is-port.in:hover { background: var(--c); }
+.bz-sub-roles {
+  margin: 0 9px 8px; display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+}
+.bzs-col { display: inline-flex; align-items: center; gap: 2px; }
+.bzs-col-key { font-size: 8px; color: var(--text-dim); letter-spacing: 0.02em; }
+.bzs-col .raci-chip { width: 13px; height: 13px; font-size: 8px; border-radius: 3px; }
+/* Nested handoffs get the cyan noodle; a slightly heavier hit area so the popover is easy to open. */
+.bz-edges .bz-edge.is-nested { stroke-dasharray: none; }
+
+/* ---- group frames ---- */
+/* --bzg-color is set per frame from data-color and read back by the minimap, so the frame's hue
+   lives in exactly one place. The frame itself is click-through: only its header takes pointer
+   events, so the canvas underneath still pans and its member boxes still select normally. */
+.bz-group {
+  position: absolute; z-index: 1; pointer-events: none; border-radius: 10px;
+  --bzg-color: var(--accent);
+  border: 1px dashed rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.055);
+}
+.bz-group[data-color="p"]      { --bzg-color: var(--p);      border-color: rgba(var(--p-rgb), 0.55);      background: rgba(var(--p-rgb), 0.055); }
+.bz-group[data-color="c"]      { --bzg-color: var(--c);      border-color: rgba(var(--c-rgb), 0.55);      background: rgba(var(--c-rgb), 0.055); }
+.bz-group[data-color="a"]      { --bzg-color: var(--a);      border-color: rgba(var(--a-rgb), 0.55);      background: rgba(var(--a-rgb), 0.055); }
+.bz-group[data-color="d"]      { --bzg-color: var(--d);      border-color: rgba(var(--d-rgb), 0.55);      background: rgba(var(--d-rgb), 0.055); }
+.bz-group[data-color="s"]      { --bzg-color: var(--s);      border-color: rgba(var(--s-rgb), 0.55);      background: rgba(var(--s-rgb), 0.055); }
+.bz-group[data-color="i"]      { --bzg-color: var(--i);      border-color: rgba(var(--i-rgb), 0.55);      background: rgba(var(--i-rgb), 0.055); }
+.bz-group.selected { border-style: solid; box-shadow: 0 0 0 2px var(--bzg-color); }
+.bz-group-head {
+  pointer-events: auto; cursor: move; display: flex; align-items: center; gap: 5px;
+  padding: 4px 7px; border-radius: 9px 9px 0 0; max-width: 100%;
+  background: color-mix(in srgb, var(--bzg-color) 22%, var(--bg-2));
+  border-bottom: 1px solid var(--border);
+}
+/* The title shrinks to its content instead of stretching, and .bz-grp-spacer takes the slack —
+   so there is always bare header left to drag the frame by, next to the ⠿ grip. */
+.bz-group-name {
+  flex: 0 1 auto; min-width: 30px; max-width: 60%; font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--text); outline: none; border-radius: 3px; padding: 0 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bz-grp-spacer { flex: 1 1 auto; min-width: 8px; align-self: stretch; }
+.bz-grp-grip { flex: 0 0 auto; color: var(--text-dim); font-size: 11px; line-height: 1; cursor: move; }
+.bz-group-name:focus { background: var(--bg); box-shadow: 0 0 0 1px var(--bzg-color); cursor: text; }
+.bz-group-name:empty::before { content: attr(data-placeholder); color: var(--text-dim); }
+.bz-grp-count { flex: 0 0 auto; font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+.bz-grp-btn {
+  flex: 0 0 auto; width: 16px; height: 16px; line-height: 1; padding: 0; border-radius: 3px;
+  background: transparent; border: none; color: var(--text-dim); font: inherit; font-size: 11px; cursor: pointer;
+}
+.bz-grp-btn:hover { background: var(--bg-4); color: var(--text); }
+.bz-grp-del:hover { background: var(--err); color: var(--on-err); }
+/* Collapsed: the frame stops being a backdrop and becomes a real box, so it takes pointer events
+   and gets the card treatment. Its port rows are the group's actual boundary crossings. */
+.bz-group.collapsed {
+  pointer-events: auto; width: 220px; height: auto; z-index: 2;
+  border-style: solid; background: var(--bg-2);
+  box-shadow: 0 5px 16px rgba(var(--shadow-rgb),0.45);
+}
+.bz-group.collapsed .bz-grp-body { margin: 6px 9px 9px; }
+/* Collapsed, the header has four controls plus the title in 220px — the count moves into the body
+   so the group's NAME (the thing the frame exists to say) is what survives the squeeze. */
+.bz-group.collapsed .bz-grp-count { display: none; }
+/* Collapsed, the frame's NAME is the only thing standing in for the steps inside, so it wraps to
+   a second line rather than truncating away. */
+.bz-group.collapsed .bz-group-name { white-space: normal; max-width: none; flex: 1 1 auto; }
+.bz-group.collapsed .bz-grp-spacer { display: none; }
+.bz-grp-folded { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 3px; }
+.bz-grp-sealed { font-size: 10px; font-style: italic; color: var(--text-dim); padding: 2px 0; }
+
+/* ---- marquee (shift-drag select) ---- */
+.bz-marquee {
+  position: absolute; z-index: 70; pointer-events: none; border-radius: 3px;
+  border: 1px solid var(--accent); background: rgba(var(--accent-rgb), 0.12);
+}
+
+/* ---- nested-flow rows in the table pane ---- */
+.bz-table .bz-trow-sub .bz-trow { color: var(--p); }
+.bz-tsub { color: var(--text-dim); font-size: 11px; font-style: italic; }
+.bz-tsub-link {
+  background: none; border: none; padding: 0; font: inherit; font-style: normal;
+  color: var(--p); cursor: pointer; text-decoration: underline;
+}
+
+/* Narrow windows: the gallery would leave nothing for the canvas, so it stacks to a short
+   horizontal strip of cards instead of a rail. */
+@media (max-width: 900px) {
+  .bz-body { flex-wrap: wrap; }
+  .bz-gallery { flex: 1 0 100%; max-height: 208px; border-right: none; border-bottom: 1px solid var(--border); }
+  .bz-gal-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+  .bz-gal-card { flex: 0 0 176px; }
+}
+
 /* decision points + labeled branches */
 .bz-node--decision { border-color: var(--c); }
 .bz-node--decision .bz-node-head { background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, var(--bg-2)), var(--bg-2)); }
@@ -3317,6 +3545,17 @@ body[data-view="roster"] #legend { display: none; }
 :root[data-theme="contrast"] .raci-popover,
 :root[data-theme="contrast"] #violations-popover,
 :root[data-theme="contrast"] .export-menu-list { border-width: 2px; }
+/* Nested flows and frames at high contrast: the tinted washes that separate them from the canvas
+   are exactly the low-contrast device this theme exists to remove, so frames become solid-outlined
+   and the nested-flow card takes a full-weight border like every other panel. */
+:root[data-theme="contrast"] .bz-group { background: transparent; border-width: 2px; }
+:root[data-theme="contrast"] .bz-group.collapsed { background: var(--bg-2); }
+:root[data-theme="contrast"] .bz-group-head { background: var(--bg-3); border-bottom-color: var(--border); }
+:root[data-theme="contrast"] .bz-node--sub,
+:root[data-theme="contrast"] .bz-gal-card { border-width: 2px; }
+:root[data-theme="contrast"] .bz-node--sub .bz-node-head { background: var(--bg-3); }
+:root[data-theme="contrast"] .bz-port-row.is-off .bz-port-name { opacity: 1; color: var(--text-dim); }
+:root[data-theme="contrast"] svg.bz-gal-thumb rect { opacity: 1; }
 /* Text glow and drop shadows read as blur at high contrast. */
 :root[data-theme="contrast"] #sidebar-arrow .sa-arrow,
 :root[data-theme="contrast"] #app-logo { text-shadow: none; filter: none; }
@@ -3331,7 +3570,7 @@ body[data-view="roster"] #legend { display: none; }
   /* Hide all interactive chrome — leave just the matrix. */
   header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover, #arrange-fab,
   #save-nag, #splash-overlay, #newchart-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
-  #zoom-ctl, #bz-zoom-ctl, #bz-minimap, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
+  #zoom-ctl, #bz-zoom-ctl, #bz-minimap, .bz-gallery, .bz-marquee, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
   [data-del-node], [data-bz-del-task] { display: none !important; }
   #app-frame { display: block !important; }
   main, #ws-main { display: block !important; overflow: visible !important; position: static !important;
@@ -4670,6 +4909,44 @@ body[data-view="roster"] #legend { display: none; }
 
   <section>
     <div class="wrap">
+      <h2><span class="lead-num">Reuse</span>Nesting a flow, and framing a group</h2>
+      <p class="sub">Two ways to fold a graph down to one box. They look alike on the canvas and are deliberately not the same thing.</p>
+      <div class="legend">
+        <div class="leg star">
+          <span class="glyph" aria-hidden="true">⧉</span>
+          <div>
+            <p class="leg-name">Nested flow <span class="role">a reference</span><span class="tag">lives elsewhere</span></p>
+            <p>Drag a flow out of the <b>gallery</b> onto the canvas and it becomes one box standing in for that whole other flow. It is a <em>reference</em>, not a copy: the flow keeps its own name in the gallery, can be nested in several places at once, and an edit over there shows up in every host. The box carries no RACI of its own — the roles belong to the flow it points at.</p>
+          </div>
+        </div>
+        <div class="leg star">
+          <span class="glyph" aria-hidden="true">◉</span>
+          <div>
+            <p class="leg-name">Mating points <span class="role">one per entry / exit</span><span class="tag">nth in, nth out</span></p>
+            <p>A nested box does not get one “in” and one “out”. It gets <b>a socket per entry point and a socket per exit point</b> of the flow inside — so a procedure that ends two different ways can feed two different next steps. Tick the ones this host uses in the box's port panel, where a plain step keeps its entry / exit criteria.</p>
+          </div>
+        </div>
+        <div class="leg">
+          <span class="glyph" aria-hidden="true">⌸</span>
+          <div>
+            <p class="leg-name">Group <span class="role">a frame</span><span class="tag">stays put</span></p>
+            <p>Select steps (shift-click, or shift-drag a box around them) and <b>⊟ Group</b> draws a titled frame around them. Nothing moves and nothing is copied — it is a name for a phase. Drag the frame header and the whole phase moves; drop a step into a frame to add it, out of every frame to release it.</p>
+          </div>
+        </div>
+        <div class="leg">
+          <span class="glyph" aria-hidden="true">▸</span>
+          <div>
+            <p class="leg-name">Collapse <span class="role">the frame folds</span></p>
+            <p>Collapse a frame and it becomes a single box whose sockets are <em>the connections that actually cross its boundary</em> — counted from the arrows you already drew, never configured. Expand it and every step is exactly where you left it.</p>
+          </div>
+        </div>
+      </div>
+      <p class="sub">Rule of thumb: <b>nest</b> when the same procedure runs in more than one place and should be maintained once. <b>Group</b> when steps belong together in <em>this</em> flow and you want to say so — or to get them out of the way.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
       <h2><span class="lead-num">The move</span>The anchor: “this flow implements that task”</h2>
       <p class="sub">A flow can float free — a tabletop exercise, a what-if. The move that ties the system together is <em>anchoring</em> it to one chart Task row.</p>
       <div class="rule-eq">
@@ -5062,6 +5339,42 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.30 alpha - Business-case flows gain reuse and structure: a gallery, nested flows, per
+//                  entry/exit mating points, and groups.
+//                  GALLERY — a rail beside the canvas listing every flow in the workspace as a
+//                  card: a sketch of its actual graph, step/handoff counts, its chart anchor, and
+//                  how many other flows already nest it. Clicking a card opens that flow exactly
+//                  as the dropdown does (both stay); the dropdown answers "which one is it
+//                  called", the gallery answers "which one is it".
+//                  NESTED FLOWS — drag a card onto the canvas and it becomes one box standing in
+//                  for that whole flow (task.kind === 'subflow', refId). Deliberately a REFERENCE,
+//                  not a copy: the flow keeps its identity in the gallery, can be nested in many
+//                  hosts at once, and one edit updates them all. The box carries no RACI of its
+//                  own — the roles live in the referenced flow, and a copy here would drift. A
+//                  reference loop (A nests B nests A) is blocked at the source across cases, and
+//                  flagged by the rules if one arrives by import.
+//                  MATING POINTS — a nested box does not get one in and one out. It gets a socket
+//                  per ENTRY point and a socket per EXIT point of the flow inside, so a procedure
+//                  that ends two ways feeds two different next steps. Which ones are exposed is
+//                  chosen on the card, in the same extended-info position a plain step keeps its
+//                  entry/exit criteria. Edges therefore carry fromPort/toPort, and two handoffs
+//                  between the same pair of boxes are distinct when they use different ports —
+//                  the duplicate key (bizEdgeKey) says so. Ports store the SELECTION, not a
+//                  count, and empty means "all of them", so a host keeps following the referenced
+//                  flow as it gains steps instead of silently re-wiring.
+//                  GROUPS — labelled frames around steps that stay in this flow: visual (a titled
+//                  box), conceptual (a name), functional (collapse it). Membership is one field,
+//                  task.groupId. An expanded frame is DERIVED from its members' bounding box, so
+//                  it can never go stale; collapsed, it becomes one box whose sockets are the
+//                  edges that actually cross its boundary — nth in and nth out with nothing
+//                  stored for them. Multi-select (shift-click, shift-drag marquee) feeds it;
+//                  dragging a box into a frame joins it, onto bare canvas releases it.
+//                  Also here: flow noodles read their colours from the live theme instead of the
+//                  baked literals they still used, so the canvas follows Light and High Contrast
+//                  like everything else; nested handoffs are tinted cyan to separate them from
+//                  plain and branch edges. The demo workspace now ships two flows, one nested in
+//                  the other with a frame around its response phase, so the feature is visible on
+//                  first open rather than only after someone builds a second flow by hand.
 //     0.29 alpha - Application themes: Light and High Contrast join Dark, which stays the
 //                  default. Picked from a Theme segmented control in the toolbar (arrow keys
 //                  move through it), remembered per-device under its own storage key, and
@@ -5250,7 +5563,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.29';
+const APP_VERSION = '0.30';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -5710,7 +6023,7 @@ function makeFreeChart(title) {
 // deleted, or an import that didn't carry the chart) degrades to null — flow data is never lost.
 function makeBizCase(name) {
   return { id: 'b_' + uid(), name: name || 'Untitled business case', description: '', framework: 'raci',
-    anchor: null, tasks: [], edges: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
+    anchor: null, tasks: [], edges: [], groups: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
 }
 // ---- Artifacts: the global deliverable registry (v0.20) ----
 // One named entity per real-world deliverable ("Triage Report", "ATO decision"). Chart nodes
@@ -5767,7 +6080,9 @@ function flowHealth(chartId, nodeId) {
     const ctx = bizAnchorCtx(b);
     const F = fw(b.framework);
     b.edges.forEach(e => { total++; if ((e.artifactIds || []).length) ok++; });
-    b.tasks.forEach(t => {
+    // Nested-flow boxes hold no roles of their own — scoring them would permanently dock the host
+    // for work that is actually assigned inside the flow they reference.
+    b.tasks.filter(t => !isSubflow(t)).forEach(t => {
       total++;
       if (COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.owner)) || (ctx && ctx.ownerCol)) ok++;
       total++;
@@ -5787,11 +6102,107 @@ function makeBizTask(name) {
   // Business Case "Responsible Party" sidebar.
   // description / entry / exit (v0.23): the step's purpose, what must be true to START it, and
   // what DONE looks like — three separate blocks edited in place on the card.
-  return { id: 't_' + uid(), name: name || '', raci, parties: {}, description: '', entry: '', exit: '', status: DEFAULT_STATUS, x: 0, y: 0 };
+  // kind distinguishes a real step from a nested-flow reference (see makeBizSubflow); groupId is
+  // its membership in one of the case's frames (see makeBizGroup). Both default to the pre-v0.30
+  // reading, so an old file loads as "every box is a plain, ungrouped step".
+  return { id: 't_' + uid(), kind: 'task', name: name || '', raci, parties: {}, description: '', entry: '', exit: '',
+    status: DEFAULT_STATUS, x: 0, y: 0, groupId: null };
 }
-// A directed handoff edge between two task boxes. Future hook: optional from/to ports per box.
+// A directed handoff edge between two task boxes. from/to name the BOX; fromPort/toPort name the
+// mating point on it — null for a plain step (one socket per side), or the referenced flow's
+// entry/exit step id when the endpoint is a nested-flow box exposing several sockets (v0.30).
 // label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
-function makeBizEdge(from, to, label) { return { id: 'e_' + uid(), from, to, label: label || '', artifactIds: [] }; }
+function makeBizEdge(from, to, label, fromPort, toPort) {
+  return { id: 'e_' + uid(), from, to, label: label || '', artifactIds: [],
+    fromPort: fromPort || null, toPort: toPort || null };
+}
+// Identity of a connection. Two edges between the same pair of boxes are still distinct handoffs
+// when they leave/enter different mating points, so the port is part of the key — this is what
+// the duplicate guard (canvas + migration) compares.
+function bizEdgeKey(e) { return `${e.from}:${e.fromPort || ''}>${e.to}:${e.toPort || ''}`; }
+
+// ---- Nested flows and grouping (v0.30) ----
+// Two ways to fold a graph down to one box on the canvas. They look similar and are deliberately
+// NOT the same thing:
+//
+//   SUBFLOW  (task.kind === 'subflow')  a REFERENCE to another business case. The referenced flow
+//            keeps living in state.bizCases under its own name — it can be opened, edited, and
+//            embedded in several hosts at once, and every host reflects the edit. Its mating
+//            points are the referenced flow's own entry and exit steps.
+//   GROUP    (b.groups[])               a labelled frame around steps that STAY in this flow.
+//            Purely an organising device: visual (a titled box), conceptual (a name), functional
+//            (collapse it and the frame becomes one box whose sockets are the real boundary
+//            crossings). Nothing is moved or copied — membership is one field, task.groupId.
+//
+// Neither introduces a second source of truth: a subflow box stores only `refId` plus which ports
+// it exposes, a group stores only its own identity. Frames, sockets, counts and the collapsed
+// box's boundary crossings are all DERIVED at render time from the edges that already exist.
+function makeBizSubflow(refId) {
+  return { id: 't_' + uid(), kind: 'subflow', refId: refId || '', name: '', raci: {}, parties: {},
+    description: '', entry: '', exit: '', status: DEFAULT_STATUS, x: 0, y: 0, groupId: null,
+    // Exposed mating points, as step ids INSIDE the referenced flow. Empty = auto: expose every
+    // entry / exit the referenced flow currently has. Storing the SELECTION rather than a count
+    // keeps this host's wiring stable when the referenced flow is re-arranged, and means a new
+    // step appearing over there never silently re-routes an edge over here.
+    ports: { in: [], out: [] } };
+}
+const BZ_GROUP_COLORS = ['accent', 'p', 'c', 'a', 'd', 's', 'i'];
+function makeBizGroup(name) {
+  return { id: 'g_' + uid(), name: name || 'Group', color: 'accent', collapsed: false, x: 0, y: 0 };
+}
+function isSubflow(t) { return !!t && t.kind === 'subflow'; }
+function bizCaseById(id) { return state.bizCases.find(b => b.id === id) || null; }
+function bizGroupById(b, id) { return (b.groups || []).find(g => g.id === id) || null; }
+function bizGroupMembers(b, gid) { return b.tasks.filter(t => t.groupId === gid); }
+// Entry points = steps nothing hands to. Exit points = steps that hand off to nothing. A flow
+// whose graph is one closed loop has neither, so fall back to every step — better to offer the
+// whole list than to draw a box with no way to connect it.
+function bizEntryPoints(b) {
+  if (!b) return [];
+  const hasIn = new Set(b.edges.map(e => e.to));
+  const ends = b.tasks.filter(t => !hasIn.has(t.id));
+  return ends.length ? ends : b.tasks.slice();
+}
+function bizExitPoints(b) {
+  if (!b) return [];
+  const hasOut = new Set(b.edges.map(e => e.from));
+  const ends = b.tasks.filter(t => !hasOut.has(t.id));
+  return ends.length ? ends : b.tasks.slice();
+}
+// The mating points a nested-flow box draws: every detected entry/exit of the referenced flow,
+// each flagged with whether THIS host exposes it. A stored selection whose step no longer exists
+// is ignored (and pruned by migration on the next load), and a selection that empties out falls
+// back to auto rather than leaving the box unconnectable.
+function subflowPorts(t) {
+  const ref = isSubflow(t) ? bizCaseById(t.refId) : null;
+  if (!ref) return { ref: null, in: [], out: [] };
+  const side = (list, sel) => {
+    const chosen = new Set(Array.isArray(sel) ? sel : []);
+    const live = list.filter(x => chosen.has(x.id));
+    const on = live.length ? new Set(live.map(x => x.id)) : new Set(list.map(x => x.id));
+    return list.map(x => ({ id: x.id, name: x.name || '(untitled step)', on: on.has(x.id) }));
+  };
+  const p = t.ports || {};
+  return { ref, in: side(bizEntryPoints(ref), p.in), out: side(bizExitPoints(ref), p.out) };
+}
+function subflowOpenPorts(t, side) { return subflowPorts(t)[side].filter(p => p.on); }
+// Would embedding `refId` inside `hostId` close a loop? Walks the reference graph ACROSS cases, so
+// A→B→C→A is caught, not just A→A. Blocks the embed at source; lint catches any that arrive
+// by import. Nothing in the renderer recurses through refId, so a cycle in stored data is inert.
+function bizEmbedWouldCycle(hostId, refId) {
+  const seen = new Set();
+  return (function reaches(id) {
+    if (id === hostId) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    const b = bizCaseById(id);
+    return !!b && b.tasks.some(t => isSubflow(t) && t.refId && reaches(t.refId));
+  })(refId);
+}
+// Every case that embeds `refId` — the gallery's re-use badge, and the warning before a delete.
+function bizHostsOf(refId) {
+  return state.bizCases.filter(b => b.tasks.some(t => isSubflow(t) && t.refId === refId));
+}
 
 // ---- Anchored-flow helpers (chart ↔ business case link, added v0.18) ----
 function chartById(id) { return state.charts.find(c => c.id === id) || null; }
@@ -5851,6 +6262,34 @@ function bizDefaultPartyFor(ctx, col) {
   return ref;
 }
 function bizDefaultParty(col) { return bizDefaultPartyFor(_bizAnchorCtx, col); }
+// The demo workspace ships TWO flows, not one: a response tabletop, and the evidence-handling
+// procedure it calls partway through. Nesting the second inside the first is what makes the
+// gallery, the nested-flow box and its per-entry/exit mating points legible on first open —
+// otherwise the whole feature is invisible until someone builds a second flow by hand.
+function seedEvidenceFlow() {
+  const bc = makeBizCase('Evidence Preservation (procedure)');
+  bc.description = 'Reusable procedure: preserve and hand over evidence. Nested inside the incident tabletop — and available to nest anywhere else that needs it.';
+  const defs = [
+    { key: 'freeze', name: 'Freeze the host',      x: 60,  y: 80,  raci: { cyber: 'R', hq: 'A' } },
+    { key: 'image',  name: 'Capture disk image',   x: 340, y: 80,  raci: { infra: 'R', cyber: 'C' } },
+    { key: 'chain',  name: 'Log chain of custody', x: 620, y: 80,  raci: { cos: 'R', hq: 'A' } },
+    { key: 'hand',   name: 'Hand to legal',        x: 900, y: 20,  raci: { cos: 'R', hq: 'A' } },
+    { key: 'store',  name: 'Seal in evidence store', x: 900, y: 200, raci: { infra: 'R', cyber: 'C' } }
+  ];
+  const byKey = {};
+  defs.forEach(d => {
+    const t = makeBizTask(d.name);
+    t.x = d.x; t.y = d.y;
+    Object.keys(d.raci).forEach(k => { if (COLS.includes(k)) t.raci[k] = normalizeRaci(d.raci[k]); });
+    bc.tasks.push(t); byKey[d.key] = t.id;
+  });
+  const link = (f, to, label) => bc.edges.push(makeBizEdge(byKey[f], byKey[to], label));
+  link('freeze', 'image');
+  link('image', 'chain');
+  link('chain', 'hand', 'Legal hold');       // two exit points — so the nested box has two out sockets
+  link('chain', 'store', 'No hold');
+  return bc;
+}
 function seedBizCase() {
   const bc = makeBizCase('Cyber Incident Response (Tabletop)');
   bc.description = 'Example tabletop: who is R / A / C / I at each step — including a decision point that branches into more than one path.';
@@ -5879,14 +6318,42 @@ function seedBizCase() {
   link('recover', 'aar');                            // merges back with the false-positive path
   return bc;
 }
+// Both demo flows, wired together: the response tabletop nests the evidence procedure between
+// Contain and Eradicate, and frames its three hands-on steps as one "Response actions" group.
+function seedBizCases() {
+  const main = seedBizCase();
+  const sub = seedEvidenceFlow();
+  const byName = n => main.tasks.find(t => t.name === n);
+  const contain = byName('Contain'), erad = byName('Eradicate'), recover = byName('Recover');
+  const aar = byName('After-Action Review');
+  const nest = makeBizSubflow(sub.id);
+  nest.name = 'Preserve evidence';
+  nest.x = 250; nest.y = 640;
+  nest.description = 'Runs alongside containment — the same procedure every incident uses.';
+  main.tasks.push(nest);
+  if (contain) main.edges.push(makeBizEdge(contain.id, nest.id, 'Preserve first', null, bizEntryPoints(sub)[0].id));
+  // The two exit points go to two DIFFERENT places — which is the whole reason a nested flow
+  // gets one mating point per exit rather than a single "done" socket.
+  const exits = bizExitPoints(sub);
+  const legal = exits.find(x => x.name === 'Hand to legal') || exits[0];
+  const sealed = exits.find(x => x.name === 'Seal in evidence store') || exits[1];
+  if (erad && legal) main.edges.push(makeBizEdge(nest.id, erad.id, 'Evidence secured', legal.id, null));
+  if (aar && sealed) main.edges.push(makeBizEdge(nest.id, aar.id, 'Sealed for review', sealed.id, null));
+  const g = makeBizGroup('Response actions');
+  g.color = 'p';
+  main.groups.push(g);
+  [contain, erad, recover].forEach(x => { if (x) x.groupId = g.id; });
+  return [main, sub];
+}
 function defaultState() {
   const d = seedData();
   const demo = makeChart('ASIC RACI Tool Demo', d.activities);
-  const bc = seedBizCase();
+  const cases = seedBizCases();
+  const bc = cases[0];
   return {
     charts: [demo],
     activeChartId: demo.id,
-    bizCases: [bc],
+    bizCases: cases,
     artifacts: [],
     workScope: null,
     activeBizCaseId: bc.id,
@@ -5896,6 +6363,7 @@ function defaultState() {
     columnActor: defaultColumnActor(),
     directorates: d.directorates,
     collapsedDirectorates: {},
+    bizGallery: true,
     rosterMode: 'explore',
     viewMode: 'chart',
     showLegend: false
@@ -6119,6 +6587,9 @@ function migrateState(s) {
   s.collapsedDirectorates = (s.collapsedDirectorates && typeof s.collapsedDirectorates === 'object') ? s.collapsedDirectorates : {};
   s.rosterMode = (s.rosterMode === 'full' || s.rosterMode === 'explore') ? s.rosterMode : 'explore';  // Roster layout (v0.25)
   s.showLegend = !!s.showLegend;
+  // Flow gallery rail (v0.30) — absent means "never seen this build", so it opens once to
+  // announce itself; after that whatever the user last chose is what is stored.
+  s.bizGallery = (s.bizGallery === undefined) ? true : !!s.bizGallery;
   s.actorLabels = (s.actorLabels && typeof s.actorLabels === 'object') ? s.actorLabels : {};
   ACTORS.forEach(k => { if (typeof s.actorLabels[k] !== 'string' || !s.actorLabels[k].trim()) s.actorLabels[k] = ACTOR_LABELS_DEFAULT[k]; });
   s.columnLabels = (s.columnLabels && typeof s.columnLabels === 'object') ? s.columnLabels : {};
@@ -6143,6 +6614,18 @@ function migrateState(s) {
   s.bizCases = Array.isArray(s.bizCases) ? s.bizCases : [];
   s.bizCases = s.bizCases.filter(b => b && typeof b === 'object').map(b => {
     const view = (b.view && typeof b.view === 'object') ? b.view : {};
+    // Groups (v0.30) first, so a task's groupId can be checked against the surviving frames.
+    // A frame is pure metadata — dropping one never touches the steps that referenced it, they
+    // just come back ungrouped.
+    const groups = (Array.isArray(b.groups) ? b.groups : []).filter(g => g && typeof g === 'object').map(g => ({
+      id: typeof g.id === 'string' && g.id ? g.id : 'g_' + uid(),
+      name: typeof g.name === 'string' ? g.name : 'Group',
+      color: BZ_GROUP_COLORS.includes(g.color) ? g.color : 'accent',
+      collapsed: !!g.collapsed,
+      x: Number.isFinite(g.x) ? g.x : 0,
+      y: Number.isFinite(g.y) ? g.y : 0
+    }));
+    const groupIds = new Set(groups.map(g => g.id));
     const tasks = (Array.isArray(b.tasks) ? b.tasks : []).filter(t => t && typeof t === 'object').map(t => {
       const raci = (t.raci && typeof t.raci === 'object') ? t.raci : {};
       COLS.forEach(k => { raci[k] = normalizeRaci(raci[k] || ''); });
@@ -6167,8 +6650,15 @@ function migrateState(s) {
           if (!parties[c] && normalizeRaci(raci[c] || '').includes(l)) parties[c] = ref;
         });
       });
+      // A nested-flow box (v0.30) carries refId + its exposed ports instead of its own RACI. The
+      // ref itself can only be checked once every case is normalized, so that happens in the
+      // second pass below; here we just keep the shape sane.
+      const sub = t.kind === 'subflow';
+      const rawPorts = (t.ports && typeof t.ports === 'object') ? t.ports : {};
+      const portList = v => (Array.isArray(v) ? v : []).filter(x => typeof x === 'string' && x);
       return {
         id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
+        kind: sub ? 'subflow' : 'task',
         name: typeof t.name === 'string' ? t.name : '',
         raci,
         parties,
@@ -6177,17 +6667,24 @@ function migrateState(s) {
         exit: typeof t.exit === 'string' ? t.exit : '',
         status: TASK_STATUS_KEYS.includes(t.status) ? t.status : DEFAULT_STATUS,
         x: Number.isFinite(t.x) ? t.x : 0,
-        y: Number.isFinite(t.y) ? t.y : 0
+        y: Number.isFinite(t.y) ? t.y : 0,
+        groupId: (typeof t.groupId === 'string' && groupIds.has(t.groupId)) ? t.groupId : null,
+        ...(sub ? { refId: typeof t.refId === 'string' ? t.refId : '',
+                    ports: { in: portList(rawPorts.in), out: portList(rawPorts.out) } } : {})
       };
     });
     const ids = new Set(tasks.map(t => t.id));
     const seen = new Set();
     // Drop edges referencing deleted tasks, self-loops, and duplicates — keeps delete logic trivial.
+    // Since v0.30 the duplicate key includes the mating points (bizEdgeKey): two handoffs between
+    // the same pair of boxes are genuinely different connections when they use different ports.
     const edges = (Array.isArray(b.edges) ? b.edges : []).filter(ed =>
       ed && typeof ed === 'object' && ids.has(ed.from) && ids.has(ed.to) && ed.from !== ed.to
     ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to,
-                   label: typeof ed.label === 'string' ? ed.label : '', artifactIds: cleanIO(ed.artifactIds) }))
-     .filter(ed => { const key = ed.from + '>' + ed.to; if (seen.has(key)) return false; seen.add(key); return true; });
+                   label: typeof ed.label === 'string' ? ed.label : '', artifactIds: cleanIO(ed.artifactIds),
+                   fromPort: typeof ed.fromPort === 'string' && ed.fromPort ? ed.fromPort : null,
+                   toPort: typeof ed.toPort === 'string' && ed.toPort ? ed.toPort : null }))
+     .filter(ed => { const key = bizEdgeKey(ed); if (seen.has(key)) return false; seen.add(key); return true; });
     // Anchor (v0.18): keep only when it resolves against the already-normalized s.charts —
     // a dangling anchor degrades the flow to standalone, never deletes flow data. Walked with a
     // local finder because nodeInChart/chartById read the global `state`, not this `s`.
@@ -6206,7 +6703,7 @@ function migrateState(s) {
       name: typeof b.name === 'string' ? b.name : 'Untitled business case',
       description: typeof b.description === 'string' ? b.description : '',
       framework: BIZ_FRAMEWORKS.includes(b.framework) ? b.framework : 'raci',
-      anchor, tasks, edges,
+      anchor, tasks, edges, groups,
       view: {
         panX: Number.isFinite(view.panX) ? view.panX : 0,
         panY: Number.isFinite(view.panY) ? view.panY : 0,
@@ -6215,8 +6712,38 @@ function migrateState(s) {
       showTable: !!b.showTable
     };
   });
-  if (!s.bizCases.length) s.bizCases = [seedBizCase()];
+  if (!s.bizCases.length) s.bizCases = seedBizCases();
   if (!s.bizCases.find(b => b.id === s.activeBizCaseId)) s.activeBizCaseId = s.bizCases[0].id;
+  // ---- Nested-flow second pass (v0.30) ----
+  // Cross-case references can only be checked once every case has been normalized. A ref to a
+  // case this file didn't carry is KEPT, not deleted: a nested-flow box has no content of its own
+  // to degrade to, so it stays on the canvas as a visibly broken embed that the flow rules flag
+  // and the user can re-point or remove — the same "never silently lose the user's wiring"
+  // contract as a dangling chart anchor. Only a self-reference (always meaningless) is cleared.
+  const bizById = new Map(s.bizCases.map(b => [b.id, b]));
+  s.bizCases.forEach(b => {
+    b.tasks.forEach(t => {
+      if (t.kind !== 'subflow') return;
+      if (t.refId === b.id) t.refId = '';
+      const ref = bizById.get(t.refId);
+      if (!ref) { t.ports = { in: [], out: [] }; return; }
+      const live = new Set(ref.tasks.map(x => x.id));
+      t.ports.in = t.ports.in.filter(x => live.has(x));
+      t.ports.out = t.ports.out.filter(x => live.has(x));
+    });
+    // An edge port only means something on a nested-flow endpoint, and only while it names a step
+    // that still exists over there. Anything else falls back to the box's default mating point.
+    const taskById = new Map(b.tasks.map(t => [t.id, t]));
+    const okPort = (t, port) => {
+      if (!port || !t || t.kind !== 'subflow') return null;
+      const ref = bizById.get(t.refId);
+      return ref && ref.tasks.some(x => x.id === port) ? port : null;
+    };
+    b.edges.forEach(ed => {
+      ed.fromPort = okPort(taskById.get(ed.from), ed.fromPort);
+      ed.toPort = okPort(taskById.get(ed.to), ed.toPort);
+    });
+  });
   return s;
 }
 function loadState() {
@@ -7778,7 +8305,16 @@ function bizSelectorHtml() {
     : state.bizCases.map(opt).join('');
   const fwOpts = BIZ_FRAMEWORKS.map(k =>
     `<option value="${k}"${b.framework === k ? ' selected' : ''}>${FRAMEWORKS[k].name}</option>`).join('');
+  const nSel = _bizSel.size;
+  const nSub = b.tasks.filter(isSubflow).length;
+  const nGrp = (b.groups || []).length;
+  // "Back" appears only once you have descended into a nested flow from its host, so the trail
+  // out is always the trail you came in by (see _bizNavStack).
+  const back = _bizNavStack.length
+    ? `<button id="bz-back" title="Back to ${escapeHtml(bizCaseName(_bizNavStack[_bizNavStack.length - 1]))}">↩ Back</button>` : '';
   return `
+    ${back}
+    <button id="bz-gallery" class="${state.bizGallery ? 'active' : ''}" title="Flow gallery — every business case in this workspace. Click one to open it, or drag it onto the canvas to nest it inside this flow.">⊞ Gallery</button>
     <select id="bz-select" title="Active business case">${opts}</select>
     <button id="bz-new" title="New business case">+ New Graph</button>
     <button id="bz-rename" title="Rename this business case">Rename</button>
@@ -7787,8 +8323,103 @@ function bizSelectorHtml() {
     <select id="bz-framework" title="Decision framework — DACI / RAPID fit decision points better than RACI">${fwOpts}</select>
     <span class="bz-sep" aria-hidden="true"></span>
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
+    <button id="bz-group" ${nSel ? '' : 'disabled '}title="${nSel ? `Wrap the ${nSel} selected step${nSel === 1 ? '' : 's'} in a labelled frame` : 'Select steps first — click one, then shift-click others, or shift-drag a box around them'}">⊟ Group${nSel ? ` (${nSel})` : ''}</button>
     <button id="bz-toggle-table" class="${b.showTable ? 'active' : ''}" title="Show/hide the RACI table pane">▦ Table</button>
-    <span class="bz-meta">${b.tasks.length} task${b.tasks.length === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'} · drag a socket to connect · scroll to zoom · drag canvas to pan</span>`;
+    <span class="bz-meta">${b.tasks.length - nSub} step${b.tasks.length - nSub === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}${nSub ? ` · ${nSub} nested flow${nSub === 1 ? '' : 's'}` : ''}${nGrp ? ` · ${nGrp} group${nGrp === 1 ? '' : 's'}` : ''} · drag a socket to connect · shift-drag to select · scroll to zoom</span>`;
+}
+
+// ---- Flow gallery (v0.30) ----
+// The dropdown answers "which flow do I want?" only if you already know its name. The gallery is
+// the same list laid out so you can recognise a flow by its SHAPE: a sketch of the graph, its
+// size, whether it is anchored to a chart task, and how many other flows already reuse it.
+// Clicking a card switches the active flow exactly as the dropdown does; dragging one onto the
+// canvas nests it as a single box (bizEmbedFlow).
+let _bizGalQ = '';
+function bizCaseName(id) { const b = bizCaseById(id); return (b && b.name) || 'Untitled'; }
+// The label a box carries everywhere (canvas, tables, exports, minimap tooltips). A nested-flow
+// box falls back to the referenced flow's own name until the user titles it locally.
+function bizTaskLabel(t) {
+  if (!t) return '—';
+  if (isSubflow(t)) return t.name || bizCaseName(t.refId) || 'Nested flow';
+  return t.name || 'Untitled task';
+}
+// A sketch of the whole graph in a 100×52 box: hairline handoffs, a block per step. Uniform scale
+// so the sketch keeps the real layout's proportions — this is what makes a flow recognisable at
+// thumbnail size.
+function bizFlowThumbSvg(b) {
+  if (!b.tasks.length) return `<div class="bz-gal-thumb is-empty">no steps yet</div>`;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  b.tasks.forEach(t => {
+    minX = Math.min(minX, t.x); minY = Math.min(minY, t.y);
+    maxX = Math.max(maxX, t.x + BZ_NODE_W); maxY = Math.max(maxY, t.y + 130);
+  });
+  const s = Math.min(96 / Math.max(1, maxX - minX), 44 / Math.max(1, maxY - minY));
+  const offX = (100 - (maxX - minX) * s) / 2, offY = (52 - (maxY - minY) * s) / 2;
+  const at = t => ({ x: (t.x - minX) * s + offX, y: (t.y - minY) * s + offY });
+  const bw = Math.max(3, BZ_NODE_W * s), bh = Math.max(2.2, 46 * s);
+  const pos = {}; b.tasks.forEach(t => { pos[t.id] = at(t); });
+  const n = v => v.toFixed(1);
+  const lines = b.edges.map(e => {
+    const f = pos[e.from], g = pos[e.to];
+    return (f && g) ? `<line x1="${n(f.x + bw)}" y1="${n(f.y + bh / 2)}" x2="${n(g.x)}" y2="${n(g.y + bh / 2)}"/>` : '';
+  }).join('');
+  const boxes = b.tasks.map(t => {
+    const p = pos[t.id];
+    return `<rect class="${isSubflow(t) ? 'is-sub' : ''}" x="${n(p.x)}" y="${n(p.y)}" width="${n(bw)}" height="${n(bh)}" rx="1.2"/>`;
+  }).join('');
+  return `<svg class="bz-gal-thumb" viewBox="0 0 100 52" aria-hidden="true">${lines}${boxes}</svg>`;
+}
+// Repaint just the card list (live filter). Everything else in the pane is stable, so this keeps
+// the search input — and its caret — exactly as the user left it.
+function bizRenderGalleryList() {
+  const list = document.querySelector('#bz-gallery-pane .bz-gal-list');
+  if (list) list.innerHTML = bizGalleryCardsHtml();
+}
+function bizGalleryCardsHtml() {
+  const active = abc();
+  const q = _bizGalQ.trim().toLowerCase();
+  const list = state.bizCases.filter(b => !q || (b.name || '').toLowerCase().includes(q)
+    || (b.description || '').toLowerCase().includes(q));
+  return list.map(b => {
+    const an = resolveAnchor(b);
+    const isActive = b.id === active.id;
+    const self = b.id === active.id;
+    // Blocked when nesting it would close a reference loop — checked across cases, not just A→A.
+    const blocked = self || bizEmbedWouldCycle(active.id, b.id);
+    const hosts = bizHostsOf(b.id).length;
+    const nSub = b.tasks.filter(isSubflow).length;
+    const embedTip = self ? 'A flow cannot contain itself'
+      : blocked ? 'Blocked — the open flow is already nested somewhere inside this one, so embedding it would close a loop'
+      : `Nest "${b.name || 'Untitled'}" inside "${active.name || 'Untitled'}" as a single box`;
+    return `<article class="bz-gal-card${isActive ? ' is-active' : ''}${blocked ? ' is-blocked' : ''}"
+        ${blocked ? '' : 'draggable="true"'} data-gal-case="${b.id}"
+        title="${escapeHtml((b.description || b.name || 'Untitled') + (blocked ? '' : ' — drag onto the canvas to nest it'))}">
+      ${bizFlowThumbSvg(b)}
+      <div class="bz-gal-name">${escapeHtml(b.name || 'Untitled')}${isActive ? '<span class="bz-gal-open">open</span>' : ''}</div>
+      <div class="bz-gal-meta">
+        <span>${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'}</span>
+        <span>${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}</span>
+        ${nSub ? `<span class="is-sub" title="Contains ${nSub} nested flow${nSub === 1 ? '' : 's'}">⧉ ${nSub}</span>` : ''}
+        ${hosts ? `<span class="is-reused" title="Nested inside ${hosts} other flow${hosts === 1 ? '' : 's'}">↻ ${hosts}</span>` : ''}
+      </div>
+      ${an ? `<div class="bz-gal-anchor" title="Anchored to a chart task">⚓ ${escapeHtml(an.node.name || 'untitled task')}</div>` : ''}
+      <div class="bz-gal-acts">
+        <button type="button" data-gal-open="${b.id}"${isActive ? ' disabled' : ''} title="Open this flow (same as picking it in the dropdown)">Open</button>
+        <button type="button" data-gal-embed="${b.id}"${blocked ? ' disabled' : ''} title="${escapeHtml(embedTip)}">⧉ Nest</button>
+      </div>
+    </article>`;
+  }).join('') || '<div class="bz-gal-none">No flow matches that filter.</div>';
+}
+function bizGalleryHtml() {
+  return `<aside class="bz-gallery" id="bz-gallery-pane">
+    <div class="bz-gal-head">
+      <h3>Flow gallery</h3>
+      <button type="button" id="bz-gal-close" title="Hide the gallery">×</button>
+    </div>
+    <input id="bz-gal-filter" type="search" placeholder="Filter flows…" value="${escapeHtml(_bizGalQ)}" spellcheck="false">
+    <div class="bz-gal-hint">Click to open · drag onto the canvas to nest</div>
+    <div class="bz-gal-list">${bizGalleryCardsHtml()}</div>
+  </aside>`;
 }
 
 // Step-cell chips for the ACTIVE case: explicit letters, plus — on an anchored flow — the dashed
@@ -7810,7 +8441,82 @@ function bizStepChips(t, col) {
   if (!chips.length) return `<div class="cell-chips empty">·</div>`;
   return `<div class="cell-chips">${chips.join('')}</div>`;
 }
+// ---- Nested-flow box (v0.30) ----
+// One box standing in for a whole other business case. It deliberately shows no RACI of its own:
+// the roles live in the referenced flow and would be a second, drifting copy here. What it does
+// show is the wiring surface — one mating point per entry and per exit of the referenced flow,
+// each individually exposed or hidden from the port panel, which sits exactly where a plain
+// step's entry/exit criteria sit.
+function bizSubflowHtml(t) {
+  const vio = _violationsByBizTaskId[t.id];
+  const pin = vio
+    ? `<span class="violation-pin bz-pin ${vio.severity === 'err' ? '' : 'warn'}" title="${escapeHtml(vio.issues.map(i => i.message).join('\n'))}">!</span>`
+    : '';
+  const headBtns = `
+    <button class="bz-node-copy" data-bz-copy-task="${t.id}" title="Copy this box (Ctrl+C copies the selected box · Ctrl+V pastes)">⧉</button>
+    <button class="bz-node-del" data-bz-del-task="${t.id}" title="Remove this box (the referenced flow itself is untouched)">×</button>`;
+  const P = subflowPorts(t);
+  if (!P.ref) {
+    // Broken reference: kept on the canvas rather than deleted, so the user's wiring survives an
+    // import that didn't carry the referenced flow and can be re-pointed instead of rebuilt.
+    return `<div class="bz-node bz-node--sub is-broken${_bizSel.has(t.id) ? ' selected' : ''}" data-bz-node="${t.id}"
+      style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
+      ${pin}
+      <div class="bz-node-head">
+        <span class="bz-sub-glyph" aria-hidden="true">⧉</span>
+        <span class="bz-node-name" contenteditable="true" spellcheck="false" data-bz-name="${t.id}" data-placeholder="Nested flow">${escapeHtml(t.name)}</span>
+        ${headBtns}
+      </div>
+      <div class="bz-sub-broken">Nested flow is missing — the business case it pointed at was deleted, or an import didn't carry it.
+        <button type="button" class="bz-sub-repoint" data-bz-repoint="${t.id}">Point at another flow…</button></div>
+    </div>`;
+  }
+  const ref = P.ref;
+  const openIn = P.in.filter(p => p.on).length, openOut = P.out.filter(p => p.on).length;
+  const portRow = (p, side) => `
+    <div class="bz-port-row${p.on ? '' : ' is-off'}">
+      ${p.on ? `<span class="bz-socket ${side} is-port" data-bz-socket="${side}" data-bz-node-id="${t.id}" data-port="${p.id}"
+          title="${escapeHtml(`${side === 'in' ? 'Entry' : 'Exit'} — ${p.name}`)}${side === 'out' ? ' · drag onto another box to connect' : ''}"></span>` : ''}
+      <button class="bz-port-tgl" type="button" data-bz-port="${t.id}" data-side="${side}" data-port-id="${p.id}"
+        aria-pressed="${p.on}" title="${escapeHtml(p.on ? `Hide this ${side === 'in' ? 'entry' : 'exit'} point — it stops being a mating point on this box` : `Expose "${p.name}" as a mating point on this box`)}">${p.on ? '◉' : '○'}</button>
+      <span class="bz-port-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
+    </div>`;
+  // Roles used INSIDE the referenced flow, rolled up per column. Read-only context, derived on
+  // every render — never a copy that can drift from the flow it describes.
+  const rollup = COLS.map(k => {
+    const letters = [...new Set(ref.tasks.flatMap(x => normalizeRaci((x.raci || {})[k] || '').split('')))].filter(Boolean);
+    return letters.length ? `<span class="bzs-col" title="${escapeHtml(COL_LABELS[k])}"><span class="bzs-col-key">${escapeHtml(COL_SHORT[k])}</span>${letters.map(l => `<span class="raci-chip ${l}">${l}</span>`).join('')}</span>` : '';
+  }).filter(Boolean).join('');
+  const nSteps = ref.tasks.filter(x => !isSubflow(x)).length, nNest = ref.tasks.filter(isSubflow).length;
+  return `<div class="bz-node bz-node--sub${_bizSel.has(t.id) ? ' selected' : ''}" data-bz-node="${t.id}"
+    style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
+    ${pin}
+    <div class="bz-node-head">
+      <span class="bz-sub-glyph" aria-hidden="true">⧉</span>
+      <span class="bz-node-name" contenteditable="true" spellcheck="false" data-bz-name="${t.id}"
+        data-placeholder="${escapeHtml(ref.name || 'Nested flow')}">${escapeHtml(t.name)}</span>
+      <button class="bz-sub-open" data-bz-open-sub="${t.id}" title="Open &quot;${escapeHtml(ref.name || 'Untitled')}&quot; to edit it — every box that nests it follows the change">⇱</button>
+      ${headBtns}
+    </div>
+    <div class="bz-sub-ref">
+      <button type="button" class="bz-sub-ref-name" data-bz-repoint="${t.id}"
+        title="This box is a reference — the flow itself lives in the gallery under this name. Click to point it at a different flow.">${escapeHtml(ref.name || 'Untitled')}</button>
+      <span class="bz-sub-ref-meta">${nSteps} step${nSteps === 1 ? '' : 's'}${nNest ? ` · ${nNest} nested` : ''} · ${ref.edges.length} handoff${ref.edges.length === 1 ? '' : 's'}</span>
+    </div>
+    <div class="bz-node-desc" contenteditable="true" spellcheck="false" data-bz-desc="${t.id}"
+      data-placeholder="＋ note — why this flow is called here">${escapeHtml(t.description || '')}</div>
+    <div class="bz-sub-ports">
+      <div class="bz-port-h in">entry points<span class="bz-port-n">${openIn} of ${P.in.length} exposed</span></div>
+      ${P.in.map(p => portRow(p, 'in')).join('')}
+      <div class="bz-port-h out">exit points<span class="bz-port-n">${openOut} of ${P.out.length} exposed</span></div>
+      ${P.out.map(p => portRow(p, 'out')).join('')}
+    </div>
+    ${rollup ? `<div class="bz-sub-roles" title="Roles assigned inside the nested flow (read-only — edit them in the flow itself)">${rollup}</div>` : ''}
+  </div>`;
+}
+
 function bizNodeHtml(t) {
+  if (isSubflow(t)) return bizSubflowHtml(t);
   const cells = COLS.map(k => {
     return `<div class="bz-cell" data-bz-cell="${t.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">
       <span class="bz-cell-col">${escapeHtml(COL_SHORT[k])}</span>
@@ -7860,7 +8566,7 @@ function bizNodeHtml(t) {
           : `<span class="bz-party-label">+ set responsible party</span>`}
       </button>`;
   }).join('')}</div>` : '';
-  return `<div class="bz-node${isDecision ? ' bz-node--decision' : ''}${t.id === _bizSelId ? ' selected' : ''}" data-bz-node="${t.id}" style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
+  return `<div class="bz-node${isDecision ? ' bz-node--decision' : ''}${_bizSel.has(t.id) ? ' selected' : ''}" data-bz-node="${t.id}" style="left:${Math.round(t.x)}px; top:${Math.round(t.y)}px;${t.id === bizFrontId ? ' z-index:6;' : ''}">
     <span class="bz-socket in" data-bz-socket="in" data-bz-node-id="${t.id}" title="Input"></span>
     <span class="bz-socket out" data-bz-socket="out" data-bz-node-id="${t.id}" title="Output — drag onto another box to connect (draw more than one to branch)"></span>
     ${pin}
@@ -7882,11 +8588,134 @@ function bizNodeHtml(t) {
   </div>`;
 }
 
+// ---- Group frames (v0.30) ----
+// A frame is drawn from its members, not stored as a rectangle: expanded, it is their bounding box
+// plus padding, so it tracks them as they move and can never go stale. Collapsed, it becomes a
+// fixed box at the position it last occupied, and its sockets are the group's real boundary
+// crossings — the steps inside that still talk to something outside. That derivation is what
+// gives a collapsed group nth inputs and nth outputs without storing a single port.
+function bizGroupBoundary(b, gid) {
+  const mem = new Set(bizGroupMembers(b, gid).map(t => t.id));
+  const ins = [], outs = [];
+  b.edges.forEach(e => {
+    if (mem.has(e.to) && !mem.has(e.from) && !ins.includes(e.to)) ins.push(e.to);
+    if (mem.has(e.from) && !mem.has(e.to) && !outs.includes(e.from)) outs.push(e.from);
+  });
+  const lbl = id => bizTaskLabel(b.tasks.find(x => x.id === id));
+  return { in: ins.map(id => ({ id, name: lbl(id) })), out: outs.map(id => ({ id, name: lbl(id) })) };
+}
+// Members of a collapsed frame are not rendered at all (rather than hidden), so every bounds
+// calculation on the canvas keeps reading real, laid-out boxes.
+function bizHiddenTaskIds(b) {
+  const hidden = new Set();
+  (b.groups || []).forEach(g => { if (g.collapsed) bizGroupMembers(b, g.id).forEach(t => hidden.add(t.id)); });
+  return hidden;
+}
+function bizGroupHtml(b, g) {
+  const mem = bizGroupMembers(b, g.id);
+  const head = `<div class="bz-group-head">
+      <span class="bz-grp-grip" aria-hidden="true" title="Drag to move the whole group">⠿</span>
+      <button class="bz-grp-btn bz-grp-collapse" type="button" data-bz-group-collapse="${g.id}"
+        title="${g.collapsed ? 'Expand — show the steps again' : 'Collapse — fold these steps into one box whose sockets are the group\u2019s real connections'}">${g.collapsed ? '▸' : '▾'}</button>
+      <span class="bz-group-name" contenteditable="true" spellcheck="false" data-bz-group-name="${g.id}"
+        data-placeholder="Group name">${escapeHtml(g.name)}</span>
+      <span class="bz-grp-spacer"></span>
+      <span class="bz-grp-count">${mem.length} step${mem.length === 1 ? '' : 's'}</span>
+      <button class="bz-grp-btn" type="button" data-bz-group-color="${g.id}" title="Cycle the frame colour">◧</button>
+      <button class="bz-grp-btn" type="button" data-bz-group-ungroup="${g.id}" title="Ungroup — release the steps, keep them where they are">⤨</button>
+      <button class="bz-grp-btn bz-grp-del" type="button" data-bz-group-del="${g.id}" title="Delete the frame (the steps stay on the canvas)">×</button>
+    </div>`;
+  if (!g.collapsed) {
+    return `<div class="bz-group${_bizSelGroup === g.id ? ' selected' : ''}" data-bz-group="${g.id}" data-color="${g.color}">${head}</div>`;
+  }
+  const bd = bizGroupBoundary(b, g.id);
+  const row = (p, side) => `<div class="bz-port-row">
+      <span class="bz-socket ${side} is-port" data-bz-socket="${side}" data-bz-node-id="${p.id}" data-port="${p.id}"
+        title="${escapeHtml(`${side === 'in' ? 'Into' : 'Out of'} the group — ${p.name}`)}"></span>
+      <span class="bz-port-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
+    </div>`;
+  // The step count moves out of the header when collapsed — the title needs the room, and "how
+  // many are folded away in here" belongs with the boundary list anyway.
+  const body = `<div class="bz-grp-folded">${mem.length} step${mem.length === 1 ? '' : 's'} folded</div>` + (
+    (bd.in.length || bd.out.length)
+      ? `${bd.in.length ? `<div class="bz-port-h in">in<span class="bz-port-n">${bd.in.length}</span></div>${bd.in.map(p => row(p, 'in')).join('')}` : ''}
+         ${bd.out.length ? `<div class="bz-port-h out">out<span class="bz-port-n">${bd.out.length}</span></div>${bd.out.map(p => row(p, 'out')).join('')}` : ''}`
+      : `<div class="bz-grp-sealed">no connections cross this group</div>`);
+  return `<div class="bz-group collapsed${_bizSelGroup === g.id ? ' selected' : ''}" data-bz-group="${g.id}" data-color="${g.color}"
+    style="left:${Math.round(g.x)}px; top:${Math.round(g.y)}px;">${head}<div class="bz-grp-body">${body}</div></div>`;
+}
+// Size every expanded frame to its members after the DOM exists (card height is content-driven, so
+// this cannot be computed from the model). Rects are cached for the collapse-in-place hand-off and
+// for fit/minimap bounds; they are deliberately NOT written back to state, so a plain re-render
+// never counts as an edit.
+let _bizGroupRect = Object.create(null);
+const BZ_GROUP_PAD = 18;
+// skipIds: boxes currently being dragged. They are excluded from their frame's bounding box so the
+// frame stays put while a member is pulled out of it — otherwise the frame would chase the box and
+// it would be impossible to ever drop one outside its own group.
+function bizLayoutGroups(skipIds) {
+  const b = abc(), world = document.getElementById('bz-world');
+  const prev = _bizGroupRect;
+  _bizGroupRect = Object.create(null);
+  if (!world) return;
+  (b.groups || []).forEach(g => {
+    const frame = world.querySelector(`.bz-group[data-bz-group="${g.id}"]`);
+    if (!frame) return;
+    const hh = (frame.querySelector('.bz-group-head') || {}).offsetHeight || 26;
+    if (g.collapsed) {
+      _bizGroupRect[g.id] = { x: g.x, y: g.y, w: frame.offsetWidth, h: frame.offsetHeight };
+      return;
+    }
+    const els = bizGroupMembers(b, g.id)
+      .filter(t => !(skipIds && skipIds.has(t.id)))
+      .map(t => world.querySelector(`.bz-node[data-bz-node="${t.id}"]`)).filter(Boolean);
+    if (!els.length) {
+      const r = prev[g.id] || { x: g.x, y: g.y, w: BZ_NODE_W, h: hh + 46 };
+      frame.style.left = Math.round(r.x) + 'px'; frame.style.top = Math.round(r.y) + 'px';
+      frame.style.width = Math.round(r.w) + 'px'; frame.style.height = Math.round(r.h) + 'px';
+      _bizGroupRect[g.id] = r;
+      return;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    els.forEach(el => {
+      minX = Math.min(minX, el.offsetLeft); minY = Math.min(minY, el.offsetTop);
+      maxX = Math.max(maxX, el.offsetLeft + el.offsetWidth); maxY = Math.max(maxY, el.offsetTop + el.offsetHeight);
+    });
+    const r = { x: Math.round(minX - BZ_GROUP_PAD), y: Math.round(minY - BZ_GROUP_PAD - hh),
+                w: Math.round(maxX - minX + BZ_GROUP_PAD * 2), h: Math.round(maxY - minY + BZ_GROUP_PAD * 2 + hh) };
+    frame.style.left = r.x + 'px'; frame.style.top = r.y + 'px';
+    frame.style.width = r.w + 'px'; frame.style.height = r.h + 'px';
+    _bizGroupRect[g.id] = r;
+  });
+}
+// The frame a point falls inside, used when a dragged step is dropped: land it in a frame and it
+// joins that group; drop it on bare canvas and it leaves the one it was in.
+function bizGroupAt(wx, wy, exceptId) {
+  const b = abc();
+  let hit = null;
+  (b.groups || []).forEach(g => {
+    if (g.id === exceptId || g.collapsed) return;
+    const r = _bizGroupRect[g.id];
+    if (!r) return;
+    if (wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h) hit = g;
+  });
+  return hit;
+}
+
 function bizTableHtml() {
   const b = abc();
   const head = `<th class="bz-th-task">Task</th>` + COLS.map(k =>
     `<th title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}</th>`).join('');
   const rows = b.tasks.length ? b.tasks.map(t => {
+    // A nested-flow box holds no RACI of its own — its roles live in the flow it references, so the
+    // row points there instead of showing seven permanently empty cells.
+    if (isSubflow(t)) {
+      const ref = bizCaseById(t.refId);
+      return `<tr class="bz-trow-sub"><th class="bz-trow" title="${escapeHtml(bizTaskLabel(t))}">⧉ ${escapeHtml(bizTaskLabel(t))}</th>` +
+        `<td class="bz-tsub" colspan="${COLS.length}">${ref
+          ? `roles live in <button type="button" class="bz-tsub-link" data-gal-open="${ref.id}">${escapeHtml(ref.name || 'Untitled')}</button>`
+          : 'nested flow is missing'}</td></tr>`;
+    }
     const cells = COLS.map(k =>
       `<td class="bz-tcell" data-bz-cell="${t.id}" data-col="${k}">${bizStepChips(t, k)}</td>`).join('');
     return `<tr><th class="bz-trow" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}</th>${cells}</tr>`;
@@ -7917,12 +8746,12 @@ function bizTopoOrder(b) {
 function bizFlowTableHtml() {
   const b = abc();
   if (!b.tasks.length) return '';
-  const nameOf = id => { const t = b.tasks.find(x => x.id === id); return t ? (t.name || 'Untitled task') : '—'; };
+  const nameOf = id => bizTaskLabel(b.tasks.find(x => x.id === id));
   let body = '';
   bizTopoOrder(b).forEach(t => {
     const outs = b.edges.filter(e => e.from === t.id);
     const decision = outs.length >= 2;
-    const stepCell = `<th class="bz-flow-step${decision ? ' is-decision' : ''}" rowspan="${Math.max(1, outs.length)}" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}${decision ? `<span class="bz-flow-fork" title="Decision point — ${outs.length} paths">⑂ decision</span>` : ''}</th>`;
+    const stepCell = `<th class="bz-flow-step${decision ? ' is-decision' : ''}" rowspan="${Math.max(1, outs.length)}" title="${escapeHtml(bizTaskLabel(t))}">${isSubflow(t) ? '⧉ ' : ''}${escapeHtml(bizTaskLabel(t))}${decision ? `<span class="bz-flow-fork" title="Decision point — ${outs.length} paths">⑂ decision</span>` : ''}</th>`;
     if (!outs.length) {
       body += `<tr>${stepCell}<td class="bz-flow-cond-cell"><span class="bz-flow-end">— end —</span></td><td class="bz-flow-hand">—</td><td class="bz-flow-next">—</td></tr>`;
     } else {
@@ -7990,19 +8819,26 @@ function renderBizcase() {
   _bizAnchorCtx = bizAnchorCtx(b);          // cascade context for chips/parties, before card HTML
   recomputeViolations();                    // flow rules feed the card pins built just below
   renderViolationsUI();
-  const nodes = b.tasks.map(bizNodeHtml).join('');
+  // Steps inside a collapsed frame are not rendered at all, so every bounds calculation that
+  // follows keeps reading real, laid-out boxes (see bizHiddenTaskIds).
+  const hidden = bizHiddenTaskIds(b);
+  const nodes = b.tasks.filter(t => !hidden.has(t.id)).map(bizNodeHtml).join('');
+  const frames = (b.groups || []).map(g => bizGroupHtml(b, g)).join('');
   const tablePane = b.showTable ? `<aside class="bz-table-pane" id="bz-table">${bizTableHtml()}</aside>` : '';
+  const galleryPane = state.bizGallery ? bizGalleryHtml() : '';
   const empty = b.tasks.length ? '' :
-    `<div class="bz-empty">No tasks yet.<br>Click <b>+ Add task</b> to drop the first step onto the canvas.</div>`;
+    `<div class="bz-empty">No tasks yet.<br>Click <b>+ Add task</b> to drop the first step onto the canvas,<br>or drag a flow in from the gallery to nest it.</div>`;
   main.innerHTML = `
     <div class="bz-wrap">
       <div class="bz-toolbar">${bizSelectorHtml()}</div>
       ${bizCharterHtml(b)}
       <div class="bz-body">
+        ${galleryPane}
         <div class="bz-canvas" id="bz-canvas">
           ${empty}
           <div class="bz-world" id="bz-world">
             <svg class="bz-edges" id="bz-edges" xmlns="http://www.w3.org/2000/svg"></svg>
+            ${frames}
             ${nodes}
           </div>
           <div id="bz-zoom-ctl" class="zoom-ctl">
@@ -8016,6 +8852,7 @@ function renderBizcase() {
         ${tablePane}
       </div>
     </div>`;
+  bizLayoutGroups();   // frames size themselves from the boxes that were just laid out
   bizApplyTransform();
   drawBizEdges();
 }
@@ -8049,7 +8886,9 @@ function bizZoomBy(factor) { bizZoomTo((abc().view.zoom || 1) * factor); }
 function bizFit() {
   const b = abc(), v = b.view;
   const cv = document.getElementById('bz-canvas'), world = document.getElementById('bz-world');
-  const nodes = world ? [...world.querySelectorAll('.bz-node')] : [];
+  // Frames count as content: a collapsed group is the only thing standing in for its steps, and an
+  // expanded one extends past its members by the header and padding.
+  const nodes = world ? [...world.querySelectorAll('.bz-node, .bz-group')] : [];
   if (!cv || !nodes.length) { v.zoom = 1; v.panX = 40; v.panY = 40; bizApplyTransform(); bizZoomLabel(); saveState(); return; }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   nodes.forEach(n => {
@@ -8071,51 +8910,99 @@ function bizEdgePath(x1, y1, x2, y2) {
   return `M ${x1} ${y1} C ${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`;
 }
 
+// Which socket an edge endpoint actually attaches to. Resolution order, and each step exists for
+// a reason the model deliberately does NOT store:
+//   1. the step sits inside a COLLAPSED frame  → that frame's socket for this step, because the
+//      step itself is not on the canvas right now. The edge data is untouched; only where it
+//      lands moves. This is what gives a collapsed group one mating point per boundary crossing.
+//   2. the step is a NESTED-FLOW box           → the socket for e.fromPort / e.toPort, falling
+//      back to the box's first exposed port when that mating point has since been hidden.
+//   3. anything else                           → the box's single in / out socket.
+// Returns null when there is no drawable socket — most often both ends inside one collapsed
+// frame, an internal handoff that is correctly invisible.
+function bizEndpointSel(b, taskId, port, side) {
+  const t = b.tasks.find(x => x.id === taskId);
+  if (!t) return null;
+  const g = t.groupId ? bizGroupById(b, t.groupId) : null;
+  if (g && g.collapsed) return `.bz-group[data-bz-group="${g.id}"] .bz-socket.${side}[data-port="${taskId}"]`;
+  if (isSubflow(t)) {
+    const open = subflowOpenPorts(t, side === 'out' ? 'out' : 'in');
+    if (!open.length) return null;
+    const p = (port && open.some(o => o.id === port)) ? port : open[0].id;
+    return `.bz-node[data-bz-node="${taskId}"] .bz-socket.${side}[data-port="${p}"]`;
+  }
+  return `.bz-node[data-bz-node="${taskId}"] > .bz-socket.${side}:not([data-port])`;
+}
+
 // Redraw all edges in WORLD coordinates (the SVG lives inside #bz-world, so the single pan/zoom
-// transform scales noodles + boxes together). Socket points read live offsets, so a mid-drag box
+// transform scales noodles + boxes together). Socket points are measured live, so a mid-drag box
 // keeps its edges attached. Pass a {x1,y1,x2,y2} rubber band while connecting.
 function drawBizEdges(rubber) {
   const world = document.getElementById('bz-world');
   const svg = document.getElementById('bz-edges');
   if (!world || !svg) return;
   const b = abc();
-  const nodeEl = id => world.querySelector(`.bz-node[data-bz-node="${id}"]`);
-  const sock = (el, side) => ({ x: el.offsetLeft + (side === 'out' ? el.offsetWidth : 0), y: el.offsetTop + el.offsetHeight / 2 });
+  // Sockets can now be nested several boxes deep (a port row inside a card inside a frame), so
+  // measure them instead of walking offsets: one rect each, converted out of the world's
+  // translate(pan) scale(zoom) by the world's own rect. Correct under any nesting or transform.
+  const z = b.view.zoom || 1;
+  const wr = world.getBoundingClientRect();
+  const pointAt = sel => {
+    if (!sel) return null;
+    const el = world.querySelector(sel);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: (r.left + r.width / 2 - wr.left) / z, y: (r.top + r.height / 2 - wr.top) / z };
+  };
   let maxX = 800, maxY = 600;
-  // Size the SVG to cover every node's live footprint. A card grows taller when responsible parties are
-  // shown, so read the real height (offsetHeight + margin) rather than a flat 260, keeping edges unclipped.
-  b.tasks.forEach(t => {
-    maxX = Math.max(maxX, t.x + BZ_NODE_W + 120);
-    const el = nodeEl(t.id);
-    const h = Math.max(260, (el && el.offsetHeight ? el.offsetHeight + 60 : 260));
-    maxY = Math.max(maxY, t.y + h);
+  // Size the SVG to cover every laid-out box's live footprint — cards grow downward as parties and
+  // ports are added, and frames extend past their members, so read the real geometry.
+  [...world.querySelectorAll('.bz-node, .bz-group')].forEach(el => {
+    maxX = Math.max(maxX, el.offsetLeft + el.offsetWidth + 120);
+    maxY = Math.max(maxY, el.offsetTop + el.offsetHeight + 60);
   });
   svg.setAttribute('width', maxX); svg.setAttribute('height', maxY);
-  const BRANCH_COLOR = '#fcc419'; // amber (matches --c) for decision branches
+  // Noodle colours come from the live theme rather than baked literals, so they follow Light and
+  // High Contrast like the rest of the canvas.
+  const css = getComputedStyle(document.body);
+  const tok = (name, fallback) => (css.getPropertyValue(name) || '').trim() || fallback;
+  const C_PLAIN = tok('--accent', ACCENT);
+  const C_BRANCH = tok('--c', '#fcc419');   // amber — a decision's outgoing paths
+  const C_NEST = tok('--p', '#22b8cf');     // cyan  — anything entering or leaving a nested flow
   let inner = `<defs>` +
-    `<marker id="bz-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${ACCENT}"/></marker>` +
-    `<marker id="bz-arrow-b" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${BRANCH_COLOR}"/></marker>` +
+    `<marker id="bz-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${C_PLAIN}"/></marker>` +
+    `<marker id="bz-arrow-b" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${C_BRANCH}"/></marker>` +
+    `<marker id="bz-arrow-n" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${C_NEST}"/></marker>` +
     `</defs>`;
   // A source with 2+ outgoing edges is a decision/branch — tint those noodles so paths read clearly.
   const branchSrc = new Set();
   const fromCount = {};
   b.edges.forEach(e => { fromCount[e.from] = (fromCount[e.from] || 0) + 1; });
   Object.keys(fromCount).forEach(k => { if (fromCount[k] >= 2) branchSrc.add(k); });
+  const byId = new Map(b.tasks.map(x => [x.id, x]));
   b.edges.forEach(e => {
-    const a = nodeEl(e.from), c = nodeEl(e.to);
-    if (!a || !c) return;
-    const p1 = sock(a, 'out'), p2 = sock(c, 'in');
+    const from = byId.get(e.from), to = byId.get(e.to);
+    if (!from || !to) return;
+    // Both ends folded into the same collapsed frame → an internal handoff, nothing to draw.
+    if (from.groupId && from.groupId === to.groupId) {
+      const g = bizGroupById(b, from.groupId);
+      if (g && g.collapsed) return;
+    }
+    const p1 = pointAt(bizEndpointSel(b, e.from, e.fromPort, 'out'));
+    const p2 = pointAt(bizEndpointSel(b, e.to, e.toPort, 'in'));
+    if (!p1 || !p2) return;
+    const nested = isSubflow(from) || isSubflow(to);
     const branch = branchSrc.has(e.from);
-    const stroke = branch ? BRANCH_COLOR : ACCENT;
-    const marker = branch ? 'bz-arrow-b' : 'bz-arrow';
-    inner += `<path class="bz-edge" data-bz-edge="${e.id}" d="${bizEdgePath(p1.x, p1.y, p2.x, p2.y)}" fill="none" stroke="${stroke}" stroke-width="2.5" marker-end="url(#${marker})"/>`;
+    const stroke = nested ? C_NEST : branch ? C_BRANCH : C_PLAIN;
+    const marker = nested ? 'bz-arrow-n' : branch ? 'bz-arrow-b' : 'bz-arrow';
+    inner += `<path class="bz-edge${nested ? ' is-nested' : ''}" data-bz-edge="${e.id}" d="${bizEdgePath(p1.x, p1.y, p2.x, p2.y)}" fill="none" stroke="${stroke}" stroke-width="2.5" marker-end="url(#${marker})"/>`;
     if (e.label) {
       const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
       inner += `<text class="bz-edge-label" x="${mx}" y="${my - 4}" text-anchor="middle">${escapeHtml(e.label)}</text>`;
     }
   });
   if (rubber) {
-    inner += `<path class="bz-rubber" d="${bizEdgePath(rubber.x1, rubber.y1, rubber.x2, rubber.y2)}" fill="none" stroke="${ACCENT}" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>`;
+    inner += `<path class="bz-rubber" d="${bizEdgePath(rubber.x1, rubber.y1, rubber.x2, rubber.y2)}" fill="none" stroke="${C_PLAIN}" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>`;
   }
   svg.innerHTML = inner;
   drawBizMinimap();
@@ -8133,8 +9020,9 @@ function drawBizMinimap() {
   if (!mm || !cv || !world || state.viewMode !== 'bizcase') return;
   const b = abc(), v = b.view, z = v.zoom || 1;
   const nodes = [...world.querySelectorAll('.bz-node')];
-  mm.style.display = nodes.length ? '' : 'none';
-  if (!nodes.length) return;
+  const frames = [...world.querySelectorAll('.bz-group')];
+  mm.style.display = (nodes.length || frames.length) ? '' : 'none';
+  if (!nodes.length && !frames.length) return;
   const MW = 200, MH = 140;
   const dpr = window.devicePixelRatio || 1;
   if (mm.width !== MW * dpr) { mm.width = MW * dpr; mm.height = MH * dpr; }
@@ -8145,6 +9033,16 @@ function drawBizMinimap() {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const boxes = nodes.map(n => {
     const r = { id: n.dataset.bzNode, x: n.offsetLeft, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight };
+    minX = Math.min(minX, r.x); minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.w); maxY = Math.max(maxY, r.y + r.h);
+    return r;
+  });
+  // Frames are part of the picture: they extend past their members, and a collapsed one is all
+  // there is to show for the steps inside it.
+  const frameBoxes = frames.map(n => {
+    const r = { id: n.dataset.bzGroup, x: n.offsetLeft, y: n.offsetTop, w: n.offsetWidth, h: n.offsetHeight,
+                collapsed: n.classList.contains('collapsed'),
+                color: (getComputedStyle(n).getPropertyValue('--bzg-color') || '').trim() };
     minX = Math.min(minX, r.x); minY = Math.min(minY, r.y);
     maxX = Math.max(maxX, r.x + r.w); maxY = Math.max(maxY, r.y + r.h);
     return r;
@@ -8161,8 +9059,22 @@ function drawBizMinimap() {
   mm._map = { s, ox, oy };                        // stashed for bizMiniNavigate's inverse mapping
   const css = getComputedStyle(document.body);
   const ACC = (css.getPropertyValue('--accent') || '#51cf66').trim();
+  // frames first, underneath everything — a tinted wash plus outline, same reading as the canvas
+  frameBoxes.forEach(r => {
+    ctx.globalAlpha = 0.16; ctx.fillStyle = r.color || ACC;
+    ctx.fillRect(r.x * s + ox, r.y * s + oy, Math.max(4, r.w * s), Math.max(3, r.h * s));
+    ctx.globalAlpha = 0.7; ctx.lineWidth = 1; ctx.strokeStyle = r.color || ACC;
+    ctx.strokeRect(r.x * s + ox, r.y * s + oy, Math.max(4, r.w * s), Math.max(3, r.h * s));
+  });
   // edges — straight hairlines between socket sides
   const byId = {}; boxes.forEach(r => { byId[r.id] = r; });
+  // A step folded inside a collapsed frame has no box of its own, so its edges terminate on the
+  // frame — the same substitution drawBizEdges makes, at map scale.
+  (b.groups || []).forEach(g => {
+    if (!g.collapsed) return;
+    const fr = frameBoxes.find(f => f.id === g.id);
+    if (fr) bizGroupMembers(b, g.id).forEach(t => { byId[t.id] = fr; });
+  });
   ctx.strokeStyle = (css.getPropertyValue('--text-dim') || '#888').trim();
   ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
   b.edges.forEach(ed => {
@@ -8179,13 +9091,14 @@ function drawBizMinimap() {
     doing: (css.getPropertyValue('--warn') || '#fcc419').trim(),
     done: ACC
   };
+  const NEST_COLOR = (css.getPropertyValue('--p') || '#22b8cf').trim();
   boxes.forEach(r => {
     const t = b.tasks.find(x => x.id === r.id);
     const st = (t && t.status) || 'todo';
     ctx.globalAlpha = st === 'todo' ? 0.55 : 0.9;
-    ctx.fillStyle = ST_COLOR[st] || ST_COLOR.todo;
+    ctx.fillStyle = isSubflow(t) ? NEST_COLOR : (ST_COLOR[st] || ST_COLOR.todo);
     ctx.fillRect(r.x * s + ox, r.y * s + oy, Math.max(4, r.w * s), Math.max(3, r.h * s));
-    if (r.id === _bizSelId) {
+    if (_bizSel.has(r.id)) {
       ctx.globalAlpha = 1; ctx.lineWidth = 1.5; ctx.strokeStyle = ACC;
       ctx.strokeRect(r.x * s + ox - 1.5, r.y * s + oy - 1.5, Math.max(4, r.w * s) + 3, Math.max(3, r.h * s) + 3);
     }
@@ -8223,7 +9136,7 @@ function bizCutTask(id) {
   const b = abc();
   b.tasks = b.tasks.filter(t => t.id !== id);
   b.edges = b.edges.filter(ed => ed.from !== id && ed.to !== id);
-  if (_bizSelId === id) _bizSelId = null;
+  _bizSel.delete(id);
   saveState(); renderBizcase();
   showToast('Step cut — Ctrl+V to paste', 'suggest');
 }
@@ -8237,7 +9150,7 @@ function bizPasteTask() {
   t.x = Math.round((_bizClip.x || 0) + 28 * _bizPasteN);
   t.y = Math.round((_bizClip.y || 0) + 28 * _bizPasteN);
   b.tasks.push(t);
-  _bizSelId = t.id;
+  _bizSel.clear(); _bizSel.add(t.id);
   saveState(); renderBizcase();
 }
 
@@ -8380,6 +9293,146 @@ function openBizEdgePopover(edgeId, clientX, clientY) {
   openPopover = pop;
 }
 
+// ---- nested flows: embed, open, re-point, expose mating points (v0.30) ----
+// Nesting stores a REFERENCE, never a copy: the referenced flow keeps its own identity in the
+// gallery, and an edit over there shows up in every host that nests it.
+function bizEmbedFlow(refId, wx, wy) {
+  const host = abc(), ref = bizCaseById(refId);
+  if (!ref) { showToast('That flow no longer exists.', 'error'); return; }
+  if (refId === host.id) { showToast('A flow cannot contain itself.', 'error'); return; }
+  if (bizEmbedWouldCycle(host.id, refId)) {
+    showToast(`"${ref.name || 'Untitled'}" already contains this flow somewhere inside it — nesting it here would close a loop.`, 'error');
+    return;
+  }
+  const t = makeBizSubflow(refId);
+  t.x = Math.round(wx); t.y = Math.round(wy);
+  const g = bizGroupAt(t.x + BZ_NODE_W / 2, t.y + 24);
+  if (g) t.groupId = g.id;                 // dropped inside a frame → joins that group
+  host.tasks.push(t);
+  _bizSel.clear(); _bizSel.add(t.id);
+  saveState(); renderBizcase();
+  showToast(`"${ref.name || 'Untitled'}" nested — every entry and exit point is exposed as its own mating point. Untick the ones this host doesn't use.`);
+}
+// Descend into a nested flow, remembering the way back. The trail is runtime-only: it describes
+// this session's navigation, not the document.
+let _bizNavStack = [];
+function bizSwitchCase(id, keepTrail) {
+  const b = bizCaseById(id); if (!b) return;
+  if (!keepTrail) _bizNavStack.length = 0;
+  state.activeBizCaseId = b.id;
+  _bizSel.clear(); _bizSelGroup = null;
+  saveState(); renderBizcase();
+}
+function bizOpenSubflow(taskId) {
+  const t = bizTaskById(taskId);
+  if (!isSubflow(t) || !bizCaseById(t.refId)) return;
+  _bizNavStack.push(state.activeBizCaseId);
+  bizSwitchCase(t.refId, true);
+}
+function bizNavBack() {
+  const id = _bizNavStack.pop();
+  if (!id || !bizCaseById(id)) { renderBizcase(); return; }
+  bizSwitchCase(id, true);
+}
+// Expose / hide one mating point. The stored value is the SELECTION; "all of them" is stored as
+// empty so the box keeps following the referenced flow when a new entry or exit appears there.
+function bizTogglePort(taskId, side, portId) {
+  const t = bizTaskById(taskId);
+  if (!isSubflow(t)) return;
+  const P = subflowPorts(t);
+  if (!P.ref) return;
+  const all = P[side].map(p => p.id);
+  const on = new Set(P[side].filter(p => p.on).map(p => p.id));
+  if (on.has(portId)) on.delete(portId); else on.add(portId);
+  const next = all.filter(x => on.has(x));
+  if (!next.length) { showToast('A nested flow needs at least one mating point on each side.', 'error'); return; }
+  t.ports[side] = next.length === all.length ? [] : next;
+  // A handoff wired to a mating point that has just been hidden has nowhere to land, so it goes
+  // with it rather than silently re-routing to a different port.
+  const b = abc(), before = b.edges.length;
+  const idKey = side === 'in' ? 'to' : 'from', portKey = side === 'in' ? 'toPort' : 'fromPort';
+  const open = new Set(next);
+  b.edges = b.edges.filter(e => !(e[idKey] === taskId && e[portKey] && !open.has(e[portKey])));
+  saveState(); renderBizcase();
+  if (b.edges.length < before) showToast(`${before - b.edges.length} handoff${before - b.edges.length === 1 ? '' : 's'} removed — that mating point is no longer exposed.`, 'suggest');
+}
+// Point a nested-flow box at a different case (also the repair path for a broken reference).
+function openSubflowPickerPopover(taskId, anchorEl) {
+  closePopover();
+  const host = abc();
+  const cands = state.bizCases.filter(b => b.id !== host.id && !bizEmbedWouldCycle(host.id, b.id));
+  const pop = document.createElement('div');
+  pop.className = 'org-popover flow-popover';
+  pop.innerHTML = `<div class="op-group">Point this box at…</div>` + (cands.length
+    ? cands.map(b => `<button class="op-item" data-sub-ref="${b.id}">⧉ ${escapeHtml(b.name || 'Untitled')} <span class="fp-meta">${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'}</span></button>`).join('')
+    : `<div class="op-empty">No other flow can be nested here without closing a loop.</div>`);
+  document.body.appendChild(pop);
+  placePopover(pop, anchorEl);
+  openPopover = pop;
+  pop.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-sub-ref]');
+    if (!btn) return;
+    ev.stopPropagation(); closePopover();
+    const tk = bizTaskById(taskId);
+    if (!tk) return;
+    tk.refId = btn.dataset.subRef;
+    tk.ports = { in: [], out: [] };
+    // The old mating points named steps in a different flow, so edges that used them are dropped.
+    const b = abc();
+    b.edges = b.edges.filter(e => !((e.from === taskId && e.fromPort) || (e.to === taskId && e.toPort)));
+    saveState(); renderBizcase();
+  });
+}
+
+// ---- groups: visual / conceptual / functional framing of steps (v0.30) ----
+function bizGroupSelection() {
+  const b = abc();
+  const sel = [..._bizSel].map(id => bizTaskById(id)).filter(Boolean);
+  if (!sel.length) { showToast('Select steps first — click one, then shift-click others, or shift-drag a box around them.', 'suggest'); return; }
+  b.groups = b.groups || [];
+  const g = makeBizGroup('Group ' + (b.groups.length + 1));
+  g.color = BZ_GROUP_COLORS[b.groups.length % BZ_GROUP_COLORS.length];
+  g.x = Math.round(Math.min(...sel.map(x => x.x)) - BZ_GROUP_PAD);
+  g.y = Math.round(Math.min(...sel.map(x => x.y)) - BZ_GROUP_PAD - 26);
+  b.groups.push(g);
+  // One frame per step: a step joins the new group and leaves whatever it was in. Frames do not
+  // nest — a tree of frames would need its own layout pass and gives nothing a second flat frame
+  // (or a nested FLOW, which is the other half of this feature) doesn't already give.
+  sel.forEach(x => { x.groupId = g.id; });
+  _bizSelGroup = g.id;
+  saveState(); renderBizcase();
+  showToast(`Grouped ${sel.length} step${sel.length === 1 ? '' : 's'} — name the frame, or collapse it to fold them into one box.`);
+}
+function bizUngroup(gid) {
+  const b = abc();
+  bizGroupMembers(b, gid).forEach(t => { t.groupId = null; });
+  b.groups = (b.groups || []).filter(g => g.id !== gid);
+  if (_bizSelGroup === gid) _bizSelGroup = null;
+  saveState(); renderBizcase();
+  showToast('Ungrouped — the steps stay exactly where they are.', 'suggest');
+}
+function bizDeleteGroup(gid) {
+  const b = abc(), g = bizGroupById(b, gid);
+  if (!g) return;
+  const n = bizGroupMembers(b, gid).length;
+  if (n && !confirm(`Delete the frame "${g.name || 'Group'}"? Its ${n} step${n === 1 ? '' : 's'} stay${n === 1 ? 's' : ''} on the canvas.`)) return;
+  bizUngroup(gid);
+}
+function bizToggleGroupCollapse(gid) {
+  const b = abc(), g = bizGroupById(b, gid);
+  if (!g) return;
+  // Fold up exactly where the frame currently sits, so the collapsed box replaces it in place.
+  if (!g.collapsed) { const r = _bizGroupRect[gid]; if (r) { g.x = r.x; g.y = r.y; } }
+  g.collapsed = !g.collapsed;
+  saveState(); renderBizcase();
+}
+function bizCycleGroupColor(gid) {
+  const g = bizGroupById(abc(), gid);
+  if (!g) return;
+  g.color = BZ_GROUP_COLORS[(BZ_GROUP_COLORS.indexOf(g.color) + 1) % BZ_GROUP_COLORS.length];
+  saveState(); renderBizcase();
+}
+
 // ---- bizcase mutations ----
 function bizAddTask() {
   const b = abc();
@@ -8392,6 +9445,8 @@ function bizAddTask() {
   }
   const t = makeBizTask('New task');
   t.x = wx; t.y = wy;
+  const g = bizGroupAt(wx + BZ_NODE_W / 2, wy + 24);
+  if (g) t.groupId = g.id;                 // dropped inside a frame → joins that group
   b.tasks.push(t);
   saveState(); renderBizcase();
   const el = document.querySelector(`.bz-node[data-bz-node="${t.id}"] .bz-node-name`);
@@ -8400,7 +9455,11 @@ function bizAddTask() {
 function bizDeleteTask(id) {
   const b = abc();
   const t = bizTaskById(id);
-  if (!confirm(`Delete task "${(t && t.name) || 'Untitled'}"? This also removes its handoffs.`)) return;
+  // Removing a nested-flow box removes the reference only — the flow itself stays in the gallery.
+  const msg = isSubflow(t)
+    ? `Remove the nested "${bizTaskLabel(t)}" box? Its handoffs go with it; the flow itself stays in the gallery.`
+    : `Delete task "${(t && t.name) || 'Untitled'}"? This also removes its handoffs.`;
+  if (!confirm(msg)) return;
   if (bizPartyTarget && bizPartyTarget.taskId === id) closeBizPartyPanel();
   b.tasks = b.tasks.filter(x => x.id !== id);
   b.edges = b.edges.filter(x => x.from !== id && x.to !== id);
@@ -8409,7 +9468,9 @@ function bizDeleteTask(id) {
 function bizAddCase() {
   const c = makeBizCase('Business case ' + (state.bizCases.length + 1));
   state.bizCases.push(c);
+  _bizNavStack.length = 0;
   state.activeBizCaseId = c.id;
+  _bizSel.clear(); _bizSelGroup = null;
   saveState(); renderBizcase();
 }
 function bizRenameCase() {
@@ -8422,10 +9483,22 @@ function bizRenameCase() {
 function bizDeleteCase() {
   if (state.bizCases.length <= 1) { showToast('Keep at least one business case.', 'error'); return; }
   const b = abc();
-  if (!confirm(`Delete business case "${b.name}" and all its tasks?`)) return;
+  // Deleting a flow that other flows nest leaves broken boxes behind, so say so before it happens
+  // rather than letting the hosts discover it.
+  const hosts = bizHostsOf(b.id);
+  const warn = hosts.length
+    ? `\n\n${hosts.length} other flow${hosts.length === 1 ? '' : 's'} nest${hosts.length === 1 ? 's' : ''} this one (${hosts.map(h => h.name || 'Untitled').join(', ')}). Those boxes will be left pointing at a missing flow.`
+    : '';
+  if (!confirm(`Delete business case "${b.name}" and all its tasks?${warn}`)) return;
   closeBizPartyPanel();
   state.bizCases = state.bizCases.filter(x => x.id !== b.id);
   state.activeBizCaseId = state.bizCases[0].id;
+  _bizNavStack = _bizNavStack.filter(id => id !== b.id);
+  _bizSel.clear(); _bizSelGroup = null;
+  saveState(); renderBizcase();
+}
+function bizToggleGallery() {
+  state.bizGallery = !state.bizGallery;
   saveState(); renderBizcase();
 }
 function bizToggleTable() {
@@ -8435,38 +9508,112 @@ function bizToggleTable() {
 
 // ---- bizcase canvas interactions (each guarded to viewMode === 'bizcase') ----
 let bizDrag = null, bizConnect = null, bizPan = null, bizDragSuppressClick = false, bizFrontId = null;
-// Selected step (ring + Ctrl+C/X target), internal step clipboard, and minimap-drag flag.
-let _bizSelId = null, _bizClip = null, _bizPasteN = 0, _bizMiniDrag = false;
-// Select a step without a full re-render (renderBizcase also honors _bizSelId when it rebuilds).
-function bizSelect(id) {
-  _bizSelId = id || null;
+// Frame drag (by its header) and shift-drag marquee — both live alongside the box drag above.
+let bizGroupDrag = null, bizMarquee = null;
+// Selection is a SET since v0.30 (grouping needs more than one box at a time). The last box added
+// is the "primary": the Ctrl+C / Ctrl+X target, matching the single-selection behaviour it replaced.
+let _bizSel = new Set(), _bizSelGroup = null, _bizClip = null, _bizPasteN = 0, _bizMiniDrag = false;
+function bizPrimarySel() { let last = null; _bizSel.forEach(id => { last = id; }); return last; }
+// Select without a full re-render (renderBizcase also honors _bizSel when it rebuilds).
+// additive (shift-click) toggles one box in or out; otherwise the selection is replaced.
+function bizSelect(id, additive) {
+  if (!additive) _bizSel.clear();
+  if (id) {
+    if (additive && _bizSel.has(id)) _bizSel.delete(id);
+    else { _bizSel.delete(id); _bizSel.add(id); }   // re-add so it becomes the primary
+  }
+  if (!additive) _bizSelGroup = null;
+  bizSyncSelectionUI();
+}
+function bizSyncSelectionUI() {
   document.querySelectorAll('.bz-node.selected').forEach(n => n.classList.remove('selected'));
-  if (_bizSelId) {
-    const el = document.querySelector(`.bz-node[data-bz-node="${_bizSelId}"]`);
+  _bizSel.forEach(id => {
+    const el = document.querySelector(`.bz-node[data-bz-node="${id}"]`);
     if (el) el.classList.add('selected');
+  });
+  document.querySelectorAll('.bz-group.selected').forEach(n => n.classList.remove('selected'));
+  if (_bizSelGroup) {
+    const gel = document.querySelector(`.bz-group[data-bz-group="${_bizSelGroup}"]`);
+    if (gel) gel.classList.add('selected');
+  }
+  // The Group button's label carries the count, so it has to follow the selection live.
+  const btn = document.getElementById('bz-group');
+  if (btn) {
+    const n = _bizSel.size;
+    btn.disabled = !n;
+    btn.textContent = '⊟ Group' + (n ? ` (${n})` : '');
+    btn.title = n ? `Wrap the ${n} selected step${n === 1 ? '' : 's'} in a labelled frame`
+      : 'Select steps first — click one, then shift-click others, or shift-drag a box around them';
   }
   drawBizMinimap();
 }
+// A socket's centre in world coordinates — the same measurement drawBizEdges makes, reused so a
+// connection starts exactly where its noodle will be drawn.
+function bzSocketWorld(el) {
+  const world = document.getElementById('bz-world');
+  if (!world || !el) return { x: 0, y: 0 };
+  const z = abc().view.zoom || 1, wr = world.getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { x: (r.left + r.width / 2 - wr.left) / z, y: (r.top + r.height / 2 - wr.top) / z };
+}
+// Snapshot the boxes a drag will move: the whole selection when the grabbed box is part of it,
+// otherwise just that box. Each item remembers its own start position so the delta applies cleanly.
+function bizDragItems(ids) {
+  return ids.map(id => {
+    const t = bizTaskById(id);
+    const el = document.querySelector(`.bz-node[data-bz-node="${id}"]`);
+    return t ? { id, ox: t.x, oy: t.y, el } : null;
+  }).filter(Boolean);
+}
 document.addEventListener('mousedown', e => {
   if (state.viewMode !== 'bizcase') return;
+  // A drag that ends over a DIFFERENT element than it started on produces no trailing click, so
+  // the suppression flag set at mouseup would otherwise survive and eat the next real click —
+  // on a port toggle, a nested flow’s name, a frame button. A click always lands before the
+  // next mousedown, so anything still set here was never consumed and is stale.
+  bizDragSuppressClick = false;
   const outSock = e.target.closest('.bz-socket.out');
   if (outSock) {                                   // begin a connection from an output socket
     e.preventDefault(); e.stopPropagation();
     const id = outSock.dataset.bzNodeId;
-    const el = document.querySelector(`.bz-node[data-bz-node="${id}"]`);
-    if (el) { bizConnect = { fromId: id, x1: el.offsetLeft + el.offsetWidth, y1: el.offsetTop + el.offsetHeight / 2 }; document.body.classList.add('bz-connecting'); }
+    // On a nested-flow box the socket names which exit point it is; on a collapsed frame's socket
+    // data-port names the member step, which is a plain box with one implicit port — hence the
+    // isSubflow test rather than trusting data-port alone.
+    const owner = bizTaskById(id);
+    const fromPort = (isSubflow(owner) && outSock.dataset.port) ? outSock.dataset.port : null;
+    const p = bzSocketWorld(outSock);
+    bizConnect = { fromId: id, fromPort, x1: p.x, y1: p.y };
+    document.body.classList.add('bz-connecting');
     return;
   }
   if (e.target.closest('.bz-socket')) return;      // input socket — not a drag origin
   if (e.target.closest('.bz-node-del')) return;    // let the click handler delete
   if (e.target.closest('.bz-node-copy')) return;   // let the click handler copy
+  if (e.target.closest('.bz-sub-open')) return;    // open the nested flow — click handler
+  if (e.target.closest('.bz-port-tgl')) return;    // expose/hide a mating point — click handler
+  if (e.target.closest('.bz-sub-repoint') || e.target.closest('.bz-sub-ref-name')) return;
+  if (e.target.closest('.bz-grp-btn')) return;     // frame buttons — click handler
+  if (e.target.closest('.bz-group-name')) return;  // frame title — contenteditable caret
+  const gHead = e.target.closest('.bz-group-head');
+  if (gHead) {                                     // drag the frame → drags every step inside it
+    const gEl = gHead.closest('.bz-group');
+    const g = bizGroupById(abc(), gEl.dataset.bzGroup);
+    if (g) {
+      _bizSelGroup = g.id; _bizSel.clear(); bizSyncSelectionUI();
+      bizGroupDrag = { id: g.id, el: gEl, sx: e.clientX, sy: e.clientY, gx: g.x, gy: g.y, moved: false,
+        items: bizDragItems(bizGroupMembers(abc(), g.id).map(t => t.id)) };
+    }
+    return;
+  }
   const selNode = e.target.closest('.bz-node');
-  if (selNode) bizSelect(selNode.dataset.bzNode);  // any press on a box selects it
+  if (selNode) bizSelect(selNode.dataset.bzNode, e.shiftKey);   // shift-click extends the selection
   const head = e.target.closest('.bz-node-head');
-  if (head) {                                       // drag-move the box
+  if (head) {                                       // drag-move the box (and the rest of the selection)
     const nodeEl = head.closest('.bz-node');
     const t = bizTaskById(nodeEl.dataset.bzNode);
-    if (t) bizDrag = { id: t.id, el: nodeEl, sx: e.clientX, sy: e.clientY, ox: t.x, oy: t.y, moved: false };
+    if (t) {
+      const ids = (_bizSel.has(t.id) && _bizSel.size > 1) ? [..._bizSel] : [t.id];
+      bizDrag = { id: t.id, el: nodeEl, sx: e.clientX, sy: e.clientY, moved: false, items: bizDragItems(ids) };
+    }
     return;                                         // no preventDefault — lets the name caret work
   }
   if (e.target.closest('[data-bz-edge]')) return;  // edge click handled on click
@@ -8478,24 +9625,71 @@ document.addEventListener('mousedown', e => {
     return;
   }
   if (e.target.closest('#bz-zoom-ctl')) return;    // zoom buttons — not a pan origin
-  if (e.target.closest('#bz-canvas')) {            // empty canvas → pan (and drop the selection)
-    bizSelect(null);
+  if (e.target.closest('#bz-canvas')) {
+    const cv = document.getElementById('bz-canvas');
+    if (e.shiftKey) {                              // shift-drag on empty canvas → marquee select
+      e.preventDefault();
+      const r = cv.getBoundingClientRect();
+      const box = document.createElement('div');
+      box.className = 'bz-marquee';
+      cv.appendChild(box);
+      bizMarquee = { sx: e.clientX - r.left, sy: e.clientY - r.top, el: box, additive: true };
+      return;
+    }
+    bizSelect(null);                               // empty canvas → pan (and drop the selection)
     const v = abc().view;
     bizPan = { sx: e.clientX, sy: e.clientY, ox: v.panX, oy: v.panY, moved: false };
-    document.getElementById('bz-canvas').classList.add('panning');
+    cv.classList.add('panning');
   }
 });
 document.addEventListener('mousemove', e => {
   if (state.viewMode !== 'bizcase') return;
   if (_bizMiniDrag) { bizMiniNavigate(e.clientX, e.clientY); return; }
+  if (bizMarquee) {
+    const cv = document.getElementById('bz-canvas');
+    const r = cv.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const s = bizMarquee.el.style;
+    s.left = Math.min(x, bizMarquee.sx) + 'px'; s.top = Math.min(y, bizMarquee.sy) + 'px';
+    s.width = Math.abs(x - bizMarquee.sx) + 'px'; s.height = Math.abs(y - bizMarquee.sy) + 'px';
+    bizMarquee.cx = x; bizMarquee.cy = y;
+    return;
+  }
+  if (bizGroupDrag) {
+    const z = abc().view.zoom || 1;
+    const dx = (e.clientX - bizGroupDrag.sx) / z, dy = (e.clientY - bizGroupDrag.sy) / z;
+    if (!bizGroupDrag.moved && Math.hypot(dx, dy) < 4) return;
+    bizGroupDrag.moved = true;
+    // Members move with the frame whether or not they are currently drawn: a collapsed frame's
+    // steps keep their relative layout, so expanding it later puts them back where they belong.
+    bizGroupDrag.items.forEach(it => {
+      const t = bizTaskById(it.id); if (!t) return;
+      t.x = Math.round(it.ox + dx); t.y = Math.round(it.oy + dy);
+      if (it.el) { it.el.style.left = t.x + 'px'; it.el.style.top = t.y + 'px'; }
+    });
+    const g = bizGroupById(abc(), bizGroupDrag.id);
+    if (g) {
+      g.x = Math.round(bizGroupDrag.gx + dx); g.y = Math.round(bizGroupDrag.gy + dy);
+      if (g.collapsed) { bizGroupDrag.el.style.left = g.x + 'px'; bizGroupDrag.el.style.top = g.y + 'px'; }
+    }
+    bizLayoutGroups();
+    drawBizEdges();
+    return;
+  }
   if (bizDrag) {
     const z = abc().view.zoom || 1;
     const dx = (e.clientX - bizDrag.sx) / z, dy = (e.clientY - bizDrag.sy) / z;
     if (!bizDrag.moved && Math.hypot(dx, dy) < 4) return;  // small move = click (place caret)
-    bizDrag.moved = true; bizDrag.el.classList.add('dragging');
-    const t = bizTaskById(bizDrag.id); if (!t) return;
-    t.x = Math.round(bizDrag.ox + dx); t.y = Math.round(bizDrag.oy + dy);
-    bizDrag.el.style.left = t.x + 'px'; bizDrag.el.style.top = t.y + 'px';
+    bizDrag.moved = true;
+    bizDrag.items.forEach(it => {
+      const t = bizTaskById(it.id); if (!t || !it.el) return;
+      t.x = Math.round(it.ox + dx); t.y = Math.round(it.oy + dy);
+      it.el.style.left = t.x + 'px'; it.el.style.top = t.y + 'px';
+      it.el.classList.add('dragging');
+    });
+    // Frames freeze while one of their own boxes is being dragged, otherwise the frame would chase
+    // the box and there would be no way to pull a step out of its group.
+    bizLayoutGroups(new Set(bizDrag.items.map(i => i.id)));
     drawBizEdges();
     return;
   }
@@ -8514,18 +9708,81 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mouseup', e => {
   if (state.viewMode !== 'bizcase') return;
   if (_bizMiniDrag) { _bizMiniDrag = false; saveState(); return; }
+  if (bizMarquee) {
+    const cv = document.getElementById('bz-canvas');
+    const x0 = Math.min(bizMarquee.sx, bizMarquee.cx == null ? bizMarquee.sx : bizMarquee.cx);
+    const x1 = Math.max(bizMarquee.sx, bizMarquee.cx == null ? bizMarquee.sx : bizMarquee.cx);
+    const y0 = Math.min(bizMarquee.sy, bizMarquee.cy == null ? bizMarquee.sy : bizMarquee.cy);
+    const y1 = Math.max(bizMarquee.sy, bizMarquee.cy == null ? bizMarquee.sy : bizMarquee.cy);
+    bizMarquee.el.remove();
+    bizMarquee = null;
+    if (x1 - x0 > 3 && y1 - y0 > 3 && cv) {
+      const r = cv.getBoundingClientRect();
+      // Intersection, not containment — brushing a box is enough to catch it, which is what people
+      // expect from a rubber band and what makes a quick diagonal sweep usable.
+      cv.querySelectorAll('.bz-node').forEach(el => {
+        const b = el.getBoundingClientRect();
+        const bx0 = b.left - r.left, bx1 = b.right - r.left, by0 = b.top - r.top, by1 = b.bottom - r.top;
+        if (bx1 >= x0 && bx0 <= x1 && by1 >= y0 && by0 <= y1) _bizSel.add(el.dataset.bzNode);
+      });
+      bizSyncSelectionUI();
+      if (_bizSel.size) showToast(`${_bizSel.size} step${_bizSel.size === 1 ? '' : 's'} selected — ⊟ Group to frame them.`, 'suggest');
+    }
+    return;
+  }
+  if (bizGroupDrag) {
+    if (bizGroupDrag.moved) { bizDragSuppressClick = true; saveState(); }
+    bizGroupDrag = null; return;
+  }
   if (bizDrag) {
-    if (bizDrag.moved) { bizDrag.el.classList.remove('dragging'); bizDrag.el.style.zIndex = 6; bizFrontId = bizDrag.id; bizDragSuppressClick = true; saveState(); }
+    if (bizDrag.moved) {
+      bizDrag.items.forEach(it => { if (it.el) it.el.classList.remove('dragging'); });
+      bizDrag.el.style.zIndex = 6; bizFrontId = bizDrag.id; bizDragSuppressClick = true;
+      // Where a box lands decides its group: inside a frame it joins, on bare canvas it leaves.
+      // This is the only place geometry writes membership — everywhere else it is explicit.
+      let regrouped = 0;
+      bizDrag.items.forEach(it => {
+        const t = bizTaskById(it.id);
+        if (!t || !it.el) return;
+        const g = bizGroupAt(it.el.offsetLeft + it.el.offsetWidth / 2, it.el.offsetTop + 20);
+        const next = g ? g.id : null;
+        if (next !== t.groupId) { t.groupId = next; regrouped++; }
+      });
+      saveState();
+      if (regrouped) renderBizcase(); else bizLayoutGroups();
+    }
     bizDrag = null; return;
   }
   if (bizConnect) {
     document.body.classList.remove('bz-connecting');
+    const b = abc(), fromId = bizConnect.fromId, fromPort = bizConnect.fromPort;
+    // Drop resolution, most specific first: an input socket names its own mating point; a bare box
+    // takes its first exposed one; a collapsed frame can only be joined at an existing crossing.
+    const inSock = e.target.closest('.bz-socket.in');
     const targetNode = e.target.closest('.bz-node');
-    if (targetNode) {
-      const toId = targetNode.dataset.bzNode, fromId = bizConnect.fromId, b = abc();
-      if (toId && toId !== fromId && !b.edges.some(x => x.from === fromId && x.to === toId)) {
-        b.edges.push(makeBizEdge(fromId, toId)); saveState();
+    const targetGroup = e.target.closest('.bz-group');
+    let toId = null, toPort = null;
+    if (inSock) {
+      toId = inSock.dataset.bzNodeId;
+      const owner = bizTaskById(toId);
+      toPort = (isSubflow(owner) && inSock.dataset.port) ? inSock.dataset.port : null;
+    } else if (targetNode) {
+      toId = targetNode.dataset.bzNode;
+      const owner = bizTaskById(toId);
+      if (isSubflow(owner)) {
+        const open = subflowOpenPorts(owner, 'in');
+        if (!open.length) { showToast('That nested flow exposes no entry point — tick one on its card first.', 'error'); toId = null; }
+        else toPort = open[0].id;
       }
+    } else if (targetGroup) {
+      const sock = targetGroup.querySelector('.bz-socket.in');
+      if (sock) toId = sock.dataset.bzNodeId;
+      else showToast('Nothing feeds into that collapsed group yet — expand it and connect to a step inside.', 'suggest');
+    }
+    if (toId && toId !== fromId) {
+      const ed = makeBizEdge(fromId, toId, '', fromPort, toPort);
+      if (b.edges.some(x => bizEdgeKey(x) === bizEdgeKey(ed))) showToast('Those two mating points are already connected.', 'suggest');
+      else { b.edges.push(ed); saveState(); }
     }
     bizConnect = null; renderBizcase(); return;
   }
@@ -8535,6 +9792,44 @@ document.addEventListener('mouseup', e => {
     bizPan = null;
   }
 });
+// ---- Gallery → canvas drag (v0.30) ----
+// HTML5 drag-and-drop rather than the canvas's own mouse pipeline: the drag starts outside
+// #bz-canvas, so it can't be mistaken for a pan, and the browser gives the cursor feedback for
+// free. _bizDragCase is the source of truth; dataTransfer is set as a courtesy for other drop
+// targets and because some browsers refuse to start a drag without payload.
+let _bizDragCase = null;
+document.addEventListener('dragstart', e => {
+  const card = e.target.closest && e.target.closest('[data-gal-case]');
+  if (!card) return;
+  _bizDragCase = card.dataset.galCase;
+  document.body.classList.add('bz-embedding');
+  try { e.dataTransfer.setData('text/plain', 'bzcase:' + _bizDragCase); e.dataTransfer.effectAllowed = 'copy'; } catch (_) {}
+});
+document.addEventListener('dragend', () => {
+  _bizDragCase = null;
+  document.body.classList.remove('bz-embedding');
+  const cv = document.getElementById('bz-canvas');
+  if (cv) cv.classList.remove('drop-target');
+});
+document.addEventListener('dragover', e => {
+  if (!_bizDragCase || !e.target.closest('#bz-canvas')) return;
+  e.preventDefault();
+  try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+  const cv = document.getElementById('bz-canvas');
+  if (cv) cv.classList.add('drop-target');
+});
+document.addEventListener('drop', e => {
+  if (!_bizDragCase || !e.target.closest('#bz-canvas')) return;
+  e.preventDefault();
+  const p = bzScreenToWorld(e.clientX, e.clientY);
+  const id = _bizDragCase;
+  _bizDragCase = null;
+  document.body.classList.remove('bz-embedding');
+  const cv = document.getElementById('bz-canvas');
+  if (cv) cv.classList.remove('drop-target');
+  bizEmbedFlow(id, p.x - BZ_NODE_W / 2, p.y - 28);
+});
+
 // Cursor-anchored zoom on plain scroll wheel (Ctrl/Cmd still works too), mirroring the chart zoom.
 document.addEventListener('wheel', e => {
   if (state.viewMode !== 'bizcase') return;
@@ -9420,12 +10715,43 @@ document.addEventListener('click', e => {
   // ---- Business Case (node-graph) handlers ----
   if (state.viewMode === 'bizcase') {
     // A box drag just ended — swallow the trailing click if it lands on a node (don't open a cell).
-    if (bizDragSuppressClick) { bizDragSuppressClick = false; if (e.target.closest('.bz-node')) return; }
+    if (bizDragSuppressClick) { bizDragSuppressClick = false; if (e.target.closest('.bz-node') || e.target.closest('.bz-group')) return; }
     if (e.target.closest('#bz-new')) { bizAddCase(); return; }
     if (e.target.closest('#bz-rename')) { bizRenameCase(); return; }
     if (e.target.closest('#bz-del')) { bizDeleteCase(); return; }
     if (e.target.closest('#bz-add-task')) { bizAddTask(); return; }
     if (e.target.closest('#bz-toggle-table')) { bizToggleTable(); return; }
+    // ---- gallery, nesting and grouping (v0.30) ----
+    if (e.target.closest('#bz-back')) { bizNavBack(); return; }
+    if (e.target.closest('#bz-gallery') || e.target.closest('#bz-gal-close')) { bizToggleGallery(); return; }
+    if (e.target.closest('#bz-group')) { bizGroupSelection(); return; }
+    const galOpen = e.target.closest('[data-gal-open]');
+    if (galOpen) { bizSwitchCase(galOpen.dataset.galOpen); return; }
+    const galEmbed = e.target.closest('[data-gal-embed]');
+    if (galEmbed) {
+      // Keyboard/again-for-the-mouse-averse equivalent of the drag: drop it in the middle of the view.
+      const cv = document.getElementById('bz-canvas');
+      const c = cv ? bzScreenToWorld(cv.getBoundingClientRect().left + cv.clientWidth / 2,
+                                     cv.getBoundingClientRect().top + cv.clientHeight / 2) : { x: 80, y: 80 };
+      bizEmbedFlow(galEmbed.dataset.galEmbed, c.x - BZ_NODE_W / 2, c.y - 28);
+      return;
+    }
+    const galCard = e.target.closest('[data-gal-case]');
+    if (galCard && !e.target.closest('button')) { bizSwitchCase(galCard.dataset.galCase); return; }
+    const subOpen = e.target.closest('[data-bz-open-sub]');
+    if (subOpen) { bizOpenSubflow(subOpen.dataset.bzOpenSub); return; }
+    const subRepoint = e.target.closest('[data-bz-repoint]');
+    if (subRepoint) { openSubflowPickerPopover(subRepoint.dataset.bzRepoint, subRepoint); return; }
+    const portTgl = e.target.closest('[data-bz-port]');
+    if (portTgl) { bizTogglePort(portTgl.dataset.bzPort, portTgl.dataset.side, portTgl.dataset.portId); return; }
+    const grpCollapse = e.target.closest('[data-bz-group-collapse]');
+    if (grpCollapse) { bizToggleGroupCollapse(grpCollapse.dataset.bzGroupCollapse); return; }
+    const grpColor = e.target.closest('[data-bz-group-color]');
+    if (grpColor) { bizCycleGroupColor(grpColor.dataset.bzGroupColor); return; }
+    const grpUngroup = e.target.closest('[data-bz-group-ungroup]');
+    if (grpUngroup) { bizUngroup(grpUngroup.dataset.bzGroupUngroup); return; }
+    const grpDel = e.target.closest('[data-bz-group-del]');
+    if (grpDel) { bizDeleteGroup(grpDel.dataset.bzGroupDel); return; }
     if (e.target.closest('#bz-zoom-in')) { bizZoomBy(1.1); return; }
     if (e.target.closest('#bz-zoom-out')) { bizZoomBy(1 / 1.1); return; }
     if (e.target.closest('#bz-zoom-fit')) { bizFit(); return; }
@@ -9645,11 +10971,22 @@ document.addEventListener('change', e => {
     return;
   }
   const bzSel = e.target.closest('#bz-select');
-  if (bzSel) { closeBizPartyPanel(); state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
+  // Picking from the dropdown is a jump, not a step out of a nested flow, so the Back trail goes.
+  if (bzSel) { closeBizPartyPanel(); _bizNavStack.length = 0; _bizSel.clear(); _bizSelGroup = null;
+    state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
   const bzFwSel = e.target.closest('#bz-framework');
   if (bzFwSel) { if (BIZ_FRAMEWORKS.includes(bzFwSel.value)) { closeBizPartyPanel(); abc().framework = bzFwSel.value; saveState(); renderBizcase(); } return; }
   const flowCond = e.target.closest('.bz-flow-cond');
   if (flowCond) { const ed = abc().edges.find(x => x.id === flowCond.dataset.bzEdgeCond); if (ed) { ed.label = flowCond.value.trim(); saveState(); renderBizcase(); } return; }
+});
+
+// The gallery filter is live, and repaints only its own card list — re-rendering the whole view
+// on every keystroke would tear the input out from under the caret.
+document.addEventListener('input', e => {
+  const galFilter = e.target.closest && e.target.closest('#bz-gal-filter');
+  if (!galFilter) return;
+  _bizGalQ = galFilter.value;
+  bizRenderGalleryList();
 });
 
 document.addEventListener('keydown', e => {
@@ -9679,11 +11016,12 @@ document.addEventListener('keydown', e => {
     else if (state.viewMode === 'bizcase' && !e.shiftKey && (k === 'c' || k === 'x' || k === 'v')) {
       const textSel = window.getSelection && String(window.getSelection());
       if (textSel && (k === 'c' || k === 'x')) return;
-      if (k === 'c' && _bizSelId) {
+      const primary = bizPrimarySel();
+      if (k === 'c' && primary) {
         e.preventDefault();
-        if (bizCopyTask(_bizSelId)) showToast('Step copied — Ctrl+V to paste', 'suggest');
-      } else if (k === 'x' && _bizSelId) {
-        e.preventDefault(); bizCutTask(_bizSelId);
+        if (bizCopyTask(primary)) showToast('Step copied — Ctrl+V to paste', 'suggest');
+      } else if (k === 'x' && primary) {
+        e.preventDefault(); bizCutTask(primary);
       } else if (k === 'v') {
         e.preventDefault(); bizPasteTask();
       }
@@ -9716,6 +11054,11 @@ document.addEventListener('blur', e => {
   if (el.dataset.bzExit) {
     const t = bizTaskById(el.dataset.bzExit);
     if (t) { const v = el.textContent.trim(); if (t.exit !== v) { t.exit = v; saveState(); } }
+    return;
+  }
+  if (el.dataset.bzGroupName) {
+    const g = bizGroupById(abc(), el.dataset.bzGroupName);
+    if (g) { const v = el.textContent.trim(); if (g.name !== v) { g.name = v; saveState(); renderBizcase(); } }
     return;
   }
   if (el.dataset.artName) {
@@ -10020,7 +11363,7 @@ function ingestKitMarkdown() {
     '### 3.2 `bizCases[]` — business case task flows',
     '',
     'Fields: `id`, `name`, `description`, `framework` (`raci` | `daci` | `rapid`), `anchor`,',
-    '`tasks[]`, `edges[]`, `view {panX,panY,zoom}`, `showTable`.',
+    '`tasks[]`, `edges[]`, `groups[]`, `view {panX,panY,zoom}`, `showTable`.',
     '',
     '- `anchor: {chartId, nodeId}` ties the flow to one deepest-tier chart row — owner and default',
     '  parties then cascade in, and flow health rolls up onto that row. `anchor: null` keeps it a',
@@ -10030,10 +11373,28 @@ function ingestKitMarkdown() {
     '  `{actor, divisionId?, branchId?, teamId?}` naming who executes that column’s role;',
     '  `description` / `entry` / `exit` are the card’s three text blocks; `status`; `x`/`y` canvas',
     '  position in pixels (space steps ~300–350 apart so edges stay readable).',
-    '- `edges[]` are directed handoffs `{id, from, to, label, artifactIds}` between task ids.',
-    '  `label` is the branch condition on a decision point (`"Yes"`, `"rejected — rework"`);',
-    '  `artifactIds` names what changes hands. Self-loops and duplicate from→to pairs are dropped.',
-    '  A step’s own IO is **derived** from its edges — never store it on the task.',
+    '- `edges[]` are directed handoffs `{id, from, to, label, artifactIds, fromPort, toPort}`',
+    '  between task ids. `label` is the branch condition on a decision point (`"Yes"`,',
+    '  `"rejected — rework"`); `artifactIds` names what changes hands. Self-loops are dropped, and',
+    '  duplicates are judged on `from`+`fromPort`+`to`+`toPort` — two handoffs between the same two',
+    '  boxes are distinct when they use different mating points. A step’s own IO is **derived**',
+    '  from its edges — never store it on the task.',
+    '',
+    '**Nested flows.** A task with `kind: "subflow"` is not a step — it is a *reference* to another',
+    'business case: `{kind:"subflow", refId, ports:{in:[],out:[]}, name, description, x, y, groupId}`.',
+    'It carries no `raci` of its own (the roles live in the referenced flow, and a copy here would',
+    'drift). `refId` is another `bizCases[].id`; a reference loop (A nests B nests A) is rejected.',
+    '`ports.in` / `ports.out` are step ids **inside the referenced flow** — which of its entry and',
+    'exit points this host exposes as mating points. Leave them `[]` for “all of them”, which is',
+    'also what keeps the box following the referenced flow as it gains entries and exits. Edges',
+    'name the specific one through `fromPort` / `toPort`.',
+    '',
+    '**Groups.** `groups[]` are labelled frames around steps that stay in this flow:',
+    '`{id, name, color, collapsed, x, y}` with `color` one of `' + BZ_GROUP_COLORS.join('` | `') + '`.',
+    'Membership is one field on the step — `task.groupId` — and a step belongs to at most one frame.',
+    'An expanded frame is drawn from its members’ bounding box, so `x`/`y` only matter while it is',
+    'collapsed. A collapsed frame’s sockets are derived from the edges that actually cross its',
+    'boundary; there is nothing to store for them.',
     '',
     '### 3.3 `artifacts[]` — the deliverable registry',
     '',
@@ -10141,8 +11502,14 @@ function ingestKitMarkdown() {
     '### Business cases already in the workspace',
     '');
   if (!state.bizCases.length) p('- (none)');
-  state.bizCases.forEach(b => p(`- \`${b.id}\` · "${b.name || 'Untitled'}" · ${b.framework} · ` +
-    `${b.tasks.length} step(s) · ${b.anchor ? 'anchored to ' + b.anchor.nodeId : 'standalone'}`));
+  state.bizCases.forEach(b => {
+    const nSub = b.tasks.filter(isSubflow).length;
+    const nGrp = (b.groups || []).length;
+    p(`- \`${b.id}\` · "${b.name || 'Untitled'}" · ${b.framework} · ` +
+      `${b.tasks.length - nSub} step(s)` +
+      (nSub ? ` · ${nSub} nested flow(s)` : '') + (nGrp ? ` · ${nGrp} group(s)` : '') +
+      ` · ${b.anchor ? 'anchored to ' + b.anchor.nodeId : 'standalone'}`);
+  });
   p('',
     '### Deliverables already registered',
     '');
@@ -10241,8 +11608,12 @@ function buildFlowRows(chart) {
       : '';
     bizTopoOrder(b).forEach(t => {
       const io = bizTaskIO(b, t.id);
+      // A nested-flow box exports as a pointer: its roles belong to the flow it references, which
+      // exports its own rows wherever it is anchored.
       rows.push([
-        anc, b.name || '', t.name || '', t.description || '', t.entry || '', t.exit || '',
+        anc, b.name || '', (isSubflow(t) ? '⧉ ' : '') + bizTaskLabel(t),
+        isSubflow(t) ? `Nested flow → ${bizCaseName(t.refId)}${t.description ? ' — ' + t.description : ''}` : (t.description || ''),
+        t.entry || '', t.exit || '',
         flowRolesText(t), flowPartiesText(ctx, t),
         io.inputs.map(artifactLabel).join(', '),
         io.outputs.map(artifactLabel).join(', '),
@@ -10773,7 +12144,47 @@ function lintFlow(b) {
     (outBy[e.from] = outBy[e.from] || []).push(e);
     touched[e.from] = touched[e.to] = true;
   });
-  b.tasks.forEach(t => {
+  // Shared tail: every rule path ends by filing its issues against the step.
+  const record = (t, issues) => {
+    if (!issues.length) return;
+    const entry = {
+      kind: 'flow',
+      bizCaseId: b.id,
+      taskId: t.id,
+      name: bizTaskLabel(t),
+      tierLabel: isSubflow(t) ? 'Nested flow' : 'Flow step',
+      ancestors: [{ id: null, name: b.name || 'Untitled case' }],
+      severity: issues.some(i => i.severity === 'err') ? 'err' : 'warn',
+      issues
+    };
+    _violations.push(entry);
+    _violationsByBizTaskId[t.id] = entry;
+  };
+  // A nested-flow box owns no RACI, so the owner / doer / party rules below would be linting the
+  // wrong document — the roles live in the flow it references and are linted when that flow is
+  // open. It gets its own checks instead: is the reference sound, and is the box actually wired in?
+  b.tasks.filter(isSubflow).forEach(t => {
+    const issues = [];
+    const ref = bizCaseById(t.refId);
+    if (!ref) {
+      issues.push({ severity: 'err', rule: 'subflowMissing',
+        message: 'Nested flow is missing — the business case this box points at was deleted, or an import did not carry it. Re-point the box or remove it.' });
+    } else if (bizEmbedWouldCycle(b.id, t.refId)) {
+      issues.push({ severity: 'err', rule: 'subflowCycle',
+        message: `"${ref.name || 'Untitled'}" contains this flow somewhere inside it — a nesting loop. Re-point or remove this box to break it.` });
+    } else {
+      if (!ref.tasks.length) issues.push({ severity: 'warn', rule: 'subflowEmpty',
+        message: `"${ref.name || 'Untitled'}" has no steps yet — nothing happens when this box is reached.` });
+      const wiredIn = b.edges.some(e => e.to === t.id), wiredOut = b.edges.some(e => e.from === t.id);
+      if (b.tasks.length > 1 && !wiredIn && !wiredOut) issues.push({ severity: 'warn', rule: 'flowDisconnected',
+        message: 'Disconnected nested flow — no handoffs in or out. Connect one of its mating points into this flow (or remove the box).' });
+      const unusedOut = subflowOpenPorts(t, 'out').filter(p => !b.edges.some(e => e.from === t.id && (e.fromPort || null) === p.id));
+      if (wiredIn && unusedOut.length && subflowOpenPorts(t, 'out').length > 1) issues.push({ severity: 'warn', rule: 'subflowExitDangling',
+        message: `${unusedOut.length} exposed exit point${unusedOut.length === 1 ? '' : 's'} (${unusedOut.map(p => p.name).join(', ')}) lead${unusedOut.length === 1 ? 's' : ''} nowhere — connect ${unusedOut.length === 1 ? 'it' : 'them'} or untick ${unusedOut.length === 1 ? 'it' : 'them'} on the card.` });
+    }
+    record(t, issues);
+  });
+  b.tasks.filter(t => !isSubflow(t)).forEach(t => {
     const colsWith = letter => COLS.filter(k => normalizeRaci(t.raci[k] || '').includes(letter));
     const ownerCols = colsWith(OWNER);
     const doerCols = colsWith(DOER);
@@ -10797,20 +12208,7 @@ function lintFlow(b) {
     const partyless = doerCols.filter(k => !(t.parties && t.parties[k]) && !bizDefaultPartyFor(ctx, k));
     if (partyless.length) issues.push({ severity: 'warn', rule: 'flowPartyMissing',
       message: `${F.meta[DOER].label} column${partyless.length === 1 ? '' : 's'} ${partyless.map(k => COL_LABELS[k]).join(', ')} ha${partyless.length === 1 ? 's' : 've'} no responsible party — assign who executes (directorate → … → team).` });
-    if (issues.length) {
-      const entry = {
-        kind: 'flow',
-        bizCaseId: b.id,
-        taskId: t.id,
-        name: t.name || '(untitled step)',
-        tierLabel: 'Flow step',
-        ancestors: [{ id: null, name: b.name || 'Untitled case' }],
-        severity: issues.some(i => i.severity === 'err') ? 'err' : 'warn',
-        issues
-      };
-      _violations.push(entry);
-      _violationsByBizTaskId[t.id] = entry;
-    }
+    record(t, issues);
   });
 }
 // Build an ancestor-id path so drilling it puts the target node's row in the focused chart.
@@ -11363,8 +12761,16 @@ function importJSON(file, merge) {
         // (re-importing a previously exported case); anything else degrades to standalone.
         const chartIdMap = {};
         mCharts.forEach(c => { const old = c.id; c.id = 'c_' + uid(); chartIdMap[old] = c.id; state.charts.push(c); });
+        // Flows are re-minted under fresh ids too, so a nested-flow box pointing at a sibling from
+        // the same file has to follow. Two passes: mint every id first, then rewrite the refs — a
+        // single pass would remap against ids that hadn't been minted yet. A ref to a flow the
+        // file didn't carry is left alone: it may still resolve against this workspace (the same
+        // flow re-imported), and if it doesn't, the box survives as a visibly broken embed rather
+        // than silently losing the user's wiring.
+        const bizIdMap = {};
+        mBiz.forEach(b => { const old = b.id; b.id = 'b_' + uid(); bizIdMap[old] = b.id; });
         mBiz.forEach(b => {
-          b.id = 'b_' + uid();
+          b.tasks.forEach(t => { if (t.kind === 'subflow' && bizIdMap[t.refId]) t.refId = bizIdMap[t.refId]; });
           if (b.anchor) {
             if (chartIdMap[b.anchor.chartId]) b.anchor = { chartId: chartIdMap[b.anchor.chartId], nodeId: b.anchor.nodeId };
             else if (!nodeInChart(chartById(b.anchor.chartId), b.anchor.nodeId)) b.anchor = null;

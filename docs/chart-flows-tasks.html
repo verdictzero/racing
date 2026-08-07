@@ -537,6 +537,44 @@
 
   <section>
     <div class="wrap">
+      <h2><span class="lead-num">Reuse</span>Nesting a flow, and framing a group</h2>
+      <p class="sub">Two ways to fold a graph down to one box. They look alike on the canvas and are deliberately not the same thing.</p>
+      <div class="legend">
+        <div class="leg star">
+          <span class="glyph" aria-hidden="true">⧉</span>
+          <div>
+            <p class="leg-name">Nested flow <span class="role">a reference</span><span class="tag">lives elsewhere</span></p>
+            <p>Drag a flow out of the <b>gallery</b> onto the canvas and it becomes one box standing in for that whole other flow. It is a <em>reference</em>, not a copy: the flow keeps its own name in the gallery, can be nested in several places at once, and an edit over there shows up in every host. The box carries no RACI of its own — the roles belong to the flow it points at.</p>
+          </div>
+        </div>
+        <div class="leg star">
+          <span class="glyph" aria-hidden="true">◉</span>
+          <div>
+            <p class="leg-name">Mating points <span class="role">one per entry / exit</span><span class="tag">nth in, nth out</span></p>
+            <p>A nested box does not get one “in” and one “out”. It gets <b>a socket per entry point and a socket per exit point</b> of the flow inside — so a procedure that ends two different ways can feed two different next steps. Tick the ones this host uses in the box's port panel, where a plain step keeps its entry / exit criteria.</p>
+          </div>
+        </div>
+        <div class="leg">
+          <span class="glyph" aria-hidden="true">⌸</span>
+          <div>
+            <p class="leg-name">Group <span class="role">a frame</span><span class="tag">stays put</span></p>
+            <p>Select steps (shift-click, or shift-drag a box around them) and <b>⊟ Group</b> draws a titled frame around them. Nothing moves and nothing is copied — it is a name for a phase. Drag the frame header and the whole phase moves; drop a step into a frame to add it, out of every frame to release it.</p>
+          </div>
+        </div>
+        <div class="leg">
+          <span class="glyph" aria-hidden="true">▸</span>
+          <div>
+            <p class="leg-name">Collapse <span class="role">the frame folds</span></p>
+            <p>Collapse a frame and it becomes a single box whose sockets are <em>the connections that actually cross its boundary</em> — counted from the arrows you already drew, never configured. Expand it and every step is exactly where you left it.</p>
+          </div>
+        </div>
+      </div>
+      <p class="sub">Rule of thumb: <b>nest</b> when the same procedure runs in more than one place and should be maintained once. <b>Group</b> when steps belong together in <em>this</em> flow and you want to say so — or to get them out of the way.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
       <h2><span class="lead-num">The move</span>The anchor: “this flow implements that task”</h2>
       <p class="sub">A flow can float free — a tabletop exercise, a what-if. The move that ties the system together is <em>anchoring</em> it to one chart Task row.</p>
       <div class="rule-eq">
