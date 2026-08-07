@@ -38,6 +38,19 @@
     --grid: rgba(120,165,225,.06);
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
   }
+  /* High contrast — matches the host app's "contrast" theme. Black paper, white rules,
+     maximum-chroma hues, and no soft washes: --accent-soft and --grid go transparent so
+     nothing tints the ground, and --shadow goes flat since a blur reads as smear here. */
+  :root[data-theme="contrast"]{
+    --paper:#000000; --card:#000000; --inset:#0b0b0d; --line:#ffffff; --line-soft:#ffffff;
+    --ink:#ffffff; --muted:#e4e6ea; --faint:#cfd3da;
+    --accent:#40e7ff; --accent-ink:#8df1ff; --accent-soft:transparent;
+    --r:#60beff; --a:#ff7b7b; --c:#ffd60a; --c-ink:#000000; --i:#d0d5dd;
+    --grid: transparent;
+    --shadow: none;
+    --ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  }
+  :root[data-theme="contrast"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }

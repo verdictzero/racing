@@ -4,25 +4,298 @@
 <meta charset="UTF-8">
 <title>ASIC RACI Tool</title>
 <style>
+/* ============================================================================
+   ===== THEME TOKENS =========================================================
+   Three application-wide themes, chosen by data-theme on <html>:
+
+     (unset) | "dark"  the default — the palette this tool shipped with
+     "light"           light surfaces, hues re-picked for contrast on paper
+     "contrast"        high contrast — black ground, white rules, max-chroma hues
+
+   Every colour in the app resolves through the tokens below, so switching theme
+   is a token swap: no component needs to know which theme is up, and a new rule
+   inherits all three themes for free as long as it uses tokens rather than
+   literals. The ONLY intentional exceptions are the two `@media print` blocks,
+   which force a light document regardless of the on-screen theme.
+
+   Hues are stored as bare "r,g,b" triplets so one definition serves both the
+   solid colour — var(--accent) — and any tint of it — rgba(var(--accent-rgb),.2).
+   Four primitives carry the effects, and they are NOT interchangeable:
+
+     --shadow-rgb  the ink shadows are cast in (dark everywhere; light themes
+                   use a cool near-black rather than pure black)
+     --hi-rgb      specular highlight along a lit edge. Stays WHITE in every
+                   theme — a lit edge is white whatever the ground is.
+     --lift-rgb    a subtle wash that lifts a surface off its parent. INVERTS
+                   between themes: white on dark grounds, ink on light ones.
+     --mix-fg      what color-mix() pushes a hue toward so it stays legible —
+                   white on dark grounds, near-black on light ones.
+
+   "--on-*" tokens are the foreground for text sitting ON that filled colour.
+   Keeping them per-hue (rather than a single black/white) is what lets each
+   theme re-pick a hue's lightness without stranding the label on top of it.
+   ============================================================================ */
 :root {
+  color-scheme: dark;
+
+  /* -- hues: RACI/RASCI letters, then status roles -- */
+  --r-rgb: 77,171,247;
+  --a-rgb: 250,82,82;
+  --c-rgb: 252,196,25;
+  --i-rgb: 134,142,150;
+  --s-rgb: 81,207,102;
+  --d-rgb: 151,117,250;
+  --p-rgb: 34,184,207;
+  --accent-rgb: 81,207,102;
+  --err-rgb: 250,82,82;
+  --warn-rgb: 252,196,25;
+
+  --r: rgb(var(--r-rgb));
+  --a: rgb(var(--a-rgb));
+  --c: rgb(var(--c-rgb));
+  --i: rgb(var(--i-rgb));
+  --s: rgb(var(--s-rgb));
+  --d: rgb(var(--d-rgb));
+  --p: rgb(var(--p-rgb));
+  --accent: rgb(var(--accent-rgb));
+  --err: rgb(var(--err-rgb));
+  --warn: rgb(var(--warn-rgb));
+
+  /* -- surfaces, ordered page -> raised -- */
   --bg: #0d0e12;
   --bg-cell: #1c1d22;
   --bg-2: #25262b;
   --bg-3: #2c2e33;
   --bg-4: #373a40;
   --border: #373a40;
+  --bg-deep: #16171c;    /* the far end of the chrome gradients (tab bar, crumb band) */
+  --sunk-1: #14151a;     /* lead-card gradient top    */
+  --sunk-2: #0f1015;     /* lead-card gradient bottom */
+  --edge-1: #07080b;     /* extruded card's near edge */
+  --edge-2: #05060a;     /* extruded card's far edge  */
+
+  /* -- type -- */
   --text: #c1c2c5;
   --text-dim: #909296;
-  --r: #4dabf7;
-  --a: #fa5252;
-  --c: #fcc419;
-  --i: #868e96;
-  --s: #51cf66;
-  --d: #9775fa;
-  --p: #22b8cf;
-  --accent: #51cf66;
-  --err: #fa5252;
-  --warn: #fcc419;
+  --text-strong: #ffffff;   /* emphasis above --text: hovered/active labels */
+  --on-fill: #07140b;       /* text on a saturated tier / role fill */
+
+  /* -- foregrounds for text on a filled hue -- */
+  --on-r: #000;
+  --on-a: #fff;
+  --on-c: #000;
+  --on-i: #fff;
+  --on-s: #000;
+  --on-d: #fff;
+  --on-p: #000;
+  --on-accent: #04210f;
+  --on-err: #fff;
+  --on-warn: #000;
+
+  /* -- a hue rendered as TEXT on the current ground (vs. as a fill) -- */
+  --accent-ink: #d3f9d8;
+  --err-ink: #ffa8a8;
+  --warn-ink: #ffe066;
+  --accent-hover: #69db7c;
+  --accent-edge: #2b8a3e;
+
+  /* -- effects (see the header note: these four are not interchangeable) -- */
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 255,255,255;
+  --scrim: rgba(0,0,0,0.55);
+  --mix-fg: #ffffff;
+
+  /* -- chart-view backdrop (complementary ASIC blue + crimson wash) -- */
+  --view-tint-a: rgba(45,95,165,0.20);
+  --view-tint-b: rgba(165,42,62,0.16);
+  --view-grad-a: #0e1422;
+  --view-grad-b: #150e16;
+
+  /* -- drill-breadcrumb tiers: saturated fills, so --on-fill labels them -- */
+  --tier-0: #5c7cfa;
+  --tier-1: #4dabf7;
+  --tier-2: #f0a23a;
+  --tier-3: #51cf66;
+  --tier-0-ink: #b9c6ff;
+  --tier-1-ink: #9ad9ff;
+  --tier-2-ink: #ffd59a;
+  --tier-3-ink: #c4f59a;
+
+  /* -- leadership card hues (AD gold, DC blue, BC purple, TL green) -- */
+  --lc-base: #c9a635;
+  --lc-ad: #e0b53a;
+  --lc-dc: #4dabf7;
+  --lc-bc: #b07cff;
+  --lc-tl: #51cf66;
+
+  /* -- background ASIC watermark -- */
+  --wm-opacity: 0.12;
+  --wm-filter: grayscale(1) brightness(1.15);
+}
+
+/* ===== LIGHT =====
+   Not an inversion of the dark ramp but a re-pick: --bg is the page ground and
+   --bg-cell the paper raised above it, which is the same relationship the dark
+   theme has (cells sit lighter than the page) read on a light ground. The letter
+   hues are deepened so a filled chip separates from white paper AND still carries
+   its --on-* label. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --r-rgb: 25,113,194;
+  --a-rgb: 201,42,42;
+  --c-rgb: 224,150,0;
+  --i-rgb: 92,103,115;
+  --s-rgb: 43,138,62;
+  --d-rgb: 103,65,217;
+  --p-rgb: 11,114,133;
+  --accent-rgb: 43,138,62;
+  --err-rgb: 201,42,42;
+  --warn-rgb: 224,150,0;
+
+  --bg: #eef1f6;
+  --bg-cell: #ffffff;
+  --bg-2: #e3e8f0;
+  --bg-3: #dbe1ea;
+  --bg-4: #c6cfdc;
+  --border: #bcc6d4;
+  --bg-deep: #d7dde7;
+  --sunk-1: #ffffff;
+  --sunk-2: #eef1f6;
+  --edge-1: #aab4c4;
+  --edge-2: #c2cad6;
+
+  --text: #1b2331;
+  --text-dim: #5a6577;
+  --text-strong: #0b1017;
+  --on-fill: #07140b;
+
+  --on-r: #fff;
+  --on-a: #fff;
+  --on-c: #241a02;
+  --on-i: #fff;
+  --on-s: #fff;
+  --on-d: #fff;
+  --on-p: #fff;
+  --on-accent: #ffffff;
+  --on-err: #fff;
+  --on-warn: #241a02;
+
+  --accent-ink: #1e6b30;
+  --err-ink: #a52020;
+  --warn-ink: #7d5210;
+  --accent-hover: #237634;
+  --accent-edge: #1a5c26;
+
+  --shadow-rgb: 24,34,52;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 20,28,42;
+  --scrim: rgba(22,28,40,0.45);
+  --mix-fg: #10151f;
+
+  --view-tint-a: rgba(45,95,165,0.10);
+  --view-tint-b: rgba(165,42,62,0.08);
+  --view-grad-a: #e8edf6;
+  --view-grad-b: #f7eef1;
+
+  /* Tier and leadership fills stay saturated: they are chips carrying --on-fill
+     text, so they read on either ground. Only their TEXT variants deepen. */
+  --tier-0-ink: #3b4fbf;
+  --tier-1-ink: #12639f;
+  --tier-2-ink: #8a5a10;
+  --tier-3-ink: #2b7a3c;
+
+  /* The emblem is light-on-transparent, so it has to be darkened rather than
+     brightened to stay visible behind a light page. */
+  --wm-opacity: 0.10;
+  --wm-filter: grayscale(1) brightness(0.45) contrast(1.15);
+}
+
+/* ===== HIGH CONTRAST =====
+   Black ground, white rules, maximum-chroma hues, and every label dropped to
+   pure black on its fill. --border going white is deliberate: in high contrast
+   structure is carried by rules rather than by fill differences, so the surface
+   ramp stays nearly flat and the borders do the separating. Structural rules
+   (flat backdrops, no texture, always-visible focus) follow further down. */
+:root[data-theme="contrast"] {
+  color-scheme: dark;
+
+  --r-rgb: 96,190,255;
+  --a-rgb: 255,123,123;
+  --c-rgb: 255,214,10;
+  --i-rgb: 208,213,221;
+  --s-rgb: 87,240,133;
+  --d-rgb: 199,168,255;
+  --p-rgb: 64,231,255;
+  --accent-rgb: 87,240,133;
+  --err-rgb: 255,123,123;
+  --warn-rgb: 255,214,10;
+
+  --bg: #000000;
+  --bg-cell: #000000;
+  --bg-2: #0b0b0d;
+  --bg-3: #16171a;
+  --bg-4: #2c2e33;
+  --border: #ffffff;
+  --bg-deep: #000000;
+  --sunk-1: #101114;
+  --sunk-2: #000000;
+  --edge-1: #000000;
+  --edge-2: #000000;
+
+  --text: #ffffff;
+  --text-dim: #e4e6ea;      /* still high contrast — dimming to grey is the thing HC exists to undo */
+  --text-strong: #ffffff;
+  --on-fill: #000000;
+
+  --on-r: #000;
+  --on-a: #000;
+  --on-c: #000;
+  --on-i: #000;
+  --on-s: #000;
+  --on-d: #000;
+  --on-p: #000;
+  --on-accent: #000;
+  --on-err: #000;
+  --on-warn: #000;
+
+  --accent-ink: #9dffbe;
+  --err-ink: #ffb3b3;
+  --warn-ink: #ffe680;
+  --accent-hover: #8affae;
+  --accent-edge: #ffffff;
+
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 255,255,255;
+  --scrim: rgba(0,0,0,0.82);
+  --mix-fg: #ffffff;
+
+  --view-tint-a: transparent;
+  --view-tint-b: transparent;
+  --view-grad-a: #000000;
+  --view-grad-b: #000000;
+
+  --tier-0: #93a6ff;
+  --tier-1: #60beff;
+  --tier-2: #ffb454;
+  --tier-3: #57f085;
+  --tier-0-ink: #c3ccff;
+  --tier-1-ink: #a8dcff;
+  --tier-2-ink: #ffd9a8;
+  --tier-3-ink: #b6ffcc;
+
+  --lc-base: #ffd60a;
+  --lc-ad: #ffd60a;
+  --lc-dc: #60beff;
+  --lc-bc: #c7a8ff;
+  --lc-tl: #57f085;
+
+  /* A 12%-opacity emblem behind text is exactly the low-contrast wash this mode
+     removes, so it goes entirely. */
+  --wm-opacity: 0;
+  --wm-filter: none;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -58,7 +331,7 @@ header {
   height: 34px;
   width: auto;
   flex-shrink: 0;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 1px 3px rgba(var(--shadow-rgb),0.6));
 }
 /* Desaturated, very faint ASIC watermark tucked into the bottom-right corner of the chart
    pane. It stays position:fixed so it doesn't drift while the cascade scrolls, but the offsets
@@ -84,9 +357,9 @@ body[data-view="chart"] #bg-watermark { display: block; }
 /* complementary (ASIC blue + crimson) gradient behind the RACI chart screen */
 body[data-view="chart"] {
   background:
-    radial-gradient(1200px 820px at 16% 10%, rgba(45,95,165,0.20) 0%, transparent 60%),
-    radial-gradient(1050px 720px at 86% 90%, rgba(165,42,62,0.16) 0%, transparent 55%),
-    linear-gradient(135deg, #0e1422 0%, var(--bg) 50%, #150e16 100%);
+    radial-gradient(1200px 820px at 16% 10%, var(--view-tint-a) 0%, transparent 60%),
+    radial-gradient(1050px 720px at 86% 90%, var(--view-tint-b) 0%, transparent 55%),
+    linear-gradient(135deg, var(--view-grad-a) 0%, var(--bg) 50%, var(--view-grad-b) 100%);
 }
 
 /* ===== Big drill breadcrumbs — own band at the top, separate from the chart pane ===== */
@@ -97,9 +370,9 @@ body[data-view="chart"] {
   align-items: stretch;
   gap: 10px;
   padding: 12px 22px;
-  background: linear-gradient(180deg, var(--bg-2) 0%, #16171c 100%);
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-deep) 100%);
   border-bottom: 2px solid var(--border);
-  box-shadow: 0 4px 14px -6px rgba(0,0,0,0.7);
+  box-shadow: 0 4px 14px -6px rgba(var(--shadow-rgb),0.7);
   overflow-x: auto;
   flex-wrap: nowrap;
   white-space: nowrap;
@@ -123,20 +396,20 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
   text-align: left;
   line-height: 1.15;
   transition: transform 0.1s ease, background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 14%, transparent), 0 2px 6px -2px rgba(0,0,0,0.6);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 14%, transparent), 0 2px 6px -2px rgba(var(--shadow-rgb),0.6);
 }
 .crumb .crumb-tier {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--ct) 72%, #ffffff);
+  color: color-mix(in srgb, var(--ct) 72%, var(--mix-fg));
 }
 .crumb .crumb-name {
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.2px;
-  color: #fff;
+  color: var(--text-strong);
   max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -145,24 +418,24 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
   transform: translateY(-1px);
   border-color: var(--ct);
   background: color-mix(in srgb, var(--ct) 12%, var(--bg));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 30%, transparent), 0 4px 12px -3px rgba(0,0,0,0.7);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 30%, transparent), 0 4px 12px -3px rgba(var(--shadow-rgb),0.7);
 }
 .crumb.current {
   cursor: default;
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--ct) 92%, #fff) 0%,
     var(--ct) 100%);
-  border-color: color-mix(in srgb, var(--ct) 60%, #ffffff);
+  border-color: color-mix(in srgb, var(--ct) 60%, var(--mix-fg));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ct) 50%, transparent), 0 0 16px -2px color-mix(in srgb, var(--ct) 60%, transparent);
 }
 .crumb.current:hover { transform: none; }
-.crumb.current .crumb-tier { color: rgba(0,0,0,0.62); }
-.crumb.current .crumb-name { color: #07140b; }
+.crumb.current .crumb-tier { color: rgba(var(--shadow-rgb),0.62); }
+.crumb.current .crumb-name { color: var(--on-fill); }
 /* tier hues, cohesive with the chart tier colors */
-.crumb.t0 { --ct: #5c7cfa; }
-.crumb.t1 { --ct: #4dabf7; }
-.crumb.t2 { --ct: #f0a23a; }
-.crumb.t3 { --ct: #51cf66; }
+.crumb.t0 { --ct: var(--tier-0); }
+.crumb.t1 { --ct: var(--tier-1); }
+.crumb.t2 { --ct: var(--tier-2); }
+.crumb.t3 { --ct: var(--tier-3); }
 .crumb-sep {
   align-self: center;
   flex-shrink: 0;
@@ -185,8 +458,8 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
 #app-brand .brand-ver {
   font-size: 10px; font-weight: 700;
   color: var(--accent);
-  background: rgba(81, 207, 102, 0.10);
-  border: 1px solid rgba(81, 207, 102, 0.35);
+  background: rgba(var(--accent-rgb), 0.10);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
   border-radius: 3px;
   padding: 1px 6px;
   text-transform: lowercase;
@@ -246,7 +519,7 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
   display: flex; align-items: stretch;
   gap: 2px;
   padding: 0 10px;
-  background: linear-gradient(180deg, #16171c 0%, var(--bg-2) 100%);
+  background: linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-2) 100%);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   position: relative; z-index: 3;
@@ -274,7 +547,7 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
 .chart-tab.active {
   background: var(--bg);
   color: var(--text);
-  border-color: rgba(81, 207, 102, 0.55);
+  border-color: rgba(var(--accent-rgb), 0.55);
   box-shadow: 0 -2px 0 0 var(--accent);
   cursor: default;
 }
@@ -300,7 +573,7 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
 }
 .chart-tab:hover .tab-close,
 .chart-tab.active .tab-close { visibility: visible; }
-.chart-tab .tab-close:hover { background: var(--err); color: #fff; }
+.chart-tab .tab-close:hover { background: var(--err); color: var(--on-err); }
 .chart-tab.is-only .tab-close { visibility: hidden !important; }
 #chart-tab-add {
   display: inline-flex; align-items: center; justify-content: center;
@@ -314,7 +587,7 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
   font-size: 16px; font-weight: 700; cursor: pointer;
   padding: 0; line-height: 1;
 }
-#chart-tab-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(81,207,102,0.06); }
+#chart-tab-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
 
 /* The actions cluster grows to fill the header's leftover width (rather than sitting
    right-aligned with a dead gap before it); its buttons stretch to share that width. */
@@ -330,24 +603,24 @@ button {
   font-family: inherit;
 }
 button:hover { background: var(--bg-4); }
-button.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
-button.primary:hover { background: #69db7c; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: var(--accent-hover); }
 button.danger { color: var(--err); }
-button.danger:hover { background: #3a1f1f; }
+button.danger:hover { background: rgba(var(--err-rgb), 0.18); }
 /* Save / Load: the primary save+load pair. Emphasized with a green tint so they read as
    the canonical "your work is here" actions, separated from the destructive/secondary
    utilities by a vertical divider. */
 #btn-export, #btn-import {
-  background: linear-gradient(180deg, rgba(81, 207, 102, 0.22) 0%, rgba(81, 207, 102, 0.12) 100%);
-  border-color: rgba(81, 207, 102, 0.60);
-  color: #d3f9d8;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.12) 100%);
+  border-color: rgba(var(--accent-rgb), 0.60);
+  color: var(--accent-ink);
   font-weight: 700;
   padding: 5px 14px;
 }
 #btn-export:hover, #btn-import:hover {
-  background: linear-gradient(180deg, rgba(81, 207, 102, 0.36) 0%, rgba(81, 207, 102, 0.22) 100%);
-  border-color: rgba(81, 207, 102, 0.90);
-  color: #fff;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.36) 0%, rgba(var(--accent-rgb), 0.22) 100%);
+  border-color: rgba(var(--accent-rgb), 0.90);
+  color: var(--text-strong);
 }
 /* Vertical separator between the Save/Load pair and the secondary toolbar items. */
 .actions-divider {
@@ -362,11 +635,11 @@ button.danger:hover { background: #3a1f1f; }
 #btn-export-menu { display: inline-flex; align-items: center; gap: 5px; }
 .export-menu .em-caret { font-size: 10px; opacity: 0.75; transition: transform 0.12s ease; }
 .export-menu.open .em-caret { transform: rotate(180deg); opacity: 1; }
-.export-menu.open #btn-export-menu { border-color: var(--accent); color: #fff; }
+.export-menu.open #btn-export-menu { border-color: var(--accent); color: var(--text-strong); }
 .export-menu-list {
   position: absolute; top: calc(100% + 4px); right: 0;
   background: var(--bg-2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(var(--shadow-rgb),0.6);
   z-index: 200; min-width: 210px;
   display: flex; flex-direction: column; gap: 1px;
 }
@@ -386,26 +659,26 @@ button.danger:hover { background: #3a1f1f; }
 .export-menu-list .em-ext { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
 /* Demo = load the built-in demo dataset: amber (recoverable destructive) */
 #btn-reset {
-  background: linear-gradient(180deg, rgba(252, 196, 25, 0.18) 0%, rgba(252, 196, 25, 0.10) 100%);
-  border-color: rgba(252, 196, 25, 0.55);
-  color: #ffe066;
+  background: linear-gradient(180deg, rgba(var(--warn-rgb), 0.18) 0%, rgba(var(--warn-rgb), 0.10) 100%);
+  border-color: rgba(var(--warn-rgb), 0.55);
+  color: var(--warn-ink);
   font-weight: 600;
 }
 #btn-reset:hover {
-  background: linear-gradient(180deg, rgba(252, 196, 25, 0.32) 0%, rgba(252, 196, 25, 0.18) 100%);
-  border-color: rgba(252, 196, 25, 0.85);
+  background: linear-gradient(180deg, rgba(var(--warn-rgb), 0.32) 0%, rgba(var(--warn-rgb), 0.18) 100%);
+  border-color: rgba(var(--warn-rgb), 0.85);
 }
 /* Clear = wipe everything to blank: red (fully destructive) */
 #btn-clear {
-  background: linear-gradient(180deg, rgba(250, 82, 82, 0.22) 0%, rgba(250, 82, 82, 0.12) 100%);
-  border-color: rgba(250, 82, 82, 0.60);
-  color: #ffa8a8;
+  background: linear-gradient(180deg, rgba(var(--err-rgb), 0.22) 0%, rgba(var(--err-rgb), 0.12) 100%);
+  border-color: rgba(var(--err-rgb), 0.60);
+  color: var(--err-ink);
   font-weight: 600;
 }
 #btn-clear:hover {
-  background: linear-gradient(180deg, rgba(250, 82, 82, 0.36) 0%, rgba(250, 82, 82, 0.20) 100%);
-  border-color: rgba(250, 82, 82, 0.90);
-  color: #fff;
+  background: linear-gradient(180deg, rgba(var(--err-rgb), 0.36) 0%, rgba(var(--err-rgb), 0.20) 100%);
+  border-color: rgba(var(--err-rgb), 0.90);
+  color: var(--text-strong);
 }
 
 main { display: flex; flex: 1; overflow: hidden; }
@@ -450,7 +723,7 @@ main { display: flex; flex: 1; overflow: hidden; }
   line-height: 1;
   cursor: pointer;
 }
-.sidebar-toggle:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+.sidebar-toggle:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* collapsed sidebar -> thin rail with just the expand control */
 body.sidebar-collapsed #ws-sidebar { width: 44px; }
@@ -482,14 +755,14 @@ body.sidebar-collapsed .sidebar-toggle { transform: rotate(180deg); }
 #ws-list li.active {
   background: var(--bg-3);
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(81, 207, 102, 0.25), 0 0 14px -2px rgba(81, 207, 102, 0.45);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.25), 0 0 14px -2px rgba(var(--accent-rgb), 0.45);
 }
 #ws-list li .ws-name { cursor: pointer; }
 #ws-list li .ws-name[contenteditable="true"] { cursor: text; }
 #ws-list li.dim { opacity: 0.4; }
 #ws-list li .ws-match-count {
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;
@@ -530,7 +803,7 @@ body.sidebar-collapsed .sidebar-toggle { transform: rotate(180deg); }
   line-height: 1;
 }
 #ws-list li:hover .ws-del { visibility: visible; }
-#ws-list li .ws-del:hover { background: var(--err); color: #fff; }
+#ws-list li .ws-del:hover { background: var(--err); color: var(--on-err); }
 #ws-sidebar .ws-add {
   margin: 8px 12px 12px;
   padding: 7px;
@@ -629,10 +902,10 @@ th.actor .col-name-label { display: block; }
   padding: 2px 8px;
   text-transform: uppercase;
 }
-.col-tier-pill.tier-0 { color: #b9c6ff; border-color: hsla(225, 60%, 60%, 0.5); }
-.col-tier-pill.tier-1 { color: #9ad9ff; border-color: hsla(200, 70%, 60%, 0.5); }
-.col-tier-pill.tier-2 { color: #ffd59a; border-color: hsla(35,  80%, 60%, 0.5); }
-.col-tier-pill.tier-3 { color: #c4f59a; border-color: hsla(95,  60%, 60%, 0.5); }
+.col-tier-pill.tier-0 { color: var(--tier-0-ink); border-color: hsla(225, 60%, 60%, 0.5); }
+.col-tier-pill.tier-1 { color: var(--tier-1-ink); border-color: hsla(200, 70%, 60%, 0.5); }
+.col-tier-pill.tier-2 { color: var(--tier-2-ink); border-color: hsla(35,  80%, 60%, 0.5); }
+.col-tier-pill.tier-3 { color: var(--tier-3-ink); border-color: hsla(95,  60%, 60%, 0.5); }
 table.activities th:first-child, table.activities td:first-child {
   border-left: 1px solid var(--border);
 }
@@ -717,8 +990,8 @@ td.actor-cell.hinge { box-shadow: inset 3px 0 0 var(--accent); }
   color: var(--text-dim);
 }
 .breadcrumb .crumb:hover { background: var(--bg-4); color: var(--text); border-color: var(--text-dim); }
-.breadcrumb .crumb.current { color: #000; background: var(--accent); border-color: var(--accent); cursor: default; font-weight: 700; }
-.breadcrumb .crumb.current:hover { background: var(--accent); color: #000; }
+.breadcrumb .crumb.current { color: var(--on-accent); background: var(--accent); border-color: var(--accent); cursor: default; font-weight: 700; }
+.breadcrumb .crumb.current:hover { background: var(--accent); color: var(--on-accent); }
 .crumb-sep { color: var(--text-dim); font-weight: 400; }
 .owner-tag { color: var(--text-dim); font-size: 12px; }
 .owner-tag b { color: var(--text); }
@@ -727,13 +1000,13 @@ td.actor-cell.hinge { box-shadow: inset 3px 0 0 var(--accent); }
   padding: 1px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; margin-left: 4px;
 }
 .warn-badge {
-  background: var(--warn); color: #000; font-size: 10px; font-weight: 800;
+  background: var(--warn); color: var(--on-warn); font-size: 10px; font-weight: 800;
   padding: 2px 7px; border-radius: 3px; margin-left: 8px; cursor: help;
 }
 .empty-roster-notice {
-  background: linear-gradient(180deg, #4a3815 0%, #382a0d 100%);
-  border: 1px solid #c9a635; border-radius: 6px; padding: 10px 14px;
-  color: #f5c842; font-size: 13px; margin-bottom: 12px; line-height: 1.5;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--warn) 22%, var(--bg-2)) 0%, color-mix(in srgb, var(--warn) 12%, var(--bg)) 100%);
+  border: 1px solid color-mix(in srgb, var(--warn) 62%, var(--border)); border-radius: 6px; padding: 10px 14px;
+  color: var(--warn-ink); font-size: 13px; margin-bottom: 12px; line-height: 1.5;
 }
 .link-btn {
   background: transparent; border: none; color: var(--accent);
@@ -744,8 +1017,8 @@ td.actor-cell.hinge { box-shadow: inset 3px 0 0 var(--accent); }
   font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;
   padding: 1px 5px; border-radius: 3px; cursor: help;
 }
-.row-flag.err { background: var(--err); color: #fff; }
-.row-flag.warn { background: var(--warn); color: #000; }
+.row-flag.err { background: var(--err); color: var(--on-err); }
+.row-flag.warn { background: var(--warn); color: var(--on-warn); }
 
 /* ===== RACI rule-violation UI (per-node pin, bottom-left toast, popover, highlight flash) ===== */
 /* Make ch-del a tall enough anchor for the pin AND keep room for the × button. */
@@ -761,17 +1034,17 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
   width: 18px; height: 18px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 900; line-height: 1;
-  background: var(--err); color: #fff;
+  background: var(--err); color: var(--on-err);
   border: 2px solid var(--bg-2);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.6),
-              0 0 0 1px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 4px rgba(var(--shadow-rgb),0.6),
+              0 0 0 1px rgba(var(--shadow-rgb), 0.35);
   cursor: pointer;
   z-index: 30;                /* above table chrome, hover overlays, focus rings */
   transition: transform 0.12s ease;
   pointer-events: auto;
 }
 .violation-pin:hover { transform: scale(1.15); }
-.violation-pin.warn { background: var(--warn); color: #000; }
+.violation-pin.warn { background: var(--warn); color: var(--on-warn); }
 /* Flow-card pin: same badge, anchored to the card's top-left corner (cards are absolutely
    positioned on the canvas, so the pin rides the card through pan/zoom/drag). */
 .bz-node .violation-pin.bz-pin { top: -8px; left: -8px; right: auto; cursor: default; }
@@ -779,35 +1052,35 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
 .raci-chip.override { box-shadow: inset 0 0 0 2px var(--warn); }
 /* Rows with hard ERRORS get a persistent red tint + side bar so the line itself is flagged. */
 .chart-row.violation-err > td {
-  background: rgba(250, 82, 82, 0.10);
-  box-shadow: inset 0 -1px 0 rgba(250, 82, 82, 0.35),
-              inset 0 1px 0 rgba(250, 82, 82, 0.35);
+  background: rgba(var(--err-rgb), 0.10);
+  box-shadow: inset 0 -1px 0 rgba(var(--err-rgb), 0.35),
+              inset 0 1px 0 rgba(var(--err-rgb), 0.35);
 }
 .chart-row.violation-err > td.ch-toggle {
   box-shadow: inset 4px 0 0 var(--err),
-              inset 0 -1px 0 rgba(250, 82, 82, 0.35),
-              inset 0 1px 0 rgba(250, 82, 82, 0.35);
+              inset 0 -1px 0 rgba(var(--err-rgb), 0.35),
+              inset 0 1px 0 rgba(var(--err-rgb), 0.35);
 }
 .chart-row.violation-flash > td {
   animation: vioPulse 1.6s ease-out 0s 2;
 }
 @keyframes vioPulse {
-  0%   { background: rgba(250, 82, 82, 0.45); }
-  60%  { background: rgba(250, 82, 82, 0.18); }
+  0%   { background: rgba(var(--err-rgb), 0.45); }
+  60%  { background: rgba(var(--err-rgb), 0.18); }
   100% { background: transparent; }
 }
 #violations-toast {
   position: fixed; left: 16px; bottom: 16px; z-index: 50;
   display: none; align-items: center; gap: 8px;
-  background: var(--err); color: #fff;
+  background: var(--err); color: var(--on-err);
   font-weight: 800; font-size: 12px; letter-spacing: 0.3px;
   padding: 9px 13px; border-radius: 22px;
-  border: 2px solid rgba(255, 255, 255, 0.55);
+  border: 2px solid rgba(var(--hi-rgb), 0.55);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 10px 26px rgba(250, 82, 82, 0.45),
-    0 4px 10px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 0 0 1px rgba(var(--shadow-rgb), 0.55),
+    0 10px 26px rgba(var(--err-rgb), 0.45),
+    0 4px 10px rgba(var(--shadow-rgb), 0.55),
+    inset 0 1px 0 rgba(var(--hi-rgb), 0.25);
   cursor: pointer;
   user-select: none;
   transition: transform 0.12s ease, box-shadow 0.15s ease;
@@ -815,28 +1088,28 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
 #violations-toast:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 14px 32px rgba(250, 82, 82, 0.60),
-    0 6px 14px rgba(0, 0, 0, 0.60),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+    0 0 0 1px rgba(var(--shadow-rgb), 0.55),
+    0 14px 32px rgba(var(--err-rgb), 0.60),
+    0 6px 14px rgba(var(--shadow-rgb), 0.60),
+    inset 0 1px 0 rgba(var(--hi-rgb), 0.30);
 }
 #violations-toast.only-warn {
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 10px 26px rgba(252, 196, 25, 0.45),
-    0 4px 10px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30);
-  border-color: rgba(0, 0, 0, 0.45);
+    0 0 0 1px rgba(var(--shadow-rgb), 0.55),
+    0 10px 26px rgba(var(--warn-rgb), 0.45),
+    0 4px 10px rgba(var(--shadow-rgb), 0.55),
+    inset 0 1px 0 rgba(var(--hi-rgb), 0.30);
+  border-color: rgba(var(--shadow-rgb), 0.45);
 }
 #violations-toast.only-warn:hover {
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 14px 32px rgba(252, 196, 25, 0.60),
-    0 6px 14px rgba(0, 0, 0, 0.60),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    0 0 0 1px rgba(var(--shadow-rgb), 0.55),
+    0 14px 32px rgba(var(--warn-rgb), 0.60),
+    0 6px 14px rgba(var(--shadow-rgb), 0.60),
+    inset 0 1px 0 rgba(var(--hi-rgb), 0.35);
 }
 #violations-toast.has-issues { display: inline-flex; }
-#violations-toast.only-warn { background: var(--warn); color: #000; }
+#violations-toast.only-warn { background: var(--warn); color: var(--on-warn); }
 #violations-toast .vt-icon { font-size: 14px; }
 
 /* ===== Floating "Auto Arrange" button =====
@@ -847,14 +1120,14 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
 #arrange-fab {
   position: fixed; left: 16px; bottom: 16px; z-index: 49;
   display: none; align-items: center; gap: 8px;
-  background: var(--accent); color: #04210f;
+  background: var(--accent); color: var(--on-accent);
   font-weight: 800; font-size: 12px; letter-spacing: 0.3px;
   padding: 9px 14px; border-radius: 22px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(var(--hi-rgb), 0.5);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 10px 26px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 0 0 1px rgba(var(--shadow-rgb), 0.5),
+    0 10px 26px rgba(var(--shadow-rgb), 0.5),
+    inset 0 1px 0 rgba(var(--hi-rgb), 0.25);
   cursor: pointer;
   user-select: none;
   transition: transform 0.12s ease, box-shadow 0.15s ease, bottom 0.18s ease;
@@ -863,10 +1136,10 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
 #arrange-fab:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 14px 32px rgba(81, 207, 102, 0.55),
-    0 6px 14px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 0 0 1px rgba(var(--shadow-rgb), 0.5),
+    0 14px 32px rgba(var(--accent-rgb), 0.55),
+    0 6px 14px rgba(var(--shadow-rgb), 0.6),
+    inset 0 1px 0 rgba(var(--hi-rgb), 0.3);
 }
 #arrange-fab .af-icon { font-size: 14px; line-height: 1; }
 /* Stack above the violations toast when it's present (the toast precedes this element). */
@@ -877,18 +1150,18 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
   0%, 100% {
     transform: scale(1);
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.5),
-      0 10px 26px rgba(0, 0, 0, 0.5),
-      0 0 0 0 rgba(81, 207, 102, 0),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      0 0 0 1px rgba(var(--shadow-rgb), 0.5),
+      0 10px 26px rgba(var(--shadow-rgb), 0.5),
+      0 0 0 0 rgba(var(--accent-rgb), 0),
+      inset 0 1px 0 rgba(var(--hi-rgb), 0.25);
   }
   50% {
     transform: scale(1.06);
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.5),
-      0 12px 30px rgba(0, 0, 0, 0.5),
-      0 0 24px 7px rgba(81, 207, 102, 0.9),
-      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      0 0 0 1px rgba(var(--shadow-rgb), 0.5),
+      0 12px 30px rgba(var(--shadow-rgb), 0.5),
+      0 0 24px 7px rgba(var(--accent-rgb), 0.9),
+      inset 0 1px 0 rgba(var(--hi-rgb), 0.35);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -901,7 +1174,7 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
   width: 380px; max-height: 60vh;
   background: var(--bg-2); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px;
-  box-shadow: 0 14px 34px rgba(0,0,0,0.65);
+  box-shadow: 0 14px 34px rgba(var(--shadow-rgb),0.65);
   overflow: hidden;
 }
 #violations-popover.open { display: flex; }
@@ -929,9 +1202,9 @@ td.ch-del > button[data-del-node] { vertical-align: middle; }
   flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 900;
-  background: var(--err); color: #fff;
+  background: var(--err); color: var(--on-err);
 }
-.vp-sev.warn { background: var(--warn); color: #000; }
+.vp-sev.warn { background: var(--warn); color: var(--on-warn); }
 .vp-body { flex: 1; min-width: 0; }
 .vp-title {
   font-size: 12px; font-weight: 700; color: var(--text);
@@ -983,13 +1256,13 @@ td.actor-cell .cell-note:empty::before {
   letter-spacing: 0;
 }
 td.actor-cell .raci-chip { width: 28px; height: 28px; font-size: 15px; }
-.raci-chip.R { background: var(--r); color: #000; }
-.raci-chip.A { background: var(--a); color: #fff; }
-.raci-chip.C { background: var(--c); color: #000; }
-.raci-chip.I { background: var(--i); color: #fff; }
-.raci-chip.S { background: var(--s); color: #000; }
-.raci-chip.D { background: var(--d); color: #fff; }
-.raci-chip.P { background: var(--p); color: #000; }
+.raci-chip.R { background: var(--r); color: var(--on-r); }
+.raci-chip.A { background: var(--a); color: var(--on-a); }
+.raci-chip.C { background: var(--c); color: var(--on-c); }
+.raci-chip.I { background: var(--i); color: var(--on-i); }
+.raci-chip.S { background: var(--s); color: var(--on-s); }
+.raci-chip.D { background: var(--d); color: var(--on-d); }
+.raci-chip.P { background: var(--p); color: var(--on-p); }
 
 td.row-del {
   width: 32px;
@@ -1007,7 +1280,7 @@ td.row-del button {
   line-height: 1;
 }
 tr:hover td.row-del button { visibility: visible; }
-td.row-del button:hover { background: var(--err); color: #fff; }
+td.row-del button:hover { background: var(--err); color: var(--on-err); }
 
 .add-activity {
   margin: 14px 0 0;
@@ -1064,7 +1337,7 @@ body.show-bz-party[data-view="bizcase"] #bz-party-panel { display: block; }
   background: transparent; color: var(--text-dim); border: 1px solid var(--border); border-radius: 50%;
   font-size: 16px; line-height: 1; cursor: pointer; padding: 0; transition: background .12s, color .12s, border-color .12s;
 }
-#bz-party-close:hover { background: var(--err); color: #fff; border-color: var(--err); }
+#bz-party-close:hover { background: var(--err); color: var(--on-err); border-color: var(--err); }
 .bzp-context { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
 .bzp-context .raci-chip { width: 24px; height: 24px; font-size: 13px; flex: 0 0 auto; }
 .bzp-context .cell-chips { display: inline-flex; gap: 3px; flex: 0 0 auto; }
@@ -1083,10 +1356,10 @@ body.show-bz-party[data-view="bizcase"] #bz-party-panel { display: block; }
 .bzp-preview.set { color: var(--text); border-style: solid; }
 .bzp-actions { display: flex; gap: 8px; }
 .bzp-actions button { flex: 1; padding: 7px 10px; border-radius: 5px; font: inherit; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-3); color: var(--text); }
-#bz-party-assign { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
-#bz-party-assign:hover { background: #69db7c; }
+#bz-party-assign { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+#bz-party-assign:hover { background: var(--accent-hover); }
 #bz-party-assign:disabled { opacity: 0.45; cursor: not-allowed; background: var(--bg-3); color: var(--text-dim); border-color: var(--border); }
-#bz-party-clear:hover { background: var(--err); color: #fff; border-color: var(--err); }
+#bz-party-clear:hover { background: var(--err); color: var(--on-err); border-color: var(--err); }
 .bzp-empty { color: var(--text-dim); font-style: italic; line-height: 1.5; }
 
 /* ===== Activity Details right rail (definition + process documents) ===== */
@@ -1127,7 +1400,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 #det-close:hover {
-  background: var(--err); color: #fff; border-color: var(--err);
+  background: var(--err); color: var(--on-err); border-color: var(--err);
 }
 #details .det-empty {
   color: var(--text-dim); font-style: italic; font-size: 12px;
@@ -1188,7 +1461,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 .det-io-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 20px; }
 .det-io-chip {
   display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
-  background: var(--bg-3); border: 1px solid rgba(81, 207, 102, 0.45); border-radius: 10px;
+  background: var(--bg-3); border: 1px solid rgba(var(--accent-rgb), 0.45); border-radius: 10px;
   padding: 1px 4px 1px 8px; font-size: 11px; color: var(--accent);
 }
 .det-io-rm { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font: inherit; font-size: 12px; padding: 0 2px; }
@@ -1223,7 +1496,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   color: var(--text-dim); font-size: 12px; font-weight: 600;
   padding: 9px 10px; width: 100%; cursor: pointer;
 }
-.det-upload:hover { border-color: var(--accent); color: var(--accent); background: rgba(81,207,102,0.06); }
+.det-upload:hover { border-color: var(--accent); color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
 .det-cap-note {
   font-size: 10px; color: var(--text-dim); margin-top: 5px; line-height: 1.4;
 }
@@ -1250,20 +1523,20 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 #sidebar-arrow .sa-label {
   font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: #000;
+  color: var(--on-accent);
   background: var(--accent);
-  border: 1px solid #2b8a3e;
+  border: 1px solid var(--accent-edge);
   border-radius: 6px;
   padding: 8px 12px;
-  box-shadow: 0 10px 26px rgba(81,207,102,0.45),
-              0 4px 10px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 26px rgba(var(--accent-rgb),0.45),
+              0 4px 10px rgba(var(--shadow-rgb),0.5);
   white-space: nowrap;
 }
 #sidebar-arrow .sa-arrow {
   font-size: 56px; line-height: 1;
   color: var(--accent);
-  text-shadow: 0 0 14px rgba(81,207,102,0.85),
-               0 0 4px rgba(81,207,102,0.5);
+  text-shadow: 0 0 14px rgba(var(--accent-rgb),0.85),
+               0 0 4px rgba(var(--accent-rgb),0.5);
   animation: sidebarArrowJab 0.7s ease-in-out infinite;
 }
 @keyframes sidebarArrowJab {
@@ -1288,7 +1561,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   border: 1px solid var(--border);
   vertical-align: middle;
 }
-.def-tip-pin:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+.def-tip-pin:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .def-doc-count {
   display: inline-flex; align-items: center; gap: 2px;
   font-size: 9px; font-weight: 800;
@@ -1308,13 +1581,13 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 }
 /* When BOTH error + active are present, prefer the error treatment but keep a tiny blue tick on toggle. */
 .chart-row.violation-err.row-active > td.ch-toggle {
-  box-shadow: inset 4px 0 0 var(--err), inset 0 -2px 0 rgba(77,171,247,0.7), inset 0 2px 0 rgba(77,171,247,0.7);
+  box-shadow: inset 4px 0 0 var(--err), inset 0 -2px 0 rgba(var(--r-rgb),0.7), inset 0 2px 0 rgba(var(--r-rgb),0.7);
 }
 
 /* ===== Startup splash overlay (save/restore reminder) ===== */
 #splash-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--scrim);
   backdrop-filter: blur(2px);
   display: none; align-items: center; justify-content: center;
   padding: 20px;
@@ -1327,19 +1600,19 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   max-width: 520px; width: 100%;
   padding: 26px 28px;
   color: var(--text);
-  box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  box-shadow: 0 24px 60px rgba(var(--shadow-rgb),0.7);
   text-align: left;
 }
 #splash-card h2 {
   margin: 0 0 10px; font-size: 18px;
-  color: #ffe066;
+  color: var(--warn-ink);
   display: flex; align-items: center; gap: 9px;
 }
 #splash-card h2 .sc-icon {
   font-size: 22px; line-height: 1;
 }
 #splash-card p { margin: 0 0 12px; line-height: 1.55; font-size: 13px; }
-#splash-card p.sc-strong { color: #ffd43b; font-weight: 600; }
+#splash-card p.sc-strong { color: var(--warn-ink); font-weight: 600; }
 #splash-card ul { margin: 6px 0 16px; padding-left: 22px; line-height: 1.65; font-size: 12.5px; }
 #splash-card ul code { background: var(--bg-3); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
 #splash-actions { display: flex; gap: 14px; justify-content: space-between; align-items: center; margin-top: 6px; }
@@ -1351,16 +1624,16 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 .sc-never input { margin: 0; cursor: pointer; accent-color: var(--accent); }
 .sc-never:hover { color: var(--text); }
 #splash-actions .sc-dismiss {
-  background: var(--accent); color: #000;
+  background: var(--accent); color: var(--on-accent);
   border: none; border-radius: 6px; padding: 8px 16px;
   font-weight: 700; font-size: 13px; cursor: pointer;
 }
-#splash-actions .sc-dismiss:hover { background: #69db7c; }
+#splash-actions .sc-dismiss:hover { background: var(--accent-hover); }
 
 /* ===== New-chart chooser (organization vs free-form) ===== */
 #newchart-overlay {
   position: fixed; inset: 0; z-index: 210;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--scrim);
   backdrop-filter: blur(2px);
   display: none; align-items: center; justify-content: center;
   padding: 20px;
@@ -1373,7 +1646,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   max-width: 560px; width: 100%;
   padding: 24px 26px;
   color: var(--text);
-  box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  box-shadow: 0 24px 60px rgba(var(--shadow-rgb),0.7);
 }
 #newchart-card h2 { margin: 0 0 4px; font-size: 17px; }
 .nc-sub { margin: 0 0 16px; color: var(--text-dim); font-size: 12.5px; }
@@ -1399,25 +1672,25 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   position: fixed; right: 16px; bottom: 16px; z-index: 52;
   display: none; align-items: center; gap: 10px;
   max-width: 320px;
-  background: linear-gradient(180deg, rgba(252,196,25,0.18) 0%, rgba(252,196,25,0.08) 100%);
-  color: #ffe066;
-  border: 1px solid rgba(252,196,25,0.55);
+  background: linear-gradient(180deg, rgba(var(--warn-rgb),0.18) 0%, rgba(var(--warn-rgb),0.08) 100%);
+  color: var(--warn-ink);
+  border: 1px solid rgba(var(--warn-rgb),0.55);
   border-radius: 8px;
   padding: 10px 12px 10px 14px;
   font-size: 12px; font-weight: 600; line-height: 1.4;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.55),
-              inset 0 1px 0 rgba(255,255,255,0.10);
+  box-shadow: 0 10px 24px rgba(var(--shadow-rgb),0.55),
+              inset 0 1px 0 rgba(var(--hi-rgb),0.10);
 }
 #save-nag.open { display: inline-flex; }
 #save-nag .sn-icon { font-size: 16px; flex-shrink: 0; }
 #save-nag .sn-text { flex: 1; }
 #save-nag .sn-export {
-  background: rgba(252,196,25,0.85); color: #000;
+  background: rgba(var(--warn-rgb),0.85); color: var(--on-warn);
   border: none; border-radius: 4px; padding: 4px 10px;
   font-weight: 700; font-size: 11px; cursor: pointer;
   flex-shrink: 0;
 }
-#save-nag .sn-export:hover { background: #ffe066; }
+#save-nag .sn-export:hover { background: var(--warn); }
 #save-nag .sn-close {
   background: transparent; border: none; color: var(--text-dim);
   font-size: 16px; cursor: pointer; padding: 0 2px; flex-shrink: 0;
@@ -1431,7 +1704,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  box-shadow: 0 8px 24px rgba(var(--shadow-rgb),0.6);
   z-index: 100;
   display: flex;
   flex-wrap: wrap;
@@ -1460,13 +1733,13 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   color: var(--text-dim);
   padding: 0;
 }
-.raci-popover button.on.R { background: var(--r); color: #000; border-color: var(--r); }
-.raci-popover button.on.A { background: var(--a); color: #fff; border-color: var(--a); }
-.raci-popover button.on.C { background: var(--c); color: #000; border-color: var(--c); }
-.raci-popover button.on.I { background: var(--i); color: #fff; border-color: var(--i); }
-.raci-popover button.on.S { background: var(--s); color: #000; border-color: var(--s); }
-.raci-popover button.on.D { background: var(--d); color: #fff; border-color: var(--d); }
-.raci-popover button.on.P { background: var(--p); color: #000; border-color: var(--p); }
+.raci-popover button.on.R { background: var(--r); color: var(--on-r); border-color: var(--r); }
+.raci-popover button.on.A { background: var(--a); color: var(--on-a); border-color: var(--a); }
+.raci-popover button.on.C { background: var(--c); color: var(--on-c); border-color: var(--c); }
+.raci-popover button.on.I { background: var(--i); color: var(--on-i); border-color: var(--i); }
+.raci-popover button.on.S { background: var(--s); color: var(--on-s); border-color: var(--s); }
+.raci-popover button.on.D { background: var(--d); color: var(--on-d); border-color: var(--d); }
+.raci-popover button.on.P { background: var(--p); color: var(--on-p); border-color: var(--p); }
 .raci-popover button:hover { transform: scale(1.05); }
 .raci-popover .clear {
   width: auto;
@@ -1481,7 +1754,7 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   font-size: 11px;
   font-weight: 700;
 }
-.raci-popover .primary-r.on { background: var(--r); color: #000; border-color: var(--r); }
+.raci-popover .primary-r.on { background: var(--r); color: var(--on-r); border-color: var(--r); }
 
 /* ===== Toasts ===== */
 #toast-tray {
@@ -1504,10 +1777,10 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
-  color: #fff;
+  color: var(--text-strong);
   background: var(--bg-2);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  box-shadow: 0 10px 30px rgba(var(--shadow-rgb),0.55);
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -1517,13 +1790,13 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast .toast-ico { flex: 0 0 auto; font-size: 15px; line-height: 1.2; }
-.toast.error { border-color: var(--r); background: #3a1518; }
+.toast.error { border-color: var(--r); background: color-mix(in srgb, var(--err) 16%, var(--bg-2)); }
 .toast.error .toast-ico { color: var(--r); }
-.toast.suggest { border-color: var(--a); background: #16263a; }
+.toast.suggest { border-color: var(--a); background: color-mix(in srgb, var(--r) 16%, var(--bg-2)); }
 .toast.suggest .toast-ico { color: var(--a); }
 
 /* Primary-R chip ring + needs-pick nudge */
-.raci-chip.primary-r { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px #fff; }
+.raci-chip.primary-r { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--text-strong); }
 .chart-cell.needs-primary .raci-chip.R { outline: 2px dotted var(--a); outline-offset: 1px; }
 
 input[type="file"] { display: none; }
@@ -1988,16 +2261,16 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 /* ===== Leadership — each role gets its own color via --lc set per data-role =====
    AD = Associate Director (gold), DC = Division Chief (blue),
    BC = Branch Chief (purple), TL = Team Lead (green) */
-.lead-card, .add-lead { --lc: #c9a635; }
-.lead-card[data-role="AD"], .add-lead[data-role="AD"] { --lc: #e0b53a; }
-.lead-card[data-role="DC"], .add-lead[data-role="DC"] { --lc: #4dabf7; }
-.lead-card[data-role="BC"], .add-lead[data-role="BC"] { --lc: #b07cff; }
-.lead-card[data-role="TL"], .add-lead[data-role="TL"] { --lc: #51cf66; }
+.lead-card, .add-lead { --lc: var(--lc-base); }
+.lead-card[data-role="AD"], .add-lead[data-role="AD"] { --lc: var(--lc-ad); }
+.lead-card[data-role="DC"], .add-lead[data-role="DC"] { --lc: var(--lc-dc); }
+.lead-card[data-role="BC"], .add-lead[data-role="BC"] { --lc: var(--lc-bc); }
+.lead-card[data-role="TL"], .add-lead[data-role="TL"] { --lc: var(--lc-tl); }
 
 .lead-card {
   background: linear-gradient(180deg,
-    color-mix(in srgb, var(--lc) 26%, #14151a) 0%,
-    color-mix(in srgb, var(--lc) 13%, #0f1015) 100%);
+    color-mix(in srgb, var(--lc) 26%, var(--sunk-1)) 0%,
+    color-mix(in srgb, var(--lc) 13%, var(--sunk-2)) 100%);
   border: 1px solid color-mix(in srgb, var(--lc) 68%, transparent);
   border-radius: 6px;
   padding: 8px 12px;
@@ -2008,9 +2281,9 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--lc) 45%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--lc) 20%, transparent),
-    0 2px 0 color-mix(in srgb, var(--lc) 30%, #07080b),
-    0 4px 0 color-mix(in srgb, var(--lc) 18%, #05060a),
-    0 7px 12px -3px rgba(0, 0, 0, 0.55);
+    0 2px 0 color-mix(in srgb, var(--lc) 30%, var(--edge-1)),
+    0 4px 0 color-mix(in srgb, var(--lc) 18%, var(--edge-2)),
+    0 7px 12px -3px rgba(var(--shadow-rgb), 0.55);
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .lead-card:hover {
@@ -2018,9 +2291,9 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--lc) 55%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--lc) 28%, transparent),
-    0 3px 0 color-mix(in srgb, var(--lc) 30%, #07080b),
-    0 6px 0 color-mix(in srgb, var(--lc) 18%, #05060a),
-    0 11px 17px -3px rgba(0, 0, 0, 0.62);
+    0 3px 0 color-mix(in srgb, var(--lc) 30%, var(--edge-1)),
+    0 6px 0 color-mix(in srgb, var(--lc) 18%, var(--edge-2)),
+    0 11px 17px -3px rgba(var(--shadow-rgb), 0.62);
 }
 .lead-badge {
   font-size: 9px;
@@ -2028,7 +2301,7 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   letter-spacing: 0.7px;
   text-transform: uppercase;
   background: var(--lc);
-  color: #10131a;
+  color: var(--on-fill);
   padding: 3px 8px;
   border-radius: 3px;
   white-space: nowrap;
@@ -2038,7 +2311,7 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   padding: 1px 5px;
   border-radius: 3px;
   font-weight: 700;
-  color: color-mix(in srgb, var(--lc) 68%, #ffffff);
+  color: color-mix(in srgb, var(--lc) 68%, var(--mix-fg));
   font-size: 13px;
   flex: 1;
   min-width: 80px;
@@ -2050,14 +2323,14 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   font-style: italic;
   font-weight: 400;
 }
-.lead-card .del-icon { color: color-mix(in srgb, var(--lc) 65%, #ffffff); }
+.lead-card .del-icon { color: color-mix(in srgb, var(--lc) 65%, var(--mix-fg)); }
 .lead-card:hover .del-icon { visibility: visible; }
-.lead-card .del-icon:hover { background: var(--err); color: #fff; }
+.lead-card .del-icon:hover { background: var(--err); color: var(--on-err); }
 
 .add-lead {
   background: transparent;
   border: 1px dashed color-mix(in srgb, var(--lc) 45%, transparent);
-  color: color-mix(in srgb, var(--lc) 72%, #ffffff);
+  color: color-mix(in srgb, var(--lc) 72%, var(--mix-fg));
   padding: 6px 10px;
   font-size: 11px;
   border-radius: 4px;
@@ -2067,7 +2340,7 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 .add-lead:hover {
   background: color-mix(in srgb, var(--lc) 14%, transparent);
   border-color: var(--lc);
-  color: color-mix(in srgb, var(--lc) 55%, #ffffff);
+  color: color-mix(in srgb, var(--lc) 55%, var(--mix-fg));
 }
 
 .del-icon {
@@ -2084,7 +2357,7 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 .branch:hover > .branch-header > .del-icon,
 .team:hover > .team-header > .del-icon,
 .person:hover > .del-icon { visibility: visible; }
-.del-icon:hover { color: #fff; background: var(--err); }
+.del-icon:hover { color: var(--text-strong); background: var(--err); }
 
 /* ===== Business Case (node-graph) view — tabletop exercises ===== */
 /* Full-pane, dark-themed canvas. Parallel to the org RACI chart; its own RACI per task. */
@@ -2141,9 +2414,9 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
 }
 #help-docbar button:hover { color: var(--text); background: var(--bg-4); border-color: var(--text-dim); }
 #help-docbar button.active {
-  background: linear-gradient(180deg, rgba(81, 207, 102, 0.22) 0%, rgba(81, 207, 102, 0.10) 100%);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.10) 100%);
   color: var(--accent); border-color: var(--accent); font-weight: 700;
-  box-shadow: 0 0 0 1px rgba(81, 207, 102, 0.25), 0 2px 10px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.25), 0 2px 10px rgba(var(--shadow-rgb), 0.35);
 }
 .help-frame { flex: 1; min-height: 0; width: 100%; border: 0; display: block; background: var(--bg); }
 .help-frame.hf-hidden { display: none; }
@@ -2230,7 +2503,7 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
 }
 .wkc-back:hover { border-color: var(--text-dim); }
 .wkc-see {
-  background: var(--accent); border: 1px solid var(--accent); color: #08240f; font: inherit;
+  background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent); font: inherit;
   font-size: 14px; font-weight: 600; padding: 11px 20px; border-radius: 8px; cursor: pointer;
 }
 .wkc-see b { font-weight: 800; }
@@ -2268,28 +2541,28 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
 /* + New Graph / + Add task = constructive: green (mirrors the Save/Load pair in the header) */
 .bz-toolbar #bz-new,
 .bz-toolbar #bz-add-task {
-  background: linear-gradient(180deg, rgba(81, 207, 102, 0.22) 0%, rgba(81, 207, 102, 0.12) 100%);
-  border-color: rgba(81, 207, 102, 0.60);
-  color: #d3f9d8;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.12) 100%);
+  border-color: rgba(var(--accent-rgb), 0.60);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 .bz-toolbar #bz-new:hover,
 .bz-toolbar #bz-add-task:hover {
-  background: linear-gradient(180deg, rgba(81, 207, 102, 0.36) 0%, rgba(81, 207, 102, 0.22) 100%);
-  border-color: rgba(81, 207, 102, 0.90);
-  color: #fff;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.36) 0%, rgba(var(--accent-rgb), 0.22) 100%);
+  border-color: rgba(var(--accent-rgb), 0.90);
+  color: var(--text-strong);
 }
 /* Delete (this business case) = destructive: red (mirrors the Clear button) */
 .bz-toolbar #bz-del {
-  background: linear-gradient(180deg, rgba(250, 82, 82, 0.22) 0%, rgba(250, 82, 82, 0.12) 100%);
-  border-color: rgba(250, 82, 82, 0.60);
-  color: #ffa8a8;
+  background: linear-gradient(180deg, rgba(var(--err-rgb), 0.22) 0%, rgba(var(--err-rgb), 0.12) 100%);
+  border-color: rgba(var(--err-rgb), 0.60);
+  color: var(--err-ink);
   font-weight: 600;
 }
 .bz-toolbar #bz-del:hover {
-  background: linear-gradient(180deg, rgba(250, 82, 82, 0.36) 0%, rgba(250, 82, 82, 0.20) 100%);
-  border-color: rgba(250, 82, 82, 0.90);
-  color: #fff;
+  background: linear-gradient(180deg, rgba(var(--err-rgb), 0.36) 0%, rgba(var(--err-rgb), 0.20) 100%);
+  border-color: rgba(var(--err-rgb), 0.90);
+  color: var(--text-strong);
 }
 .bz-toolbar #bz-toggle-table.active { background: var(--bg); box-shadow: inset 0 -2px 0 0 var(--accent); }
 .bz-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
@@ -2324,14 +2597,14 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
 .bz-node.bz-flash { animation: bzFlash 1.1s ease-in-out 0s 3; }
 @keyframes bzFlash {
   0%, 100% { box-shadow: none; }
-  50% { box-shadow: 0 0 0 3px var(--p), 0 0 18px rgba(34, 184, 207, 0.6); }
+  50% { box-shadow: 0 0 0 3px var(--p), 0 0 18px rgba(var(--p-rgb), 0.6); }
 }
 
 .bz-body { flex: 1; min-height: 0; display: flex; }
 .bz-canvas {
   position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab;
   background:
-    radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px) 0 0 / 22px 22px,
+    radial-gradient(circle, rgba(var(--lift-rgb),0.05) 1px, transparent 1px) 0 0 / 22px 22px,
     var(--bg);
 }
 .bz-canvas.panning { cursor: grabbing; }
@@ -2349,9 +2622,9 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-node {
   position: absolute; width: 220px; background: var(--bg-2);
   border: 1px solid var(--border); border-radius: 9px;
-  box-shadow: 0 5px 16px rgba(0,0,0,0.45); z-index: 2;
+  box-shadow: 0 5px 16px rgba(var(--shadow-rgb),0.45); z-index: 2;
 }
-.bz-node.dragging { box-shadow: 0 10px 28px rgba(0,0,0,0.6); border-color: var(--accent); z-index: 5; }
+.bz-node.dragging { box-shadow: 0 10px 28px rgba(var(--shadow-rgb),0.6); border-color: var(--accent); z-index: 5; }
 .bz-node-head {
   display: flex; align-items: center; gap: 6px; padding: 7px 10px;
   border-bottom: 1px solid var(--border); cursor: move; border-radius: 9px 9px 0 0;
@@ -2375,7 +2648,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-node-crit {
   margin: 3px 9px 7px; padding: 7px 9px; display: flex; flex-direction: column; gap: 5px;
   background: var(--bg-cell); border: 1px solid var(--border); border-radius: 7px;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.22);
+  box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb),0.22);
 }
 .bz-crit-row { display: flex; align-items: flex-start; gap: 6px; }
 .bz-crit-lbl {
@@ -2394,25 +2667,27 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
   flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; padding: 0;
   background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer; border-radius: 3px;
 }
-.bz-node-del:hover { background: var(--err); color: #fff; }
+.bz-node-del:hover { background: var(--err); color: var(--on-err); }
 .bz-node-copy {
   flex: 0 0 auto; width: 18px; height: 18px; line-height: 1; padding: 0;
   background: transparent; border: none; color: var(--text-dim); font-size: 12px; cursor: pointer; border-radius: 3px;
 }
-.bz-node-copy:hover { background: var(--accent); color: #000; }
+.bz-node-copy:hover { background: var(--accent); color: var(--on-accent); }
 /* Selected step — the clipboard target for Ctrl+C / Ctrl+X (set by clicking a box) */
 .bz-node.selected {
   border-color: var(--accent);
-  box-shadow: 0 5px 16px rgba(0,0,0,0.45), 0 0 0 2px rgba(81, 207, 102, 0.35);
+  box-shadow: 0 5px 16px rgba(var(--shadow-rgb),0.45), 0 0 0 2px rgba(var(--accent-rgb), 0.35);
 }
 
 /* ===== Flow minimap — bottom-right, stacked above the zoom pills ===== */
 #bz-minimap {
   position: absolute; right: 18px; bottom: 64px; z-index: 60;
   width: 200px; height: 140px;
-  background: rgba(0, 0, 0, 0.55);
+  /* A translucent panel floating over the flow canvas — it reads against whatever the
+     canvas is, so it follows --bg rather than being pinned to a dark wash. */
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
   border: 1px solid var(--border); border-radius: 8px;
-  box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 22px rgba(var(--shadow-rgb),0.5);
   cursor: pointer;
 }
 #bz-minimap:hover { border-color: var(--text-dim); }
@@ -2420,7 +2695,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-node-body {
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
   margin: 0 9px 7px; padding: 7px; background: var(--bg-cell);
-  border: 1px solid var(--border); border-radius: 7px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.22);
+  border: 1px solid var(--border); border-radius: 7px; box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb),0.22);
 }
 .bz-cell {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -2438,7 +2713,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-node-parties {
   margin: 0 9px 8px; padding: 6px 7px; display: flex; flex-direction: column; gap: 4px;
   background: var(--bg-cell); border: 1px solid var(--border); border-radius: 7px;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.22);
+  box-shadow: inset 0 1px 2px rgba(var(--shadow-rgb),0.22);
 }
 .bz-party-row .bz-party-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; flex: 0 0 auto; min-width: 26px; margin-top: 3px; }
 .bz-party-row .cell-chips { display: inline-flex; gap: 2px; flex: 0 0 auto; margin-top: 1px; }
@@ -2450,7 +2725,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 
 /* Default party inherited from the anchored chart's org context — dashed until set explicitly */
 .bz-party-row.is-inherited .bz-party-lvl { border-style: dashed; opacity: 0.8; }
-.bz-party-row.is-inherited .bz-party-lvl.is-leaf { border-color: rgba(34, 184, 207, 0.55); background: rgba(34, 184, 207, 0.08); }
+.bz-party-row.is-inherited .bz-party-lvl.is-leaf { border-color: rgba(var(--p-rgb), 0.55); background: rgba(var(--p-rgb), 0.08); }
 .bz-party-row.is-inherited .bz-party-lvl.is-leaf > .bz-party-lbl { color: var(--p); font-weight: 600; }
 .bz-party-row {
   display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left;
@@ -2464,14 +2739,14 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-party-row.is-unset .bz-party-label { color: var(--text-dim); font-style: italic; }
 /* Nested directorate → division → branch capsules for a set party (each level indented inside its parent). */
 .bz-party-tree { flex: 1; min-width: 0; }
-.bz-party-lvl { display: block; border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; background: rgba(255,255,255,0.025); }
+.bz-party-lvl { display: block; border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; background: rgba(var(--lift-rgb),0.045); }
 .bz-party-lvl .bz-party-lvl { margin-top: 3px; margin-left: 7px; }
 .bz-party-lbl { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.45; }
 .bz-party-lvl.k-dir > .bz-party-lbl { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-dim); }
 .bz-party-lvl.k-div > .bz-party-lbl,
 .bz-party-lvl.k-branch > .bz-party-lbl,
 .bz-party-lvl.k-team > .bz-party-lbl { font-size: 10px; color: var(--text); }
-.bz-party-lvl.is-leaf { border-color: rgba(81,207,102,0.55); background: rgba(81,207,102,0.10); }
+.bz-party-lvl.is-leaf { border-color: rgba(var(--accent-rgb),0.55); background: rgba(var(--accent-rgb),0.10); }
 .bz-party-lvl.is-leaf > .bz-party-lbl { color: var(--accent); font-weight: 600; }
 
 .bz-socket {
@@ -2498,24 +2773,24 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 
 /* decision points + labeled branches */
 .bz-node--decision { border-color: var(--c); }
-.bz-node--decision .bz-node-head { background: linear-gradient(180deg, #3a3318, var(--bg-2)); }
-.bz-decision-badge { flex: 0 0 auto; font-size: 9px; font-weight: 700; color: #1a1300; background: var(--c); border-radius: 3px; padding: 1px 5px; letter-spacing: 0.02em; white-space: nowrap; }
+.bz-node--decision .bz-node-head { background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, var(--bg-2)), var(--bg-2)); }
+.bz-decision-badge { flex: 0 0 auto; font-size: 9px; font-weight: 700; color: var(--on-c); background: var(--c); border-radius: 3px; padding: 1px 5px; letter-spacing: 0.02em; white-space: nowrap; }
 .bz-edges .bz-edge-label { fill: var(--text); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
 
 .bz-edge-popover {
   position: absolute; z-index: 120; background: var(--bg-2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  border-radius: 6px; padding: 8px; box-shadow: 0 8px 24px rgba(var(--shadow-rgb),0.6);
   display: flex; flex-direction: column; gap: 6px; width: 220px;
 }
 .bz-edge-popover .bz-ep-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
 .bz-edge-popover .bz-ep-input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 7px; font: inherit; font-size: 12px; }
 .bz-edge-popover .bz-ep-del { background: var(--bg-3); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font: inherit; font-size: 12px; cursor: pointer; }
-.bz-edge-popover .bz-ep-del:hover { background: var(--err); color: #fff; border-color: var(--err); }
+.bz-edge-popover .bz-ep-del:hover { background: var(--err); color: var(--on-err); border-color: var(--err); }
 /* Deliverables on a handoff (v0.20) */
 .bz-edge-popover .bz-ep-arts { display: flex; flex-wrap: wrap; gap: 4px; min-height: 20px; }
 .bz-edge-popover .bz-ep-art {
   display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
-  background: var(--bg-3); border: 1px solid rgba(81, 207, 102, 0.45); border-radius: 10px;
+  background: var(--bg-3); border: 1px solid rgba(var(--accent-rgb), 0.45); border-radius: 10px;
   padding: 1px 4px 1px 8px; font-size: 11px; color: var(--accent);
 }
 .bz-edge-popover .bz-ep-art-rm { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font: inherit; font-size: 12px; padding: 0 2px; }
@@ -2528,7 +2803,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 /* Flow-table "Hands off" chips */
 .bz-flow-hand { max-width: 180px; }
 .bz-flow-art {
-  display: inline-block; background: var(--bg-3); border: 1px solid rgba(81, 207, 102, 0.45);
+  display: inline-block; background: var(--bg-3); border: 1px solid rgba(var(--accent-rgb), 0.45);
   border-radius: 10px; padding: 0 7px; font-size: 10px; color: var(--accent); margin: 1px 2px 1px 0;
 }
 .bz-flow-art-none { color: var(--text-dim); opacity: 0.6; }
@@ -2537,7 +2812,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-flow-h { margin-top: 6px; border-top: 1px solid var(--border); }
 .bz-flow-table .bz-flow-step { text-align: left; vertical-align: top; background: var(--bg-2); max-width: 150px; }
 .bz-flow-table .bz-flow-step.is-decision { box-shadow: inset 3px 0 0 0 var(--c); }
-.bz-flow-fork { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 700; color: #1a1300; background: var(--c); border-radius: 3px; padding: 0 4px; vertical-align: middle; white-space: nowrap; }
+.bz-flow-fork { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 700; color: var(--on-c); background: var(--c); border-radius: 3px; padding: 0 4px; vertical-align: middle; white-space: nowrap; }
 .bz-flow-cond-cell { min-width: 120px; }
 .bz-flow-cond { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 3px 5px; font: inherit; font-size: 11px; }
 .bz-flow-cond::placeholder { color: var(--text-dim); }
@@ -2564,7 +2839,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 12px 32px -10px rgba(0,0,0,0.7), 0 3px 10px -3px rgba(0,0,0,0.5);
+  box-shadow: 0 12px 32px -10px rgba(var(--shadow-rgb),0.7), 0 3px 10px -3px rgba(var(--shadow-rgb),0.5);
   transition: filter 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
 }
 /* layers that are NOT on top: desaturated, dimmed, and clipped to the peeking strip.
@@ -2582,12 +2857,12 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
 }
 @keyframes focusRingPulse {
   0%, 100% {
-    box-shadow: 0 18px 48px -12px rgba(0,0,0,0.85), 0 5px 16px -4px rgba(0,0,0,0.6),
-                0 0 0 1px rgba(81,207,102,0.30), 0 0 8px 0 rgba(81,207,102,0.12);
+    box-shadow: 0 18px 48px -12px rgba(var(--shadow-rgb),0.85), 0 5px 16px -4px rgba(var(--shadow-rgb),0.6),
+                0 0 0 1px rgba(var(--accent-rgb),0.30), 0 0 8px 0 rgba(var(--accent-rgb),0.12);
   }
   50% {
-    box-shadow: 0 18px 48px -12px rgba(0,0,0,0.85), 0 5px 16px -4px rgba(0,0,0,0.6),
-                0 0 0 1.5px rgba(81,207,102,0.5), 0 0 14px 1px rgba(81,207,102,0.28);
+    box-shadow: 0 18px 48px -12px rgba(var(--shadow-rgb),0.85), 0 5px 16px -4px rgba(var(--shadow-rgb),0.6),
+                0 0 0 1.5px rgba(var(--accent-rgb),0.5), 0 0 14px 1px rgba(var(--accent-rgb),0.28);
   }
 }
 
@@ -2608,7 +2883,7 @@ body.bz-connecting .bz-canvas { cursor: crosshair; }
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 6px 18px -4px rgba(0,0,0,0.6);
+  box-shadow: 0 6px 18px -4px rgba(var(--shadow-rgb),0.6);
 }
 body[data-view="chart"] #zoom-ctl { display: inline-flex; }
 body[data-view="bizcase"] #bz-zoom-ctl { display: inline-flex; }
@@ -2639,9 +2914,9 @@ body[data-view="bizcase"] #bz-zoom-ctl { display: inline-flex; }
   border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
   /* slight bevel: light top-left highlight, dark bottom-right, soft cast shadow */
   box-shadow:
-    inset 1.5px 1.5px 0 rgba(255,255,255,0.22),
-    inset -1.5px -1.5px 0 rgba(0,0,0,0.55),
-    0 2px 7px -1px rgba(0,0,0,0.6);
+    inset 1.5px 1.5px 0 rgba(var(--hi-rgb),0.22),
+    inset -1.5px -1.5px 0 rgba(var(--shadow-rgb),0.55),
+    0 2px 7px -1px rgba(var(--shadow-rgb),0.6);
   opacity: 0.9;
   display: none;
 }
@@ -2653,10 +2928,10 @@ body[data-view="chart"] .chart-resize { display: block; }
   opacity: 1;
   border-color: var(--accent);
   box-shadow:
-    inset 1.5px 1.5px 0 rgba(255,255,255,0.3),
-    inset -1.5px -1.5px 0 rgba(0,0,0,0.55),
+    inset 1.5px 1.5px 0 rgba(var(--hi-rgb),0.3),
+    inset -1.5px -1.5px 0 rgba(var(--shadow-rgb),0.55),
     0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
-    0 3px 10px -1px rgba(0,0,0,0.65);
+    0 3px 10px -1px rgba(var(--shadow-rgb),0.65);
 }
 body.chart-resizing { cursor: nwse-resize; user-select: none; }
 body.chart-resizing .chart-block { transition: none; }
@@ -2695,7 +2970,7 @@ body.chart-dragging, body.chart-dragging .chart-head { cursor: grabbing; }
 body.chart-dragging .chart-block { transition: none; }
 /* a pane lifted out of the stack: shown in full + a stronger shadow while active */
 .chart-block.faded.moved { overflow: visible; }
-.chart-block.dragging-active { z-index: 65 !important; box-shadow: 0 22px 60px -14px rgba(0,0,0,0.9), 0 0 0 1px rgba(81,207,102,0.45); }
+.chart-block.dragging-active { z-index: 65 !important; box-shadow: 0 22px 60px -14px rgba(var(--shadow-rgb),0.9), 0 0 0 1px rgba(var(--accent-rgb),0.45); }
 .ch-inbound { color: var(--accent); font-weight: 800; margin-right: 2px; }
 .ch-sep { color: var(--text-dim); font-weight: 400; }
 
@@ -2773,7 +3048,7 @@ table.chart td.desc-cell:hover, table.chart td.docs-cell:hover {
 .docs-chip:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(81,207,102,0.07);
+  background: rgba(var(--accent-rgb),0.07);
 }
 .docs-chip .dc-icon { font-size: 11px; flex-shrink: 0; }
 .docs-chip .dc-name {
@@ -2785,7 +3060,7 @@ table.chart td.desc-cell:hover, table.chart td.docs-cell:hover {
 table.chart td.chart-cell { padding: 14px 20px; }
 .chart-cell .cell-chips { justify-content: center; gap: 8px; min-height: 24px; }
 /* inherited-A chip (entity was R one tier up) — dashed ring marks it as cascaded, not manual */
-.raci-chip.inherited { outline: 2px dashed rgba(255,255,255,0.6); outline-offset: -3px; opacity: 0.82; cursor: help; }
+.raci-chip.inherited { outline: 2px dashed rgba(var(--hi-rgb),0.6); outline-offset: -3px; opacity: 0.82; cursor: help; }
 .ch-toggle { width: 32px; padding: 0; }
 .ch-caret {
   background: transparent; border: none; color: var(--text-dim);
@@ -2804,9 +3079,9 @@ table.chart td.chart-cell { padding: 14px 20px; }
   border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px;
   background: var(--bg-3); color: var(--text); font: inherit; font-size: 10px; font-weight: 700; cursor: pointer;
 }
-.flow-health.green { color: var(--accent); border-color: rgba(81, 207, 102, 0.5); }
-.flow-health.amber { color: var(--warn); border-color: rgba(252, 196, 25, 0.5); }
-.flow-health.red   { color: var(--err); border-color: rgba(250, 82, 82, 0.5); }
+.flow-health.green { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.5); }
+.flow-health.amber { color: var(--warn); border-color: rgba(var(--warn-rgb), 0.5); }
+.flow-health.red   { color: var(--err); border-color: rgba(var(--err-rgb), 0.5); }
 .flow-health:hover { background: var(--bg-4); }
 .chart-row.open > td { background: var(--bg-3); }
 .chart-row.open > td.ch-toggle { box-shadow: inset 3px 0 0 var(--accent); }
@@ -2819,7 +3094,7 @@ table.chart td.chart-cell { padding: 14px 20px; }
   cursor: pointer; font-size: 14px; border-radius: 3px; line-height: 1; padding: 2px 6px;
 }
 .chart-row:hover .ch-del button { visibility: visible; }
-.ch-del button:hover { background: var(--err); color: #fff; }
+.ch-del button:hover { background: var(--err); color: var(--on-err); }
 .ch-empty-row td { color: var(--text-dim); font-style: italic; text-align: left; }
 
 /* ===== Free-form chart editing (custom party columns + renamable level names) ===== */
@@ -2891,14 +3166,14 @@ table.chart th.ch-col .col-del {
   cursor: pointer; font-size: 12px; line-height: 1; padding: 2px 4px; border-radius: 3px;
 }
 table.chart th.ch-col:hover .col-del { display: block; }
-table.chart th.ch-col .col-del:hover { background: var(--err); color: #fff; }
+table.chart th.ch-col .col-del:hover { background: var(--err); color: var(--on-err); }
 /* thead has no .chart-row hover, so the add-column button must opt out of the .ch-del hide rule */
 table.chart th.ch-del .col-add {
   visibility: visible; background: transparent;
   border: 1px dashed var(--border); border-radius: 4px;
   color: var(--text-dim); cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 7px;
 }
-table.chart th.ch-del .col-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(81,207,102,0.06); }
+table.chart th.ch-del .col-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
 
 /* roster assignment badges under an activity name */
 .org-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
@@ -2918,7 +3193,7 @@ table.chart th.ch-del .col-add:hover { color: var(--accent); border-color: var(-
 /* roster-assignment picker popover */
 .org-popover {
   position: absolute; background: var(--bg-2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(var(--shadow-rgb),0.6);
   z-index: 100; max-height: 340px; overflow-y: auto; min-width: 240px; max-width: 360px;
 }
 .org-popover .op-group {
@@ -2957,6 +3232,98 @@ body[data-view="chart"] #btn-arrange { display: inline-block; }
 body[data-view="chart"] #ws-main { padding: 0; }
 body[data-view="roster"] #legend { display: none; }
 
+/* ===== Theme switcher — the segmented control in the toolbar =====
+   Sits in .actions, so it inherits the toolbar's two layouts: an inline chip row in
+   the top bar, and a full-width stacked block once the toolbar becomes the right-hand
+   rail at >=1200px. The .actions button flex rules target `.actions button`, which
+   would stretch each segment independently — the overrides below keep the three
+   segments sharing one track instead. */
+.theme-switch {
+  display: flex; align-items: center; gap: 4px;
+  flex: 1 1 auto; min-width: 0;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px;
+}
+.theme-switch .ts-label {
+  flex: 0 0 auto;
+  padding: 0 5px 0 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.actions .theme-switch .ts-opt {
+  flex: 1 1 0; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  background: transparent; border: 1px solid transparent; border-radius: 3px;
+  padding: 3px 7px;
+  font-size: 11px; font-weight: 600; line-height: 1.3;
+  color: var(--text-dim); cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.actions .theme-switch .ts-opt:hover { background: var(--bg-4); color: var(--text); }
+.actions .theme-switch .ts-opt[aria-checked="true"] {
+  background: var(--bg);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: var(--text);
+}
+.theme-switch .ts-ico { font-size: 11px; line-height: 1; }
+/* Below ~560px the toolbar is already tight — drop the glyphs and keep the words. */
+@media (max-width: 560px) {
+  .theme-switch .ts-label { display: none; }
+  .theme-switch .ts-ico { display: none; }
+}
+@media (min-width: 1200px) {
+  /* In the rail the control gets a full row: label above, segments across. */
+  #tool-rail .actions .theme-switch { flex: 0 0 auto; width: 100%; flex-wrap: wrap; }
+  #tool-rail .actions .theme-switch .ts-label { flex: 1 0 100%; padding: 2px 4px 4px; }
+}
+
+/* ===== High contrast — the structural half =====
+   Tokens alone re-colour the app, but high contrast is also about REMOVING the
+   low-contrast decoration the other themes lean on: washes, textures, faded states,
+   and focus rings you have to hunt for. These rules do that. Everything here is
+   scoped to [data-theme="contrast"], so no other theme pays for it. */
+:root[data-theme="contrast"] body[data-view="chart"] {
+  /* Flat ground: the blue/crimson radial wash is exactly the sort of low-contrast
+     tint this mode exists to strip, and its tokens are already `transparent` here. */
+  background: var(--bg);
+}
+/* Faded/ghosted states carry meaning by shape rather than by washing out. The
+   inherited chip keeps its dashed outline at full opacity; the un-focused cascade
+   layers keep enough saturation that their R/A/C/I letters stay colour-coded
+   (that colour IS the data) while still reading as behind the focused pane. */
+:root[data-theme="contrast"] .raci-chip.inherited { opacity: 1; }
+:root[data-theme="contrast"] .chart-block.faded { filter: saturate(0.7) brightness(0.8); }
+:root[data-theme="contrast"] .chart-block.faded:hover { filter: saturate(1) brightness(1); }
+/* Keyboard focus is always visible, not just on the handful of controls that opt in. */
+:root[data-theme="contrast"] :focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Structure carried by rules rather than by fill: the chrome bands and the pane edges
+   get a full-weight border so they separate on a near-flat surface ramp. */
+:root[data-theme="contrast"] header,
+:root[data-theme="contrast"] #chart-tabs,
+:root[data-theme="contrast"] #drill-crumbs,
+:root[data-theme="contrast"] #view-tabs,
+:root[data-theme="contrast"] #tool-rail,
+:root[data-theme="contrast"] #details,
+:root[data-theme="contrast"] #legend,
+:root[data-theme="contrast"] #bz-party-panel { border-color: var(--border); }
+:root[data-theme="contrast"] .chart-block,
+:root[data-theme="contrast"] .bz-node,
+:root[data-theme="contrast"] .toast,
+:root[data-theme="contrast"] .raci-popover,
+:root[data-theme="contrast"] #violations-popover,
+:root[data-theme="contrast"] .export-menu-list { border-width: 2px; }
+/* Text glow and drop shadows read as blur at high contrast. */
+:root[data-theme="contrast"] #sidebar-arrow .sa-arrow,
+:root[data-theme="contrast"] #app-logo { text-shadow: none; filter: none; }
+
+/* The whole document is a light one when printed — deliberately independent of the
+   on-screen theme, so a dark or high-contrast session still prints on white paper
+   without burning toner. These are the only blocks in the file allowed raw literals. */
 @media print {
   @page { size: landscape; margin: 12mm; }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important;
@@ -2998,6 +3365,25 @@ body[data-view="roster"] #legend { display: none; }
 }
 #print-head { display: none; }
 </style>
+<script>
+/* Theme bootstrap — deliberately inline in <head>, ahead of any markup, so the stored
+   theme is on <html> before the first paint. Deferring this to the main script at the
+   bottom of <body> would flash the default dark palette at every light-mode user on
+   every load. Kept dependency-free and in its own try/catch: a browser with storage
+   blocked must still render, and it simply gets the default. */
+(function () {
+  try {
+    var t = localStorage.getItem('raci-matrix-theme-v1');
+    /* Dark is the default and stays the default: an unset preference is NOT resolved
+       against prefers-color-scheme, so this tool looks the same on a fresh machine
+       whatever the OS is set to. Light and high contrast are opt-in. */
+    if (t === 'light' || t === 'contrast') document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (_) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+</script>
 </head>
 <body>
 <div id="toast-tray" aria-live="polite"></div>
@@ -3096,6 +3482,13 @@ body[data-view="roster"] #legend { display: none; }
         <button class="em-item" role="menuitem" type="button" id="btn-export-mmd" title="Export as Mermaid (.mmd) for diagramming"><span class="em-ico">🧭</span><span class="em-label">Mermaid</span><span class="em-ext">.mmd</span></button>
       </div>
     </div>
+    <span class="actions-divider" aria-hidden="true"></span>
+    <div id="theme-switch" class="theme-switch" role="radiogroup" aria-label="Appearance theme">
+      <span class="ts-label" aria-hidden="true">Theme</span>
+      <button type="button" class="ts-opt" role="radio" aria-checked="true" data-theme-set="dark" title="Dark — the default palette"><span class="ts-ico" aria-hidden="true">◐</span>Dark</button>
+      <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="light" title="Light — light surfaces, hues re-picked for contrast on paper"><span class="ts-ico" aria-hidden="true">☀</span>Light</button>
+      <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="contrast" title="High contrast — black ground, white rules, maximum-chroma role colours"><span class="ts-ico" aria-hidden="true">◑</span>Contrast</button>
+    </div>
     <button id="btn-reset" title="Load the built-in demo dataset (replaces current charts and roster)">Demo</button>
     <button id="btn-clear" title="Wipe all activities and roster data — blank slate">Clear</button>
   </div>
@@ -3169,6 +3562,19 @@ body[data-view="roster"] #legend { display: none; }
     --grid: rgba(120,165,225,.06);
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
   }
+  /* High contrast — matches the host app's "contrast" theme. Black paper, white rules,
+     maximum-chroma hues, and no soft washes: --accent-soft and --grid go transparent so
+     nothing tints the ground, and --shadow goes flat since a blur reads as smear here. */
+  :root[data-theme="contrast"]{
+    --paper:#000000; --card:#000000; --inset:#0b0b0d; --line:#ffffff; --line-soft:#ffffff;
+    --ink:#ffffff; --muted:#e4e6ea; --faint:#cfd3da;
+    --accent:#40e7ff; --accent-ink:#8df1ff; --accent-soft:transparent;
+    --r:#60beff; --a:#ff7b7b; --c:#ffd60a; --c-ink:#000000; --i:#d0d5dd;
+    --grid: transparent;
+    --shadow: none;
+    --ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  }
+  :root[data-theme="contrast"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -3765,6 +4171,19 @@ body[data-view="roster"] #legend { display: none; }
     --grid: rgba(120,165,225,.06);
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
   }
+  /* High contrast — matches the host app's "contrast" theme. Black paper, white rules,
+     maximum-chroma hues, and no soft washes: --accent-soft and --grid go transparent so
+     nothing tints the ground, and --shadow goes flat since a blur reads as smear here. */
+  :root[data-theme="contrast"]{
+    --paper:#000000; --card:#000000; --inset:#0b0b0d; --line:#ffffff; --line-soft:#ffffff;
+    --ink:#ffffff; --muted:#e4e6ea; --faint:#cfd3da;
+    --accent:#40e7ff; --accent-ink:#8df1ff; --accent-soft:transparent;
+    --r:#60beff; --a:#ff7b7b; --c:#ffd60a; --c-ink:#000000; --i:#d0d5dd;
+    --grid: transparent;
+    --shadow: none;
+    --ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  }
+  :root[data-theme="contrast"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -4518,10 +4937,21 @@ document.querySelectorAll('#app-logo, #bg-watermark').forEach(el => { el.src = A
 // what keeps the tile seamless. Everything is drawn in translucent white/black over a
 // transparent canvas, so it reads as a texture over whatever the rail's background colour is.
 const CARBON_TILE = 28;             // css px per tile — also its background-size
-const CARBON_LIGHT = 0.024;         // alpha of the lit crown along each tow
-const CARBON_DARK = 0.085;          // alpha of the shadow in the trough between tows
-const CARBON_FILAMENT = 0.016;      // alpha of the individual filaments
-function carbonWeaveTile(dpr) {
+// Per-theme alphas. The same alphas read very differently by ground, because a translucent
+// overlay moves the surface by alpha × the distance to the overlay colour. Over the dark
+// rail (#25262b) white has ~218 levels of headroom and black only ~37, so the dark theme
+// gets its contrast mostly from the crowns. Over the light rail (#e3e8f0) that reverses —
+// white has ~28 levels to give and black ~227 — so light mode has to lean on the troughs and
+// use much smaller numbers to land the same ~8-level swing. Matching the alphas rather than
+// the appearance is what turned the first attempt into diamond plate.
+// High contrast takes no weave at all: a texture under text is exactly the low-contrast
+// decoration that mode exists to remove.
+const CARBON_ALPHAS = {
+  dark:     { crown: 0.024, trough: 0.085, filament: 0.016 },
+  light:    { crown: 0.020, trough: 0.032, filament: 0.012 },
+  contrast: null,
+};
+function carbonWeaveTile(dpr, alpha) {
   const tow = CARBON_TILE / (2 * Math.SQRT2);
   const cv = document.createElement('canvas');
   cv.width = cv.height = Math.round(CARBON_TILE * dpr);
@@ -4542,13 +4972,13 @@ function carbonWeaveTile(dpr) {
       // Shading across the tow: dark in the troughs at its edges, lit along its crown.
       const grad = horiz ? g.createLinearGradient(0, y, 0, y + tow)
                          : g.createLinearGradient(x, 0, x + tow, 0);
-      grad.addColorStop(0, `rgba(0,0,0,${CARBON_DARK})`);
-      grad.addColorStop(0.5, `rgba(255,255,255,${CARBON_LIGHT})`);
-      grad.addColorStop(1, `rgba(0,0,0,${CARBON_DARK})`);
+      grad.addColorStop(0, `rgba(0,0,0,${alpha.trough})`);
+      grad.addColorStop(0.5, `rgba(255,255,255,${alpha.crown})`);
+      grad.addColorStop(1, `rgba(0,0,0,${alpha.trough})`);
       g.fillStyle = grad;
       g.fillRect(x, y, tow, tow);
       for (let f = 1.25; f < tow; f += 2.5) {      // filaments running along the tow
-        g.fillStyle = `rgba(255,255,255,${(CARBON_FILAMENT * (0.55 + rnd() * 0.9)).toFixed(4)})`;
+        g.fillStyle = `rgba(255,255,255,${(alpha.filament * (0.55 + rnd() * 0.9)).toFixed(4)})`;
         if (horiz) g.fillRect(x, y + f, tow, 0.5);
         else g.fillRect(x + f, y, 0.5, tow);
       }
@@ -4557,24 +4987,109 @@ function carbonWeaveTile(dpr) {
   return cv.toDataURL('image/png');
 }
 // The rails pick this up through var(--carbon-weave); regenerated when the window moves to a
-// display with a different pixel density so the weave never ends up resampled.
-let _carbonDpr = 0;
+// display with a different pixel density (so the weave is never resampled) or when the theme
+// changes (so the tile is redrawn for the new ground). Both inputs are cached because
+// toDataURL() on a per-pixel canvas is the expensive part.
+let _carbonKey = '';
 function applyCarbonWeave() {
   const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
-  if (dpr === _carbonDpr) return;
-  _carbonDpr = dpr;
+  const theme = currentTheme();
+  const key = theme + '@' + dpr;
+  if (key === _carbonKey) return;
+  _carbonKey = key;
   const root = document.documentElement.style;
-  root.setProperty('--carbon-weave', `url("${carbonWeaveTile(dpr)}")`);
+  const alpha = CARBON_ALPHAS[theme];
+  // Set as an inline custom property, which outranks any stylesheet rule — so a theme that
+  // wants no texture has to be turned off here rather than in CSS.
+  root.setProperty('--carbon-weave', alpha ? `url("${carbonWeaveTile(dpr, alpha)}")` : 'none');
   root.setProperty('--carbon-size', `${CARBON_TILE}px ${CARBON_TILE}px`);
 }
-applyCarbonWeave();
 window.addEventListener('resize', applyCarbonWeave);   // fires when dpr changes across monitors
+
+// ---- Application theme ----
+// Three global themes (see the token block at the top of the stylesheet). The choice is a
+// property of THIS DEVICE, not of the document: it lives under its own storage key, is left
+// out of the exported JSON, and is untouched by Load / Merge / Demo / Clear — loading a
+// colleague's chart must never repaint your app. Dark is the default and an unset preference
+// is not resolved against the OS, so a fresh browser always opens dark.
+const THEME_KEY = 'raci-matrix-theme-v1';
+const THEMES = ['dark', 'light', 'contrast'];
+function currentTheme() {
+  const t = document.documentElement.getAttribute('data-theme');
+  return THEMES.includes(t) ? t : 'dark';
+}
+function applyTheme(theme, opts) {
+  const t = THEMES.includes(theme) ? theme : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  if (!(opts && opts.transient)) {
+    try { localStorage.setItem(THEME_KEY, t); } catch (_) {}   // private mode: apply anyway, just don't remember
+  }
+  applyCarbonWeave();     // the procedural rail texture is drawn per-theme
+  syncThemeSwitch();
+  syncHelpFrameTheme();   // the two help guides live in iframes and carry their own stylesheet
+}
+function syncThemeSwitch() {
+  const t = currentTheme();
+  document.querySelectorAll('#theme-switch .ts-opt').forEach(b => {
+    b.setAttribute('aria-checked', String(b.dataset.themeSet === t));
+  });
+}
+function initTheme() {
+  const sw = document.getElementById('theme-switch');
+  if (sw) {
+    sw.addEventListener('click', e => {
+      const btn = e.target.closest('.ts-opt');
+      if (btn) applyTheme(btn.dataset.themeSet);
+    });
+    // Left/right arrows move through the segments, per the radiogroup role on the wrapper.
+    sw.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const step = e.key === 'ArrowRight' ? 1 : -1;
+      const next = THEMES[(THEMES.indexOf(currentTheme()) + step + THEMES.length) % THEMES.length];
+      applyTheme(next);
+      const btn = sw.querySelector(`.ts-opt[data-theme-set="${next}"]`);
+      if (btn) btn.focus();
+    });
+  }
+  // The head bootstrap already put the attribute on <html> before first paint; this run
+  // catches up everything that needed the DOM (the switch, the weave, the help frames).
+  applyTheme(currentTheme(), { transient: true });
+}
 
 // ---- App identity / version ----
 // Bump APP_VERSION on every shipped change set. Scheme: MAJOR.MINOR (alpha while < 1.0).
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.29 alpha - Application themes: Light and High Contrast join Dark, which stays the
+//                  default. Picked from a Theme segmented control in the toolbar (arrow keys
+//                  move through it), remembered per-device under its own storage key, and
+//                  applied by an inline <head> bootstrap so the chosen theme is on <html>
+//                  before the first paint instead of flashing dark. The choice is a device
+//                  preference, not document data: it is left out of the exported JSON and
+//                  survives Load / Merge / Demo / Clear, so opening a colleague's chart never
+//                  repaints your app. An unset preference is NOT resolved against the OS —
+//                  a fresh browser always opens dark.
+//                  The themes are holistic rather than a dark-mode toggle over a few panels:
+//                  the stylesheet's ~18 colour variables became a ~74-token semantic set
+//                  (hues as r,g,b triplets so one definition serves both the solid colour and
+//                  every tint of it; per-hue --on-* foregrounds; and four non-interchangeable
+//                  effect primitives — --shadow-rgb, the always-white --hi-rgb, the inverting
+//                  --lift-rgb, and --mix-fg for color-mix targets). Every colour literal in
+//                  the app stylesheet now resolves through those tokens, so a new rule written
+//                  with tokens inherits all three themes for free. The two @media print blocks
+//                  are the deliberate exception — a dark session still prints on white paper.
+//                  High Contrast also gets a structural pass beyond its palette: flat backdrop,
+//                  no carbon weave, no watermark, always-visible focus rings, heavier rules,
+//                  and faded states re-expressed so the R/A/C/I colour coding survives.
+//                  The two Help guides are iframed documents with their own stylesheets; they
+//                  gain a matching contrast palette (mirrored into docs/nested-raci.html and
+//                  docs/chart-flows-tasks.html) and are stamped with the app's theme both in
+//                  srcdoc and live, so switching theme never remounts them or loses scroll.
+//                  The procedural carbon-fibre rail weave is redrawn per theme — its alphas
+//                  are re-derived for a light ground rather than reused, since the same alphas
+//                  over light turn the weave into diamond plate.
 //     0.28 alpha - 🤖 Ingest Kit (toolbar, next to Merge): downloads raci-ingest-kit.md, a
 //                  self-contained briefing you hand to an LLM together with raw source material
 //                  (spreadsheet, slide, email thread, meeting notes, an existing RACI table) so it
@@ -4735,7 +5250,7 @@ window.addEventListener('resize', applyCarbonWeave);   // fires when dpr changes
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.28';
+const APP_VERSION = '0.29';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -6535,9 +7050,27 @@ function helpDocHtml(srcId) {
   // below are split so this very line doesn't contain a raw closing-script sequence either.
   const escapedClose = '<\\' + '/script>';  // "<\/script>" as it appears in the embed
   const realClose = '<' + '/script>';        // real closing script tag
-  return src
-    ? src.textContent.split(escapedClose).join(realClose)
-    : '<p style="font-family:sans-serif;padding:24px">Help content unavailable.</p>';
+  if (!src) return '<p style="font-family:sans-serif;padding:24px">Help content unavailable.</p>';
+  const html = src.textContent.split(escapedClose).join(realClose);
+  // Stamp the app's theme onto the guide's root element before it is handed to srcdoc.
+  // The guides carry their own palettes keyed off data-theme; without this they would fall
+  // back to prefers-color-scheme and could open light inside a dark app (or the reverse).
+  // Doing it here rather than after load also means the frame paints correct the first time.
+  return html.replace(/<html\b([^>]*)>/i, (m, attrs) =>
+    `<html${attrs.replace(/\sdata-theme="[^"]*"/i, '')} data-theme="${currentTheme()}">`);
+}
+// Live theme switch for guides that are ALREADY mounted. The frames are built once and kept
+// (rebuilding would reload both docs and throw away the reader's scroll position), so the
+// attribute is set on the live document instead of re-running srcdoc. Same-origin srcdoc
+// frames expose contentDocument; the guard covers a frame that has not finished loading yet.
+function syncHelpFrameTheme() {
+  const t = currentTheme();
+  HELP_DOCS.forEach(d => {
+    const f = document.getElementById(d.frameId);
+    let doc = null;
+    try { doc = f && f.contentDocument; } catch (_) { doc = null; }
+    if (doc && doc.documentElement) doc.documentElement.setAttribute('data-theme', t);
+  });
 }
 function syncHelpDocbar() {
   document.querySelectorAll('#help-docbar button').forEach(b =>
@@ -6566,6 +7099,11 @@ function renderHelp() {
     frame.className = 'help-frame';
     frame.title = d.title;
     frame.setAttribute('loading', 'lazy');
+    // srcdoc carries the theme that was current when the frame was built; if the user
+    // switched theme while it was still loading, that stamp is stale by the time it
+    // paints, so re-assert on load. Cheap, and it also covers a lazy frame that only
+    // fetches once it scrolls into view.
+    frame.addEventListener('load', syncHelpFrameTheme);
     frame.srcdoc = helpDocHtml(d.srcId);
     wrap.appendChild(frame);
   });
@@ -10876,6 +11414,7 @@ window.addEventListener('beforeprint', () => {
 
 // ---------- init ----------
 _lastFull = fullSnap(); _lastContent = contentSig();  // history baseline so the first edit is undoable
+initTheme();                                           // wire the theme switch; <head> already set the attribute
 syncDocsWithIdb();                                     // migrate any inline doc bytes into IDB + hydrate
 render();
 maybeShowSplash();
