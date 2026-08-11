@@ -573,6 +573,41 @@
 
   <section>
     <div class="wrap">
+      <h2><span class="lead-num">Status</span>Draft and Final</h2>
+      <p class="sub">Every chart and every flow carries one of two states. It answers the question a reader always has and can rarely check: <b>is this still being written, or has someone signed it?</b></p>
+      <div class="compare">
+        <div class="panel">
+          <span class="cap">✎ Draft</span>
+          <h3>Still being written</h3>
+          <p class="lens-q">“Don’t quote me on this yet.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow"><b>DRAFT</b> · Modernize Logistics</span></div>
+            <div class="ma-row"><span class="grow">HQ <span class="chip a sm">A</span> Infra <span class="chip r sm">R</span> — editable</span></div>
+            <div class="ma-row"><span class="grow">✓ Mark final</span></div>
+          </div>
+          <p>Everything is editable, exactly as it always was. This is where new charts and new flows start, and where anything built before statuses existed loads — a document that has never been signed shouldn’t claim it has.</p>
+          <p>A draft is marked <b>everywhere</b>: on its tab, on its gallery card, in the flow picker, on the strip above the canvas, and in every export. Printing one stamps a diagonal <b>DRAFT</b> across every page.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">✓ Final</span>
+          <h3>Signed, and locked</h3>
+          <p class="lens-q">“This is the one we agreed.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow"><b>FINAL</b> · Modernize Logistics</span></div>
+            <div class="ma-row"><span class="grow">HQ <span class="chip a sm">A</span> Infra <span class="chip r sm">R</span> — locked</span></div>
+            <div class="ma-row"><span class="grow">↺ Reopen as draft</span></div>
+          </div>
+          <p>Marking something Final records the date and <b>locks it</b>. The add, delete and rename controls leave the page, cells stop taking clicks, and the keyboard can’t get in either. Everything that only <em>reads</em> — drilling in, zooming, panning, jumping to a linked row, exporting, printing — works exactly as before.</p>
+          <p>The lock is an <b>accident guard, not a permission system</b>. One click on <b>↺ Reopen as draft</b> lifts it, nothing is ever destroyed, and undo steps back through a finalize like any other edit. It exists to stop a stray keystroke landing on a document someone signed.</p>
+        </div>
+      </div>
+      <p class="sub"><b>Status is per artifact, not per workspace.</b> A settled chart with three exploratory flows hanging off it is the normal case, so each chart and each flow is marked on its own. The roster is deliberately never locked: it’s shared by every chart, and freezing it would stop the drafts beside a signed chart from being written.</p>
+      <p class="sub"><b>Where the two ideas meet.</b> A Chart-Linked flow reads its letters live from chart rows — so a <b>Final flow whose rows live in a Draft chart</b> is a settled claim resting on ground that can still move. That’s allowed, because sign-off doesn’t always run bottom-up, but each affected step is flagged so it never passes unnoticed. Finalize the chart, or reopen the flow while the chart settles.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
       <h2><span class="lead-num">Reuse</span>Nesting a flow, and framing a group</h2>
       <p class="sub">Two ways to fold a graph down to one box. They look alike on the canvas and are deliberately not the same thing.</p>
       <div class="legend">

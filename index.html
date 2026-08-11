@@ -2628,6 +2628,100 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
 }
 .bzc-detach:hover { border-color: var(--warn); color: var(--warn); }
 
+/* ===== Draft / Final: lifecycle status + the edit lock (v0.32) ===== */
+/* The strip above the canvas. Present in BOTH states — a banner that only showed up for drafts
+   would teach people to read "no banner" as "approved". */
+.art-status-strip {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 5px 12px; font-size: 11.5px; color: var(--text-dim);
+  border-bottom: 1px solid var(--border); background: var(--bg-2);
+  position: sticky; top: 0; left: 0; z-index: 20;
+}
+.art-status-strip.is-draft { background: rgba(var(--warn-rgb), 0.08); border-bottom-color: rgba(var(--warn-rgb), 0.32); }
+.art-status-strip.is-final { background: rgba(var(--accent-rgb), 0.07); border-bottom-color: rgba(var(--accent-rgb), 0.3); }
+.ast-badge {
+  flex: 0 0 auto; font-weight: 800; font-size: 10.5px; letter-spacing: 0.09em;
+  border-radius: 10px; padding: 2px 10px; border: 1px solid var(--border); background: var(--bg-3); color: var(--text);
+}
+.art-status-strip.is-draft .ast-badge { border-color: var(--warn); color: var(--warn); background: rgba(var(--warn-rgb), 0.12); }
+.art-status-strip.is-final .ast-badge { border-color: var(--accent); color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
+.ast-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ast-when { color: var(--text); font-weight: 600; }
+.ast-set {
+  margin-left: auto; flex: 0 0 auto; border-radius: 4px; padding: 3px 10px;
+  font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+}
+.ast-set:hover { border-color: var(--accent); color: var(--accent); }
+.art-status-strip.is-final .ast-set { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--accent); }
+.art-status-strip.is-final .ast-set:hover { filter: brightness(1.12); color: var(--on-accent, #fff); }
+
+/* Status in the chart tab strip — switching between a signed chart and a working one is one
+   click, so the difference has to be legible without opening anything. */
+.chart-tab .tab-status {
+  flex: 0 0 auto; font-size: 8px; font-weight: 800; letter-spacing: 0.07em;
+  border-radius: 3px; padding: 1px 4px; border: 1px solid transparent;
+}
+.chart-tab[data-status="draft"] .tab-status { color: var(--warn); border-color: rgba(var(--warn-rgb), 0.5); background: rgba(var(--warn-rgb), 0.12); }
+.chart-tab[data-status="final"] .tab-status { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.12); }
+.chart-tab[data-status="final"] { border-top: 2px solid rgba(var(--accent-rgb), 0.55); }
+
+/* Gallery card + flow picker: the status is visible before you open anything. */
+.bz-gal-status {
+  display: inline-block; margin-right: 5px; font-size: 8px; font-weight: 800; letter-spacing: 0.07em;
+  border-radius: 3px; padding: 1px 4px; vertical-align: 1px;
+}
+.bz-gal-status.is-draft { color: var(--warn); background: rgba(var(--warn-rgb), 0.14); }
+.bz-gal-status.is-final { color: var(--accent); background: rgba(var(--accent-rgb), 0.14); }
+
+/* ---- The lock, expressed in CSS ---- */
+/* Write affordances leave the page entirely: the lock should be felt as "there is nothing to
+   reach for", not as a click that argues back. Everything that READS — drill, zoom, pan, jump to
+   a chart row, the gallery, the table pane, export — is untouched. */
+body[data-lock] .ch-add,
+body[data-lock] .col-add,
+body[data-lock] .col-del,
+body[data-lock] .add-activity,
+body[data-lock] .ws-add,
+body[data-lock] [data-del-node],
+body[data-lock] [data-bz-del-task],
+body[data-lock] .bz-node-copy,
+body[data-lock] #bz-add-task,
+body[data-lock] #bz-group,
+body[data-lock] #bz-rename,
+body[data-lock] #bz-del,
+body[data-lock] .bz-ep-art-add,
+body[data-lock="flow"] [data-gal-embed],
+body[data-lock] .det-io-add,
+body[data-lock="chart"] .chart-tab[data-status="final"] .tab-close { display: none !important; }
+/* Inert, but still fully readable: these ARE the content, so they stay on the page and simply
+   stop accepting the click that would edit them. pointer-events:none also lets the click fall
+   through to the row beneath, which is how selecting a row keeps working on a locked chart. */
+body[data-lock="chart"] .chart-cell,
+body[data-lock="chart"] .ch-name-edit,
+body[data-lock="chart"] .col-edit,
+body[data-lock="chart"] .tier-edit,
+body[data-lock="chart"] #chart-framework,
+body[data-lock="chart"] #details select,
+body[data-lock="chart"] #details input,
+body[data-lock="chart"] #details textarea,
+body[data-lock="chart"] #details [contenteditable],
+body[data-lock="flow"] .bz-cell,
+body[data-lock="flow"] .bz-node-name,
+body[data-lock="flow"] .bz-group-name,
+body[data-lock="flow"] .bz-sock,
+body[data-lock="flow"] .bz-bind,
+body[data-lock="flow"] .bzm-fix,
+body[data-lock="flow"] #bz-mode,
+body[data-lock="flow"] #bz-framework,
+body[data-lock="flow"] #bz-source-chart { pointer-events: none !important; }
+body[data-lock="chart"] #chart-framework,
+body[data-lock="flow"] #bz-mode,
+body[data-lock="flow"] #bz-framework,
+body[data-lock="flow"] #bz-source-chart { opacity: 0.5; }
+/* The grab cursor is a promise the locked canvas cannot keep. */
+body[data-lock="flow"] .bz-node { cursor: default; }
+
 /* ===== Flow modes: Chart-Linked vs Free-Form (v0.31) ===== */
 /* Mode strip — the banner above the canvas. Which mode a flow is in changes what its steps are
    allowed to say, so it is stated permanently rather than left in a dropdown. */
@@ -3749,13 +3843,18 @@ body[data-view="roster"] #legend { display: none; }
   header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover, #arrange-fab,
   #save-nag, #splash-overlay, #newchart-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
   #zoom-ctl, #bz-zoom-ctl, #bz-minimap, .bz-gallery, .bz-marquee, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
-  [data-del-node], [data-bz-del-task], .bzm-fix, .bzb-jump, .bz-node-copy { display: none !important; }
+  [data-del-node], [data-bz-del-task], .bzm-fix, .bzb-jump, .bz-node-copy, .ast-set, #toast-tray { display: none !important; }
   /* The mode banner and each step's linked row DO print: on a signed document, "which chart row
      does this step implement" is the point of Chart-Linked mode, not chrome. */
   .bz-mode-strip, .bz-bind, .bz-bind-wrap {
     background: #fff !important; color: #000 !important; border-color: #999 !important;
   }
   .bz-mode-strip .bzm-badge, .bz-bind .bzb-tier { background: #e8eef6 !important; color: #000 !important; }
+  .art-status-strip { background: #fff !important; color: #000 !important; border-color: #999 !important; }
+  .art-status-strip .ast-badge { border: 2px solid #000 !important; font-weight: 800 !important; }
+  .art-status-strip.is-draft .ast-badge { background: #ffe9a8 !important; color: #000 !important; }
+  .art-status-strip.is-final .ast-badge { background: #1c4b8b !important; color: #fff !important; border-color: #1c4b8b !important; }
+  .art-status-strip .ast-when { color: #000 !important; }
   .bz-trow-bind { color: #333 !important; }
   #app-frame { display: block !important; }
   main, #ws-main { display: block !important; overflow: visible !important; position: static !important;
@@ -3786,6 +3885,19 @@ body[data-view="roster"] #legend { display: none; }
     color: #000 !important; }
   #print-head .ph-title { font-size: 18px; font-weight: 800; }
   #print-head .ph-sub { font-size: 12px; color: #333 !important; margin-top: 2px; }
+  #print-head .ph-status { display: inline-block; margin-right: 8px; padding: 1px 7px; font-size: 13px;
+    font-weight: 800; letter-spacing: 0.1em; border: 2px solid #000; border-radius: 3px; }
+  #print-head .ph-status.is-draft { color: #000 !important; background: #ffe9a8 !important; }
+  #print-head .ph-status.is-final { color: #fff !important; background: #1c4b8b !important; border-color: #1c4b8b; }
+  /* The DRAFT watermark. position:fixed inside a print context repeats on EVERY page, which is
+     the whole point — a reader who picks up page 4 of a stack has to see it too. */
+  body[data-print-status="draft"]::after {
+    content: "DRAFT";
+    position: fixed; top: 42%; left: 0; right: 0; z-index: 9999;
+    text-align: center; font-size: 120px; font-weight: 900; letter-spacing: 0.18em;
+    color: rgba(200, 40, 40, 0.16) !important;
+    transform: rotate(-22deg); pointer-events: none;
+  }
 }
 #print-head { display: none; }
 </style>
@@ -5136,6 +5248,41 @@ body[data-view="roster"] #legend { display: none; }
 
   <section>
     <div class="wrap">
+      <h2><span class="lead-num">Status</span>Draft and Final</h2>
+      <p class="sub">Every chart and every flow carries one of two states. It answers the question a reader always has and can rarely check: <b>is this still being written, or has someone signed it?</b></p>
+      <div class="compare">
+        <div class="panel">
+          <span class="cap">✎ Draft</span>
+          <h3>Still being written</h3>
+          <p class="lens-q">“Don’t quote me on this yet.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow"><b>DRAFT</b> · Modernize Logistics</span></div>
+            <div class="ma-row"><span class="grow">HQ <span class="chip a sm">A</span> Infra <span class="chip r sm">R</span> — editable</span></div>
+            <div class="ma-row"><span class="grow">✓ Mark final</span></div>
+          </div>
+          <p>Everything is editable, exactly as it always was. This is where new charts and new flows start, and where anything built before statuses existed loads — a document that has never been signed shouldn’t claim it has.</p>
+          <p>A draft is marked <b>everywhere</b>: on its tab, on its gallery card, in the flow picker, on the strip above the canvas, and in every export. Printing one stamps a diagonal <b>DRAFT</b> across every page.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">✓ Final</span>
+          <h3>Signed, and locked</h3>
+          <p class="lens-q">“This is the one we agreed.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow"><b>FINAL</b> · Modernize Logistics</span></div>
+            <div class="ma-row"><span class="grow">HQ <span class="chip a sm">A</span> Infra <span class="chip r sm">R</span> — locked</span></div>
+            <div class="ma-row"><span class="grow">↺ Reopen as draft</span></div>
+          </div>
+          <p>Marking something Final records the date and <b>locks it</b>. The add, delete and rename controls leave the page, cells stop taking clicks, and the keyboard can’t get in either. Everything that only <em>reads</em> — drilling in, zooming, panning, jumping to a linked row, exporting, printing — works exactly as before.</p>
+          <p>The lock is an <b>accident guard, not a permission system</b>. One click on <b>↺ Reopen as draft</b> lifts it, nothing is ever destroyed, and undo steps back through a finalize like any other edit. It exists to stop a stray keystroke landing on a document someone signed.</p>
+        </div>
+      </div>
+      <p class="sub"><b>Status is per artifact, not per workspace.</b> A settled chart with three exploratory flows hanging off it is the normal case, so each chart and each flow is marked on its own. The roster is deliberately never locked: it’s shared by every chart, and freezing it would stop the drafts beside a signed chart from being written.</p>
+      <p class="sub"><b>Where the two ideas meet.</b> A Chart-Linked flow reads its letters live from chart rows — so a <b>Final flow whose rows live in a Draft chart</b> is a settled claim resting on ground that can still move. That’s allowed, because sign-off doesn’t always run bottom-up, but each affected step is flagged so it never passes unnoticed. Finalize the chart, or reopen the flow while the chart settles.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
       <h2><span class="lead-num">Reuse</span>Nesting a flow, and framing a group</h2>
       <p class="sub">Two ways to fold a graph down to one box. They look alike on the canvas and are deliberately not the same thing.</p>
       <div class="legend">
@@ -5566,6 +5713,34 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.32 alpha - Every chart and every flow now carries a LIFECYCLE STATUS: Draft or Final.
+//                  Two states, one question: is this still being written, or has someone signed
+//                  it? A workspace mixes both constantly — a settled chart with three exploratory
+//                  flows hanging off it — so the status rides on each artifact, not the workspace,
+//                  and every surface that shows an artifact shows its status: the chart tabs, the
+//                  flow picker, the gallery cards, a permanent strip above the canvas, and all
+//                  five exports. Both states are labelled, always. A DRAFT marking that appeared
+//                  only when something was wrong would teach people to read "no marking" as
+//                  "approved", which is the exact failure this exists to prevent.
+//                  FINAL LOCKS the artifact. The add / delete / rename affordances are taken away
+//                  at render, the cells and name fields go inert, and a capture-phase gate catches
+//                  what neither can reach — keys typed into a field that still holds focus, the
+//                  delete shortcut, drag, drop and paste. Behind all of that, enforceLocks() runs
+//                  on every save and puts back anything that moved on a Final artifact whatever
+//                  path produced it, so an import merge or a path nobody thought about cannot
+//                  quietly rewrite a signed document. The lock is an accident guard, not a
+//                  permission system: one click lifts it, nothing is destroyed, and undo steps
+//                  back through a finalize like any other edit.
+//                  Draft and Final CROSS: a Chart-Linked flow takes its letters live from chart
+//                  rows, so a Final flow reading from a Draft chart is a settled claim resting on
+//                  something that can still move. Allowed — sign-off order is the user's call —
+//                  but never silent: flowFinalDraftSource flags it per step.
+//                  Exports carry it. XLSX gains a Document sheet (title, status, signed date, and
+//                  every flow's own status) plus a Status column on the Flows sheet; XML puts
+//                  status/finalized on <raciTool> and <flow>; Mermaid heads the graph with it;
+//                  PowerPoint stamps the title slide and every flow slide; and print/PDF gets a
+//                  diagonal DRAFT watermark on every page, because a draft printed and circulated
+//                  as if settled is how this goes wrong on paper.
 //     0.31 alpha - Business Case task flows get two explicit MODES, and their own box in the rail.
 //                  CHART-LINKED — a flow in this mode requires every step to name the org-chart
 //                  ROW it implements (task.bind = {chartId, nodeId}); the step then takes that
@@ -5814,7 +5989,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.31';
+const APP_VERSION = '0.32';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -6239,6 +6414,137 @@ function seedData() {
   }
   return { activities, directorates: dirs };
 }
+// ================= Draft / Final: the lifecycle status (v0.32) =================
+// Two states, one meaning: is this still being written, or has someone signed it? The status
+// lives on each ARTIFACT (each chart, each flow) rather than on the workspace, because a real
+// workspace mixes them — a settled chart with three exploratory flows hanging off it — and a
+// single workspace-wide flag would force a lie about one of them.
+//
+// Both states are labelled everywhere, always. It is tempting to mark only drafts and leave a
+// final document clean, but that teaches a reader to treat "no marking" as "approved" — and the
+// unmarked state is also what an unfinished document looks like. So Final says Final.
+//
+// FINAL also LOCKS. The lock is an accident guard, not a permission system: there is no other
+// author to defend against here, only a slip of the hand on a document someone signed. It is
+// therefore one click to lift, destroys nothing (status is just a field), and undo steps back
+// through a finalize exactly like any other edit.
+const ART_STATUSES = ['draft', 'final'];
+const STATUS_META = {
+  draft: { name: 'Draft', short: 'DRAFT', icon: '✎',
+           blurb: 'Working copy — still being written, and free to change.' },
+  final: { name: 'Final', short: 'FINAL', icon: '✓',
+           blurb: 'Signed off, and locked against edits.' }
+};
+function artStatus(o) { return (o && ART_STATUSES.includes(o.status)) ? o.status : 'draft'; }
+function isFinal(o) { return artStatus(o) === 'final'; }
+// "Signed when", or '' when the stamp is missing or unparseable — an imported file can carry
+// anything in that field, and a bad date must never take the strip down with it.
+function finalizedOn(o) {
+  if (!o || !o.finalizedAt) return '';
+  const d = new Date(o.finalizedAt);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+}
+// The artifact the CURRENT view edits, but only when it is locked. The roster is deliberately
+// absent: it is GLOBAL, shared by every chart, so finalizing one chart must not freeze the
+// directorate tree that the drafts beside it are still being written against.
+function lockedNow() {
+  if (state.viewMode === 'chart') { const c = ac(); return isFinal(c) ? { kind: 'chart', obj: c } : null; }
+  if (state.viewMode === 'bizcase') { const b = abc(); return isFinal(b) ? { kind: 'flow', obj: b } : null; }
+  return null;
+}
+let _lockToastAt = 0;
+// One nag per gesture. A blocked drag fires dozens of events, and a toast per event is a wall.
+function refuseLockedEdit(kind, msg) {
+  const now = Date.now();
+  if (now - _lockToastAt > 1200) {
+    _lockToastAt = now;
+    showToast(msg || `This ${kind === 'chart' ? 'chart' : 'flow'} is Final — click “↺ Reopen as draft” above to edit it.`, 'error');
+  }
+  return false;
+}
+function guardChartEdit(c) { return isFinal(c || ac()) ? refuseLockedEdit('chart') : true; }
+function guardFlowEdit(b) { return isFinal(b || abc()) ? refuseLockedEdit('flow') : true; }
+
+// ---- The backstop behind the affordance lock ----
+// Taking the buttons away covers the ways a PERSON reaches a locked artifact. This covers the
+// ways CODE does — an import merge, a bulk operation, a path nobody thought about. Every save
+// compares each Final artifact against the copy taken when it was finalized and puts back
+// anything that moved. historyReplacer drops the volatile keys (pan, zoom, drill path, open
+// tab), so merely LOOKING at a locked chart is never an edit to it.
+let _lockSnaps = Object.create(null);
+// Keys that are NOT the artifact's content, and so must never count as a change to it:
+//   status / finalizedAt  the status has to stay writable — it is the way out of the lock;
+//   pan / zoom / size / drill / open table   camera and furniture, not the document;
+//   dataUrl               attachment bytes live in IndexedDB and hydrate back in ASYNCHRONOUSLY,
+//                         so counting them would fire a rollback when a doc finishes loading.
+// Deliberately its own list rather than a reach for VOLATILE_KEYS + storageReplacer: lockSig runs
+// inside migrateState, which is called while the module is still initializing, so it must not
+// touch anything declared further down the file.
+const LOCK_IGNORE = new Set(['status', 'finalizedAt', 'chartPos', 'chartZoom', 'chartSize',
+  'drillPath', 'view', 'showTable', 'dataUrl']);
+function lockSig(o) {
+  return JSON.stringify(o, (k, v) => LOCK_IGNORE.has(k) ? undefined : v);
+}
+function refreshLockSnaps(st) {
+  const S = st || state;
+  const next = Object.create(null);
+  const take = o => { if (isFinal(o)) next[o.id] = (o.id in _lockSnaps) ? _lockSnaps[o.id] : lockSig(o); };
+  (S.charts || []).forEach(take);
+  (S.bizCases || []).forEach(take);
+  _lockSnaps = next;
+}
+function enforceLocks() {
+  let reverted = '';
+  const check = (o, label) => {
+    const snap = _lockSnaps[o.id];
+    if (snap == null || lockSig(o) === snap) return;
+    Object.assign(o, JSON.parse(snap));   // content keys back; volatile ones left as the user left them
+    reverted = label;
+  };
+  (state.charts || []).forEach(c => { if (isFinal(c)) check(c, c.title || 'Untitled chart'); });
+  (state.bizCases || []).forEach(b => { if (isFinal(b)) check(b, b.name || 'Untitled'); });
+  if (reverted) refuseLockedEdit(null, `“${reverted}” is Final — that change was rolled back. Reopen it as a draft to edit it.`);
+  refreshLockSnaps();
+  return !!reverted;
+}
+function setChartStatus(id, st) {
+  const c = (state.charts || []).find(x => x.id === id);
+  if (!c || !ART_STATUSES.includes(st) || artStatus(c) === st) return;
+  c.status = st;
+  c.finalizedAt = st === 'final' ? new Date().toISOString() : null;
+  saveState(); render();
+  showToast(st === 'final'
+    ? `“${c.title || 'Untitled chart'}” is Final — locked against edits.`
+    : `“${c.title || 'Untitled chart'}” reopened as a Draft.`, 'suggest');
+}
+function setCaseStatus(id, st) {
+  const b = (state.bizCases || []).find(x => x.id === id);
+  if (!b || !ART_STATUSES.includes(st) || artStatus(b) === st) return;
+  b.status = st;
+  b.finalizedAt = st === 'final' ? new Date().toISOString() : null;
+  saveState(); render();
+  showToast(st === 'final'
+    ? `“${b.name || 'Untitled'}” is Final — locked against edits.`
+    : `“${b.name || 'Untitled'}” reopened as a Draft.`, 'suggest');
+}
+// The strip above the canvas. Stated permanently, in BOTH states — see the note above on why a
+// draft-only banner is the wrong shape.
+function statusStripHtml(kind, o) {
+  const st = artStatus(o), M = STATUS_META[st];
+  const when = finalizedOn(o);
+  const next = st === 'final' ? 'draft' : 'final';
+  const name = kind === 'chart' ? (o.title || 'Untitled chart') : (o.name || 'Untitled');
+  return `<div class="art-status-strip is-${st}" data-art-kind="${kind}">
+    <span class="ast-badge">${M.icon} ${M.short}</span>
+    <span class="ast-txt">${escapeHtml(M.blurb)}${when ? ` <span class="ast-when">Signed ${escapeHtml(when)}.</span>` : ''}</span>
+    <button type="button" class="ast-set" data-status-set="${kind}" data-status-id="${o.id}" data-status="${next}"
+      title="${escapeHtml(st === 'final'
+        ? `Reopen “${name}” for editing. Nothing is lost — the status is just a field, and you can mark it Final again whenever you like.`
+        : `Mark “${name}” Final. It keeps working everywhere; its cells, names and layout simply lock against accidental edits until you reopen it.`)}">${
+      st === 'final' ? '↺ Reopen as draft' : '✓ Mark final'}</button>
+  </div>`;
+}
+
 // A chart = a single nested-RACI hierarchy. Multiple charts live as tabs in state.charts.
 // The DIRECTORATE roster + actor/column labels are GLOBAL (shared across tabs); each chart owns
 // its own activity tree, drill path, and per-pane layout.
@@ -6247,6 +6553,8 @@ function makeChart(title, activities) {
     id: 'c_' + uid(),
     title: title || 'Untitled chart',
     framework: 'raci',
+    status: 'draft',            // 'draft' | 'final'; Final locks the chart (v0.32)
+    finalizedAt: null,          // ISO stamp of the moment it was signed, cleared on reopen
     custom: null,               // null = org chart; free-form charts get { cols, tiers }
     activities: Array.isArray(activities) ? activities : [],
     drillPath: [],
@@ -6301,6 +6609,7 @@ const BIZ_MODE_META = {
 function makeBizCase(name) {
   return { id: 'b_' + uid(), name: name || 'Untitled business case', description: '', framework: 'raci',
     mode: 'free', sourceChartId: null,
+    status: 'draft', finalizedAt: null,
     anchor: null, tasks: [], edges: [], groups: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
 }
 // ---- Artifacts: the global deliverable registry (v0.20) ----
@@ -6911,6 +7220,10 @@ function migrateState(s) {
     id: typeof c.id === 'string' && c.id ? c.id : 'c_' + uid(),
     title: typeof c.title === 'string' ? c.title : 'Untitled chart',
     framework: CHART_FRAMEWORKS.includes(c.framework) ? c.framework : 'raci',
+    // Lifecycle status (v0.32). Anything written before this version predates the idea of signing
+    // off, so an absent field reads as 'draft' — the state that claims nothing.
+    status: ART_STATUSES.includes(c.status) ? c.status : 'draft',
+    finalizedAt: (c.status === 'final' && typeof c.finalizedAt === 'string') ? c.finalizedAt : null,
     custom,
     activities: normalizeNodes(Array.isArray(c.activities) ? c.activities : [], 0,
       custom ? { cols: custom.cols.map(x => x.key), maxTier: Infinity, free: true } : null),
@@ -7123,6 +7436,8 @@ function migrateState(s) {
       name: typeof b.name === 'string' ? b.name : 'Untitled business case',
       description: typeof b.description === 'string' ? b.description : '',
       framework: BIZ_FRAMEWORKS.includes(b.framework) ? b.framework : 'raci',
+      status: ART_STATUSES.includes(b.status) ? b.status : 'draft',
+      finalizedAt: (b.status === 'final' && typeof b.finalizedAt === 'string') ? b.finalizedAt : null,
       mode: BIZ_MODES.includes(b.mode) ? b.mode : 'free',
       sourceChartId: (srcChart && !srcChart.custom) ? srcChart.id : null,
       anchor, tasks, edges, groups,
@@ -7166,6 +7481,12 @@ function migrateState(s) {
       ed.toPort = okPort(taskById.get(ed.to), ed.toPort);
     });
   });
+  // Baseline the Final-artifact guard against the state just built. It has to happen HERE rather
+  // than lazily on the first save: migrateState is the one path every wholesale state replacement
+  // goes through (load, undo/redo, import), and an empty map would let the first edit after any
+  // of them through unchallenged. Cleared first so ids from the outgoing state can never match.
+  _lockSnaps = Object.create(null);
+  refreshLockSnaps(s);
   return s;
 }
 function loadState() {
@@ -7289,6 +7610,7 @@ function writeStorage() {
   }
 }
 function saveState() {
+  enforceLocks();             // a Final artifact records no change, whatever path produced it
   bizInvalidateBindCache();   // any edit can move a chart row out from under a linked flow step
   captureHistory();
   clearTimeout(saveTimer);
@@ -7514,9 +7836,13 @@ function renderChartTabs() {
   const tabs = state.charts.map(c => {
     const active = c.id === state.activeChartId;
     const label = escapeHtml(c.title || 'Untitled chart');
-    return `<div class="chart-tab${active ? ' active' : ''}${only ? ' is-only' : ''}" role="tab" aria-selected="${active}" data-tab="${c.id}" title="Click to switch · double-click to rename">
+    // Status rides in the tab itself: switching between a signed chart and a working one is a
+    // one-click move, so the tab strip is where the difference has to be legible.
+    const st = artStatus(c), M = STATUS_META[st];
+    return `<div class="chart-tab${active ? ' active' : ''}${only ? ' is-only' : ''}" data-status="${st}" role="tab" aria-selected="${active}" data-tab="${c.id}" title="${M.name} — ${escapeHtml(M.blurb)}\nClick to switch${st === 'final' ? '' : ' · double-click to rename'}">
+      <span class="tab-status">${M.short}</span>
       <span class="tab-label" data-tab-id="${c.id}" spellcheck="false" title="${label}">${label}</span>
-      <button class="tab-close" type="button" data-tab-close="${c.id}" title="Close this chart">×</button>
+      <button class="tab-close" type="button" data-tab-close="${c.id}" title="${st === 'final' ? 'This chart is Final — reopen it as a draft before closing it' : 'Close this chart'}">×</button>
     </div>`;
   }).join('');
   const fwOpts = CHART_FRAMEWORKS.map(k =>
@@ -7529,6 +7855,7 @@ function renderChartTabs() {
 }
 function setChartFramework(key) {
   if (!CHART_FRAMEWORKS.includes(key) || ac().framework === key) return;
+  if (!guardChartEdit()) { renderChartTabs(); return; }   // repaint so the select snaps back
   ac().framework = key;
   saveState();
   render();
@@ -7562,6 +7889,7 @@ function switchChart(id) {
 function renameChart(id, name) {
   const c = state.charts.find(x => x.id === id);
   if (!c) return;
+  if (!guardChartEdit(c)) { renderChartTabs(); return; }
   c.title = String(name || '').trim() || 'Untitled chart';
   saveState();
   renderChartTabs();
@@ -7571,6 +7899,9 @@ function deleteChart(id) {
   const idx = state.charts.findIndex(c => c.id === id);
   if (idx < 0) return;
   const c = state.charts[idx];
+  // Closing a Final chart would destroy signed work in one click, which is exactly what the lock
+  // is for — so it refuses like any other edit rather than falling through to the confirm.
+  if (!guardChartEdit(c)) return;
   const empty = !c.activities.length;
   if (!empty && !confirm(`Close chart "${c.title}"? Its activities will be discarded. (Export to JSON first if you want to keep them.)`)) return;
   state.charts.splice(idx, 1);
@@ -7984,6 +8315,12 @@ function render() {
   renderChartTabs();
   renderLegend();
   document.body.dataset.view = state.viewMode;
+  // Drives the whole CSS side of the edit lock: which write affordances vanish, and which
+  // surfaces go inert. Empty string when nothing in this view is locked.
+  // REMOVE the attribute when nothing is locked rather than setting it empty: [data-lock]
+  // matches an empty value too, which would hide every write affordance on every draft.
+  const _lk = lockedNow();
+  if (_lk) document.body.dataset.lock = _lk.kind; else delete document.body.dataset.lock;
   document.body.classList.toggle('show-legend', !!state.showLegend);
   updateViewTabs();
   if (state.viewMode === 'roster') renderRoster();
@@ -8121,7 +8458,7 @@ function renderChart() {
     if (tr) tr.classList.add('row-active');
   }
   const blocks = charts.map((c, i) => renderChartBlock(c, i, charts.length)).join('');
-  main.innerHTML = `<div class="cascade-zoom" id="cascade-zoom"><div class="cascade" id="cascade">${blocks}<svg class="cascade-svg" id="cascade-svg" aria-hidden="true"></svg><div class="chart-resize" id="chart-resize" title="Drag to resize the charts"></div></div></div>
+  main.innerHTML = `${statusStripHtml('chart', ac())}<div class="cascade-zoom" id="cascade-zoom"><div class="cascade" id="cascade">${blocks}<svg class="cascade-svg" id="cascade-svg" aria-hidden="true"></svg><div class="chart-resize" id="chart-resize" title="Drag to resize the charts"></div></div></div>
     <div id="zoom-ctl" class="zoom-ctl">
       <button id="zoom-out" title="Zoom out">−</button>
       <span class="zoom-level" id="zoom-level" title="Reset zoom">${Math.round((ac().chartZoom || 1) * 100)}%</span>
@@ -8741,7 +9078,8 @@ function bizSelectorHtml() {
   const opt = c => {
     const an = resolveAnchor(c);
     const tail = an ? ` — ⚓ ${an.node.name || 'untitled task'}` : (c.anchor ? ' — ⚓ (missing chart)' : '');
-    return `<option value="${c.id}"${c.id === state.activeBizCaseId ? ' selected' : ''}>${escapeHtml((c.name || 'Untitled') + tail)}</option>`;
+    // Status leads the label so the picker sorts visually into signed and unsigned at a glance.
+    return `<option value="${c.id}"${c.id === state.activeBizCaseId ? ' selected' : ''}>${escapeHtml(`[${STATUS_META[artStatus(c)].short}] ` + (c.name || 'Untitled') + tail)}</option>`;
   };
   const attached = state.bizCases.filter(c => c.anchor);
   const standalone = state.bizCases.filter(c => !c.anchor);
@@ -8771,7 +9109,7 @@ function bizSelectorHtml() {
   return `
     ${back}
     <button id="bz-gallery" class="${state.bizGallery ? 'active' : ''}" title="Flow gallery — every business case in this workspace. Click one to open it, or drag it onto the canvas to nest it inside this flow.">⊞ Gallery</button>
-    <select id="bz-select" title="Active business case">${opts}</select>
+    <select id="bz-select" data-lock-ok title="Active business case">${opts}</select>
     <button id="bz-new" title="New business case">+ New Graph</button>
     <button id="bz-rename" title="Rename this business case">Rename</button>
     <button id="bz-del" title="Delete this business case">Delete</button>
@@ -8853,7 +9191,7 @@ function bizGalleryCardsHtml() {
         ${blocked ? '' : 'draggable="true"'} data-gal-case="${b.id}"
         title="${escapeHtml((b.description || b.name || 'Untitled') + (blocked ? '' : ' — drag onto the canvas to nest it'))}">
       ${bizFlowThumbSvg(b)}
-      <div class="bz-gal-name">${escapeHtml(b.name || 'Untitled')}${isActive ? '<span class="bz-gal-open">open</span>' : ''}</div>
+      <div class="bz-gal-name"><span class="bz-gal-status is-${artStatus(b)}" title="${escapeHtml(STATUS_META[artStatus(b)].blurb)}">${STATUS_META[artStatus(b)].short}</span>${escapeHtml(b.name || 'Untitled')}${isActive ? '<span class="bz-gal-open">open</span>' : ''}</div>
       <div class="bz-gal-meta">
         <span>${b.tasks.length} step${b.tasks.length === 1 ? '' : 's'}</span>
         <span>${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}</span>
@@ -8874,7 +9212,7 @@ function bizGalleryHtml() {
       <h3>Flow gallery</h3>
       <button type="button" id="bz-gal-close" title="Hide the gallery">×</button>
     </div>
-    <input id="bz-gal-filter" type="search" placeholder="Filter flows…" value="${escapeHtml(_bizGalQ)}" spellcheck="false">
+    <input id="bz-gal-filter" type="search" data-lock-ok placeholder="Filter flows…" value="${escapeHtml(_bizGalQ)}" spellcheck="false">
     <div class="bz-gal-hint">Click to open · drag onto the canvas to nest</div>
     <div class="bz-gal-list">${bizGalleryCardsHtml()}</div>
   </aside>`;
@@ -9391,6 +9729,7 @@ function renderBizcase() {
   main.innerHTML = `
     <div class="bz-wrap">
       <div class="bz-toolbar">${bizSelectorHtml()}</div>
+      ${statusStripHtml('flow', b)}
       ${bizModeStripHtml(b)}
       ${bizCharterHtml(b)}
       <div class="bz-body">
@@ -10266,6 +10605,7 @@ function bizRenameCase() {
   saveState(); renderBizcase();
 }
 function bizDeleteCase() {
+  if (!guardFlowEdit()) return;
   if (state.bizCases.length <= 1) { showToast('Keep at least one business case.', 'error'); return; }
   const b = abc();
   // Deleting a flow that other flows nest leaves broken boxes behind, so say so before it happens
@@ -12473,7 +12813,7 @@ function buildFlowRows(chart) {
       // A nested-flow box exports as a pointer: its roles belong to the flow it references, which
       // exports its own rows wherever it is anchored.
       rows.push([
-        anc, b.name || '', BIZ_MODE_META[b.mode].name, (isSubflow(t) ? '⧉ ' : '') + bizTaskLabel(t),
+        anc, b.name || '', STATUS_META[artStatus(b)].name, BIZ_MODE_META[b.mode].name, (isSubflow(t) ? '⧉ ' : '') + bizTaskLabel(t),
         isSubflow(t) ? `Nested flow → ${bizCaseName(t.refId)}${t.description ? ' — ' + t.description : ''}` : (t.description || ''),
         flowLinkText(b, t),
         t.entry || '', t.exit || '',
@@ -12486,7 +12826,19 @@ function buildFlowRows(chart) {
   });
   return rows;
 }
-const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Mode', 'Step', 'Description', 'Linked chart row', 'Entry criteria', 'Exit criteria', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Status', 'Mode', 'Step', 'Description', 'Linked chart row', 'Entry criteria', 'Exit criteria', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+// The document header sheet: one place a reader (or a script) can look to see what this file
+// claims to be. A spreadsheet of a draft chart that says nothing about being a draft is the
+// paper version of the failure the status feature exists to prevent.
+function buildDocumentRows(chart) {
+  const rows = [
+    ['Chart', chart.title || 'Untitled chart', STATUS_META[artStatus(chart)].name, finalizedOn(chart)]
+  ];
+  flowsForChart(chart.id).forEach(b => rows.push([
+    'Flow', b.name || 'Untitled', STATUS_META[artStatus(b)].name, finalizedOn(b)
+  ]));
+  return rows;
+}
 function buildDeliverableRows() {
   const uses = computeArtifactUses();
   return state.artifacts.map(a => [
@@ -12518,7 +12870,7 @@ function exportXML() {
     }).join('');
     const handoffs = b.edges.map(e =>
       `${pad}  <handoff from="${esc(nameOf(e.from))}" to="${esc(nameOf(e.to))}"${e.label ? ` condition="${esc(e.label)}"` : ''}${(e.artifactIds || []).length ? ` deliverables="${esc(e.artifactIds.map(artifactLabel).join(', '))}"` : ''}/>\n`).join('');
-    return `${pad}<flow name="${esc(b.name)}" mode="${esc(b.mode)}">\n${steps}${handoffs}${pad}</flow>\n`;
+    return `${pad}<flow name="${esc(b.name)}" status="${esc(artStatus(b))}" mode="${esc(b.mode)}"${b.finalizedAt ? ` finalized="${esc(b.finalizedAt)}"` : ''}>\n${steps}${handoffs}${pad}</flow>\n`;
   };
   const node = (n, depth, inheritedAcol, pad) => {
     const eff = effectiveRaci(n, inheritedAcol);
@@ -12565,7 +12917,7 @@ ${state.artifacts.map(a => `    <artifact name="${esc(a.name)}" type="${esc(a.ty
   </artifacts>
 ` : '';
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<raciTool title="${esc(ac().title || 'RACI')}">
+<raciTool title="${esc(ac().title || 'RACI')}" status="${esc(artStatus(ac()))}"${ac().finalizedAt ? ` finalized="${esc(ac().finalizedAt)}"` : ''}>
   <columns>
 ${cols}
   </columns>
@@ -12582,7 +12934,9 @@ ${artifactsSection}${rosterSection}</raciTool>
 function exportMermaid() {
   if (state.viewMode === 'bizcase') { exportMermaidFlow(); return; }
   const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/[\r\n]+/g, ' ');
-  const lines = ['flowchart TD'];
+  // Mermaid has no document header, so the status goes in as a comment line — it survives a
+  // copy-paste into a wiki, which is where these diagrams actually end up.
+  const lines = [`%% ${ac().title || 'RACI chart'} — ${STATUS_META[artStatus(ac())].short}${ac().finalizedAt ? ' (signed ' + finalizedOn(ac()) + ')' : ''}`, 'flowchart TD'];
   const tierClass = ['pf', 'pg', 'pj', 'tk'];
   let id = 0;
   const summary = (n, inheritedAcol) => {
@@ -12610,7 +12964,7 @@ function exportMermaidFlow() {
   const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/[\r\n|]+/g, ' ');
   const b = abc();
   const F = fw(b.framework);
-  const lines = ['flowchart LR'];
+  const lines = [`%% ${b.name || 'Flow'} — ${STATUS_META[artStatus(b)].short} · ${BIZ_MODE_META[b.mode].name}${b.finalizedAt ? ' (signed ' + finalizedOn(b) + ')' : ''}`, 'flowchart LR'];
   const outCount = Object.create(null);
   b.edges.forEach(e => { outCount[e.from] = (outCount[e.from] || 0) + 1; });
   const mid = Object.create(null);
@@ -12721,6 +13075,7 @@ function exportXLSX() {
 }
 function xlsxBytes() {
   const sheets = buildLevelSheets();
+  sheets.unshift({ name: 'Document', headers: ['Kind', 'Name', 'Status', 'Signed'], rows: buildDocumentRows(ac()) });
   // Anchored flows + the deliverable registry ride along as extra sheets (v0.22).
   const flowRows = buildFlowRows(ac());
   if (flowRows.length) sheets.push({ name: 'Flows', headers: FLOW_SHEET_HEADERS, rows: flowRows });
@@ -12782,7 +13137,8 @@ function pptxBytes() {
   const sheets = buildLevelSheets();
 
   // 1) Logical slide list. Tier tables first, then one table (paginated) per anchored flow (v0.22).
-  const slideDefs = [{ kind: 'title', title: ac().title || 'RACI chart', sub: `${F.name} responsibility matrix` }];
+  const slideDefs = [{ kind: 'title', title: `${STATUS_META[artStatus(ac())].short} — ${ac().title || 'RACI chart'}`,
+    sub: `${F.name} responsibility matrix · ${STATUS_META[artStatus(ac())].name}${ac().finalizedAt ? ', signed ' + finalizedOn(ac()) : ''}` }];
   sheets.forEach(sheet => {
     const pages = Math.max(1, Math.ceil(sheet.rows.length / ROWS_PER_SLIDE));
     for (let p = 0; p < pages; p++) {
@@ -12804,7 +13160,7 @@ function pptxBytes() {
         .concat([flowRolesText(b, t), flowPartiesText(b, ctx, t),
           io.inputs.map(artifactLabel).join(', '), io.outputs.map(artifactLabel).join(', '), flowNextText(b, t)]);
     });
-    const flowTitle = `Flow (${BIZ_MODE_META[b.mode].name}) — ${b.name || 'Untitled'}${an ? `  (⚓ ${an.node.name || 'task'})` : ''}`;
+    const flowTitle = `[${STATUS_META[artStatus(b)].short}] Flow (${BIZ_MODE_META[b.mode].name}) — ${b.name || 'Untitled'}${an ? `  (⚓ ${an.node.name || 'task'})` : ''}`;
     const pages = Math.max(1, Math.ceil(rows.length / FLOW_ROWS_PER_SLIDE));
     for (let p = 0; p < pages; p++) {
       slideDefs.push({ kind: 'table', title: flowTitle + (pages > 1 ? `  (${p + 1}/${pages})` : ''),
@@ -13071,6 +13427,12 @@ function lintFlow(b) {
       message: 'The chart row this step was linked to is gone — the chart was deleted, the row removed, or an import did not carry it. Re-point the step (⛓) or unlink it.' });
     if (linked && bind && b.sourceChartId && bind.chart.id !== b.sourceChartId) issues.push({ severity: 'warn', rule: 'flowBindForeign',
       message: `This step links into "${bind.chart.title || 'another chart'}", not this flow's source chart ("${(chartById(b.sourceChartId) || {}).title || 'unknown'}"). Steps of one flow spanning charts makes the flow hard to trace back — re-point it, or change the flow's source chart.` });
+    // A Final flow in Chart-Linked mode takes its letters LIVE from the chart. If that chart is
+    // still a Draft, the flow reads as settled while the ground under it can still move — so it
+    // is flagged, per step, naming the chart that has to catch up. Allowed, because sign-off
+    // order is the user's call and bottom-up is not always possible.
+    if (linked && bind && isFinal(b) && !isFinal(bind.chart)) issues.push({ severity: 'warn', rule: 'flowFinalDraftSource',
+      message: `This flow is Final, but the row it takes from lives in "${bind.chart.title || 'a chart'}", which is still a Draft — that chart can change under it. Finalize the chart, or reopen this flow while the chart settles.` });
     if (linked && bind) {
       const over = (t.bindOverrides || []).filter(k => {
         const chartSays = translateLetters(bind.raci[k], bind.F, F);
@@ -13695,6 +14057,11 @@ window.addEventListener('beforeprint', () => {
   const ph = document.getElementById('print-head');
   if (!ph) return;
   let title, sub;
+  // A draft that prints without saying so is how a working copy ends up circulating as settled,
+  // so the status leads the printed title band and a diagonal watermark crosses every page.
+  const printed = state.viewMode === 'bizcase' ? abc() : ac();
+  const pst = (state.viewMode === 'work') ? '' : artStatus(printed);
+  document.body.dataset.printStatus = pst;
   if (state.viewMode === 'work') {
     // The run book: this unit's work orders, printed as the branch/team handout.
     title = 'Tasks — run book';
@@ -13707,8 +14074,53 @@ window.addEventListener('beforeprint', () => {
     title = ac().title || 'RACI chart';
     sub = `${chartFw().name} responsibility matrix · ${chartCols().map(k => chartColShort(k)).join(' · ')}`;
   }
-  ph.innerHTML = `<div class="ph-title">${escapeHtml(title)}</div><div class="ph-sub">${escapeHtml(sub)}</div>`;
+  ph.innerHTML = `<div class="ph-title">${pst ? `<span class="ph-status is-${pst}">${STATUS_META[pst].short}</span>` : ''}${escapeHtml(title)}</div>` +
+    `<div class="ph-sub">${escapeHtml(sub)}${pst === 'final' && printed.finalizedAt ? ` · signed ${escapeHtml(finalizedOn(printed))}` : ''}</div>`;
 });
+
+// ---------- Draft / Final ----------
+// The strip appears in BOTH the chart and the flow view, so its button needs a listener that is
+// not scoped to either one.
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-status-set]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-status-id'), next = btn.getAttribute('data-status');
+  if (btn.getAttribute('data-status-set') === 'chart') setChartStatus(id, next);
+  else setCaseStatus(id, next);
+});
+
+// ---------- Draft / Final: the edit gate ----------
+// Rendering and CSS already take the add / delete / rename affordances away from a locked
+// artifact, which is where the lock should be felt — you should not be able to reach for the
+// control at all. This gate covers only what neither can reach: keys typed into a field that
+// still holds focus, the delete shortcut, and drag / drop / paste, all of which bypass the
+// visible affordances entirely. Registered in the CAPTURE phase so it runs ahead of every
+// delegated handler in the app instead of racing them.
+function lockGateAllows(el) {
+  // Read-only controls keep working while locked — filtering the gallery or switching which flow
+  // is open is navigation, not an edit.
+  return !!(el && el.closest && el.closest('[data-lock-ok], input[type="search"]'));
+}
+['beforeinput', 'paste', 'drop', 'dragstart', 'change'].forEach(type => {
+  document.addEventListener(type, e => {
+    const L = lockedNow();
+    if (!L || lockGateAllows(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    refuseLockedEdit(L.kind);
+  }, true);
+});
+document.addEventListener('keydown', e => {
+  const L = lockedNow();
+  if (!L) return;
+  // Everything else is either read-only (arrows, copy, select-all) or already covered by
+  // beforeinput. Undo/redo stay live on purpose: they are how you step back out of a finalize
+  // you did not mean to make.
+  if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+  const el = e.target;
+  if (el && (el.isContentEditable || /^(INPUT|TEXTAREA)$/.test(el.tagName || ''))) return;
+  e.preventDefault(); e.stopPropagation();
+  refuseLockedEdit(L.kind);
+}, true);
 
 // ---------- init ----------
 _lastFull = fullSnap(); _lastContent = contentSig();  // history baseline so the first edit is undoable
