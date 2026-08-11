@@ -481,7 +481,7 @@
             <div class="ma-row"><span class="grow">Step · Security review</span><span class="chip r sm">R</span></div>
             <div class="ma-row">↓ Yes / No ⧫</div>
           </div>
-          <p>A Business Case task flow: steps wired by handoff arrows, with decision branches. Each step carries its <b>own</b> RACI over the same seven columns — plus the actual org unit executing each column's role.</p>
+          <p>A Business Case task flow: steps wired by handoff arrows, with decision branches. Each step carries a RACI over the same seven columns — either <b>authored on the step</b> or <b>taken from a chart row</b>, depending on the flow's mode — plus the actual org unit executing each column's role.</p>
         </div>
         <div class="panel">
           <span class="cap">Tasks · workload</span>
@@ -532,6 +532,42 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Modes</span>Where a step's RACI comes from</h2>
+      <p class="sub">Every flow runs in one of two modes. It's the first thing to decide about a flow, because it decides what its steps are even allowed to say.</p>
+      <div class="compare">
+        <div class="panel">
+          <span class="cap">⛓ Chart-Linked</span>
+          <h3>The chart is the source of truth</h3>
+          <p class="lens-q">“Prove this flow implements what we signed.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow">▢ Request vendor SDK</span></div>
+            <div class="ma-row"><span class="grow">⛓ <b>Project</b> · Integrate scanner SDK</span></div>
+            <div class="ma-row"><span class="grow">CoS <span class="chip a sm">A</span> Infra <span class="chip r sm">R</span> <em>from the row</em></span></div>
+          </div>
+          <p>Every step names the org-chart <b>row</b> it implements, and reads that row's RACI live — no copy, so a chart edit reaches the flow immediately. A step with no row is an <b>error</b>, not a gap: that's the mode's whole contract.</p>
+          <p>The <b>tier</b> you link to is the dial. Link a step to a <b>Portfolio</b> row and its parties resolve to whole directorates. Link it to a <b>Project</b> row carrying a Branch and the same columns narrow to that Branch. Pick the tier that matches how specifically the work is actually assigned.</p>
+          <p>A step can still take one column back — click the cell and set your own letters. The override is drawn distinctly, listed on the link bar as <b>±n</b>, and flagged in the rules. Allowed, never silent. <b>↺ Chart</b> in the cell hands it back.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">✦ Free-Form</span>
+          <h3>The step speaks for itself</h3>
+          <p class="lens-q">“Let's walk through how this would go.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow">▢ Detect &amp; Triage</span></div>
+            <div class="ma-row"><span class="grow">C&amp;EW <span class="chip a sm">A</span> <span class="chip r sm">R</span> <em>typed here</em></span></div>
+            <div class="ma-row"><span class="grow">MMD <span class="chip c sm">C</span> CMO <span class="chip i sm">I</span></span></div>
+          </div>
+          <p>RACI is authored on the step, with no chart behind it. This is the right mode for a tabletop exercise, a dry run, a procedure that hasn't been mapped onto the chart yet — anything where forcing a row would mean inventing one.</p>
+          <p>It's also what every flow built before modes existed was, so nothing you already have changed.</p>
+          <p><b>Switching is lossless both ways.</b> Leaving Chart-Linked offers to bake in whatever the chart was supplying, so the flow reads the same either side of the switch; the links themselves are kept, so switching back restores it exactly.</p>
+        </div>
+      </div>
+      <p class="sub">Creating a flow from a chart row (<b>⤵</b> on a Task row) starts it Chart-Linked with its first step already linked. Starting one with <b>+ New Graph</b> gives you Free-Form. Change it any time in the flow's toolbar.</p>
     </div>
   </section>
 
