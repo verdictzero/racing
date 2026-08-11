@@ -48,10 +48,22 @@
     "in the Tasks view).",
     "",
     "── bizCases[] (Business Case task flows) ──────────────────────────────────",
-    "framework: 'raci' | 'daci' | 'rapid'. anchor: {chartId, nodeId} ties the flow",
+    "framework: 'raci' | 'daci' | 'rapid'. mode: 'free' (default — RACI authored",
+    "on each step) | 'linked' (CHART-LINKED: every step must carry bind:{chartId,",
+    "nodeId} naming the org-chart row it implements, and READS that row's RACI, so",
+    "leave its raci cells empty). The row may sit at ANY tier and the tier is the",
+    "point: a Portfolio row leaves parties at directorate depth, a Project row",
+    "carrying a Branch narrows the same columns to that Branch. bindOverrides:[]",
+    "lists columns the step takes back from the row (a listed column reads raci",
+    "verbatim, including \"\" = 'no role here whatever the row says') — each one is",
+    "a warning, so use them sparingly. bind.chartId must be an ORGANIZATION chart;",
+    "free-form charts cannot be linked to. sourceChartId: which chart the row",
+    "picker offers (convenience only — binds are self-describing).",
+    "anchor: {chartId, nodeId} ties the WHOLE flow",
     "to one org-chart Task row ('this flow implements that task') — owner and",
     "default parties then cascade in and flow-health rolls up; anchor: null = a",
-    "standalone tabletop exercise. tasks[] are the step boxes: raci keyed by the 7",
+    "standalone tabletop exercise. Independent of mode. tasks[] are the step boxes:",
+    "raci keyed by the 7",
     "org columns; parties maps a column key → roster ref {actor, divisionId?,",
     "branchId?, teamId?} (the executing unit for that column's role); description /",
     "entry / exit are the card's three text blocks; status; x/y canvas position.",
@@ -253,6 +265,8 @@
       "name": "EXAMPLE — SDK Integration (anchored flow)",
       "description": "Anchored to the org chart's 'Task — Integrate scanner SDK' row: the row's cascaded owner shows through on steps with no explicit owner, and its org ancestry seeds default parties.",
       "framework": "raci",
+      "mode": "free",
+      "sourceChartId": null,
       "anchor": { "chartId": "c_org_main", "nodeId": "n_task1" },
       "showTable": false,
       "view": { "panX": 0, "panY": 0, "zoom": 1 },
@@ -351,6 +365,62 @@
       ],
       "edges": [
         { "id": "e_tt_1", "from": "t_tt_frame", "to": "t_tt_decide", "label": "", "artifactIds": [ "a_brief" ] }
+      ]
+    },
+    {
+      "id": "b_flow_linked",
+      "name": "EXAMPLE — Barcode Scanning rollout (CHART-LINKED)",
+      "description": "mode:'linked' — every step names the chart row it implements and reads that row's RACI live. The tiers differ deliberately: the framing step links to a PORTFOLIO row (parties stay at directorate depth), the build steps link to a PROJECT row carrying a Branch (the same columns narrow to that Branch). raci cells stay empty except where bindOverrides takes a column back.",
+      "framework": "raci",
+      "mode": "linked",
+      "sourceChartId": "c_org_main",
+      "anchor": null,
+      "showTable": false,
+      "view": { "panX": 0, "panY": 0, "zoom": 1 },
+      "tasks": [
+        {
+          "id": "t_lk_frame",
+          "name": "Confirm modernization intent",
+          "bind": { "chartId": "c_org_main", "nodeId": "n_pf1" },
+          "bindOverrides": [],
+          "raci": { "hq": "", "cos": "", "mission": "", "infra": "", "cyber": "", "sw": "", "contacts": "" },
+          "parties": {},
+          "description": "Linked to a PORTFOLIO row. That row carries no org unit, so this step's parties resolve to whole directorates.",
+          "entry": "Portfolio objectives published",
+          "exit": "Scope confirmed against the portfolio line",
+          "status": "todo",
+          "x": 40, "y": 60
+        },
+        {
+          "id": "t_lk_build",
+          "name": "Integrate scanner SDK",
+          "bind": { "chartId": "c_org_main", "nodeId": "n_proj1" },
+          "bindOverrides": [],
+          "raci": { "hq": "", "cos": "", "mission": "", "infra": "", "cyber": "", "sw": "", "contacts": "" },
+          "parties": {},
+          "description": "Linked to a PROJECT row whose org is br_sw_scan — the Software & Support column resolves all the way to that Branch with nothing typed on this step.",
+          "entry": "Scope confirmed",
+          "exit": "SDK integrated behind a feature flag",
+          "status": "todo",
+          "x": 380, "y": 60
+        },
+        {
+          "id": "t_lk_verify",
+          "name": "Security verification",
+          "bind": { "chartId": "c_org_main", "nodeId": "n_proj1" },
+          "bindOverrides": [ "cyber", "sw" ],
+          "raci": { "hq": "", "cos": "", "mission": "", "infra": "", "cyber": "RA", "sw": "R", "contacts": "" },
+          "parties": {},
+          "description": "Same project row, but this step MOVES accountability: the row puts RA on Software & Support, and for verification specifically it belongs to Cyber. Both columns are overridden — cyber gains the A, sw drops it — because leaving only one would give the step two owners. Overrides are allowed, drawn distinctly, and flagged by the flow rules.",
+          "entry": "SDK integrated",
+          "exit": "Security memo signed",
+          "status": "todo",
+          "x": 720, "y": 60
+        }
+      ],
+      "edges": [
+        { "id": "e_lk1", "from": "t_lk_frame", "to": "t_lk_build", "label": "", "artifactIds": [] },
+        { "id": "e_lk2", "from": "t_lk_build", "to": "t_lk_verify", "label": "", "artifactIds": [ "a_sdk_pkg" ] }
       ]
     }
   ],

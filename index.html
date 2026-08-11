@@ -1835,6 +1835,22 @@ input[type="file"] { display: none; }
   background: var(--border);
   flex: 0 0 auto;
 }
+/* ---- Mode boxes ----
+   The rail holds two SYSTEMS, not one list of screens. Chart / Roster / Tasks are three cuts of the
+   same nested RACI matrix; the Business Case task flow is a parallel system with its own graph, its
+   own responsibility rules and its own two modes. Boxing them apart says so before anything is
+   clicked. Horizontally the flow box reads as a tinted, outlined cluster beside the plain group;
+   in the wide left rail (>=1200px) each box becomes a titled panel. */
+.view-tabs .vt-box { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; }
+.view-tabs .vt-box-label { display: none; }
+.view-tabs .vt-box--flow {
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.08);
+  border-radius: 5px;
+  padding: 1px;
+  margin-left: 7px;
+}
+.view-tabs .vt-box--flow button.active { border: 1px solid rgba(var(--accent-rgb), 0.55); }
 .view-tabs button.tab-help { display: inline-flex; align-items: center; gap: 5px; }
 .view-tabs button.tab-help .vt-help-ico {
   display: inline-grid; place-items: center;
@@ -1865,6 +1881,7 @@ input[type="file"] { display: none; }
   .actions { flex: 1 1 100%; order: 2; }
   .view-tabs { margin-left: 0; flex: 1 1 100%; order: 3; }
   .view-tabs button { flex: 1 1 auto; }
+  .view-tabs .vt-box { flex: 1 1 auto; }
 }
 /* Tighter still: compact the header chrome so the buttons get more of the width, and let buttons
    shrink past their label width (ellipsis) rather than forcing another wrap. */
@@ -1933,6 +1950,24 @@ input[type="file"] { display: none; }
     margin-left: 14px; width: calc(100% - 14px);
   }
   #view-tabs button.tab-help { justify-content: flex-start; }
+  /* Each system becomes a titled panel. The flow panel is outlined and tinted so the rail reads as
+     "these three are the chart — this one is its own thing", which is the whole point of the split. */
+  #view-tabs .vt-box {
+    flex-direction: column; align-items: stretch; gap: 9px;
+    flex: 0 0 auto; width: 100%;
+  }
+  #view-tabs .vt-box-label {
+    display: block; padding: 0 4px 1px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--text-dim);
+  }
+  #view-tabs .vt-box--flow {
+    margin: 14px 0 0; padding: 9px 8px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(var(--accent-rgb), 0.4);
+    background: rgba(var(--accent-rgb), 0.07);
+  }
+  #view-tabs .vt-box--flow .vt-box-label { color: var(--accent); }
   #view-tabs .vt-sep { width: auto; height: 1px; align-self: stretch; margin: 7px 6px; }
   #view-tabs .vt-lg { display: inline; }   /* room for the full label in the rail */
   #view-tabs .vt-sm { display: none; }
@@ -2592,6 +2627,136 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
   border-radius: 4px; padding: 3px 8px; font: inherit; font-size: 11px; cursor: pointer; flex: 0 0 auto;
 }
 .bzc-detach:hover { border-color: var(--warn); color: var(--warn); }
+
+/* ===== Flow modes: Chart-Linked vs Free-Form (v0.31) ===== */
+/* Mode strip — the banner above the canvas. Which mode a flow is in changes what its steps are
+   allowed to say, so it is stated permanently rather than left in a dropdown. */
+.bz-mode-strip {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 5px 12px; border-bottom: 1px solid var(--border);
+  flex: 0 0 auto; font-size: 11.5px; color: var(--text-dim);
+}
+.bz-mode-strip.is-free   { background: var(--bg-2); }
+.bz-mode-strip.is-linked { background: rgba(var(--accent-rgb), 0.07); border-bottom-color: rgba(var(--accent-rgb), 0.3); }
+.bz-mode-strip.is-linked.has-gap { background: rgba(var(--err-rgb), 0.07); border-bottom-color: rgba(var(--err-rgb), 0.3); }
+.bzm-badge {
+  flex: 0 0 auto; font-weight: 700; font-size: 11px; letter-spacing: 0.03em;
+  border: 1px solid var(--border); border-radius: 10px; padding: 2px 9px;
+  background: var(--bg-3); color: var(--text);
+}
+.bz-mode-strip.is-linked .bzm-badge { border-color: rgba(var(--accent-rgb), 0.55); color: var(--accent); }
+.bzm-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzm-src b { color: var(--text); font-weight: 600; }
+.bzm-src b.bzm-none { color: var(--err); font-style: italic; font-weight: 500; }
+.bzm-count { margin-left: auto; flex: 0 0 auto; cursor: help; }
+.bzm-count.is-gap { color: var(--err); font-weight: 700; }
+.bzm-fix {
+  flex: 0 0 auto; background: var(--err); color: var(--on-err); border: 1px solid var(--err);
+  border-radius: 4px; padding: 3px 9px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.bzm-fix:hover { filter: brightness(1.1); }
+.bz-toolbar .bz-mode-sel[data-mode="linked"] { border-color: rgba(var(--accent-rgb), 0.6); color: var(--accent); font-weight: 600; }
+
+/* Link bar on a step card — which chart row this step implements, and at which tier. */
+.bz-bind-wrap { display: flex; align-items: stretch; gap: 3px; margin: 0 8px 5px; }
+.bz-bind {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px;
+  background: rgba(var(--accent-rgb), 0.10); border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: 5px; padding: 3px 7px; font: inherit; font-size: 10.5px; color: var(--text);
+  cursor: pointer; text-align: left;
+}
+.bz-bind:hover { background: rgba(var(--accent-rgb), 0.18); border-color: var(--accent); }
+.bzb-ico { flex: 0 0 auto; color: var(--accent); font-size: 11px; }
+.bzb-tier {
+  flex: 0 0 auto; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--accent); background: rgba(var(--accent-rgb), 0.16); border-radius: 3px; padding: 1px 4px;
+}
+.bzb-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.bzb-over {
+  flex: 0 0 auto; font-size: 9px; font-weight: 800; color: var(--warn);
+  border: 1px solid var(--warn); border-radius: 3px; padding: 0 3px; cursor: help;
+}
+/* Not linked yet: in Chart-Linked mode that is the contract broken, so it reads as an error slot. */
+.bz-bind.is-unset {
+  background: rgba(var(--err-rgb), 0.10); border-color: rgba(var(--err-rgb), 0.5);
+  border-style: dashed; color: var(--err); font-style: italic;
+}
+.bz-bind.is-unset .bzb-ico { color: var(--err); }
+.bz-bind.is-unset:hover { background: rgba(var(--err-rgb), 0.18); border-color: var(--err); }
+.bz-bind.is-broken { background: rgba(var(--err-rgb), 0.14); border-color: var(--err); color: var(--err); }
+.bz-bind.is-broken .bzb-ico { color: var(--err); }
+.bz-bind.is-foreign { border-color: var(--warn); background: rgba(var(--warn-rgb), 0.10); }
+.bz-bind.is-foreign .bzb-ico, .bz-bind.is-foreign .bzb-tier { color: var(--warn); }
+.bzb-jump {
+  flex: 0 0 auto; width: 22px; background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 0;
+}
+.bzb-jump:hover { border-color: var(--accent); color: var(--accent); }
+
+/* A cell the chart is supplying: tinted ground, so "the chart is driving this column" is legible
+   at a glance across the whole card without reading a single tooltip. */
+.bz-cell.is-linked, .bz-tcell.is-linked { background: rgba(var(--accent-rgb), 0.07); }
+.raci-chip.from-chart { outline: 1.5px solid rgba(var(--accent-rgb), 0.75); outline-offset: -1.5px; }
+/* A column deliberately overridden to no role at all. */
+.raci-chip.none { background: var(--bg-3); color: var(--text-dim); font-weight: 600; }
+
+/* Table pane: the linked row under the step name. */
+.bz-trow-bind {
+  display: block; margin-top: 2px; font-size: 9.5px; font-weight: 500; color: var(--accent);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bz-trow-bind.is-unset { color: var(--err); font-style: italic; }
+
+/* Row picker popover — the chart tree, indented by tier, with what each row would hand the step. */
+.bzbind-popover { max-width: 420px; min-width: 320px; padding-bottom: 4px; }
+.bzbind-filter {
+  display: block; width: calc(100% - 16px); margin: 4px 8px 6px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 7px; font: inherit; font-size: 12px; color: var(--text);
+}
+.bzbind-filter:focus { outline: none; border-color: var(--accent); }
+.bzbind-list { max-height: 46vh; overflow-y: auto; }
+.org-popover .op-item.bzbind-row {
+  display: block; padding-top: 5px; padding-bottom: 5px; line-height: 1.35;
+  border-bottom: 1px solid rgba(var(--lift-rgb), 0.06);
+}
+.bzbind-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.bzbind-tier {
+  flex: 0 0 auto; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-dim); background: var(--bg-3); border-radius: 3px; padding: 1px 4px;
+}
+.op-item.bzbind-row.on .bzbind-tier { color: var(--accent); background: rgba(var(--accent-rgb), 0.16); }
+.bzbind-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzbind-org {
+  flex: 0 0 auto; font-size: 9.5px; font-weight: 400; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 9px; padding: 0 6px;
+}
+.bzbind-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 3px; font-weight: 400; }
+.bzbind-chips.is-none { color: var(--text-dim); font-style: italic; font-size: 10px; }
+.bzbind-col { font-size: 9px; color: var(--text-dim); letter-spacing: 0.02em; }
+.bzbind-col b { color: var(--text); font-size: 10px; margin-left: 2px; letter-spacing: 0.05em; }
+
+/* Cell popover, Chart-Linked variant: says where the letters come from, and offers the column back. */
+.raci-popover .rp-note {
+  flex-basis: 100%; font-size: 11px; line-height: 1.4; color: var(--text-dim);
+  border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 2px;
+}
+.raci-popover .rp-note b { color: var(--accent); }
+.raci-popover button.from-chart { outline: 1.5px solid rgba(var(--accent-rgb), 0.6); outline-offset: -2px; }
+.raci-popover .rp-release {
+  flex-basis: 100%; width: auto; height: auto; padding: 5px 8px;
+  font-size: 11px; font-weight: 600; color: var(--accent); border-color: rgba(var(--accent-rgb), 0.5);
+}
+.raci-popover .rp-release:hover { background: rgba(var(--accent-rgb), 0.14); transform: none; }
+
+/* Responsible-party sidebar: where the role being staffed came from. */
+.bzp-src {
+  font-size: 11px; line-height: 1.45; color: var(--text-dim);
+  background: rgba(var(--accent-rgb), 0.08); border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 5px; padding: 5px 8px;
+}
+.bzp-src b { color: var(--text); }
+.bzp-src.is-override { background: rgba(var(--warn-rgb), 0.10); border-color: rgba(var(--warn-rgb), 0.35); color: var(--warn); }
 
 /* Jump-target flash on a flow node (bizJumpToTask) — the flow-side twin of .violation-flash */
 .bz-node.bz-flash { animation: bzFlash 1.1s ease-in-out 0s 3; }
@@ -3539,6 +3704,19 @@ body[data-view="roster"] #legend { display: none; }
 :root[data-theme="contrast"] #details,
 :root[data-theme="contrast"] #legend,
 :root[data-theme="contrast"] #bz-party-panel { border-color: var(--border); }
+/* Flow modes at high contrast: the accent washes carry the grouping in the other themes, and a
+   wash is exactly what this theme removes — so the same distinctions are redrawn as solid edges.
+   The rail's flow box and each step's link bar have to keep reading as separate things. */
+:root[data-theme="contrast"] #view-tabs .vt-box--flow,
+:root[data-theme="contrast"] .bz-bind { border-width: 2px; border-color: var(--accent); background: transparent; }
+:root[data-theme="contrast"] .bz-bind.is-unset,
+:root[data-theme="contrast"] .bz-bind.is-broken { border-color: var(--err); background: transparent; }
+:root[data-theme="contrast"] .bz-bind.is-foreign { border-color: var(--warn); background: transparent; }
+:root[data-theme="contrast"] .bz-mode-strip.is-linked { border-bottom: 2px solid var(--accent); background: transparent; }
+:root[data-theme="contrast"] .bz-mode-strip.is-linked.has-gap { border-bottom-color: var(--err); background: transparent; }
+:root[data-theme="contrast"] .bz-cell.is-linked,
+:root[data-theme="contrast"] .bz-tcell.is-linked { background: transparent; }
+:root[data-theme="contrast"] .raci-chip.from-chart { outline-width: 2px; }
 :root[data-theme="contrast"] .chart-block,
 :root[data-theme="contrast"] .bz-node,
 :root[data-theme="contrast"] .toast,
@@ -3571,7 +3749,14 @@ body[data-view="roster"] #legend { display: none; }
   header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover, #arrange-fab,
   #save-nag, #splash-overlay, #newchart-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
   #zoom-ctl, #bz-zoom-ctl, #bz-minimap, .bz-gallery, .bz-marquee, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
-  [data-del-node], [data-bz-del-task] { display: none !important; }
+  [data-del-node], [data-bz-del-task], .bzm-fix, .bzb-jump, .bz-node-copy { display: none !important; }
+  /* The mode banner and each step's linked row DO print: on a signed document, "which chart row
+     does this step implement" is the point of Chart-Linked mode, not chrome. */
+  .bz-mode-strip, .bz-bind, .bz-bind-wrap {
+    background: #fff !important; color: #000 !important; border-color: #999 !important;
+  }
+  .bz-mode-strip .bzm-badge, .bz-bind .bzb-tier { background: #e8eef6 !important; color: #000 !important; }
+  .bz-trow-bind { color: #333 !important; }
   #app-frame { display: block !important; }
   main, #ws-main { display: block !important; overflow: visible !important; position: static !important;
     padding: 0 !important; height: auto !important; }
@@ -3689,10 +3874,16 @@ body[data-view="roster"] #legend { display: none; }
 <header>
   <div class="view-tabs" id="view-tabs">
     <span class="vt-heading">Mode</span>
-    <button data-view="chart">Chart</button>
-    <button data-view="roster">Roster</button>
-    <button data-view="bizcase" title="Business Case Task Flow"><span class="vt-lg">Business Case Task Flow</span><span class="vt-sm">Biz Case</span></button>
-    <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Tasks</button>
+    <div class="vt-box" data-box="raci">
+      <span class="vt-box-label">RACI Chart</span>
+      <button data-view="chart">Chart</button>
+      <button data-view="roster">Roster</button>
+      <button data-view="work" title="Pick an org unit and see every chart row and flow step that lands on it — with each task's inputs and outputs">Tasks</button>
+    </div>
+    <div class="vt-box vt-box--flow" data-box="flow">
+      <span class="vt-box-label">Task Flows</span>
+      <button data-view="bizcase" title="Business Case Task Flow — a separate system: steps wired into a graph, run either Chart-Linked (every step names the chart row it implements) or Free-Form"><span class="vt-lg">Business Case Task Flow</span><span class="vt-sm">Biz Case</span></button>
+    </div>
     <span class="vt-sep" aria-hidden="true"></span>
     <button data-view="help" class="tab-help" title="Field guides: how nested RACI charts work, and how the chart, anchored flows, and the Tasks lens fit together"><span class="vt-help-ico" aria-hidden="true">?</span>Help</button>
   </div>
@@ -4853,7 +5044,7 @@ body[data-view="roster"] #legend { display: none; }
             <div class="ma-row"><span class="grow">Step · Security review</span><span class="chip r sm">R</span></div>
             <div class="ma-row">↓ Yes / No ⧫</div>
           </div>
-          <p>A Business Case task flow: steps wired by handoff arrows, with decision branches. Each step carries its <b>own</b> RACI over the same seven columns — plus the actual org unit executing each column's role.</p>
+          <p>A Business Case task flow: steps wired by handoff arrows, with decision branches. Each step carries a RACI over the same seven columns — either <b>authored on the step</b> or <b>taken from a chart row</b>, depending on the flow's mode — plus the actual org unit executing each column's role.</p>
         </div>
         <div class="panel">
           <span class="cap">Tasks · workload</span>
@@ -4904,6 +5095,42 @@ body[data-view="roster"] #legend { display: none; }
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Modes</span>Where a step's RACI comes from</h2>
+      <p class="sub">Every flow runs in one of two modes. It's the first thing to decide about a flow, because it decides what its steps are even allowed to say.</p>
+      <div class="compare">
+        <div class="panel">
+          <span class="cap">⛓ Chart-Linked</span>
+          <h3>The chart is the source of truth</h3>
+          <p class="lens-q">“Prove this flow implements what we signed.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow">▢ Request vendor SDK</span></div>
+            <div class="ma-row"><span class="grow">⛓ <b>Project</b> · Integrate scanner SDK</span></div>
+            <div class="ma-row"><span class="grow">CoS <span class="chip a sm">A</span> Infra <span class="chip r sm">R</span> <em>from the row</em></span></div>
+          </div>
+          <p>Every step names the org-chart <b>row</b> it implements, and reads that row's RACI live — no copy, so a chart edit reaches the flow immediately. A step with no row is an <b>error</b>, not a gap: that's the mode's whole contract.</p>
+          <p>The <b>tier</b> you link to is the dial. Link a step to a <b>Portfolio</b> row and its parties resolve to whole directorates. Link it to a <b>Project</b> row carrying a Branch and the same columns narrow to that Branch. Pick the tier that matches how specifically the work is actually assigned.</p>
+          <p>A step can still take one column back — click the cell and set your own letters. The override is drawn distinctly, listed on the link bar as <b>±n</b>, and flagged in the rules. Allowed, never silent. <b>↺ Chart</b> in the cell hands it back.</p>
+        </div>
+        <div class="panel">
+          <span class="cap">✦ Free-Form</span>
+          <h3>The step speaks for itself</h3>
+          <p class="lens-q">“Let's walk through how this would go.”</p>
+          <div class="mini-art" aria-hidden="true">
+            <div class="ma-row"><span class="grow">▢ Detect &amp; Triage</span></div>
+            <div class="ma-row"><span class="grow">C&amp;EW <span class="chip a sm">A</span> <span class="chip r sm">R</span> <em>typed here</em></span></div>
+            <div class="ma-row"><span class="grow">MMD <span class="chip c sm">C</span> CMO <span class="chip i sm">I</span></span></div>
+          </div>
+          <p>RACI is authored on the step, with no chart behind it. This is the right mode for a tabletop exercise, a dry run, a procedure that hasn't been mapped onto the chart yet — anything where forcing a row would mean inventing one.</p>
+          <p>It's also what every flow built before modes existed was, so nothing you already have changed.</p>
+          <p><b>Switching is lossless both ways.</b> Leaving Chart-Linked offers to bake in whatever the chart was supplying, so the flow reads the same either side of the switch; the links themselves are kept, so switching back restores it exactly.</p>
+        </div>
+      </div>
+      <p class="sub">Creating a flow from a chart row (<b>⤵</b> on a Task row) starts it Chart-Linked with its first step already linked. Starting one with <b>+ New Graph</b> gives you Free-Form. Change it any time in the flow's toolbar.</p>
     </div>
   </section>
 
@@ -5339,6 +5566,30 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.31 alpha - Business Case task flows get two explicit MODES, and their own box in the rail.
+//                  CHART-LINKED — a flow in this mode requires every step to name the org-chart
+//                  ROW it implements (task.bind = {chartId, nodeId}); the step then takes that
+//                  row's responsibility line as its own, live, rather than as a copy that drifts.
+//                  The row can sit at any tier, and the tier is what makes the mode expressive:
+//                  bind a step to a Portfolio row and its parties resolve to whole directorates;
+//                  bind one to a Project row carrying a Branch and the same columns resolve to
+//                  that Branch. A step may take one column back (task.bindOverrides) — allowed,
+//                  rendered distinctly, and flagged by the rules, per the roadmap's "warn, branch
+//                  can override" decision — but it can never diverge silently.
+//                  FREE-FORM — the pre-0.31 behaviour, now named: RACI authored on the step, no
+//                  chart behind it. Tabletop exercises, dry runs, work with no chart row yet.
+//                  Every flow loads as Free-Form, so nothing existing changes on upgrade.
+//                  Switching modes is lossless in both directions: binds survive a trip through
+//                  Free-Form, and on the way out the letters the chart was supplying can be baked
+//                  onto the steps, so the flow reads the same either side of the switch.
+//                  One choke point, bizStepRaci(), answers "what does this step actually say?" —
+//                  cards, table, party sidebar, flow rules, My Work and all five exports read it,
+//                  so a linked flow exports the RACI the chart is supplying rather than the empty
+//                  cells underneath. New rules: unlinked step in a Chart-Linked flow (error),
+//                  missing linked row (error), row from another chart, and column override.
+//                  RAIL — Chart/Roster/Tasks are three cuts of one nested matrix; the task flow is
+//                  a parallel system with its own graph and rules. The mode rail now says so: two
+//                  titled boxes, the flow one outlined and tinted.
 //     0.30 alpha - Business-case flows gain reuse and structure: a gallery, nested flows, per
 //                  entry/exit mating points, and groups.
 //                  GALLERY — a rail beside the canvas listing every flow in the workspace as a
@@ -5563,7 +5814,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.30';
+const APP_VERSION = '0.31';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -6021,8 +6272,35 @@ function makeFreeChart(title) {
 // An anchored flow is the continuation of the chart drill (Portfolio → … → Task → its steps);
 // anchor:null keeps the case a standalone tabletop exercise. A dangling anchor (chart or node
 // deleted, or an import that didn't carry the chart) degrades to null — flow data is never lost.
+//
+// ---- Flow modes (v0.31) ----
+// A flow runs in one of two modes. They are not two styles of the same thing — they answer
+// different questions, and which one a flow is in changes what the steps are allowed to say:
+//
+//   'linked'  CHART-LINKED. Every step names the org-chart ROW it implements (bind: {chartId,
+//             nodeId}) and takes that row's responsibility line as its own. The row can sit at any
+//             tier — bind a step to a Portfolio row and its parties resolve to whole directorates;
+//             bind one to a Project row carrying a Branch and the same columns resolve to that
+//             Branch. The chart stays the single source of truth: a step may still take one column
+//             back (bindOverrides), but the override renders distinctly and the rules flag it —
+//             never a silent divergence from what upper management signed.
+//   'free'    FREE-FORM. The step's RACI is authored on the step, with no chart behind it —
+//             tabletop exercises, dry runs, work that has no chart row yet. This is exactly what
+//             every pre-v0.31 flow was, so it is the default and nothing about it changed.
+//
+// Switching modes never destroys anything: binds survive a trip through Free-Form untouched, and
+// on the way out of Chart-Linked the letters the chart was supplying can be baked onto the steps
+// (bizSetMode) so the flow reads the same before and after.
+const BIZ_MODES = ['free', 'linked'];
+const BIZ_MODE_META = {
+  free:   { name: 'Free-Form',    icon: '✦',
+            blurb: 'Each step’s RACI is authored on the step itself. No chart stands behind it.' },
+  linked: { name: 'Chart-Linked', icon: '⛓',
+            blurb: 'Every step names the chart row it implements and inherits that row’s RACI.' }
+};
 function makeBizCase(name) {
   return { id: 'b_' + uid(), name: name || 'Untitled business case', description: '', framework: 'raci',
+    mode: 'free', sourceChartId: null,
     anchor: null, tasks: [], edges: [], groups: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
 }
 // ---- Artifacts: the global deliverable registry (v0.20) ----
@@ -6083,10 +6361,14 @@ function flowHealth(chartId, nodeId) {
     // Nested-flow boxes hold no roles of their own — scoring them would permanently dock the host
     // for work that is actually assigned inside the flow they reference.
     b.tasks.filter(t => !isSubflow(t)).forEach(t => {
+      const eff = bizStepRaci(b, t);
       total++;
-      if (COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.owner)) || (ctx && ctx.ownerCol)) ok++;
+      if (COLS.some(k => eff[k].letters.includes(F.owner)) || (ctx && ctx.ownerCol)) ok++;
       total++;
-      if (COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.doer))) ok++;
+      if (COLS.some(k => eff[k].letters.includes(F.doer))) ok++;
+      // In Chart-Linked mode "does this step trace to a chart row?" is itself a health check —
+      // the roll-up on the chart row is exactly where an exec would want that answer.
+      if (bizIsLinked(b)) { total++; if (bizBindCtx(t)) ok++; }
     });
   });
   const pct = total ? Math.round(ok / total * 100) : 100;
@@ -6105,7 +6387,16 @@ function makeBizTask(name) {
   // kind distinguishes a real step from a nested-flow reference (see makeBizSubflow); groupId is
   // its membership in one of the case's frames (see makeBizGroup). Both default to the pre-v0.30
   // reading, so an old file loads as "every box is a plain, ungrouped step".
+  // bind / bindOverrides (v0.31) are the Chart-Linked half of the flow modes above:
+  //   bind            = {chartId, nodeId} — the org-chart row this step implements, at any tier.
+  //   bindOverrides   = column keys the step has taken back from that row. A column NOT listed
+  //                     reads its letters from the chart (and `raci[col]` is simply unused); a
+  //                     column listed reads `raci[col]` verbatim, including the empty string,
+  //                     which is how "the chart says C here, but not for this step" is expressed.
+  // Both are inert in Free-Form mode — kept, not applied — so a round trip through Free-Form and
+  // back restores the flow exactly.
   return { id: 't_' + uid(), kind: 'task', name: name || '', raci, parties: {}, description: '', entry: '', exit: '',
+    bind: null, bindOverrides: [],
     status: DEFAULT_STATUS, x: 0, y: 0, groupId: null };
 }
 // A directed handoff edge between two task boxes. from/to name the BOX; fromPort/toPort name the
@@ -6261,7 +6552,113 @@ function bizDefaultPartyFor(ctx, col) {
   ctx.orgRefs.forEach(r => { if (r.actor === a) ref = { ...r }; });
   return ref;
 }
-function bizDefaultParty(col) { return bizDefaultPartyFor(_bizAnchorCtx, col); }
+
+// ================= Chart-Linked mode: step ↔ chart-row binding (v0.31) =================
+// A bound step reads its responsibility line off one org-chart row instead of authoring it. All of
+// that resolution funnels through the three functions below, so every consumer — cards, table,
+// party sidebar, flow rules, My Work, and all five exports — sees one answer to "what does this
+// step actually say?" rather than each re-deriving it.
+//
+// Only ORGANIZATION charts can be bound to. A free-form chart carries its own arbitrary party
+// columns (chart.custom.cols), which have no correspondence to the seven org COLS a flow step is
+// keyed by — there is nothing sound to copy across. This is the same exclusion the roster-linked
+// features already make (docs/integration-roadmap.md, "known limitations").
+function bizIsLinked(b) { return !!b && b.mode === 'linked'; }
+function bizLinkableCharts() { return state.charts.filter(c => !c.custom); }
+// The chart a Chart-Linked flow offers rows from: its own choice, else the chart it is anchored
+// to, else the chart tab in front, else the first organization chart in the workspace.
+function bizSourceChart(b) {
+  const own = b && b.sourceChartId ? chartById(b.sourceChartId) : null;
+  if (own && !own.custom) return own;
+  const an = resolveAnchor(b);
+  if (an && !an.chart.custom) return an.chart;
+  const active = ac();
+  if (active && !active.custom) return active;
+  return bizLinkableCharts()[0] || null;
+}
+// Resolving a bind walks the chart twice per step, and the flow rules run on every render — so the
+// answers are memoized for the life of one render pass. Cleared by saveState() (every mutation
+// goes through it) and at the top of render(), which is every path that can invalidate them.
+let _bindCtxCache = Object.create(null);
+function bizInvalidateBindCache() { _bindCtxCache = Object.create(null); }
+// Everything a bound step needs from its chart row, or null when unbound / dangling.
+//   raci      the row's effective line — its own letters, plus the owner it inherits from the
+//             cascade on the column that cascade lands on. In the CHART's framework alphabet.
+//   ownerCol  where accountability sits for that row (its own owner column, else the inherited one).
+//   orgRefs   the row's and its ancestors' roster refs, shallow → deep. This is what makes the tier
+//             you bind to matter: a Portfolio row contributes nothing and parties stay at
+//             directorate depth; a Project row carrying a Branch narrows them to that Branch.
+function bizBindCtx(t) {
+  if (!t || isSubflow(t) || !t.bind) return null;
+  const key = t.bind.chartId + '|' + t.bind.nodeId;
+  if (key in _bindCtxCache) return _bindCtxCache[key];
+  const chart = chartById(t.bind.chartId);
+  const node = (chart && !chart.custom) ? nodeInChart(chart, t.bind.nodeId) : null;
+  if (!node) return (_bindCtxCache[key] = null);
+  const F = fw(chart.framework);
+  const inh = inheritedOwnerColIn(chart, node.id);
+  const ownCol = COLS.find(k => normalizeRaci(node.raci[k] || '').includes(F.owner)) || null;
+  const raci = {};
+  COLS.forEach(k => {
+    const v = normalizeRaci(node.raci[k] || '');
+    raci[k] = (!ownCol && k === inh) ? normalizeRaci(v + F.owner) : v;
+  });
+  const ancNodes = (pathToNodeIn(chart, node.id) || []).map(id => nodeInChart(chart, id)).filter(Boolean);
+  return (_bindCtxCache[key] = {
+    chart, node, F, raci,
+    tier: ancNodes.length,
+    tierLabel: chartTierLabel(ancNodes.length, chart),
+    crumb: [chart.title || 'Untitled chart']
+      .concat(ancNodes.map(n => n.name || '(untitled)'), [node.name || '(untitled)']),
+    ownerCol: ownCol || inh,
+    inheritedOwner: !ownCol && !!inh,
+    orgRefs: ancNodes.concat([node]).map(n => normalizeOrgRef(n.org)).filter(Boolean)
+  });
+}
+// Carry a chart row's letters into the flow's framework alphabet. Owner→owner and doer→doer always
+// map — that is the one thing every RACI-family framework agrees on — and any other letter carries
+// across only if the flow's framework actually has it. Same framework on both sides is the
+// identity case, which is all this does in practice; the translation exists so pointing a DACI or
+// RAPID flow at a RACI chart reads as decision roles rather than as letters that happen to collide.
+function translateLetters(letters, FROM, TO) {
+  if (FROM === TO) return normalizeRaci(letters);
+  const out = new Set();
+  normalizeRaci(letters).split('').forEach(l => {
+    if (l === FROM.owner) out.add(TO.owner);
+    else if (l === FROM.doer) out.add(TO.doer);
+    else if (TO.roles.includes(l)) out.add(l);
+  });
+  return normalizeRaci([...out].join(''));
+}
+// THE choke point: what a step says, per column, after mode and binding are applied.
+//   { [col]: { letters, from: 'own' | 'chart' } }
+// 'own'   — authored on the step (every column in Free-Form; an overridden column when linked).
+// 'chart' — supplied by the bound row, and therefore not the step's to edit until it takes it back.
+// An unbound or dangling step in a Chart-Linked flow falls through to its own letters, so the
+// canvas keeps showing whatever it has while the rules point out that it is not linked yet.
+function bizStepRaci(b, t) {
+  const out = {};
+  const ctx = (bizIsLinked(b) && !isSubflow(t)) ? bizBindCtx(t) : null;
+  const TO = fw(b.framework);
+  const ov = ctx ? new Set(t.bindOverrides || []) : null;
+  COLS.forEach(k => {
+    out[k] = (ctx && !ov.has(k))
+      ? { letters: translateLetters(ctx.raci[k], ctx.F, TO), from: 'chart' }
+      : { letters: normalizeRaci(t.raci[k] || ''), from: 'own' };
+  });
+  return out;
+}
+// Columns of a step that carry any role at all — the set every consumer iterates.
+function bizActiveCols(eff) { return COLS.filter(k => eff[k].letters); }
+// Default executing party for one column of one step. A bound step in a Chart-Linked flow resolves
+// against the row it implements; everything else against the flow's anchor, as before. An explicit
+// t.parties[col] still wins over both — this is only the dashed fallback.
+// `ctx` lets a caller pass the flow's anchor context in (exports run outside a render, where the
+// _bizAnchorCtx global holds the ACTIVE flow's context, not necessarily this one's).
+function bizDefaultPartyForTask(b, t, col, ctx) {
+  const bind = bizIsLinked(b) ? bizBindCtx(t) : null;
+  return bizDefaultPartyFor(bind || (ctx === undefined ? _bizAnchorCtx : ctx), col);
+}
 // The demo workspace ships TWO flows, not one: a response tabletop, and the evidence-handling
 // procedure it calls partway through. Nesting the second inside the first is what makes the
 // gallery, the nested-flow box and its per-entry/exit mating points legible on first open —
@@ -6656,12 +7053,28 @@ function migrateState(s) {
       const sub = t.kind === 'subflow';
       const rawPorts = (t.ports && typeof t.ports === 'object') ? t.ports : {};
       const portList = v => (Array.isArray(v) ? v : []).filter(x => typeof x === 'string' && x);
+      // Chart-row bind (v0.31). Only the SHAPE is checked here, not whether it resolves: unlike a
+      // flow anchor — which can be nulled because the flow keeps all of its own RACI and simply
+      // becomes standalone — a bind IS where a linked step's responsibility line comes from, so
+      // dropping one would quietly empty the step. A bind that no longer resolves is kept and
+      // surfaced instead: a broken link bar on the card and a flow rule telling the user to
+      // re-point it. Same contract as a nested-flow reference to a case this file didn't carry.
+      const rawBind = (t.bind && typeof t.bind === 'object') ? t.bind : null;
+      const bind = (!sub && rawBind && typeof rawBind.chartId === 'string' && rawBind.chartId
+                    && typeof rawBind.nodeId === 'string' && rawBind.nodeId)
+        ? { chartId: rawBind.chartId, nodeId: rawBind.nodeId } : null;
       return {
         id: typeof t.id === 'string' && t.id ? t.id : 't_' + uid(),
         kind: sub ? 'subflow' : 'task',
         name: typeof t.name === 'string' ? t.name : '',
         raci,
         parties,
+        ...(sub ? {} : {
+          bind,
+          bindOverrides: bind
+            ? [...new Set((Array.isArray(t.bindOverrides) ? t.bindOverrides : []).filter(k => COLS.includes(k)))]
+            : []
+        }),
         description: typeof t.description === 'string' ? t.description : '',
         entry: typeof t.entry === 'string' ? t.entry : '',
         exit: typeof t.exit === 'string' ? t.exit : '',
@@ -6698,11 +7111,20 @@ function migrateState(s) {
       })(anChart.activities);
       if (anFound) anchor = { chartId: b.anchor.chartId, nodeId: b.anchor.nodeId };
     }
+    // Flow mode (v0.31). Everything written before this version was Free-Form by definition, so an
+    // absent field reads as 'free' and no existing flow changes behaviour on load. sourceChartId is
+    // only a convenience (which chart the row picker offers) — it is dropped when it names a chart
+    // this file doesn't carry or a free-form one, and bizSourceChart() falls back from there. The
+    // binds themselves are self-describing, so losing it never breaks a link.
+    const srcChart = (typeof b.sourceChartId === 'string' && b.sourceChartId)
+      ? s.charts.find(c => c.id === b.sourceChartId) : null;
     return {
       id: typeof b.id === 'string' && b.id ? b.id : 'b_' + uid(),
       name: typeof b.name === 'string' ? b.name : 'Untitled business case',
       description: typeof b.description === 'string' ? b.description : '',
       framework: BIZ_FRAMEWORKS.includes(b.framework) ? b.framework : 'raci',
+      mode: BIZ_MODES.includes(b.mode) ? b.mode : 'free',
+      sourceChartId: (srcChart && !srcChart.custom) ? srcChart.id : null,
       anchor, tasks, edges, groups,
       view: {
         panX: Number.isFinite(view.panX) ? view.panX : 0,
@@ -6867,6 +7289,7 @@ function writeStorage() {
   }
 }
 function saveState() {
+  bizInvalidateBindCache();   // any edit can move a chart row out from under a linked flow step
   captureHistory();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -6998,6 +7421,7 @@ function deleteNode(id) {
   const pi = ac().drillPath.indexOf(id);
   if (pi >= 0) ac().drillPath = ac().drillPath.slice(0, pi);
   detachFlowsFrom(b => b.anchor && b.anchor.chartId === ac().id && !nodeInChart(ac(), b.anchor.nodeId));
+  warnStrandedBinds();
   saveState(); renderChart();
 }
 // Null the anchor on every flow matching `pred` — used when a chart/node deletion strands anchors.
@@ -7006,6 +7430,17 @@ function detachFlowsFrom(pred) {
   const hit = state.bizCases.filter(pred);
   hit.forEach(b => { b.anchor = null; });
   if (hit.length) showToast(`${hit.length} attached flow${hit.length === 1 ? '' : 's'} became standalone (anchored task deleted).`, 'suggest');
+}
+// A deleted chart row can strand Chart-Linked steps anywhere in the workspace, and unlike an
+// anchor a bind is never silently dropped — so say so at the moment of the delete rather than
+// leaving it to be discovered the next time that flow is opened. Call AFTER the delete.
+function warnStrandedBinds() {
+  bizInvalidateBindCache();
+  let n = 0, flows = new Set();
+  state.bizCases.forEach(b => b.tasks.forEach(t => {
+    if (!isSubflow(t) && t.bind && !bizBindCtx(t)) { n++; flows.add(b.name || 'Untitled'); }
+  }));
+  if (n) showToast(`${n} flow step${n === 1 ? '' : 's'} in ${[...flows].join(', ')} ${n === 1 ? 'was' : 'were'} linked to what you just deleted — re-point ${n === 1 ? 'it' : 'them'} (⛓ on the card) or unlink.`, 'error');
 }
 // Bring a background (already-drilled) layer back to the front: collapse every layer in
 // front of tier `t` so the chart at that tier becomes the focused one.
@@ -7140,6 +7575,7 @@ function deleteChart(id) {
   if (!empty && !confirm(`Close chart "${c.title}"? Its activities will be discarded. (Export to JSON first if you want to keep them.)`)) return;
   state.charts.splice(idx, 1);
   detachFlowsFrom(b => b.anchor && b.anchor.chartId === id);
+  warnStrandedBinds();
   if (state.activeChartId === id) {
     state.activeChartId = state.charts[Math.max(0, idx - 1)].id;
     _activeNodeId = null;
@@ -7317,11 +7753,14 @@ function collectWorkItems(scope) {
     b.tasks.forEach(t => {
       const roles = [];
       let best = null;
+      // Resolved line + bind-aware party defaults, so a Chart-Linked step reaches the unit the
+      // chart put behind it even though nothing was typed on the step itself.
+      const eff = bizStepRaci(b, t);
       COLS.forEach(k => {
-        const letters = normalizeRaci(t.raci[k] || '');
+        const letters = eff[k].letters;
         if (!letters) return;
         const explicit = t.parties && t.parties[k];
-        const ref = explicit || bizDefaultPartyFor(ctx, k);
+        const ref = explicit || bizDefaultPartyForTask(b, t, k, ctx);
         const rel = scopeRelation(scope, ref);
         if (!rel) return;
         roles.push({ col: k, letters, inherited: !explicit, unit: (partyLabel(ref) || {}).short || '' });
@@ -7346,7 +7785,13 @@ function collectWorkItems(scope) {
         kind: 'flow', rel: best,
         bizCaseId: b.id, taskId: t.id,
         name: t.name || '(untitled step)',
-        meta: `Flow step · ${b.name || 'Untitled case'}${crumbBase ? ' ⚓ ' + crumbBase : ''}`,
+        meta: `Flow step · ${b.name || 'Untitled case'}${(() => {
+          // A linked step's chart row is more useful provenance to a branch reader than the flow's
+          // anchor, so it wins the line when both exist.
+          const bd = bizIsLinked(b) ? bizBindCtx(t) : null;
+          if (bd) return ` ⛓ ${bd.tierLabel}: ${bd.node.name || '(untitled)'}`;
+          return crumbBase ? ' ⚓ ' + crumbBase : '';
+        })()}`,
         unit: '',
         roles, description: t.description || '',
         entry: t.entry || '', exit: t.exit || '',
@@ -7534,6 +7979,7 @@ function renderWork() {
   </div>`;
 }
 function render() {
+  bizInvalidateBindCache();   // covers the paths that swap state wholesale (undo, import, reset)
   renderBrand();
   renderChartTabs();
   renderLegend();
@@ -8305,6 +8751,16 @@ function bizSelectorHtml() {
     : state.bizCases.map(opt).join('');
   const fwOpts = BIZ_FRAMEWORKS.map(k =>
     `<option value="${k}"${b.framework === k ? ' selected' : ''}>${FRAMEWORKS[k].name}</option>`).join('');
+  const modeOpts = BIZ_MODES.map(k =>
+    `<option value="${k}"${b.mode === k ? ' selected' : ''}>${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name}</option>`).join('');
+  // Source chart picker rides alongside, but only when there is a choice to make and the flow is
+  // actually in the mode that uses it.
+  const linkable = bizLinkableCharts();
+  const srcChart = bizSourceChart(b);
+  const srcSel = (bizIsLinked(b) && linkable.length > 1)
+    ? `<select id="bz-source-chart" title="Which organization chart this flow’s steps link their rows from">${
+        linkable.map(c => `<option value="${c.id}"${srcChart && c.id === srcChart.id ? ' selected' : ''}>${escapeHtml(c.title || 'Untitled chart')}</option>`).join('')}</select>`
+    : '';
   const nSel = _bizSel.size;
   const nSub = b.tasks.filter(isSubflow).length;
   const nGrp = (b.groups || []).length;
@@ -8320,6 +8776,8 @@ function bizSelectorHtml() {
     <button id="bz-rename" title="Rename this business case">Rename</button>
     <button id="bz-del" title="Delete this business case">Delete</button>
     <span class="bz-sep" aria-hidden="true"></span>
+    <select id="bz-mode" class="bz-mode-sel" data-mode="${b.mode}" title="${escapeHtml(BIZ_MODES.map(k => `${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name} — ${BIZ_MODE_META[k].blurb}`).join('\n'))}">${modeOpts}</select>
+    ${srcSel}
     <select id="bz-framework" title="Decision framework — DACI / RAPID fit decision points better than RACI">${fwOpts}</select>
     <span class="bz-sep" aria-hidden="true"></span>
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
@@ -8426,20 +8884,76 @@ function bizGalleryHtml() {
 // owner inherited from the chart cascade when the step names no owner of its own, and a warn ring
 // on an explicit owner that contradicts the cascaded owner column (branch override: allowed,
 // visually distinct, and flagged by the flow rules — decision 4a in docs/integration-roadmap.md).
-function bizStepChips(t, col) {
-  const F = bizFw();
-  const norm = normalizeRaci(t.raci[col] || '');
+// `eff` is the step's resolved line (bizStepRaci), computed once per card and passed in — three
+// provenances now, and the card has to tell them apart or Chart-Linked mode means nothing:
+//   plain     authored on the step (Free-Form, or a step with no chart row behind it).
+//   from-chart supplied by the linked row — solid-but-tinted, and not the step's to edit until it
+//             takes the column back.
+//   override  authored on the step even though a row is supplying that column. The tooltip says
+//             what the row says, and a flow rule flags it.
+// The dashed owner an ANCHORED flow inherits from the chart cascade still applies on top, but only
+// to a step that ends up naming no owner at all.
+function bizStepChips(b, t, col, eff) {
+  const F = fw(b.framework);
+  const cell = eff[col];
+  const bind = bizIsLinked(b) ? bizBindCtx(t) : null;
   const ctx = _bizAnchorCtx;
-  const chips = norm.split('').filter(Boolean).map(l => {
-    const override = !!(ctx && ctx.ownerCol && l === F.owner && col !== ctx.ownerCol);
-    const tip = override ? ` title="${escapeHtml(`${F.meta[F.owner].label} set here, but the chart cascade puts ownership on ${COL_LABELS[ctx.ownerCol]} — branch override`)}"` : '';
-    return `<span class="raci-chip ${l}${override ? ' override' : ''}"${tip}>${l}</span>`;
-  });
-  if (ctx && ctx.ownerCol === col && !COLS.some(k => normalizeRaci(t.raci[k] || '').includes(F.owner))) {
+  const chips = [];
+  if (cell.from === 'chart') {
+    cell.letters.split('').filter(Boolean).forEach(l => chips.push(
+      `<span class="raci-chip ${l} from-chart" title="${escapeHtml(`${F.meta[l] ? F.meta[l].label : l} — from the linked ${bind.tierLabel.toLowerCase()} row “${bind.node.name || 'untitled'}” (${COL_LABELS[col]})`)}">${l}</span>`));
+  } else {
+    const overridden = !!bind && (t.bindOverrides || []).includes(col);
+    const chartSays = overridden ? translateLetters(bind.raci[col], bind.F, F) : '';
+    const says = chartSays ? `the row says ${chartSays}` : 'the row assigns nothing here';
+    cell.letters.split('').filter(Boolean).forEach(l => {
+      const cascadeOver = !overridden && !!(ctx && ctx.ownerCol && l === F.owner && col !== ctx.ownerCol);
+      const tip = overridden
+        ? `${F.meta[l] ? F.meta[l].label : l} — set on this step, overriding the linked chart row (${says})`
+        : cascadeOver
+          ? `${F.meta[F.owner].label} set here, but the chart cascade puts ownership on ${COL_LABELS[ctx.ownerCol]} — branch override`
+          : '';
+      chips.push(`<span class="raci-chip ${l}${(overridden || cascadeOver) ? ' override' : ''}"${tip ? ` title="${escapeHtml(tip)}"` : ''}>${l}</span>`);
+    });
+    // A column deliberately overridden to nothing still has to SAY so — left blank it would be
+    // indistinguishable from a column the chart never touched.
+    if (overridden && !cell.letters && chartSays) chips.push(
+      `<span class="raci-chip none override" title="${escapeHtml(`No role here on this step — overriding the linked chart row, where ${says}`)}">⊘</span>`);
+  }
+  if (ctx && ctx.ownerCol === col && !COLS.some(k => eff[k].letters.includes(F.owner))) {
     chips.push(`<span class="raci-chip ${F.owner} inherited" title="${escapeHtml(`${F.meta[F.owner].label} — inherited from the chart cascade (${COL_LABELS[col]})`)}">${F.owner}</span>`);
   }
   if (!chips.length) return `<div class="cell-chips empty">·</div>`;
   return `<div class="cell-chips">${chips.join('')}</div>`;
+}
+// The link bar on a card: which chart row this step implements, at which tier. Only ever shown in
+// Chart-Linked mode — in Free-Form the affordance would be an invitation to do something the mode
+// does not do. Three states: linked, not linked yet (the mode's contract, so it reads as an error
+// rather than an empty slot), and pointing at a row that has gone.
+function bizBindBarHtml(b, t) {
+  if (!bizIsLinked(b) || isSubflow(t)) return '';
+  if (!t.bind) return `<button class="bz-bind is-unset" type="button" data-bz-bind="${t.id}"
+      title="This flow is Chart-Linked — every step names the chart row it implements. Click to pick one.">
+      <span class="bzb-ico">⛓</span><span class="bzb-txt">link this step to a chart row</span></button>`;
+  const ctx = bizBindCtx(t);
+  if (!ctx) return `<button class="bz-bind is-broken" type="button" data-bz-bind="${t.id}"
+      title="The linked chart row is gone — the chart was deleted, the row removed, or an import didn’t carry it. Click to re-point this step.">
+      <span class="bzb-ico">⛓</span><span class="bzb-txt">linked row is missing — re-point</span></button>`;
+  const foreign = b.sourceChartId && ctx.chart.id !== b.sourceChartId;
+  const nOver = (t.bindOverrides || []).length;
+  const tip = `${ctx.crumb.join(' › ')}\n${ctx.tierLabel} row — this step takes its RACI from here.`
+    + (nOver ? `\n${nOver} column${nOver === 1 ? '' : 's'} overridden on this step.` : '')
+    + (foreign ? `\nFrom a different chart than this flow’s source.` : '')
+    + `\nClick to re-point.`;
+  return `<div class="bz-bind-wrap">
+    <button class="bz-bind${foreign ? ' is-foreign' : ''}" type="button" data-bz-bind="${t.id}" title="${escapeHtml(tip)}">
+      <span class="bzb-ico">⛓</span>
+      <span class="bzb-tier">${escapeHtml(ctx.tierLabel)}</span>
+      <span class="bzb-txt">${escapeHtml(ctx.node.name || '(untitled row)')}</span>
+      ${nOver ? `<span class="bzb-over" title="${escapeHtml(`${nOver} column${nOver === 1 ? '' : 's'} overridden here`)}">±${nOver}</span>` : ''}
+    </button>
+    <button class="bzb-jump" type="button" data-bz-bind-jump="${t.id}" title="Open this row in the org chart">⤴</button>
+  </div>`;
 }
 // ---- Nested-flow box (v0.30) ----
 // One box standing in for a whole other business case. It deliberately shows no RACI of its own:
@@ -8517,10 +9031,12 @@ function bizSubflowHtml(t) {
 
 function bizNodeHtml(t) {
   if (isSubflow(t)) return bizSubflowHtml(t);
+  const b = abc();
+  const eff = bizStepRaci(b, t);          // resolved once — cells, party rows and the pin all read it
   const cells = COLS.map(k => {
-    return `<div class="bz-cell" data-bz-cell="${t.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">
+    return `<div class="bz-cell${eff[k].from === 'chart' ? ' is-linked' : ''}" data-bz-cell="${t.id}" data-col="${k}" title="${escapeHtml(COL_LABELS[k])}">
       <span class="bz-cell-col">${escapeHtml(COL_SHORT[k])}</span>
-      ${bizStepChips(t, k)}
+      ${bizStepChips(b, t, k, eff)}
     </div>`;
   }).join('');
   const vio = _violationsByBizTaskId[t.id];
@@ -8539,16 +9055,19 @@ function bizNodeHtml(t) {
   // Responsible-party rows: one per column that holds any RACI letters. Appears only once a box is
   // checked, so the card grows downward on first assignment. Clicking a row opens the Responsible
   // Party sidebar targeting that (task, column).
-  const partyCols = COLS.filter(k => normalizeRaci(t.raci[k] || ''));
+  const partyCols = bizActiveCols(eff);
   const parties = partyCols.length ? `<div class="bz-node-parties">${partyCols.map(k => {
-    const letters = normalizeRaci(t.raci[k] || '');
+    const letters = eff[k].letters;
     const ref = (t.parties || {})[k];
     let hier = ref ? partyHierarchy(ref) : null;
     let lbl = ref ? partyLabel(ref) : null;
-    // No explicit party → on an anchored flow, fall back to the chart-context default (dashed).
+    // No explicit party → fall back to the chart-context default (dashed): the linked row's org
+    // ancestry on a bound step, the flow's anchor otherwise. This is where the TIER of the row you
+    // linked to shows up — a Portfolio row leaves parties at directorate depth, a Project row
+    // carrying a Branch narrows the same columns to that Branch.
     let inherited = false;
     if (!hier) {
-      const def = bizDefaultParty(k);
+      const def = bizDefaultPartyForTask(b, t, k);
       const defHier = def ? partyHierarchy(def) : null;
       if (defHier) { hier = defHier; lbl = partyLabel(def); inherited = true; }
     }
@@ -8576,6 +9095,7 @@ function bizNodeHtml(t) {
       <button class="bz-node-copy" data-bz-copy-task="${t.id}" title="Copy this step (Ctrl+C copies the selected step · Ctrl+V pastes)">⧉</button>
       <button class="bz-node-del" data-bz-del-task="${t.id}" title="Delete task">×</button>
     </div>
+    ${bizBindBarHtml(b, t)}
     <div class="bz-node-desc" contenteditable="true" spellcheck="false" data-bz-desc="${t.id}"
       data-placeholder="＋ description — what this step is for">${escapeHtml(t.description || '')}</div>
     <div class="bz-node-crit">
@@ -8716,9 +9236,17 @@ function bizTableHtml() {
           ? `roles live in <button type="button" class="bz-tsub-link" data-gal-open="${ref.id}">${escapeHtml(ref.name || 'Untitled')}</button>`
           : 'nested flow is missing'}</td></tr>`;
     }
+    const eff = bizStepRaci(b, t);
+    const bind = bizIsLinked(b) ? bizBindCtx(t) : null;
     const cells = COLS.map(k =>
-      `<td class="bz-tcell" data-bz-cell="${t.id}" data-col="${k}">${bizStepChips(t, k)}</td>`).join('');
-    return `<tr><th class="bz-trow" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}</th>${cells}</tr>`;
+      `<td class="bz-tcell${eff[k].from === 'chart' ? ' is-linked' : ''}" data-bz-cell="${t.id}" data-col="${k}">${bizStepChips(b, t, k, eff)}</td>`).join('');
+    // In Chart-Linked mode the row a step follows is the most important thing about it, so the
+    // table names it under the step rather than making the reader go back to the canvas.
+    const link = bizIsLinked(b)
+      ? (bind ? `<span class="bz-trow-bind" title="${escapeHtml(bind.crumb.join(' › '))}">⛓ ${escapeHtml(bind.tierLabel)} · ${escapeHtml(bind.node.name || '(untitled row)')}</span>`
+              : `<span class="bz-trow-bind is-unset">⛓ ${t.bind ? 'linked row is missing' : 'not linked to a chart row'}</span>`)
+      : '';
+    return `<tr><th class="bz-trow" title="${escapeHtml(t.name)}">${escapeHtml(t.name || 'Untitled task')}${link}</th>${cells}</tr>`;
   }).join('') : `<tr><td class="bz-tempty" colspan="${COLS.length + 1}">No tasks yet.</td></tr>`;
   return `<div class="bz-table-head"><h3>RACI table</h3><span class="bz-meta">click a cell to edit</span></div>
     <table class="bz-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
@@ -8772,6 +9300,38 @@ function bizFlowTableHtml() {
 // breadcrumb (click → back to the Task row), the anchor row's effective RACI chips (manual
 // letters + dashed inherited owner, same reading as the matrix cells), the org units inherited
 // from its Program/Project ancestors, and a Detach action. '' when the case is standalone.
+// The mode banner. It is not decoration: which mode a flow is in changes what its steps are
+// allowed to say, so the answer sits above the canvas at all times, along with — in Chart-Linked
+// mode — the two facts that decide whether the flow means anything yet: which chart it draws rows
+// from, and how many of its steps have actually named one.
+function bizModeStripHtml(b) {
+  const M = BIZ_MODE_META[b.mode] || BIZ_MODE_META.free;
+  if (!bizIsLinked(b)) {
+    return `<div class="bz-mode-strip is-free">
+      <span class="bzm-badge">${M.icon} ${escapeHtml(M.name)}</span>
+      <span class="bzm-txt">${escapeHtml(M.blurb)}</span></div>`;
+  }
+  const steps = b.tasks.filter(t => !isSubflow(t));
+  const bound = steps.filter(t => bizBindCtx(t)).length;
+  // "Never linked" and "linked to a row that has since gone" are different problems with different
+  // fixes, so the count separates them rather than lumping both into one shortfall.
+  const broken = steps.filter(t => t.bind && !bizBindCtx(t)).length;
+  const unset = steps.length - bound - broken;
+  const gap = unset + broken;
+  const chart = bizSourceChart(b);
+  return `<div class="bz-mode-strip is-linked${gap ? ' has-gap' : ''}">
+    <span class="bzm-badge">${M.icon} ${escapeHtml(M.name)}</span>
+    <span class="bzm-src">rows from ${chart
+      ? `<b>${escapeHtml(chart.title || 'Untitled chart')}</b>`
+      : '<b class="bzm-none">no organization chart available</b>'}</span>
+    <span class="bzm-count${gap ? ' is-gap' : ''}" title="${escapeHtml(gap
+      ? [unset ? `${unset} step${unset === 1 ? '' : 's'} name${unset === 1 ? 's' : ''} no chart row yet — ${unset === 1 ? 'it carries' : 'they carry'} only whatever was typed on the card.` : '',
+         broken ? `${broken} step${broken === 1 ? '' : 's'} point${broken === 1 ? 's' : ''} at a row that no longer exists — re-point or unlink ${broken === 1 ? 'it' : 'them'}.` : ''].filter(Boolean).join('\n')
+      : 'Every step names the chart row it implements.')}">${bound}/${steps.length} step${steps.length === 1 ? '' : 's'} linked${broken ? ` · ${broken} broken` : ''}</span>
+    ${unset ? `<button type="button" class="bzm-fix" data-bz-bind-next="1" title="Centre the next unlinked step and pick its row">Link the next one →</button>` : ''}
+  </div>`;
+}
+
 function bizCharterHtml(b) {
   if (!b.anchor) return '';
   const an = resolveAnchor(b);
@@ -8831,6 +9391,7 @@ function renderBizcase() {
   main.innerHTML = `
     <div class="bz-wrap">
       <div class="bz-toolbar">${bizSelectorHtml()}</div>
+      ${bizModeStripHtml(b)}
       ${bizCharterHtml(b)}
       <div class="bz-body">
         ${galleryPane}
@@ -9163,12 +9724,25 @@ function bzScreenToWorld(clientX, clientY) {
 }
 
 // ---- bizcase RACI popover (reuses the shared .raci-popover + openPopover/closePopover globals) ----
+// On a bound step in a Chart-Linked flow the popover grows a third state. A column is either being
+// supplied by the chart row (letters shown dimmed, and touching one takes the column over) or has
+// already been taken over (letters live, plus a "↺ Chart" button to hand it back). "Clear" means
+// different things on the two sides of that line, so it says so.
 function bizPopoverInnerHtml(t, col) {
-  const F = bizFw();
-  const set = new Set(normalizeRaci(t.raci[col] || '').split(''));
-  return F.roles.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}" title="${escapeHtml(F.meta[r].label)} — ${escapeHtml(F.meta[r].desc)}">${r}</button>`).join('')
-    + `<button class="clear" data-clear="1" title="Clear">✕</button>`
-    + whoFooterHtml(col, false);
+  const b = abc(), F = bizFw();
+  const eff = bizStepRaci(b, t)[col];
+  const linked = eff.from === 'chart';
+  const set = new Set(eff.letters.split(''));
+  const bind = linked ? bizBindCtx(t) : null;
+  const head = linked
+    ? `<div class="rp-note">Supplied by <b>${escapeHtml(bind.node.name || '(untitled row)')}</b> — click a letter to override this column on this step.</div>`
+    : '';
+  const body = F.roles.map(r => `<button data-letter="${r}" class="${r} ${set.has(r) ? 'on' : ''}${linked ? ' from-chart' : ''}" title="${escapeHtml(F.meta[r].label)} — ${escapeHtml(F.meta[r].desc)}">${r}</button>`).join('')
+    + `<button class="clear" data-clear="1" title="${linked ? 'Override this column to no role at all — the step deliberately does not take part here' : 'Clear'}">✕</button>`;
+  const foot = (!linked && bizIsLinked(b) && t.bind && (t.bindOverrides || []).includes(col))
+    ? `<button class="rp-release" data-release="1" title="Hand this column back to the chart row — the step stops overriding it and follows the chart again">↺ Chart</button>`
+    : '';
+  return head + body + foot + whoFooterHtml(col, false);
 }
 function bizRefreshPopover(taskId, col) {
   if (openPopover && openPopover.dataset.biz && openPopover.dataset.id === taskId && openPopover.dataset.col === col) {
@@ -9176,25 +9750,54 @@ function bizRefreshPopover(taskId, col) {
     if (t) openPopover.innerHTML = bizPopoverInnerHtml(t, col);
   }
 }
+// Editing a column that the chart is currently supplying is what CLAIMS it: the letters it was
+// showing are copied onto the step first, so the toggle acts on what the user can see rather than
+// on the empty cell hiding underneath.
+function bizClaimCol(b, t, col) {
+  if (!bizIsLinked(b) || !t.bind || (t.bindOverrides || []).includes(col)) return false;
+  const supplied = bizStepRaci(b, t)[col];
+  if (supplied.from !== 'chart') return false;
+  t.raci[col] = supplied.letters;
+  t.bindOverrides = (t.bindOverrides || []).concat(col);
+  return true;
+}
 function bizToggleRaci(taskId, col, letter) {
-  const t = bizTaskById(taskId); if (!t) return;
+  const b = abc(), t = bizTaskById(taskId); if (!t) return;
   const F = bizFw();
+  const claimed = bizClaimCol(b, t, col);
   const cur = normalizeRaci(t.raci[col] || '');
   const adding = !cur.includes(letter);
-  // Same "one owner per task" rule as the org chart, for consistency.
+  // Same "one owner per task" rule as the org chart, for consistency. Measured against what the
+  // step EFFECTIVELY says, so a bound step can't quietly end up with two owners — one from the
+  // chart and one typed here.
   if (letter === F.owner && adding) {
-    const otherA = COLS.find(k => k !== col && normalizeRaci(t.raci[k] || '').includes(F.owner));
-    if (otherA) { showToast(`Only one ${F.meta[F.owner].label} per task — ${COL_LABELS[otherA]} already holds the ${F.owner}. Clear it first.`, 'error'); return; }
+    const eff = bizStepRaci(b, t);
+    const otherA = COLS.find(k => k !== col && eff[k].letters.includes(F.owner));
+    if (otherA) {
+      if (claimed) { delete t.raci[col]; t.bindOverrides = t.bindOverrides.filter(k => k !== col); t.raci[col] = ''; }
+      showToast(`Only one ${F.meta[F.owner].label} per task — ${COL_LABELS[otherA]} already holds the ${F.owner}${eff[otherA].from === 'chart' ? ' (from the linked chart row)' : ''}. Clear it first.`, 'error');
+      return;
+    }
   }
   t.raci[col] = normalizeRaci(adding ? cur + letter : cur.replace(letter, ''));
   saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
   renderBizPartyPanel();   // its header mirrors this column's letters (no-op when closed)
 }
 function bizClearRaci(taskId, col) {
-  const t = bizTaskById(taskId); if (!t) return;
+  const b = abc(), t = bizTaskById(taskId); if (!t) return;
+  bizClaimCol(b, t, col);   // "no role here" is itself an override when a chart row says otherwise
   t.raci[col] = '';
   saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
   renderBizPartyPanel();   // its header mirrors this column's letters (no-op when closed)
+}
+// Give an overridden column back to the chart row: the step stops carrying its own letters there
+// and follows the row again.
+function bizReleaseCol(taskId, col) {
+  const t = bizTaskById(taskId); if (!t) return;
+  t.bindOverrides = (t.bindOverrides || []).filter(k => k !== col);
+  t.raci[col] = '';
+  saveState(); renderBizcase(); bizRefreshPopover(taskId, col);
+  renderBizPartyPanel();
 }
 function openBizRaciPopover(taskId, col, anchorEl) {
   closePopover();
@@ -9215,10 +9818,192 @@ function openBizRaciPopover(taskId, col, anchorEl) {
   pop.addEventListener('click', e => {
     const btn = e.target.closest('button'); if (!btn) return;
     e.stopPropagation();
+    if (btn.dataset.release) { bizReleaseCol(taskId, col); return; }
     if (btn.dataset.clear) { bizClearRaci(taskId, col); return; }
+    if (!btn.dataset.letter) return;
     bizToggleRaci(taskId, col, btn.dataset.letter);
   });
 }
+// ---- Flow mode + chart-row binding: mutations and the row picker (v0.31) ----
+function bizSetMode(mode) {
+  const b = abc();
+  if (!BIZ_MODES.includes(mode) || b.mode === mode) return;
+  if (mode === 'free') {
+    // Leaving Chart-Linked stops the chart supplying letters. Offer to bake in whatever it is
+    // supplying right now, so the flow reads identically either side of the switch — silently
+    // emptying every inherited cell would look exactly like data loss, whatever the model says.
+    const steps = b.tasks.filter(t => !isSubflow(t));
+    const supplied = steps.filter(t => {
+      const eff = bizStepRaci(b, t);
+      return COLS.some(k => eff[k].from === 'chart' && eff[k].letters);
+    });
+    if (supplied.length && confirm(
+        `Switch "${b.name || 'this flow'}" to Free-Form?\n\n` +
+        `${supplied.length} step${supplied.length === 1 ? ' is' : 's are'} currently taking RACI from the chart.\n\n` +
+        `OK — copy that RACI onto the steps, so the flow reads the same and every cell becomes editable.\n` +
+        `Cancel — leave each step with only the letters typed on it (inherited cells go blank).`)) {
+      supplied.forEach(t => {
+        const eff = bizStepRaci(b, t);
+        COLS.forEach(k => { if (eff[k].from === 'chart' && eff[k].letters) t.raci[k] = eff[k].letters; });
+      });
+    }
+    // Binds themselves are KEPT, not cleared — switching back restores the flow exactly.
+    b.mode = 'free';
+  } else {
+    if (!bizLinkableCharts().length) {
+      showToast('Chart-Linked needs an organization chart to draw rows from — this workspace has none (free-form charts have no organizational columns to link).', 'error');
+      return;
+    }
+    b.mode = 'linked';
+    const src = bizSourceChart(b);
+    if (src) b.sourceChartId = src.id;
+  }
+  saveState(); renderBizcase();
+  const unbound = b.mode === 'linked' ? b.tasks.filter(t => !isSubflow(t) && !t.bind).length : 0;
+  showToast(unbound
+    ? `Chart-Linked — ${unbound} step${unbound === 1 ? '' : 's'} still need${unbound === 1 ? 's' : ''} a chart row. Click ⛓ on a card to pick one.`
+    : `${BIZ_MODE_META[b.mode].name} — ${BIZ_MODE_META[b.mode].blurb}`, unbound ? 'suggest' : 'ok');
+}
+function bizSetSourceChart(chartId) {
+  const b = abc(), c = chartById(chartId);
+  if (!c || c.custom) return;
+  b.sourceChartId = c.id;
+  saveState(); renderBizcase();
+}
+function bizBindStep(taskId, chartId, nodeId) {
+  const b = abc(), t = bizTaskById(taskId);
+  if (!t || isSubflow(t)) return;
+  const chart = chartById(chartId);
+  if (!chart) { showToast('That chart is no longer in this workspace.', 'error'); return; }
+  if (chart.custom) {
+    showToast(`"${chart.title || 'That chart'}" is free-form — its party columns are its own, with no organizational meaning to carry onto a flow step. Link to an organization chart instead.`, 'error');
+    return;
+  }
+  if (!nodeInChart(chart, nodeId)) { showToast('That chart row is no longer available.', 'error'); return; }
+  t.bind = { chartId, nodeId };
+  // Letters already typed on this step stay the step's own — they become explicit overrides, one
+  // per column, that the user can hand back to the chart individually (↺ Chart in the cell
+  // popover). Linking must never quietly discard work that was already on the card.
+  const own = COLS.filter(k => normalizeRaci(t.raci[k] || ''));
+  t.bindOverrides = [...new Set((t.bindOverrides || []).concat(own))];
+  if (!b.sourceChartId) b.sourceChartId = chartId;
+  saveState(); renderBizcase();
+  const ctx = bizBindCtx(t);
+  showToast(own.length
+    ? `Linked to ${ctx ? ctx.tierLabel.toLowerCase() : 'chart'} row "${(ctx && ctx.node.name) || 'untitled'}" — ${own.length} column${own.length === 1 ? '' : 's'} already on this step kept as override${own.length === 1 ? '' : 's'}.`
+    : `Linked to ${ctx ? ctx.tierLabel.toLowerCase() : 'chart'} row "${(ctx && ctx.node.name) || 'untitled'}" — this step now follows its RACI.`);
+}
+function bizUnbindStep(taskId) {
+  const b = abc(), t = bizTaskById(taskId);
+  if (!t || !t.bind) return;
+  // Bake in whatever the row was supplying before dropping the link, so unlinking is lossless in
+  // both directions — the step keeps saying what it said a moment ago, as its own letters now.
+  const eff = bizStepRaci(b, t);
+  COLS.forEach(k => { if (eff[k].from === 'chart') t.raci[k] = eff[k].letters; });
+  t.bind = null; t.bindOverrides = [];
+  saveState(); renderBizcase();
+  showToast('Unlinked — the row\'s RACI was copied onto the step, so nothing was lost. It is the step\'s own now.', 'suggest');
+}
+// Centre the first step that still has no chart row and open its picker — the "keep going" path
+// out of the mode strip when a flow has been switched to Chart-Linked wholesale.
+function bizBindNextUnbound() {
+  const b = abc();
+  const t = b.tasks.find(x => !isSubflow(x) && !x.bind);
+  if (!t) return;
+  const cv = document.getElementById('bz-canvas'), v = b.view;
+  if (cv) {
+    v.panX = cv.clientWidth / 2 - (t.x + BZ_NODE_W / 2) * v.zoom;
+    v.panY = cv.clientHeight / 2 - (t.y + 70) * v.zoom;
+    bizApplyTransform(); saveState();
+  }
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`[data-bz-bind="${t.id}"]`);
+    if (el) openBizBindPopover(t.id, el);
+  });
+}
+// The row picker. Rows of the flow's source chart, indented by tier, each showing what it would
+// hand the step: its tier, its RACI line, and the org unit it carries (which is what decides how
+// deep the step's parties resolve). Typing filters to matching rows and shows their full path,
+// because on a real chart "Assessment" appears at more than one place in the tree.
+let _bizBindQ = '';
+function bizBindRowsHtml(chart, taskId) {
+  const t = bizTaskById(taskId);
+  const cur = t && t.bind && t.bind.chartId === chart.id ? t.bind.nodeId : null;
+  const F = fw(chart.framework);
+  const q = _bizBindQ.trim().toLowerCase();
+  const out = [];
+  // The cascade is carried DOWN the walk rather than re-derived per row (inheritedOwnerColIn walks
+  // the whole tree each call). A real chart runs to hundreds of rows and this list repaints on
+  // every keystroke of the filter, so the difference is quadratic vs linear.
+  (function walk(nodes, depth, crumb, inh) {
+    (nodes || []).forEach(n => {
+      const name = n.name || '(untitled)';
+      const path = crumb.concat(name);
+      const down = cascadeDown(n, inh);
+      if (!q || name.toLowerCase().includes(q)) {
+        const hasOwner = COLS.some(k => normalizeRaci(n.raci[k] || '').includes(F.owner));
+        const chips = COLS.map(k => {
+          const own = normalizeRaci(n.raci[k] || '');
+          const inherited = k === inh && !hasOwner;
+          if (!own && !inherited) return '';
+          return `<span class="bzbind-col" title="${escapeHtml(COL_LABELS[k])}">${escapeHtml(COL_SHORT[k])}<b>${escapeHtml(own || '')}${inherited && !own.includes(F.owner) ? F.owner : ''}</b></span>`;
+        }).filter(Boolean).join('');
+        const lab = orgLabel(n.org);
+        out.push(`<button class="op-item bzbind-row${n.id === cur ? ' on' : ''}" data-bind-node="${n.id}"
+          style="padding-left:${8 + (q ? 0 : depth * 13)}px"
+          title="${escapeHtml(path.join(' › '))}">
+          <span class="bzbind-head">
+            <span class="bzbind-tier">${escapeHtml(chartTierLabel(depth, chart))}</span>
+            <span class="bzbind-name">${escapeHtml(q ? path.join(' › ') : name)}</span>
+            ${lab ? `<span class="bzbind-org" title="${escapeHtml(lab.full)}">${escapeHtml(lab.short)}</span>` : ''}
+          </span>
+          ${chips ? `<span class="bzbind-chips">${chips}</span>` : `<span class="bzbind-chips is-none">no roles set on this row</span>`}
+        </button>`);
+      }
+      walk(n.children, depth + 1, path, down);
+    });
+  })(chart.activities, 0, [], null);
+  return out.join('') || `<div class="op-empty">No row matches that filter.</div>`;
+}
+function openBizBindPopover(taskId, anchorEl) {
+  closePopover();
+  const b = abc(), t = bizTaskById(taskId);
+  if (!t || isSubflow(t)) return;
+  const chart = bizSourceChart(b);
+  _bizBindQ = '';
+  const pop = document.createElement('div');
+  pop.className = 'org-popover bzbind-popover';
+  const render = () => {
+    pop.innerHTML = !chart
+      ? `<div class="op-empty">No organization chart in this workspace to link to. Free-form charts define their own party columns, which have no organizational meaning to carry across.</div>`
+      : `<div class="op-group">Which row of <b>${escapeHtml(chart.title || 'Untitled chart')}</b> does this step implement?</div>
+         <input class="bzbind-filter" type="search" placeholder="Filter rows…" spellcheck="false" value="${escapeHtml(_bizBindQ)}">
+         <div class="bzbind-list">${bizBindRowsHtml(chart, taskId)}</div>
+         ${t.bind ? `<button class="op-item op-clear" data-bind-clear="1">✕ Unlink this step</button>` : ''}`;
+  };
+  render();
+  document.body.appendChild(pop);
+  placePopover(pop, anchorEl);
+  openPopover = pop;
+  const focusFilter = () => { const f = pop.querySelector('.bzbind-filter'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } };
+  focusFilter();
+  pop.addEventListener('input', ev => {
+    if (!ev.target.classList.contains('bzbind-filter')) return;
+    _bizBindQ = ev.target.value;
+    const list = pop.querySelector('.bzbind-list');
+    if (list && chart) list.innerHTML = bizBindRowsHtml(chart, taskId);   // repaint just the rows: keeps the caret
+  });
+  pop.addEventListener('click', ev => {
+    const row = ev.target.closest('[data-bind-node]');
+    const clr = ev.target.closest('[data-bind-clear]');
+    if (!row && !clr) return;
+    ev.stopPropagation();
+    closePopover();
+    if (clr) { bizUnbindStep(taskId); return; }
+    bizBindStep(taskId, chart.id, row.dataset.bindNode);
+  });
+}
+
 // Edge popover: name the branch condition (decision label) or delete the handoff.
 function openBizEdgePopover(edgeId, clientX, clientY) {
   closePopover();
@@ -10179,7 +10964,7 @@ function openBizPartyPanel(taskId, col) {
   bizPartyTarget = { taskId, col };
   // Seed the draft from the committed party; on an anchored flow with none set, from the
   // chart-context default (the dashed capsules the card is already showing).
-  bizPartyDraft = (t.parties && t.parties[col]) ? { ...t.parties[col] } : (bizDefaultParty(col) || null);
+  bizPartyDraft = (t.parties && t.parties[col]) ? { ...t.parties[col] } : (bizDefaultPartyForTask(abc(), t, col) || null);
   document.body.classList.add('show-bz-party');
   renderBizPartyPanel();
   renderBizcase();            // reflect the .active row highlight on the card
@@ -10215,10 +11000,20 @@ function renderBizPartyPanel() {
   const t = bizTaskById(bizPartyTarget.taskId);
   if (!t) { closeBizPartyPanel(); return; }
   const col = bizPartyTarget.col, F = bizFw();
-  const colLetters = normalizeRaci(t.raci[col] || '');
+  const bcase = abc();
+  const effCell = bizStepRaci(bcase, t)[col];
+  const colLetters = effCell.letters;
   const roleDesc = colLetters
     ? colLetters.split('').map(l => (F.meta[l] ? F.meta[l].label : l)).join(' + ')
     : 'No role letters set';
+  // On a bound step, say where the role came from — the party being picked here executes a role
+  // the chart assigned, and the panel is the only place that context isn't already on screen.
+  const bindCtx = bizIsLinked(bcase) ? bizBindCtx(t) : null;
+  const srcNote = (effCell.from === 'chart' && bindCtx)
+    ? `<div class="bzp-src" title="${escapeHtml(bindCtx.crumb.join(' › '))}">⛓ role from the linked ${escapeHtml(bindCtx.tierLabel.toLowerCase())} row <b>${escapeHtml(bindCtx.node.name || '(untitled)')}</b></div>`
+    : (bindCtx && (t.bindOverrides || []).includes(col))
+      ? `<div class="bzp-src is-override">± column overridden on this step — the linked row is not driving it</div>`
+      : '';
   const d0 = bizPartyDraft || {};
   const actor = ACTORS.includes(d0.actor) ? d0.actor : '';
   const divId = actor && d0.divisionId ? d0.divisionId : '';
@@ -10246,6 +11041,7 @@ function renderBizPartyPanel() {
         <div class="bzp-ctx-task">${escapeHtml(roleDesc)} · ${escapeHtml(t.name || 'Untitled task')}</div>
       </div>
     </div>
+    ${srcNote}
     <div class="bzp-field"><label>Directorate</label>
       <select data-bz-party-sel="directorate">${dirOpts}</select></div>
     <div class="bzp-field"><label>Division</label>
@@ -10578,21 +11374,31 @@ function openFlowPopover(nodeId, anchorEl) {
     }
   });
 }
-// New anchored flow whose first step copies the Task row's manual letters. The owner is NOT
-// baked in: anchored steps display the cascaded owner as a dashed inherited chip (v0.19), so
-// writing it here would read as an explicit branch override of the very context it came from.
+// New anchored flow, born CHART-LINKED (v0.31) with its first step linked to the very row it was
+// created from. Nothing is copied: the step reads that row's RACI live, so the flow starts out as
+// a provable implementation of the task rather than a snapshot that drifts the moment the chart is
+// edited. Free-form charts have no organizational columns to link, so a flow created from one
+// starts in Free-Form with the row's letters copied across — the pre-v0.31 behaviour.
 function createFlowFromNode(nodeId) {
   const chart = ac();
   const f = findNode(nodeId); if (!f) return;
   const b = makeBizCase(`${f.node.name || 'Untitled task'} — flow`);
   b.anchor = { chartId: chart.id, nodeId };
   const t = makeBizTask(f.node.name || '');
-  COLS.forEach(k => { t.raci[k] = normalizeRaci(f.node.raci[k] || ''); });
   t.x = 60; t.y = 80;
+  if (chart.custom) {
+    COLS.forEach(k => { t.raci[k] = normalizeRaci(f.node.raci[k] || ''); });
+  } else {
+    b.mode = 'linked';
+    b.sourceChartId = chart.id;
+    t.bind = { chartId: chart.id, nodeId };
+  }
   b.tasks.push(t);
   state.bizCases.push(b);
   saveState();
-  showToast('Flow created — first step seeded from the task\'s effective RACI.');
+  showToast(chart.custom
+    ? 'Flow created (Free-Form) — first step seeded from the task\'s RACI.'
+    : 'Flow created (Chart-Linked) — its first step is linked to this row and follows its RACI. Add steps and link each to the row it implements.');
   bizJumpToTask(b.id, null);
 }
 function detachFlow(bizCaseId) {
@@ -10765,6 +11571,16 @@ document.addEventListener('click', e => {
     }
     const bzEdge = e.target.closest('[data-bz-edge]');
     if (bzEdge) { openBizEdgePopover(bzEdge.dataset.bzEdge, e.clientX, e.clientY); return; }
+    // ---- flow modes: chart-row binding (v0.31) ----
+    const bzBind = e.target.closest('[data-bz-bind]');
+    if (bzBind) { openBizBindPopover(bzBind.dataset.bzBind, bzBind); return; }
+    const bzBindJump = e.target.closest('[data-bz-bind-jump]');
+    if (bzBindJump) {
+      const bt = bizTaskById(bzBindJump.dataset.bzBindJump);
+      if (bt && bt.bind) jumpToChartNode(bt.bind.chartId, bt.bind.nodeId);
+      return;
+    }
+    if (e.target.closest('[data-bz-bind-next]')) { bizBindNextUnbound(); return; }
     const bzCell = e.target.closest('[data-bz-cell]');
     if (bzCell) { openBizRaciPopover(bzCell.dataset.bzCell, bzCell.dataset.col, bzCell); return; }
     // Responsible-party rows on a card + the sidebar's own buttons (panel only shows in bizcase view).
@@ -10976,6 +11792,10 @@ document.addEventListener('change', e => {
     state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
   const bzFwSel = e.target.closest('#bz-framework');
   if (bzFwSel) { if (BIZ_FRAMEWORKS.includes(bzFwSel.value)) { closeBizPartyPanel(); abc().framework = bzFwSel.value; saveState(); renderBizcase(); } return; }
+  const bzModeSel = e.target.closest('#bz-mode');
+  if (bzModeSel) { closeBizPartyPanel(); bizSetMode(bzModeSel.value); return; }
+  const bzSrcSel = e.target.closest('#bz-source-chart');
+  if (bzSrcSel) { bizSetSourceChart(bzSrcSel.value); return; }
   const flowCond = e.target.closest('.bz-flow-cond');
   if (flowCond) { const ed = abc().edges.find(x => x.id === flowCond.dataset.bzEdgeCond); if (ed) { ed.label = flowCond.value.trim(); saveState(); renderBizcase(); } return; }
 });
@@ -11362,17 +12182,40 @@ function ingestKitMarkdown() {
     '',
     '### 3.2 `bizCases[]` — business case task flows',
     '',
-    'Fields: `id`, `name`, `description`, `framework` (`raci` | `daci` | `rapid`), `anchor`,',
-    '`tasks[]`, `edges[]`, `groups[]`, `view {panX,panY,zoom}`, `showTable`.',
+    'Fields: `id`, `name`, `description`, `framework` (`raci` | `daci` | `rapid`), `mode`,',
+    '`sourceChartId`, `anchor`, `tasks[]`, `edges[]`, `groups[]`, `view {panX,panY,zoom}`, `showTable`.',
     '',
+    '- `mode` is `"free"` or `"linked"` and decides what the steps are allowed to say. Omit it and',
+    '  the flow loads as `"free"`. **Default to `"free"` unless the source material really does map',
+    '  each step onto a chart row** — a half-linked flow is worse than an honest free-form one.',
     '- `anchor: {chartId, nodeId}` ties the flow to one deepest-tier chart row — owner and default',
     '  parties then cascade in, and flow health rolls up onto that row. `anchor: null` keeps it a',
-    '  standalone tabletop exercise.',
+    '  standalone tabletop exercise. Independent of `mode`: `anchor` is about the WHOLE flow,',
+    '  `bind` (below) is about ONE step.',
     '- `tasks[]` are the step boxes: `raci` keyed by the **seven org column keys** (flows always use',
     '  those, even when anchored to a free-form chart); `parties` maps a column key → a roster ref',
     '  `{actor, divisionId?, branchId?, teamId?}` naming who executes that column’s role;',
     '  `description` / `entry` / `exit` are the card’s three text blocks; `status`; `x`/`y` canvas',
     '  position in pixels (space steps ~300–350 apart so edges stay readable).',
+    '',
+    '**Chart-Linked mode.** When `mode: "linked"`, every step should carry',
+    '`bind: {chartId, nodeId}` — the org-chart row it implements. The step then READS that row’s',
+    'RACI instead of declaring its own, so **leave its `raci` cells empty**: whatever you write',
+    'there is ignored unless the column is also listed in `bindOverrides`. A step with no `bind` in',
+    'a linked flow is flagged as an error in the app.',
+    '',
+    '- The row may sit at **any tier** — Portfolio, Program, Project or Task — and the tier is the',
+    '  point: a Portfolio row leaves the step’s parties at directorate depth, a Project row',
+    '  carrying a Branch narrows the same columns to that Branch. Pick the tier that matches how',
+    '  specifically the source material assigns the work.',
+    '- `bind.chartId` must name an **organization** chart (one with no `custom` block). Free-form',
+    '  charts define their own party columns and cannot be linked to.',
+    '- `bindOverrides: []` lists column keys the step takes back from the row. A listed column reads',
+    '  `raci[col]` verbatim — including `""`, which means “this step deliberately has no role here,',
+    '  whatever the row says”. Use it sparingly: every override is a warning in the app, because it',
+    '  is a place where the flow no longer matches the chart.',
+    '- `sourceChartId` is the chart the row picker offers by default. Set it to the same chart the',
+    '  binds use. It is a convenience only — the binds are self-describing.',
     '- `edges[]` are directed handoffs `{id, from, to, label, artifactIds, fromPort, toPort}`',
     '  between task ids. `label` is the branch condition on a decision point (`"Yes"`,',
     '  `"rejected — rework"`); `artifactIds` names what changes hands. Self-loops are dropped, and',
@@ -11505,8 +12348,10 @@ function ingestKitMarkdown() {
   state.bizCases.forEach(b => {
     const nSub = b.tasks.filter(isSubflow).length;
     const nGrp = (b.groups || []).length;
-    p(`- \`${b.id}\` · "${b.name || 'Untitled'}" · ${b.framework} · ` +
-      `${b.tasks.length - nSub} step(s)` +
+    const nBound = b.tasks.filter(t => !isSubflow(t) && t.bind).length;
+    p(`- \`${b.id}\` · "${b.name || 'Untitled'}" · ${b.framework} · ${b.mode}` +
+      (bizIsLinked(b) ? ` (${nBound}/${b.tasks.length - nSub} steps linked to rows of \`${b.sourceChartId || '?'}\`)` : '') +
+      ` · ${b.tasks.length - nSub} step(s)` +
       (nSub ? ` · ${nSub} nested flow(s)` : '') + (nGrp ? ` · ${nGrp} group(s)` : '') +
       ` · ${b.anchor ? 'anchored to ' + b.anchor.nodeId : 'standalone'}`);
   });
@@ -11577,17 +12422,34 @@ function chartFileBase() { return (ac().title || 'raci').replace(/\s+/g, '_'); }
 
 // ---------- shared flow serialization (XLSX / PPTX / XML embed anchored flows, v0.22) ----------
 function flowsForChart(chartId) { return state.bizCases.filter(b => b.anchor && b.anchor.chartId === chartId); }
-function flowRolesText(t) {
-  return COLS.filter(k => normalizeRaci(t.raci[k] || ''))
-    .map(k => `${COL_SHORT[k]}: ${normalizeRaci(t.raci[k] || '')}`).join(' | ');
+// Exports read the step's RESOLVED line, so a Chart-Linked flow exports the RACI the chart is
+// actually supplying rather than the empty cells underneath it. A column the step overrode is
+// marked, because the whole point of a document a reviewer signs is that divergence is visible.
+function flowRolesText(b, t) {
+  const eff = bizStepRaci(b, t);
+  const bind = bizIsLinked(b) ? bizBindCtx(t) : null;
+  return bizActiveCols(eff).map(k => {
+    const over = bind && (t.bindOverrides || []).includes(k)
+      && translateLetters(bind.raci[k], bind.F, fw(b.framework)) !== eff[k].letters;
+    return `${COL_SHORT[k]}: ${eff[k].letters}${over ? ' (override)' : ''}`;
+  }).join(' | ');
 }
-function flowPartiesText(ctx, t) {
-  return COLS.filter(k => normalizeRaci(t.raci[k] || '')).map(k => {
+function flowPartiesText(b, ctx, t) {
+  const eff = bizStepRaci(b, t);
+  return bizActiveCols(eff).map(k => {
     const explicit = t.parties && t.parties[k];
-    const ref = explicit || bizDefaultPartyFor(ctx, k);
+    const ref = explicit || bizDefaultPartyForTask(b, t, k, ctx);
     const lbl = ref ? (partyLabel(ref) || {}).full : '';
     return lbl ? `${COL_SHORT[k]} → ${lbl}${explicit ? '' : ' (default)'}` : '';
   }).filter(Boolean).join(' | ');
+}
+// The chart row a step implements, as a document cell: tier + full path, so a reader of the
+// spreadsheet or the XML can trace a flow step back up to the row upper management signed.
+function flowLinkText(b, t) {
+  if (!bizIsLinked(b) || isSubflow(t)) return '';
+  if (!t.bind) return '(not linked)';
+  const ctx = bizBindCtx(t);
+  return ctx ? `${ctx.tierLabel}: ${ctx.crumb.join(' › ')}` : '(linked row is missing)';
 }
 function flowNextText(b, t) {
   return b.edges.filter(e => e.from === t.id).map(e => {
@@ -11611,10 +12473,11 @@ function buildFlowRows(chart) {
       // A nested-flow box exports as a pointer: its roles belong to the flow it references, which
       // exports its own rows wherever it is anchored.
       rows.push([
-        anc, b.name || '', (isSubflow(t) ? '⧉ ' : '') + bizTaskLabel(t),
+        anc, b.name || '', BIZ_MODE_META[b.mode].name, (isSubflow(t) ? '⧉ ' : '') + bizTaskLabel(t),
         isSubflow(t) ? `Nested flow → ${bizCaseName(t.refId)}${t.description ? ' — ' + t.description : ''}` : (t.description || ''),
+        flowLinkText(b, t),
         t.entry || '', t.exit || '',
-        flowRolesText(t), flowPartiesText(ctx, t),
+        flowRolesText(b, t), flowPartiesText(b, ctx, t),
         io.inputs.map(artifactLabel).join(', '),
         io.outputs.map(artifactLabel).join(', '),
         flowNextText(b, t)
@@ -11623,7 +12486,7 @@ function buildFlowRows(chart) {
   });
   return rows;
 }
-const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Step', 'Description', 'Entry criteria', 'Exit criteria', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Mode', 'Step', 'Description', 'Linked chart row', 'Entry criteria', 'Exit criteria', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
 function buildDeliverableRows() {
   const uses = computeArtifactUses();
   return state.artifacts.map(a => [
@@ -11649,12 +12512,13 @@ function exportXML() {
       const inner =
         io.inputs.map(aid => `${pad}    <input deliverable="${esc(artifactLabel(aid))}"/>\n`).join('') +
         io.outputs.map(aid => `${pad}    <output deliverable="${esc(artifactLabel(aid))}"/>\n`).join('');
-      const open = `${pad}  <step name="${esc(t.name)}"${t.description ? ` description="${esc(t.description)}"` : ''}${t.entry ? ` entry="${esc(t.entry)}"` : ''}${t.exit ? ` exit="${esc(t.exit)}"` : ''}${flowRolesText(t) ? ` roles="${esc(flowRolesText(t))}"` : ''}${flowPartiesText(ctx, t) ? ` parties="${esc(flowPartiesText(ctx, t))}"` : ''}`;
+      const link = flowLinkText(b, t);
+      const open = `${pad}  <step name="${esc(t.name)}"${t.description ? ` description="${esc(t.description)}"` : ''}${link ? ` linkedRow="${esc(link)}"` : ''}${t.entry ? ` entry="${esc(t.entry)}"` : ''}${t.exit ? ` exit="${esc(t.exit)}"` : ''}${flowRolesText(b, t) ? ` roles="${esc(flowRolesText(b, t))}"` : ''}${flowPartiesText(b, ctx, t) ? ` parties="${esc(flowPartiesText(b, ctx, t))}"` : ''}`;
       return inner ? open + '>\n' + inner + `${pad}  </step>\n` : open + '/>\n';
     }).join('');
     const handoffs = b.edges.map(e =>
       `${pad}  <handoff from="${esc(nameOf(e.from))}" to="${esc(nameOf(e.to))}"${e.label ? ` condition="${esc(e.label)}"` : ''}${(e.artifactIds || []).length ? ` deliverables="${esc(e.artifactIds.map(artifactLabel).join(', '))}"` : ''}/>\n`).join('');
-    return `${pad}<flow name="${esc(b.name)}">\n${steps}${handoffs}${pad}</flow>\n`;
+    return `${pad}<flow name="${esc(b.name)}" mode="${esc(b.mode)}">\n${steps}${handoffs}${pad}</flow>\n`;
   };
   const node = (n, depth, inheritedAcol, pad) => {
     const eff = effectiveRaci(n, inheritedAcol);
@@ -11752,8 +12616,9 @@ function exportMermaidFlow() {
   const mid = Object.create(null);
   b.tasks.forEach((t, i) => { mid[t.id] = 's' + i; });
   b.tasks.forEach(t => {
-    const roles = flowRolesText(t);
-    const label = `${esc(t.name) || '(unnamed)'}${roles ? `<br/>${esc(roles)}` : ''}`;
+    const roles = flowRolesText(b, t);
+    const link = bizIsLinked(b) ? (bizBindCtx(t) || {}).node : null;
+    const label = `${esc(t.name) || '(unnamed)'}${link ? `<br/>⛓ ${esc(link.name || 'untitled row')}` : ''}${roles ? `<br/>${esc(roles)}` : ''}`;
     // Decision points (2+ outgoing paths) render as diamonds.
     lines.push(outCount[t.id] >= 2 ? `  ${mid[t.id]}{"${label}"}:::dec` : `  ${mid[t.id]}["${label}"]:::step`);
   });
@@ -11930,13 +12795,16 @@ function pptxBytes() {
   flowsForChart(ac().id).forEach(b => {
     const an = resolveAnchor(b);
     const ctx = bizAnchorCtx(b);
-    const headers = ['Step', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition'];
+    const linkedMode = bizIsLinked(b);
+    const headers = (linkedMode ? ['Step', 'Linked chart row'] : ['Step'])
+      .concat(['Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition']);
     const rows = bizTopoOrder(b).map(t => {
       const io = bizTaskIO(b, t.id);
-      return [t.name || '', flowRolesText(t), flowPartiesText(ctx, t),
-        io.inputs.map(artifactLabel).join(', '), io.outputs.map(artifactLabel).join(', '), flowNextText(b, t)];
+      return (linkedMode ? [t.name || '', flowLinkText(b, t)] : [t.name || ''])
+        .concat([flowRolesText(b, t), flowPartiesText(b, ctx, t),
+          io.inputs.map(artifactLabel).join(', '), io.outputs.map(artifactLabel).join(', '), flowNextText(b, t)]);
     });
-    const flowTitle = `Flow — ${b.name || 'Untitled'}${an ? `  (⚓ ${an.node.name || 'task'})` : ''}`;
+    const flowTitle = `Flow (${BIZ_MODE_META[b.mode].name}) — ${b.name || 'Untitled'}${an ? `  (⚓ ${an.node.name || 'task'})` : ''}`;
     const pages = Math.max(1, Math.ceil(rows.length / FLOW_ROWS_PER_SLIDE));
     for (let p = 0; p < pages; p++) {
       slideDefs.push({ kind: 'table', title: flowTitle + (pages > 1 ? `  (${p + 1}/${pages})` : ''),
@@ -12139,6 +13007,7 @@ function lintFlow(b) {
   const OWNER = F.owner, DOER = F.doer;
   const ctx = bizAnchorCtx(b);
   const inhOwner = ctx && ctx.ownerCol;
+  const linked = bizIsLinked(b);
   const outBy = Object.create(null), touched = Object.create(null);
   b.edges.forEach(e => {
     (outBy[e.from] = outBy[e.from] || []).push(e);
@@ -12185,14 +13054,37 @@ function lintFlow(b) {
     record(t, issues);
   });
   b.tasks.filter(t => !isSubflow(t)).forEach(t => {
-    const colsWith = letter => COLS.filter(k => normalizeRaci(t.raci[k] || '').includes(letter));
+    // Every role rule below reads the step's RESOLVED line, so a Chart-Linked step that gets its
+    // owner and doer from the row it implements is not nagged for "assigning" nothing.
+    const eff = bizStepRaci(b, t);
+    const bind = linked ? bizBindCtx(t) : null;
+    const colsWith = letter => COLS.filter(k => eff[k].letters.includes(letter));
     const ownerCols = colsWith(OWNER);
     const doerCols = colsWith(DOER);
     const issues = [];
+    // ---- Chart-Linked mode rules (v0.31) ----
+    // The mode's whole contract is "every step traces to a signed chart row", so a step that names
+    // none is an error, not a style note — it is the one thing that makes the flow unverifiable.
+    if (linked && !t.bind) issues.push({ severity: 'err', rule: 'flowStepUnlinked',
+      message: 'Chart-Linked flow, but this step names no chart row. Click ⛓ on the card and pick the row it implements — or switch the flow to Free-Form.' });
+    if (linked && t.bind && !bind) issues.push({ severity: 'err', rule: 'flowBindMissing',
+      message: 'The chart row this step was linked to is gone — the chart was deleted, the row removed, or an import did not carry it. Re-point the step (⛓) or unlink it.' });
+    if (linked && bind && b.sourceChartId && bind.chart.id !== b.sourceChartId) issues.push({ severity: 'warn', rule: 'flowBindForeign',
+      message: `This step links into "${bind.chart.title || 'another chart'}", not this flow's source chart ("${(chartById(b.sourceChartId) || {}).title || 'unknown'}"). Steps of one flow spanning charts makes the flow hard to trace back — re-point it, or change the flow's source chart.` });
+    if (linked && bind) {
+      const over = (t.bindOverrides || []).filter(k => {
+        const chartSays = translateLetters(bind.raci[k], bind.F, F);
+        return chartSays !== eff[k].letters;      // taking a column over but not changing it is a no-op, not a divergence
+      });
+      if (over.length) issues.push({ severity: 'warn', rule: 'flowBindOverride',
+        message: `${over.length} column${over.length === 1 ? '' : 's'} (${over.map(k => COL_LABELS[k]).join(', ')}) override${over.length === 1 ? 's' : ''} the linked row "${bind.node.name || 'untitled'}" — allowed, but this step no longer matches the chart. Re-check it, or fix the chart row instead (↺ Chart in the cell to hand it back).` });
+    }
     if (ownerCols.length > 1) issues.push({ severity: 'err', rule: 'multipleOwner',
       message: `Multiple ${F.meta[OWNER].label} (${OWNER}) assignments: ${ownerCols.map(k => COL_LABELS[k]).join(', ')}. Only one ${OWNER} per step.` });
     else if (ownerCols.length === 0 && !inhOwner) issues.push({ severity: 'warn', rule: 'flowNoOwner',
-      message: `No ${F.meta[OWNER].label} (${OWNER}) on this step${b.anchor ? ' — and the chart cascade provides none' : ' — standalone flows inherit none'}.` });
+      message: `No ${F.meta[OWNER].label} (${OWNER}) on this step${
+        bind ? ` — and the linked row "${bind.node.name || 'untitled'}" names none either` :
+        b.anchor ? ' — and the chart cascade provides none' : ' — standalone flows inherit none'}.` });
     if (ownerCols.length === 1 && inhOwner && ownerCols[0] !== inhOwner) issues.push({ severity: 'warn', rule: 'flowOwnerOverride',
       message: `${F.meta[OWNER].label} (${OWNER}) sits on ${COL_LABELS[ownerCols[0]]}, but the chart cascade puts ownership on ${COL_LABELS[inhOwner]} — branch override (allowed, but re-check against the chart).` });
     if (doerCols.length === 0) issues.push({ severity: 'warn', rule: 'flowNoDoer',
@@ -12205,7 +13097,7 @@ function lintFlow(b) {
       message: `${bare.length} outgoing handoff${bare.length === 1 ? '' : 's'} carr${bare.length === 1 ? 'ies' : 'y'} no deliverable — click the edge and name what is handed off.` });
     if (b.tasks.length > 1 && !touched[t.id]) issues.push({ severity: 'warn', rule: 'flowDisconnected',
       message: `Disconnected step — no handoffs in or out. Connect it into the flow (or delete it).` });
-    const partyless = doerCols.filter(k => !(t.parties && t.parties[k]) && !bizDefaultPartyFor(ctx, k));
+    const partyless = doerCols.filter(k => !(t.parties && t.parties[k]) && !bizDefaultPartyForTask(b, t, k, ctx));
     if (partyless.length) issues.push({ severity: 'warn', rule: 'flowPartyMissing',
       message: `${F.meta[DOER].label} column${partyless.length === 1 ? '' : 's'} ${partyless.map(k => COL_LABELS[k]).join(', ')} ha${partyless.length === 1 ? 's' : 've'} no responsible party — assign who executes (directorate → … → team).` });
     record(t, issues);
