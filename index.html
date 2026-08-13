@@ -3427,6 +3427,37 @@ body.bz-embedding .bz-canvas { cursor: copy; }
 .bz-grp-folded { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 3px; }
 .bz-grp-sealed { font-size: 10px; font-style: italic; color: var(--text-dim); padding: 2px 0; }
 
+/* ---- Dragging a step that lives in a frame (v0.34) ----
+   Membership is sticky, so a plain drag reshapes the frame around the box and the only question
+   left is "how do I get it OUT" — which is what the hint chip answers, in the header of the frame
+   the box actually belongs to, at the moment it starts moving. It is deliberately absent the rest
+   of the time: an always-on keyboard tip in every frame header is noise 99% of the session. */
+.bz-grp-hint {
+  display: none; flex: 0 1 auto; min-width: 0; align-items: center; gap: 4px;
+  font-size: 9px; color: var(--text-dim); white-space: nowrap; overflow: hidden;
+}
+.bz-grp-key {
+  flex: 0 0 auto; font-size: 8.5px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--text); background: var(--bg-3);
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 3px; padding: 0 3px;
+}
+.bz-group.is-drag-src .bz-grp-hint { display: inline-flex; }
+/* Held: the frame stops following the box and goes taut — the same visual break the box is about
+   to make. The chip switches to the present tense because by now it is describing, not offering. */
+.bz-group.is-detaching {
+  border-style: dashed; border-color: var(--warn); background: rgba(var(--warn-rgb), 0.06);
+}
+.bz-group.is-detaching .bz-grp-hint { color: var(--warn); font-weight: 600; }
+.bz-group.is-detaching .bz-grp-key { color: var(--on-warn); background: var(--warn); border-color: var(--warn); }
+.bz-grp-hint-alt { display: none; }
+.bz-group.is-detaching .bz-grp-hint-txt { display: none; }
+.bz-group.is-detaching .bz-grp-hint-alt { display: inline; }
+/* The frame a homeless box would join by landing in it. */
+.bz-group.is-drop-target {
+  border-style: solid; box-shadow: 0 0 0 2px var(--bzg-color);
+  background: color-mix(in srgb, var(--bzg-color) 12%, transparent);
+}
+
 /* ---- marquee (shift-drag select) ---- */
 .bz-marquee {
   position: absolute; z-index: 70; pointer-events: none; border-radius: 3px;
@@ -5964,6 +5995,37 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.34 alpha - Flow chrome, the theme system, and how a step behaves inside a frame.
+//                  MODE STRIP — the Free-Form / Chart-Linked badge sat on the left of the strip
+//                  while the picker that set it was a second copy in the toolbar: two places to
+//                  read one fact, two to keep in step. They are now one control. The picker wears
+//                  the badge, right-justified at the end of the strip, with the prose explaining
+//                  the mode ahead of it; the toolbar copy is gone.
+//                  RACI ONLY — flows no longer offer DACI or RAPID. A flow's steps are execution
+//                  work, and the decision variants only ever split the vocabulary of a tool whose
+//                  point is one responsibility language across chart and flow. BIZ_FRAMEWORKS is
+//                  ['raci'], so a legacy file naming daci/rapid normalizes to RACI on load rather
+//                  than becoming state with no way to see or change it. Charts keep RACI/RASCI.
+//                  HIGH CONTRAST becomes a FAMILY of three: hc-dark (the old "contrast" palette,
+//                  unchanged), hc-light (white paper, black rules, hues deepened rather than
+//                  brightened so every fill takes white text) and hc-neon (almost-black violet
+//                  ground, cyan / hot pink / electric yellow / lime at full voltage, neon violet
+//                  rules). All three share one structural stylesheet via a [data-theme^="hc-"]
+//                  prefix selector, so a variant is a token block and a picker entry and nothing
+//                  else; the two embedded field guides carry the same three palettes. A stored
+//                  "contrast" preference migrates to hc-dark in both the pre-paint bootstrap and
+//                  applyTheme. The picker groups the three under a "High contrast" heading that
+//                  survives every breakpoint — without it "Light" and "Dark" each appear twice.
+//                  GROUP MEMBERSHIP IS STICKY — a step inside a frame used to leave it the moment
+//                  it was dropped past the frame's edge, and the frame froze mid-drag so the edge
+//                  was where it USED to be. Rearranging inside a group meant losing steps out of
+//                  it. Now the frame follows its members live (drag one and the group reshapes
+//                  around it) and membership survives any distance. Leaving is deliberate: hold
+//                  Alt/⌥ while dragging and the frame freezes and goes taut amber, releasing the
+//                  step wherever it lands. The frame says so itself — a hint chip appears in its
+//                  header the moment one of its own steps starts moving, and flips to the present
+//                  tense while the key is held. A homeless step still joins the frame it is
+//                  dropped into, and now highlights it on the way in.
 //     0.33 alpha - The mode rail's two systems are now boxed the SAME way. 0.31 gave the task flow
 //                  a tinted, outlined box and left Chart/Roster/Tasks bare, which read as "the
 //                  flow is the special one" rather than "these are two systems". Both are now the
@@ -6248,7 +6310,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.33';
+const APP_VERSION = '0.34';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -9702,15 +9764,24 @@ function bizHiddenTaskIds(b) {
   (b.groups || []).forEach(g => { if (g.collapsed) bizGroupMembers(b, g.id).forEach(t => hidden.add(t.id)); });
   return hidden;
 }
+// Membership is STICKY while dragging (v0.34): a step already in a frame stays in it however far it
+// is moved, and the frame grows to follow — so rearranging inside a group is just dragging, and the
+// group can never be left by accident. Leaving is a deliberate second action: hold this key while
+// dragging and the frame freezes, releasing the step wherever it lands. Named here because the
+// pointer handlers, the frame's hint chip and the group's tooltip all have to say the same thing.
+const BZ_IS_MAC = typeof navigator !== 'undefined' && /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent || '');
+const BZ_DETACH_KEY = BZ_IS_MAC ? '⌥' : 'Alt';
+const BZ_DETACH_KEY_LONG = BZ_IS_MAC ? '⌥ Option' : 'Alt';
 function bizGroupHtml(b, g) {
   const mem = bizGroupMembers(b, g.id);
-  const head = `<div class="bz-group-head">
+  const head = `<div class="bz-group-head" title="${escapeHtml(`Steps in this frame stay in it however you rearrange them, and the frame resizes to follow. Hold ${BZ_DETACH_KEY_LONG} while dragging one to pull it out.`)}">
       <span class="bz-grp-grip" aria-hidden="true" title="Drag to move the whole group">⠿</span>
       <button class="bz-grp-btn bz-grp-collapse" type="button" data-bz-group-collapse="${g.id}"
         title="${g.collapsed ? 'Expand — show the steps again' : 'Collapse — fold these steps into one box whose sockets are the group\u2019s real connections'}">${g.collapsed ? '▸' : '▾'}</button>
       <span class="bz-group-name" contenteditable="true" spellcheck="false" data-bz-group-name="${g.id}"
         data-placeholder="Group name">${escapeHtml(g.name)}</span>
       <span class="bz-grp-spacer"></span>
+      <span class="bz-grp-hint" aria-hidden="true"><b class="bz-grp-key">${BZ_DETACH_KEY}</b><span class="bz-grp-hint-txt">hold to drag out of the frame</span><span class="bz-grp-hint-alt">release to leave this frame</span></span>
       <span class="bz-grp-count">${mem.length} step${mem.length === 1 ? '' : 's'}</span>
       <button class="bz-grp-btn" type="button" data-bz-group-color="${g.id}" title="Cycle the frame colour">◧</button>
       <button class="bz-grp-btn" type="button" data-bz-group-ungroup="${g.id}" title="Ungroup — release the steps, keep them where they are">⤨</button>
@@ -9779,8 +9850,38 @@ function bizLayoutGroups(skipIds) {
     _bizGroupRect[g.id] = r;
   });
 }
-// The frame a point falls inside, used when a dragged step is dropped: land it in a frame and it
-// joins that group; drop it on bare canvas and it leaves the one it was in.
+// Live drag feedback for frames. Three states, and every one of them is a fact the drag needs to
+// tell you BEFORE you let go: the frame a dragged member belongs to (is-drag-src, which shows its
+// hint chip), that same frame while the detach key is held (is-detaching — the frame freezes and
+// goes dashed, so "this box is coming out" is visible rather than discovered afterwards), and the
+// frame a homeless box would join by landing there (is-drop-target).
+function bizDragHintSync() {
+  const world = document.getElementById('bz-world');
+  if (!world || !bizDrag) return;
+  const detach = !!bizDrag.detach;
+  const srcIds = new Set();
+  bizDrag.items.forEach(it => { const t = bizTaskById(it.id); if (t && t.groupId) srcIds.add(t.groupId); });
+  // A box only advertises a frame it could actually join: one that is leaving its own, or was
+  // never in one. A member being rearranged inside its group is not shopping for a new frame.
+  let targetId = null;
+  if (detach || !srcIds.size) {
+    const el = bizDrag.el;
+    const g = el && bizGroupAt(el.offsetLeft + el.offsetWidth / 2, el.offsetTop + 20);
+    if (g && !srcIds.has(g.id)) targetId = g.id;
+  }
+  world.querySelectorAll('.bz-group').forEach(el => {
+    const isSrc = srcIds.has(el.dataset.bzGroup);
+    el.classList.toggle('is-drag-src', isSrc);
+    el.classList.toggle('is-detaching', isSrc && detach);
+    el.classList.toggle('is-drop-target', el.dataset.bzGroup === targetId);
+  });
+}
+function bizDragHintClear() {
+  document.querySelectorAll('.bz-group.is-drag-src, .bz-group.is-detaching, .bz-group.is-drop-target')
+    .forEach(el => el.classList.remove('is-drag-src', 'is-detaching', 'is-drop-target'));
+}
+// The frame a point falls inside, used when a dragged step is dropped: a box with no frame of its
+// own joins the one it lands in, and a detach drag re-decides membership the same way.
 function bizGroupAt(wx, wy, exceptId) {
   const b = abc();
   let hit = null;
@@ -10762,7 +10863,7 @@ function bizGroupSelection() {
   sel.forEach(x => { x.groupId = g.id; });
   _bizSelGroup = g.id;
   saveState(); renderBizcase();
-  showToast(`Grouped ${sel.length} step${sel.length === 1 ? '' : 's'} — name the frame, or collapse it to fold them into one box.`);
+  showToast(`Grouped ${sel.length} step${sel.length === 1 ? '' : 's'} — drag them freely, the frame follows. Hold ${BZ_DETACH_KEY_LONG} while dragging one to pull it back out.`);
 }
 function bizUngroup(gid) {
   const b = abc();
@@ -10974,7 +11075,9 @@ document.addEventListener('mousedown', e => {
     const t = bizTaskById(nodeEl.dataset.bzNode);
     if (t) {
       const ids = (_bizSel.has(t.id) && _bizSel.size > 1) ? [..._bizSel] : [t.id];
-      bizDrag = { id: t.id, el: nodeEl, sx: e.clientX, sy: e.clientY, moved: false, items: bizDragItems(ids) };
+      // detach is re-read on every move, not frozen here, so the key can be pressed or let go
+      // mid-drag and the frame answers immediately — which is how anyone finds out it exists.
+      bizDrag = { id: t.id, el: nodeEl, sx: e.clientX, sy: e.clientY, moved: false, items: bizDragItems(ids), detach: e.altKey };
     }
     return;                                         // no preventDefault — lets the name caret work
   }
@@ -11043,15 +11146,18 @@ document.addEventListener('mousemove', e => {
     const dx = (e.clientX - bizDrag.sx) / z, dy = (e.clientY - bizDrag.sy) / z;
     if (!bizDrag.moved && Math.hypot(dx, dy) < 4) return;  // small move = click (place caret)
     bizDrag.moved = true;
+    bizDrag.detach = e.altKey;
     bizDrag.items.forEach(it => {
       const t = bizTaskById(it.id); if (!t || !it.el) return;
       t.x = Math.round(it.ox + dx); t.y = Math.round(it.oy + dy);
       it.el.style.left = t.x + 'px'; it.el.style.top = t.y + 'px';
       it.el.classList.add('dragging');
     });
-    // Frames freeze while one of their own boxes is being dragged, otherwise the frame would chase
-    // the box and there would be no way to pull a step out of its group.
-    bizLayoutGroups(new Set(bizDrag.items.map(i => i.id)));
+    // A frame follows its members live, so moving a step inside its group simply reshapes the
+    // group around it. It freezes only during a detach drag — that is what makes the box able to
+    // leave, and freezing is exactly the feedback that says "this one is coming out".
+    bizLayoutGroups(bizDrag.detach ? new Set(bizDrag.items.map(i => i.id)) : null);
+    bizDragHintSync();
     drawBizEdges();
     return;
   }
@@ -11100,20 +11206,25 @@ document.addEventListener('mouseup', e => {
     if (bizDrag.moved) {
       bizDrag.items.forEach(it => { if (it.el) it.el.classList.remove('dragging'); });
       bizDrag.el.style.zIndex = 6; bizFrontId = bizDrag.id; bizDragSuppressClick = true;
-      // Where a box lands decides its group: inside a frame it joins, on bare canvas it leaves.
+      // Where a box lands decides its group — but only for a box that has no frame to lose, or a
+      // drag that explicitly asked to leave one. A member dragged normally keeps its membership no
+      // matter where it ends up, so no amount of rearranging inside a frame can drop it out.
       // This is the only place geometry writes membership — everywhere else it is explicit.
-      let regrouped = 0;
+      let regrouped = 0, escaped = 0;
       bizDrag.items.forEach(it => {
         const t = bizTaskById(it.id);
         if (!t || !it.el) return;
+        if (t.groupId && !bizDrag.detach) return;
         const g = bizGroupAt(it.el.offsetLeft + it.el.offsetWidth / 2, it.el.offsetTop + 20);
         const next = g ? g.id : null;
-        if (next !== t.groupId) { t.groupId = next; regrouped++; }
+        if (next !== t.groupId) { if (t.groupId && !next) escaped++; t.groupId = next; regrouped++; }
       });
+      bizDragHintClear();
       saveState();
       if (regrouped) renderBizcase(); else bizLayoutGroups();
+      if (escaped) showToast(`${escaped} step${escaped === 1 ? '' : 's'} pulled out of the frame.`, 'suggest');
     }
-    bizDrag = null; return;
+    bizDrag = null; bizDragHintClear(); return;
   }
   if (bizConnect) {
     document.body.classList.remove('bz-connecting');
@@ -11154,6 +11265,16 @@ document.addEventListener('mouseup', e => {
     bizPan = null;
   }
 });
+// The detach key can be pressed or let go without the mouse moving an inch, and that is exactly
+// when someone is trying it out to see what it does. So the frame answers the keyboard as well as
+// the pointer: press and it freezes and goes taut, release and it resumes following the box.
+['keydown', 'keyup'].forEach(evt => document.addEventListener(evt, e => {
+  if (!bizDrag || !bizDrag.moved || e.key !== 'Alt') return;
+  bizDrag.detach = (evt === 'keydown');
+  bizLayoutGroups(bizDrag.detach ? new Set(bizDrag.items.map(i => i.id)) : null);
+  bizDragHintSync();
+  drawBizEdges();
+}));
 // ---- Gallery → canvas drag (v0.30) ----
 // HTML5 drag-and-drop rather than the canvas's own mouse pipeline: the drag starts outside
 // #bz-canvas, so it can't be mistaken for a pan, and the browser gives the cursor feedback for
