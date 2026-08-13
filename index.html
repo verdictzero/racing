@@ -6,11 +6,20 @@
 <style>
 /* ============================================================================
    ===== THEME TOKENS =========================================================
-   Three application-wide themes, chosen by data-theme on <html>:
+   Five application-wide themes, chosen by data-theme on <html>:
 
      (unset) | "dark"  the default — the palette this tool shipped with
      "light"           light surfaces, hues re-picked for contrast on paper
-     "contrast"        high contrast — black ground, white rules, max-chroma hues
+     "hc-dark"         high contrast — black ground, white rules, max-chroma hues
+     "hc-light"        high contrast — white ground, black rules, deep hues
+     "hc-neon"         high contrast — near-black ground, full-voltage neon hues
+
+   The three "hc-" themes are one FAMILY: they differ only in their palette, and
+   share every structural rule further down through the `[data-theme^="hc-"]`
+   prefix selector — flat backdrops, no texture, no faded states, full-weight
+   rules, always-visible focus. Adding a fourth variant means adding a token
+   block and nothing else. (Pre-0.34 the family was one theme named "contrast";
+   that stored value migrates to "hc-dark", which is the palette it had.)
 
    Every colour in the app resolves through the tokens below, so switching theme
    is a token swap: no component needs to know which theme is up, and a new rule
@@ -212,13 +221,14 @@
   --wm-filter: grayscale(1) brightness(0.45) contrast(1.15);
 }
 
-/* ===== HIGH CONTRAST =====
+/* ===== HIGH CONTRAST (DARK) =====
    Black ground, white rules, maximum-chroma hues, and every label dropped to
    pure black on its fill. --border going white is deliberate: in high contrast
    structure is carried by rules rather than by fill differences, so the surface
    ramp stays nearly flat and the borders do the separating. Structural rules
-   (flat backdrops, no texture, always-visible focus) follow further down. */
-:root[data-theme="contrast"] {
+   (flat backdrops, no texture, always-visible focus) follow further down and
+   are shared by all three hc- themes. */
+:root[data-theme="hc-dark"] {
   color-scheme: dark;
 
   --r-rgb: 96,190,255;
@@ -294,6 +304,177 @@
 
   /* A 12%-opacity emblem behind text is exactly the low-contrast wash this mode
      removes, so it goes entirely. */
+  --wm-opacity: 0;
+  --wm-filter: none;
+}
+
+/* ===== HIGH CONTRAST (LIGHT) =====
+   The same contract as hc-dark with the ground inverted: white paper, black
+   rules, and hues DEEPENED rather than brightened — on white, contrast is won
+   by going dark, so every role fill takes white text (--on-* all white, and
+   --on-fill with it, since the tier and leadership fills darken to match).
+   This is the variant for printing, projectors and bright rooms; hc-dark is
+   the one for a dark room. Everything structural is shared. */
+:root[data-theme="hc-light"] {
+  color-scheme: light;
+
+  --r-rgb: 0,68,204;
+  --a-rgb: 190,0,0;
+  --c-rgb: 140,80,0;
+  --i-rgb: 45,45,45;
+  --s-rgb: 0,110,40;
+  --d-rgb: 88,0,180;
+  --p-rgb: 0,100,120;
+  --accent-rgb: 0,110,40;
+  --err-rgb: 190,0,0;
+  --warn-rgb: 140,80,0;
+
+  --bg: #ffffff;
+  --bg-cell: #ffffff;
+  --bg-2: #f4f4f4;
+  --bg-3: #e9e9e9;
+  --bg-4: #d4d4d4;
+  --border: #000000;
+  --bg-deep: #ffffff;
+  --sunk-1: #ffffff;
+  --sunk-2: #f4f4f4;
+  --edge-1: #ffffff;
+  --edge-2: #ffffff;
+
+  --text: #000000;
+  --text-dim: #1c1c1c;      /* still near-black — dimming to grey is what HC exists to undo */
+  --text-strong: #000000;
+  --on-fill: #ffffff;
+
+  --on-r: #fff;
+  --on-a: #fff;
+  --on-c: #fff;
+  --on-i: #fff;
+  --on-s: #fff;
+  --on-d: #fff;
+  --on-p: #fff;
+  --on-accent: #fff;
+  --on-err: #fff;
+  --on-warn: #fff;
+
+  --accent-ink: #00591f;
+  --err-ink: #9b0000;
+  --warn-ink: #6b3d00;
+  --accent-hover: #00471a;
+  --accent-edge: #000000;
+
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 0,0,0;
+  --scrim: rgba(0,0,0,0.72);   /* a white scrim over white paper would dim nothing */
+  --mix-fg: #000000;
+
+  --view-tint-a: transparent;
+  --view-tint-b: transparent;
+  --view-grad-a: #ffffff;
+  --view-grad-b: #ffffff;
+
+  --tier-0: #1f2fa8;
+  --tier-1: #00478f;
+  --tier-2: #7a4300;
+  --tier-3: #006427;
+  --tier-0-ink: #1f2fa8;
+  --tier-1-ink: #00478f;
+  --tier-2-ink: #7a4300;
+  --tier-3-ink: #006427;
+
+  --lc-base: #6b4a00;
+  --lc-ad: #6b4a00;
+  --lc-dc: #00478f;
+  --lc-bc: #4b0f9c;
+  --lc-tl: #006427;
+
+  --wm-opacity: 0;
+  --wm-filter: none;
+}
+
+/* ===== HIGH CONTRAST (NEON) =====
+   hc-dark's contract at full voltage: an almost-black violet ground and role
+   hues pushed to the brightest thing a screen can put on it — cyan, hot pink,
+   electric yellow, lime. The rules go neon violet rather than white, which is
+   the one real departure: at these chroma levels a white grid competes with the
+   data, and a violet rule reads as structure precisely because no ROLE owns
+   violet. Every fill is bright enough to take black text, exactly as in
+   hc-dark. Same structural rules; only the palette is turned up. */
+:root[data-theme="hc-neon"] {
+  color-scheme: dark;
+
+  --r-rgb: 0,240,255;       /* cyan       */
+  --a-rgb: 255,42,109;      /* hot pink   */
+  --c-rgb: 255,241,0;       /* electric yellow */
+  --i-rgb: 167,180,204;     /* the one calm hue — Informed is meant to recede */
+  --s-rgb: 57,255,20;       /* lime       */
+  --d-rgb: 189,107,255;     /* violet     */
+  --p-rgb: 255,145,0;       /* orange     */
+  --accent-rgb: 57,255,20;
+  --err-rgb: 255,42,109;
+  --warn-rgb: 255,241,0;
+
+  --bg: #07020e;
+  --bg-cell: #0d0418;
+  --bg-2: #120826;
+  --bg-3: #1b0f33;
+  --bg-4: #2b1a4d;
+  --border: #cc44ff;
+  --bg-deep: #07020e;
+  --sunk-1: #120826;
+  --sunk-2: #07020e;
+  --edge-1: #07020e;
+  --edge-2: #07020e;
+
+  --text: #f4f7ff;
+  --text-dim: #d9e4ff;
+  --text-strong: #ffffff;
+  --on-fill: #000000;
+
+  --on-r: #000;
+  --on-a: #000;
+  --on-c: #000;
+  --on-i: #000;
+  --on-s: #000;
+  --on-d: #000;
+  --on-p: #000;
+  --on-accent: #000;
+  --on-err: #000;
+  --on-warn: #000;
+
+  --accent-ink: #9dff7a;
+  --err-ink: #ff8fb4;
+  --warn-ink: #fff86b;
+  --accent-hover: #7dff5c;
+  --accent-edge: #cc44ff;
+
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 255,255,255;
+  --scrim: rgba(3,0,10,0.86);
+  --mix-fg: #ffffff;
+
+  --view-tint-a: transparent;
+  --view-tint-b: transparent;
+  --view-grad-a: #07020e;
+  --view-grad-b: #07020e;
+
+  --tier-0: #7c4dff;
+  --tier-1: #00f0ff;
+  --tier-2: #ff9100;
+  --tier-3: #39ff14;
+  --tier-0-ink: #c0a6ff;
+  --tier-1-ink: #7df6ff;
+  --tier-2-ink: #ffc47a;
+  --tier-3-ink: #a8ff96;
+
+  --lc-base: #fff100;
+  --lc-ad: #fff100;
+  --lc-dc: #00f0ff;
+  --lc-bc: #bd6bff;
+  --lc-tl: #39ff14;
+
   --wm-opacity: 0;
   --wm-filter: none;
 }
@@ -2579,8 +2760,6 @@ body[data-view="help"] #ws-main { padding: 0; overflow: hidden; }
   border-radius: 5px; padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
 }
 .bz-toolbar #bz-select { min-width: 200px; max-width: 320px; }
-.bz-toolbar #bz-framework { min-width: 0; }
-.bz-toolbar #bz-framework:hover { border-color: var(--accent); }
 .bz-toolbar button:hover { background: var(--bg-4); }
 /* + New Graph / + Add task = constructive: green (mirrors the Save/Load pair in the header) */
 .bz-toolbar #bz-new,
@@ -2722,18 +2901,18 @@ body[data-lock="flow"] .bz-sock,
 body[data-lock="flow"] .bz-bind,
 body[data-lock="flow"] .bzm-fix,
 body[data-lock="flow"] #bz-mode,
-body[data-lock="flow"] #bz-framework,
 body[data-lock="flow"] #bz-source-chart { pointer-events: none !important; }
 body[data-lock="chart"] #chart-framework,
 body[data-lock="flow"] #bz-mode,
-body[data-lock="flow"] #bz-framework,
 body[data-lock="flow"] #bz-source-chart { opacity: 0.5; }
 /* The grab cursor is a promise the locked canvas cannot keep. */
 body[data-lock="flow"] .bz-node { cursor: default; }
 
 /* ===== Flow modes: Chart-Linked vs Free-Form (v0.31) ===== */
-/* Mode strip — the banner above the canvas. Which mode a flow is in changes what its steps are
-   allowed to say, so it is stated permanently rather than left in a dropdown. */
+/* Mode strip — the banner above the canvas, and since v0.34 the only place the mode is set. Which
+   mode a flow is in changes what its steps are allowed to say, so the statement and the control are
+   one thing: the strip explains the mode on the left and carries the picker, right-justified, on
+   the right. A second copy in the toolbar was two places to read it and two to keep in step. */
 .bz-mode-strip {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 5px 12px; border-bottom: 1px solid var(--border);
@@ -2742,23 +2921,27 @@ body[data-lock="flow"] .bz-node { cursor: default; }
 .bz-mode-strip.is-free   { background: var(--bg-2); }
 .bz-mode-strip.is-linked { background: rgba(var(--accent-rgb), 0.07); border-bottom-color: rgba(var(--accent-rgb), 0.3); }
 .bz-mode-strip.is-linked.has-gap { background: rgba(var(--err-rgb), 0.07); border-bottom-color: rgba(var(--err-rgb), 0.3); }
+/* The picker wears the badge it replaced. margin-left:auto pins it to the right edge even when the
+   strip wraps and the prose ahead of it can no longer do the pushing. */
 .bzm-badge {
-  flex: 0 0 auto; font-weight: 700; font-size: 11px; letter-spacing: 0.03em;
+  flex: 0 0 auto; margin-left: auto;
+  font: inherit; font-weight: 700; font-size: 11px; letter-spacing: 0.03em;
   border: 1px solid var(--border); border-radius: 10px; padding: 2px 9px;
-  background: var(--bg-3); color: var(--text);
+  background: var(--bg-3); color: var(--text); cursor: pointer;
 }
+.bzm-badge:hover { border-color: var(--accent); }
 .bz-mode-strip.is-linked .bzm-badge { border-color: rgba(var(--accent-rgb), 0.55); color: var(--accent); }
-.bzm-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The prose takes the free width, so everything after it lands against the right edge. */
+.bzm-txt, .bzm-src { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzm-src b { color: var(--text); font-weight: 600; }
 .bzm-src b.bzm-none { color: var(--err); font-style: italic; font-weight: 500; }
-.bzm-count { margin-left: auto; flex: 0 0 auto; cursor: help; }
+.bzm-count { flex: 0 0 auto; cursor: help; }
 .bzm-count.is-gap { color: var(--err); font-weight: 700; }
 .bzm-fix {
   flex: 0 0 auto; background: var(--err); color: var(--on-err); border: 1px solid var(--err);
   border-radius: 4px; padding: 3px 9px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
 }
 .bzm-fix:hover { filter: brightness(1.1); }
-.bz-toolbar .bz-mode-sel[data-mode="linked"] { border-color: rgba(var(--accent-rgb), 0.6); color: var(--accent); font-weight: 600; }
 
 /* Link bar on a step card — which chart row this step implements, and at which tier. */
 .bz-bind-wrap { display: flex; align-items: stretch; gap: 3px; margin: 0 8px 5px; }
@@ -3764,23 +3947,31 @@ body[data-view="roster"] #legend { display: none; }
   color: var(--text);
 }
 .theme-switch .ts-ico { font-size: 11px; line-height: 1; }
+/* The three high-contrast variants are one family, so they sit under a heading of their own
+   instead of being spelled out three times in a flat row of five near-identical names. That
+   heading is what makes "Light" and "Dark" unambiguous twice over, so unlike the "Theme"
+   label it survives every width. */
+.theme-switch .ts-label--hc { padding-left: 9px; }
 /* Below ~560px the toolbar is already tight — drop the glyphs and keep the words. */
 @media (max-width: 560px) {
   .theme-switch .ts-label { display: none; }
+  .theme-switch .ts-label--hc { display: block; }
   .theme-switch .ts-ico { display: none; }
 }
 @media (min-width: 1200px) {
   /* In the rail the control gets a full row: label above, segments across. */
   #tool-rail .actions .theme-switch { flex: 0 0 auto; width: 100%; flex-wrap: wrap; }
   #tool-rail .actions .theme-switch .ts-label { flex: 1 0 100%; padding: 2px 4px 4px; }
+  #tool-rail .actions .theme-switch .ts-label--hc { padding-top: 8px; }
 }
 
 /* ===== High contrast — the structural half =====
    Tokens alone re-colour the app, but high contrast is also about REMOVING the
    low-contrast decoration the other themes lean on: washes, textures, faded states,
    and focus rings you have to hunt for. These rules do that. Everything here is
-   scoped to [data-theme="contrast"], so no other theme pays for it. */
-:root[data-theme="contrast"] body[data-view="chart"] {
+   scoped to [data-theme^="hc-"] — one selector covering the whole hc- family, so a
+   new variant is a palette and nothing more, and no other theme pays for any of it. */
+:root[data-theme^="hc-"] body[data-view="chart"] {
   /* Flat ground: the blue/crimson radial wash is exactly the sort of low-contrast
      tint this mode exists to strip, and its tokens are already `transparent` here. */
   background: var(--bg);
@@ -3789,60 +3980,60 @@ body[data-view="roster"] #legend { display: none; }
    inherited chip keeps its dashed outline at full opacity; the un-focused cascade
    layers keep enough saturation that their R/A/C/I letters stay colour-coded
    (that colour IS the data) while still reading as behind the focused pane. */
-:root[data-theme="contrast"] .raci-chip.inherited { opacity: 1; }
-:root[data-theme="contrast"] .chart-block.faded { filter: saturate(0.7) brightness(0.8); }
-:root[data-theme="contrast"] .chart-block.faded:hover { filter: saturate(1) brightness(1); }
+:root[data-theme^="hc-"] .raci-chip.inherited { opacity: 1; }
+:root[data-theme^="hc-"] .chart-block.faded { filter: saturate(0.7) brightness(0.8); }
+:root[data-theme^="hc-"] .chart-block.faded:hover { filter: saturate(1) brightness(1); }
 /* Keyboard focus is always visible, not just on the handful of controls that opt in. */
-:root[data-theme="contrast"] :focus-visible {
+:root[data-theme^="hc-"] :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 /* Structure carried by rules rather than by fill: the chrome bands and the pane edges
    get a full-weight border so they separate on a near-flat surface ramp. */
-:root[data-theme="contrast"] header,
-:root[data-theme="contrast"] #chart-tabs,
-:root[data-theme="contrast"] #drill-crumbs,
-:root[data-theme="contrast"] #view-tabs,
-:root[data-theme="contrast"] #tool-rail,
-:root[data-theme="contrast"] #details,
-:root[data-theme="contrast"] #legend,
-:root[data-theme="contrast"] #bz-party-panel { border-color: var(--border); }
+:root[data-theme^="hc-"] header,
+:root[data-theme^="hc-"] #chart-tabs,
+:root[data-theme^="hc-"] #drill-crumbs,
+:root[data-theme^="hc-"] #view-tabs,
+:root[data-theme^="hc-"] #tool-rail,
+:root[data-theme^="hc-"] #details,
+:root[data-theme^="hc-"] #legend,
+:root[data-theme^="hc-"] #bz-party-panel { border-color: var(--border); }
 /* Flow modes at high contrast: the accent washes carry the grouping in the other themes, and a
    wash is exactly what this theme removes — so the same distinctions are redrawn as solid edges.
    The rail's two system boxes and each step's link bar have to keep reading as separate things.
    The boxes keep their per-system hue (--vt-hue-rgb) — at 2px it is the edge, not a tint, doing
    the work, and this theme's hues are already at maximum chroma. */
-:root[data-theme="contrast"] #view-tabs .vt-box--raci,
-:root[data-theme="contrast"] #view-tabs .vt-box--flow { border-width: 2px; border-color: rgb(var(--vt-hue-rgb)); background: transparent; }
-:root[data-theme="contrast"] .bz-bind { border-width: 2px; border-color: var(--accent); background: transparent; }
-:root[data-theme="contrast"] .bz-bind.is-unset,
-:root[data-theme="contrast"] .bz-bind.is-broken { border-color: var(--err); background: transparent; }
-:root[data-theme="contrast"] .bz-bind.is-foreign { border-color: var(--warn); background: transparent; }
-:root[data-theme="contrast"] .bz-mode-strip.is-linked { border-bottom: 2px solid var(--accent); background: transparent; }
-:root[data-theme="contrast"] .bz-mode-strip.is-linked.has-gap { border-bottom-color: var(--err); background: transparent; }
-:root[data-theme="contrast"] .bz-cell.is-linked,
-:root[data-theme="contrast"] .bz-tcell.is-linked { background: transparent; }
-:root[data-theme="contrast"] .raci-chip.from-chart { outline-width: 2px; }
-:root[data-theme="contrast"] .chart-block,
-:root[data-theme="contrast"] .bz-node,
-:root[data-theme="contrast"] .toast,
-:root[data-theme="contrast"] .raci-popover,
-:root[data-theme="contrast"] #violations-popover,
-:root[data-theme="contrast"] .export-menu-list { border-width: 2px; }
+:root[data-theme^="hc-"] #view-tabs .vt-box--raci,
+:root[data-theme^="hc-"] #view-tabs .vt-box--flow { border-width: 2px; border-color: rgb(var(--vt-hue-rgb)); background: transparent; }
+:root[data-theme^="hc-"] .bz-bind { border-width: 2px; border-color: var(--accent); background: transparent; }
+:root[data-theme^="hc-"] .bz-bind.is-unset,
+:root[data-theme^="hc-"] .bz-bind.is-broken { border-color: var(--err); background: transparent; }
+:root[data-theme^="hc-"] .bz-bind.is-foreign { border-color: var(--warn); background: transparent; }
+:root[data-theme^="hc-"] .bz-mode-strip.is-linked { border-bottom: 2px solid var(--accent); background: transparent; }
+:root[data-theme^="hc-"] .bz-mode-strip.is-linked.has-gap { border-bottom-color: var(--err); background: transparent; }
+:root[data-theme^="hc-"] .bz-cell.is-linked,
+:root[data-theme^="hc-"] .bz-tcell.is-linked { background: transparent; }
+:root[data-theme^="hc-"] .raci-chip.from-chart { outline-width: 2px; }
+:root[data-theme^="hc-"] .chart-block,
+:root[data-theme^="hc-"] .bz-node,
+:root[data-theme^="hc-"] .toast,
+:root[data-theme^="hc-"] .raci-popover,
+:root[data-theme^="hc-"] #violations-popover,
+:root[data-theme^="hc-"] .export-menu-list { border-width: 2px; }
 /* Nested flows and frames at high contrast: the tinted washes that separate them from the canvas
    are exactly the low-contrast device this theme exists to remove, so frames become solid-outlined
    and the nested-flow card takes a full-weight border like every other panel. */
-:root[data-theme="contrast"] .bz-group { background: transparent; border-width: 2px; }
-:root[data-theme="contrast"] .bz-group.collapsed { background: var(--bg-2); }
-:root[data-theme="contrast"] .bz-group-head { background: var(--bg-3); border-bottom-color: var(--border); }
-:root[data-theme="contrast"] .bz-node--sub,
-:root[data-theme="contrast"] .bz-gal-card { border-width: 2px; }
-:root[data-theme="contrast"] .bz-node--sub .bz-node-head { background: var(--bg-3); }
-:root[data-theme="contrast"] .bz-port-row.is-off .bz-port-name { opacity: 1; color: var(--text-dim); }
-:root[data-theme="contrast"] svg.bz-gal-thumb rect { opacity: 1; }
+:root[data-theme^="hc-"] .bz-group { background: transparent; border-width: 2px; }
+:root[data-theme^="hc-"] .bz-group.collapsed { background: var(--bg-2); }
+:root[data-theme^="hc-"] .bz-group-head { background: var(--bg-3); border-bottom-color: var(--border); }
+:root[data-theme^="hc-"] .bz-node--sub,
+:root[data-theme^="hc-"] .bz-gal-card { border-width: 2px; }
+:root[data-theme^="hc-"] .bz-node--sub .bz-node-head { background: var(--bg-3); }
+:root[data-theme^="hc-"] .bz-port-row.is-off .bz-port-name { opacity: 1; color: var(--text-dim); }
+:root[data-theme^="hc-"] svg.bz-gal-thumb rect { opacity: 1; }
 /* Text glow and drop shadows read as blur at high contrast. */
-:root[data-theme="contrast"] #sidebar-arrow .sa-arrow,
-:root[data-theme="contrast"] #app-logo { text-shadow: none; filter: none; }
+:root[data-theme^="hc-"] #sidebar-arrow .sa-arrow,
+:root[data-theme^="hc-"] #app-logo { text-shadow: none; filter: none; }
 
 /* The whole document is a light one when printed — deliberately independent of the
    on-screen theme, so a dark or high-contrast session still prints on white paper
@@ -3924,8 +4115,13 @@ body[data-view="roster"] #legend { display: none; }
     var t = localStorage.getItem('raci-matrix-theme-v1');
     /* Dark is the default and stays the default: an unset preference is NOT resolved
        against prefers-color-scheme, so this tool looks the same on a fresh machine
-       whatever the OS is set to. Light and high contrast are opt-in. */
-    if (t === 'light' || t === 'contrast') document.documentElement.setAttribute('data-theme', t);
+       whatever the OS is set to. Light and high contrast are opt-in.
+       'contrast' is the pre-0.34 name for what is now 'hc-dark' — same palette, so an
+       existing preference is migrated rather than dropped back to dark. (Kept in step
+       with THEMES / THEME_ALIASES in the main script; this copy exists only because it
+       has to run before the first paint.) */
+    if (t === 'contrast') t = 'hc-dark';
+    if (t === 'light' || t === 'hc-light' || t === 'hc-dark' || t === 'hc-neon') document.documentElement.setAttribute('data-theme', t);
     else document.documentElement.setAttribute('data-theme', 'dark');
   } catch (_) {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -4041,7 +4237,10 @@ body[data-view="roster"] #legend { display: none; }
       <span class="ts-label" aria-hidden="true">Theme</span>
       <button type="button" class="ts-opt" role="radio" aria-checked="true" data-theme-set="dark" title="Dark — the default palette"><span class="ts-ico" aria-hidden="true">◐</span>Dark</button>
       <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="light" title="Light — light surfaces, hues re-picked for contrast on paper"><span class="ts-ico" aria-hidden="true">☀</span>Light</button>
-      <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="contrast" title="High contrast — black ground, white rules, maximum-chroma role colours"><span class="ts-ico" aria-hidden="true">◑</span>Contrast</button>
+      <span class="ts-label ts-label--hc" aria-hidden="true">High contrast</span>
+      <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="hc-light" aria-label="High contrast (light)" title="High contrast (light) — white ground, black rules, deepened role colours"><span class="ts-ico" aria-hidden="true">◑</span>Light</button>
+      <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="hc-dark" aria-label="High contrast (dark)" title="High contrast (dark) — black ground, white rules, maximum-chroma role colours"><span class="ts-ico" aria-hidden="true">◐</span>Dark</button>
+      <button type="button" class="ts-opt" role="radio" aria-checked="false" data-theme-set="hc-neon" aria-label="High contrast (neon)" title="High contrast (neon) — near-black ground and role colours at full voltage"><span class="ts-ico" aria-hidden="true">⚡</span>Neon</button>
     </div>
     <button id="btn-reset" title="Load the built-in demo dataset (replaces current charts and roster)">Demo</button>
     <button id="btn-clear" title="Wipe all activities and roster data — blank slate">Clear</button>
@@ -4098,7 +4297,7 @@ body[data-view="roster"] #legend { display: none; }
     --ring: 0 0 0 2px var(--card), 0 0 0 4px var(--accent);
   }
   @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
+    :root:not([data-theme="light"]):not([data-theme="hc-light"]){
       --paper:#0e121a; --card:#171c27; --inset:#10141d; --line:#28303f; --line-soft:#1f2734;
       --ink:#e9edf6; --muted:#9aa6ba; --faint:#69748a;
       --accent:#38cddd; --accent-ink:#7ce0ec; --accent-soft:#38cddd1c;
@@ -4116,10 +4315,11 @@ body[data-view="roster"] #legend { display: none; }
     --grid: rgba(120,165,225,.06);
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
   }
-  /* High contrast — matches the host app's "contrast" theme. Black paper, white rules,
-     maximum-chroma hues, and no soft washes: --accent-soft and --grid go transparent so
-     nothing tints the ground, and --shadow goes flat since a blur reads as smear here. */
-  :root[data-theme="contrast"]{
+  /* High contrast — matches the host app's hc- theme family. The base is dark: black paper,
+     white rules, maximum-chroma hues, no soft washes — --accent-soft and --grid go transparent
+     so nothing tints the paper, and --shadow goes flat since a blur reads as smear here. The
+     two blocks after it re-pick colour only. */
+  :root[data-theme^="hc-"]{
     --paper:#000000; --card:#000000; --inset:#0b0b0d; --line:#ffffff; --line-soft:#ffffff;
     --ink:#ffffff; --muted:#e4e6ea; --faint:#cfd3da;
     --accent:#40e7ff; --accent-ink:#8df1ff; --accent-soft:transparent;
@@ -4128,7 +4328,22 @@ body[data-view="roster"] #legend { display: none; }
     --shadow: none;
     --ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
   }
-  :root[data-theme="contrast"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
+  /* White paper, black rules: on a light ground contrast is won by DEEPENING a hue, so
+     the role colours darken and the C chip's label flips to white with them. */
+  :root[data-theme="hc-light"]{
+    --paper:#ffffff; --card:#ffffff; --inset:#f4f4f4; --line:#000000; --line-soft:#000000;
+    --ink:#000000; --muted:#1c1c1c; --faint:#333333;
+    --accent:#005c6b; --accent-ink:#004450; --accent-soft:transparent;
+    --r:#0044cc; --a:#be0000; --c:#8c5000; --c-ink:#ffffff; --i:#2d2d2d;
+  }
+  /* Full voltage: near-black violet paper, neon rules, role hues at maximum brightness. */
+  :root[data-theme="hc-neon"]{
+    --paper:#07020e; --card:#0d0418; --inset:#120826; --line:#cc44ff; --line-soft:#cc44ff;
+    --ink:#f4f7ff; --muted:#d9e4ff; --faint:#b9c8ee;
+    --accent:#39ff14; --accent-ink:#9dff7a; --accent-soft:transparent;
+    --r:#00f0ff; --a:#ff2a6d; --c:#fff100; --c-ink:#000000; --i:#a7b4cc;
+  }
+  :root[data-theme^="hc-"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -4707,7 +4922,7 @@ body[data-view="roster"] #legend { display: none; }
     --ring: 0 0 0 2px var(--card), 0 0 0 4px var(--accent);
   }
   @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
+    :root:not([data-theme="light"]):not([data-theme="hc-light"]){
       --paper:#0e121a; --card:#171c27; --inset:#10141d; --line:#28303f; --line-soft:#1f2734;
       --ink:#e9edf6; --muted:#9aa6ba; --faint:#69748a;
       --accent:#38cddd; --accent-ink:#7ce0ec; --accent-soft:#38cddd1c;
@@ -4725,10 +4940,11 @@ body[data-view="roster"] #legend { display: none; }
     --grid: rgba(120,165,225,.06);
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
   }
-  /* High contrast — matches the host app's "contrast" theme. Black paper, white rules,
-     maximum-chroma hues, and no soft washes: --accent-soft and --grid go transparent so
-     nothing tints the ground, and --shadow goes flat since a blur reads as smear here. */
-  :root[data-theme="contrast"]{
+  /* High contrast — matches the host app's hc- theme family. The base is dark: black paper,
+     white rules, maximum-chroma hues, no soft washes — --accent-soft and --grid go transparent
+     so nothing tints the paper, and --shadow goes flat since a blur reads as smear here. The
+     two blocks after it re-pick colour only. */
+  :root[data-theme^="hc-"]{
     --paper:#000000; --card:#000000; --inset:#0b0b0d; --line:#ffffff; --line-soft:#ffffff;
     --ink:#ffffff; --muted:#e4e6ea; --faint:#cfd3da;
     --accent:#40e7ff; --accent-ink:#8df1ff; --accent-soft:transparent;
@@ -4737,7 +4953,22 @@ body[data-view="roster"] #legend { display: none; }
     --shadow: none;
     --ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
   }
-  :root[data-theme="contrast"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
+  /* White paper, black rules: on a light ground contrast is won by DEEPENING a hue, so
+     the role colours darken and the C chip's label flips to white with them. */
+  :root[data-theme="hc-light"]{
+    --paper:#ffffff; --card:#ffffff; --inset:#f4f4f4; --line:#000000; --line-soft:#000000;
+    --ink:#000000; --muted:#1c1c1c; --faint:#333333;
+    --accent:#005c6b; --accent-ink:#004450; --accent-soft:transparent;
+    --r:#0044cc; --a:#be0000; --c:#8c5000; --c-ink:#ffffff; --i:#2d2d2d;
+  }
+  /* Full voltage: near-black violet paper, neon rules, role hues at maximum brightness. */
+  :root[data-theme="hc-neon"]{
+    --paper:#07020e; --card:#0d0418; --inset:#120826; --line:#cc44ff; --line-soft:#cc44ff;
+    --ink:#f4f7ff; --muted:#d9e4ff; --faint:#b9c8ee;
+    --accent:#39ff14; --accent-ink:#9dff7a; --accent-soft:transparent;
+    --r:#00f0ff; --a:#ff2a6d; --c:#fff100; --c-ink:#000000; --i:#a7b4cc;
+  }
+  :root[data-theme^="hc-"] :focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -5676,13 +5907,21 @@ window.addEventListener('resize', applyCarbonWeave);   // fires when dpr changes
 // colleague's chart must never repaint your app. Dark is the default and an unset preference
 // is not resolved against the OS, so a fresh browser always opens dark.
 const THEME_KEY = 'raci-matrix-theme-v1';
-const THEMES = ['dark', 'light', 'contrast'];
+// Picker order is also the arrow-key order: the two everyday themes, then the high-contrast
+// family. Anything starting 'hc-' inherits the structural stylesheet by prefix, so a new
+// variant is one token block plus one entry here.
+const THEMES = ['dark', 'light', 'hc-light', 'hc-dark', 'hc-neon'];
+// 'contrast' was the single high-contrast theme before v0.34; it was this exact palette, so a
+// stored preference lands on the variant its owner actually chose rather than being reset.
+const THEME_ALIASES = { contrast: 'hc-dark' };
+function normalizeTheme(t) {
+  return THEMES.includes(t) ? t : (THEME_ALIASES[t] || 'dark');
+}
 function currentTheme() {
-  const t = document.documentElement.getAttribute('data-theme');
-  return THEMES.includes(t) ? t : 'dark';
+  return normalizeTheme(document.documentElement.getAttribute('data-theme'));
 }
 function applyTheme(theme, opts) {
-  const t = THEMES.includes(theme) ? theme : 'dark';
+  const t = normalizeTheme(theme);
   document.documentElement.setAttribute('data-theme', t);
   if (!(opts && opts.transient)) {
     try { localStorage.setItem(THEME_KEY, t); } catch (_) {}   // private mode: apply anyway, just don't remember
@@ -6035,7 +6274,9 @@ const ROLES = ['R','A','C','I'];
 // unique per row — the accountable/approver/decider) and the "doer" letter (the worker; the one
 // whose Primary cell cascades down as the next tier's owner in the org chart).
 //   Matrix charts use raci|rasci — they share A/R semantics, so the existing cascade is untouched.
-//   The Business Case decision graph can additionally use daci|rapid (no cascade there).
+//   Business Case flows are RACI, full stop (v0.34): a flow's steps are execution work, and the
+//   DACI / RAPID decision variants offered before only ever split the vocabulary of a tool whose
+//   whole point is one shared responsibility language across chart and flow.
 const FRAMEWORKS = {
   raci: {
     name: 'RACI', blurb: 'Execution — who does the work, who owns the outcome.',
@@ -6058,30 +6299,9 @@ const FRAMEWORKS = {
       I: { label: 'Informed',    desc: 'Kept in the loop' }
     }
   },
-  daci: {
-    name: 'DACI', blurb: 'Decisions — Driver/Approver split for decision velocity.',
-    roles: ['D','A','C','I'], owner: 'A', doer: 'D',
-    meta: {
-      D: { label: 'Driver',      desc: 'Drives the decision forward' },
-      A: { label: 'Approver',    desc: 'Signs off — the single decision owner' },
-      C: { label: 'Contributor', desc: 'Provides input' },
-      I: { label: 'Informed',    desc: 'Told the outcome' }
-    }
-  },
-  rapid: {
-    name: 'RAPID', blurb: 'Decision rights — explicit recommend / agree / decide.',
-    roles: ['R','A','P','I','D'], owner: 'D', doer: 'P',
-    meta: {
-      R: { label: 'Recommend', desc: 'Proposes the course of action' },
-      A: { label: 'Agree',     desc: 'Must agree — holds a veto' },
-      P: { label: 'Perform',   desc: 'Carries out the decision' },
-      I: { label: 'Input',     desc: 'Consulted for input' },
-      D: { label: 'Decide',    desc: 'Makes the final call — the single owner' }
-    }
-  }
 };
-const CHART_FRAMEWORKS = ['raci', 'rasci'];          // org matrix: share the A/R cascade semantics
-const BIZ_FRAMEWORKS   = ['raci', 'daci', 'rapid'];  // decision graph: flat, no cascade
+const CHART_FRAMEWORKS = ['raci', 'rasci'];   // org matrix: share the A/R cascade semantics
+const BIZ_FRAMEWORKS   = ['raci'];            // flows: always RACI, and there is no picker (v0.34)
 // Every letter any framework can use, in canonical display order. normalizeRaci keeps only these
 // (and orders by this), so switching a chart's framework never silently drops a cell's letters.
 const ALL_ROLE_LETTERS = ['R', 'D', 'A', 'S', 'P', 'C', 'I'];
@@ -6946,9 +7166,9 @@ function bizBindCtx(t) {
 }
 // Carry a chart row's letters into the flow's framework alphabet. Owner→owner and doer→doer always
 // map — that is the one thing every RACI-family framework agrees on — and any other letter carries
-// across only if the flow's framework actually has it. Same framework on both sides is the
-// identity case, which is all this does in practice; the translation exists so pointing a DACI or
-// RAPID flow at a RACI chart reads as decision roles rather than as letters that happen to collide.
+// across only if the flow's framework actually has it. Since v0.34 flows are always RACI, so the
+// live case is a RASCI chart feeding a RACI flow: A and R map straight across and S, which RACI has
+// no word for, drops rather than being silently rewritten into some other role.
 function translateLetters(letters, FROM, TO) {
   if (FROM === TO) return normalizeRaci(letters);
   const out = new Set();
@@ -9107,10 +9327,6 @@ function bizSelectorHtml() {
   const opts = (attached.length && standalone.length)
     ? grp('Attached to chart tasks', attached) + grp('Standalone (tabletop)', standalone)
     : state.bizCases.map(opt).join('');
-  const fwOpts = BIZ_FRAMEWORKS.map(k =>
-    `<option value="${k}"${b.framework === k ? ' selected' : ''}>${FRAMEWORKS[k].name}</option>`).join('');
-  const modeOpts = BIZ_MODES.map(k =>
-    `<option value="${k}"${b.mode === k ? ' selected' : ''}>${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name}</option>`).join('');
   // Source chart picker rides alongside, but only when there is a choice to make and the flow is
   // actually in the mode that uses it.
   const linkable = bizLinkableCharts();
@@ -9133,10 +9349,7 @@ function bizSelectorHtml() {
     <button id="bz-new" title="New business case">+ New Graph</button>
     <button id="bz-rename" title="Rename this business case">Rename</button>
     <button id="bz-del" title="Delete this business case">Delete</button>
-    <span class="bz-sep" aria-hidden="true"></span>
-    <select id="bz-mode" class="bz-mode-sel" data-mode="${b.mode}" title="${escapeHtml(BIZ_MODES.map(k => `${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name} — ${BIZ_MODE_META[k].blurb}`).join('\n'))}">${modeOpts}</select>
-    ${srcSel}
-    <select id="bz-framework" title="Decision framework — DACI / RAPID fit decision points better than RACI">${fwOpts}</select>
+    ${srcSel ? `<span class="bz-sep" aria-hidden="true"></span>${srcSel}` : ''}
     <span class="bz-sep" aria-hidden="true"></span>
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
     <button id="bz-group" ${nSel ? '' : 'disabled '}title="${nSel ? `Wrap the ${nSel} selected step${nSel === 1 ? '' : 's'} in a labelled frame` : 'Select steps first — click one, then shift-click others, or shift-drag a box around them'}">⊟ Group${nSel ? ` (${nSel})` : ''}</button>
@@ -9664,10 +9877,14 @@ function bizFlowTableHtml() {
 // from, and how many of its steps have actually named one.
 function bizModeStripHtml(b) {
   const M = BIZ_MODE_META[b.mode] || BIZ_MODE_META.free;
+  // The picker IS the badge (v0.34). It reads as the strip's label — the mode named in the one
+  // place the mode is already explained — and setting it is the same click that read it.
+  const sel = `<select id="bz-mode" class="bzm-badge" data-mode="${b.mode}" title="${
+    escapeHtml(BIZ_MODES.map(k => `${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name} — ${BIZ_MODE_META[k].blurb}`).join('\n'))}">${
+    BIZ_MODES.map(k => `<option value="${k}"${b.mode === k ? ' selected' : ''}>${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name}</option>`).join('')}</select>`;
   if (!bizIsLinked(b)) {
     return `<div class="bz-mode-strip is-free">
-      <span class="bzm-badge">${M.icon} ${escapeHtml(M.name)}</span>
-      <span class="bzm-txt">${escapeHtml(M.blurb)}</span></div>`;
+      <span class="bzm-txt">${escapeHtml(M.blurb)}</span>${sel}</div>`;
   }
   const steps = b.tasks.filter(t => !isSubflow(t));
   const bound = steps.filter(t => bizBindCtx(t)).length;
@@ -9678,7 +9895,6 @@ function bizModeStripHtml(b) {
   const gap = unset + broken;
   const chart = bizSourceChart(b);
   return `<div class="bz-mode-strip is-linked${gap ? ' has-gap' : ''}">
-    <span class="bzm-badge">${M.icon} ${escapeHtml(M.name)}</span>
     <span class="bzm-src">rows from ${chart
       ? `<b>${escapeHtml(chart.title || 'Untitled chart')}</b>`
       : '<b class="bzm-none">no organization chart available</b>'}</span>
@@ -9687,6 +9903,7 @@ function bizModeStripHtml(b) {
          broken ? `${broken} step${broken === 1 ? '' : 's'} point${broken === 1 ? 's' : ''} at a row that no longer exists — re-point or unlink ${broken === 1 ? 'it' : 'them'}.` : ''].filter(Boolean).join('\n')
       : 'Every step names the chart row it implements.')}">${bound}/${steps.length} step${steps.length === 1 ? '' : 's'} linked${broken ? ` · ${broken} broken` : ''}</span>
     ${unset ? `<button type="button" class="bzm-fix" data-bz-bind-next="1" title="Centre the next unlinked step and pick its row">Link the next one →</button>` : ''}
+    ${sel}
   </div>`;
 }
 
@@ -12150,8 +12367,6 @@ document.addEventListener('change', e => {
   // Picking from the dropdown is a jump, not a step out of a nested flow, so the Back trail goes.
   if (bzSel) { closeBizPartyPanel(); _bizNavStack.length = 0; _bizSel.clear(); _bizSelGroup = null;
     state.activeBizCaseId = bzSel.value; saveState(); renderBizcase(); return; }
-  const bzFwSel = e.target.closest('#bz-framework');
-  if (bzFwSel) { if (BIZ_FRAMEWORKS.includes(bzFwSel.value)) { closeBizPartyPanel(); abc().framework = bzFwSel.value; saveState(); renderBizcase(); } return; }
   const bzModeSel = e.target.closest('#bz-mode');
   if (bzModeSel) { closeBizPartyPanel(); bizSetMode(bzModeSel.value); return; }
   const bzSrcSel = e.target.closest('#bz-source-chart');
@@ -12542,7 +12757,7 @@ function ingestKitMarkdown() {
     '',
     '### 3.2 `bizCases[]` — business case task flows',
     '',
-    'Fields: `id`, `name`, `description`, `framework` (`raci` | `daci` | `rapid`), `mode`,',
+    'Fields: `id`, `name`, `description`, `framework` (always `raci` — omit it), `mode`,',
     '`sourceChartId`, `anchor`, `tasks[]`, `edges[]`, `groups[]`, `view {panX,panY,zoom}`, `showTable`.',
     '',
     '- `mode` is `"free"` or `"linked"` and decides what the steps are allowed to say. Omit it and',
@@ -12644,7 +12859,7 @@ function ingestKitMarkdown() {
     '',
     '## 5. Frameworks and role letters',
     '',
-    'Charts: `raci`, `rasci`. Flows: `raci`, `daci`, `rapid`.',
+    'Charts: `raci` or `rasci`. Flows: always `raci`.',
     '');
   Object.keys(FRAMEWORKS).forEach(k => p(`- \`${k}\` — ${fw2(k)}. ${FRAMEWORKS[k].blurb}`));
   p('',
