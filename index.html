@@ -610,8 +610,16 @@ body[data-view="chart"] #drill-crumbs { display: flex; }
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ct) 50%, transparent), 0 0 16px -2px color-mix(in srgb, var(--ct) 60%, transparent);
 }
 .crumb.current:hover { transform: none; }
-.crumb.current .crumb-tier { color: rgba(var(--shadow-rgb),0.62); }
+/* The tier label on a FILLED chip has to be read off that fill, so it comes from --on-fill like the
+   name does — the one token that already knows whether text on a saturated colour should be light
+   or dark in this theme. It was ink at 62%, which is right only while every tier fill is bright;
+   the moment a theme deepens its tiers (hc-light does) that label goes dark-on-dark and disappears.
+   Mixing toward the fill rather than toward transparent keeps it a step quieter than the name
+   without ever dropping it below the fill's own contrast. */
+.crumb.current .crumb-tier { color: color-mix(in srgb, var(--on-fill) 76%, var(--ct)); }
 .crumb.current .crumb-name { color: var(--on-fill); }
+/* High contrast doesn't do "a step quieter" — that dimming is the thing it exists to undo. */
+:root[data-theme^="hc-"] .crumb.current .crumb-tier { color: var(--on-fill); }
 /* tier hues, cohesive with the chart tier colors */
 .crumb.t0 { --ct: var(--tier-0); }
 .crumb.t1 { --ct: var(--tier-1); }
@@ -2096,7 +2104,7 @@ input[type="file"] { display: none; }
 .actions { order: 1; }
 
 @media (min-width: 1200px) {
-  :root { --tab-rail-w: 224px; --tool-rail-w: 210px; }
+  :root { --tab-rail-w: 224px; --tool-rail-w: 244px; }
   #app-frame {
     display: grid;
     grid-template-columns: var(--tab-rail-w) minmax(0, 1fr) var(--tool-rail-w);
@@ -2185,6 +2193,13 @@ input[type="file"] { display: none; }
     position: relative; z-index: 1;
   }
   #brand-zone { order: 0; gap: 10px; padding: 0 2px 10px; border-bottom: 1px solid var(--border); }
+  /* The product's own name is the one string in the rail that must never break across lines — a
+     title snapped into "ASIC / RACI / Tool" reads as three words, not one product. The rail is wide
+     enough for it, and the version chip drops onto its own line beneath rather than competing for
+     the width that keeps the name whole. (Vertical room is the one thing a rail has to spare.) */
+  #tool-rail #app-brand { flex-wrap: wrap; row-gap: 3px; padding-right: 0; min-width: 0; }
+  #tool-rail #app-brand .brand-name { flex: 1 0 100%; white-space: nowrap; }
+  #tool-rail #app-brand .brand-ver { flex: 0 0 auto; }
   #tool-rail .actions {
     order: 1; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
     gap: 6px; margin: 0; justify-content: flex-start;
@@ -3062,8 +3077,21 @@ body[data-lock="flow"] .bz-node { cursor: default; }
 body.bz-connecting .bz-canvas { cursor: crosshair; }
 .bz-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
 .bz-edges { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
-.bz-edges .bz-edge { pointer-events: stroke; cursor: pointer; }
+/* grab, not pointer: the noodle can be picked up and bent, and the cursor is the only place that
+   affordance is advertised before someone tries it. A click still opens the handoff popover. */
+.bz-edges .bz-edge { pointer-events: stroke; cursor: grab; }
 .bz-edges .bz-edge:hover { stroke-width: 4; }
+body.bz-routing .bz-edges .bz-edge { cursor: grabbing; }
+.bz-redirs { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; z-index: 3; }
+/* A redirector: the noodle's own colour so it reads as part of that cable rather than as a box on
+   the canvas, ringed in the page ground so it stays visible where it crosses a card or a frame. */
+.bz-redirs .bz-via {
+  pointer-events: all; cursor: grab;
+  stroke: var(--bg); stroke-width: 2.5;
+  transition: r 0.1s ease;
+}
+.bz-redirs .bz-via:hover { r: 8; stroke: var(--text-strong); }
+body.bz-routing .bz-redirs .bz-via { cursor: grabbing; }
 
 .bz-empty {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -5995,6 +6023,24 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.35 alpha - REDIRECTORS on a handoff: drag any noodle and it bends around whatever is in
+//                  the way, leaving a handle you can drag again or double-click to remove. They
+//                  live on the EDGE (edge.via[]), not in b.tasks, and that is the whole design:
+//                  routing is geometry, so a routed handoff is still one handoff from A to B and
+//                  every reader of the graph — derived IO, group boundary crossings, the flow
+//                  table, the rules, all five exports — is untouched by how the line gets there.
+//                  A routing node in the task list would have landed in the middle of "who hands
+//                  what to whom", which is the one answer this tool exists to keep true. Handles
+//                  ride in their own SVG layer above the cards (a handle a card covers is a handle
+//                  you cannot grab, and steering around a card is exactly when you reach for one),
+//                  while the noodles stay behind them as before. A branch condition now rides the
+//                  middle of the ROUTE rather than the straight line between the ends, so routing
+//                  around an obstacle no longer strands the label on top of it.
+//                  Also: the right rail widens to 244px and the product name never wraps — the
+//                  version chip drops to its own line rather than splitting "ASIC RACI Tool" into
+//                  three; the breadcrumb's tier label on a filled chip reads off --on-fill like
+//                  the name does, instead of ink at 62% that vanished the moment a theme deepened
+//                  its tier fills; and hiding the flow gallery now says how to get it back.
 //     0.34 alpha - Flow chrome, the theme system, and how a step behaves inside a frame.
 //                  MODE STRIP — the Free-Form / Chart-Linked badge sat on the left of the strip
 //                  while the picker that set it was a second copy in the toolbar: two places to
@@ -6310,7 +6356,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.34';
+const APP_VERSION = '0.35';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -7014,9 +7060,20 @@ function makeBizTask(name) {
 // mating point on it — null for a plain step (one socket per side), or the referenced flow's
 // entry/exit step id when the endpoint is a nested-flow box exposing several sockets (v0.30).
 // label = optional branch condition ('Yes', 'No', 'If escalated', …) for decision points.
+// via (v0.35) = REDIRECTORS: ordered world-space points the noodle is routed through, so a handoff
+// can be steered around the boxes between its two ends. They are pure geometry and carry no
+// meaning: the edge is still one handoff from `from` to `to`, so every reader of the graph —
+// derived IO, group boundary crossings, the flow table, rules, all five exports — is untouched by
+// how the line gets there. That is the whole reason routing lives on the edge rather than in a
+// node of its own: a box in b.tasks would land in the middle of "who hands what to whom", and the
+// tool's central claim is that that answer is always true.
 function makeBizEdge(from, to, label, fromPort, toPort) {
   return { id: 'e_' + uid(), from, to, label: label || '', artifactIds: [],
-    fromPort: fromPort || null, toPort: toPort || null };
+    fromPort: fromPort || null, toPort: toPort || null, via: [] };
+}
+function cleanVia(v) {
+  return (Array.isArray(v) ? v : []).filter(p => p && Number.isFinite(+p.x) && Number.isFinite(+p.y))
+    .slice(0, 24).map(p => ({ x: Math.round(+p.x), y: Math.round(+p.y) }));
 }
 // Identity of a connection. Two edges between the same pair of boxes are still distinct handoffs
 // when they leave/enter different mating points, so the port is part of the key — this is what
@@ -7711,7 +7768,8 @@ function migrateState(s) {
     ).map(ed => ({ id: typeof ed.id === 'string' && ed.id ? ed.id : 'e_' + uid(), from: ed.from, to: ed.to,
                    label: typeof ed.label === 'string' ? ed.label : '', artifactIds: cleanIO(ed.artifactIds),
                    fromPort: typeof ed.fromPort === 'string' && ed.fromPort ? ed.fromPort : null,
-                   toPort: typeof ed.toPort === 'string' && ed.toPort ? ed.toPort : null }))
+                   toPort: typeof ed.toPort === 'string' && ed.toPort ? ed.toPort : null,
+                   via: cleanVia(ed.via) }))
      .filter(ed => { const key = bizEdgeKey(ed); if (seen.has(key)) return false; seen.add(key); return true; });
     // Anchor (v0.18): keep only when it resolves against the already-normalized s.charts —
     // a dangling anchor degrades the flow to standalone, never deletes flow data. Walked with a
@@ -9146,6 +9204,19 @@ document.addEventListener('mouseup', () => {
 });
 // double-click a pane header to snap it back into the nested cascade
 document.addEventListener('dblclick', e => {
+  // Removing a redirector straightens the leg it was bending; the handoff itself is untouched,
+  // which is the point of routing living on the edge rather than in a node.
+  const viaEl = state.viewMode === 'bizcase' && e.target.closest && e.target.closest('[data-bz-via]');
+  if (viaEl) {
+    const ed = abc().edges.find(x => x.id === viaEl.dataset.bzVia);
+    const i = +viaEl.dataset.viaI;
+    if (ed && ed.via && ed.via[i]) {
+      ed.via.splice(i, 1);
+      saveState(); drawBizEdges();
+      showToast(ed.via.length ? 'Redirector removed.' : 'Redirector removed — the handoff runs straight again.', 'suggest');
+    }
+    return;
+  }
   if (e.target.closest('.tier-edit')) return;          // double-click selects text, not snap-back
   const head = e.target.closest('.chart-head');
   if (!head || state.viewMode !== 'chart') return;
@@ -9416,7 +9487,7 @@ function bizSelectorHtml() {
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
     <button id="bz-group" ${nSel ? '' : 'disabled '}title="${nSel ? `Wrap the ${nSel} selected step${nSel === 1 ? '' : 's'} in a labelled frame` : 'Select steps first — click one, then shift-click others, or shift-drag a box around them'}">⊟ Group${nSel ? ` (${nSel})` : ''}</button>
     <button id="bz-toggle-table" class="${b.showTable ? 'active' : ''}" title="Show/hide the RACI table pane">▦ Table</button>
-    <span class="bz-meta">${b.tasks.length - nSub} step${b.tasks.length - nSub === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}${nSub ? ` · ${nSub} nested flow${nSub === 1 ? '' : 's'}` : ''}${nGrp ? ` · ${nGrp} group${nGrp === 1 ? '' : 's'}` : ''} · drag a socket to connect · shift-drag to select · scroll to zoom</span>`;
+    <span class="bz-meta">${b.tasks.length - nSub} step${b.tasks.length - nSub === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}${nSub ? ` · ${nSub} nested flow${nSub === 1 ? '' : 's'}` : ''}${nGrp ? ` · ${nGrp} group${nGrp === 1 ? '' : 's'}` : ''} · drag a socket to connect · drag a handoff to route it · shift-drag to select · scroll to zoom</span>`;
 }
 
 // ---- Flow gallery (v0.30) ----
@@ -9505,7 +9576,7 @@ function bizGalleryHtml() {
   return `<aside class="bz-gallery" id="bz-gallery-pane">
     <div class="bz-gal-head">
       <h3>Flow gallery</h3>
-      <button type="button" id="bz-gal-close" title="Hide the gallery">×</button>
+      <button type="button" id="bz-gal-close" title="Hide the gallery — ⊞ Gallery in the toolbar brings it back">×</button>
     </div>
     <input id="bz-gal-filter" type="search" data-lock-ok placeholder="Filter flows…" value="${escapeHtml(_bizGalQ)}" spellcheck="false">
     <div class="bz-gal-hint">Click to open · drag onto the canvas to nest</div>
@@ -10078,6 +10149,11 @@ function renderBizcase() {
             <svg class="bz-edges" id="bz-edges" xmlns="http://www.w3.org/2000/svg"></svg>
             ${frames}
             ${nodes}
+            <!-- Redirector handles ride in their own layer ABOVE the cards. The noodles stay
+                 beneath them, which is right — a handoff should pass behind a step, not across its
+                 face — but a handle that a card covers is a handle you cannot grab, and steering a
+                 line around a card is exactly when you reach for one. -->
+            <svg class="bz-redirs" id="bz-redirs" xmlns="http://www.w3.org/2000/svg"></svg>
           </div>
           <div id="bz-zoom-ctl" class="zoom-ctl">
             <button id="bz-zoom-out" title="Zoom out">−</button>
@@ -10146,6 +10222,49 @@ function bizFit() {
 function bizEdgePath(x1, y1, x2, y2) {
   const dx = Math.max(40, Math.abs(x2 - x1) * 0.5);
   return `M ${x1} ${y1} C ${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`;
+}
+// The same noodle routed through its redirectors. Each leg is a curve in its own right, but the
+// handles are aimed along the LINE THROUGH each waypoint rather than horizontally, so consecutive
+// legs leave and arrive at the same angle and the joins read as one continuous cable instead of a
+// row of separate hops. Handle length is capped by the shorter neighbouring leg, which is what
+// stops a short leg between two far-apart ones from looping back on itself.
+function bizEdgePathVia(x1, y1, x2, y2, via) {
+  if (!via || !via.length) return bizEdgePath(x1, y1, x2, y2);
+  const pts = [{ x: x1, y: y1 }, ...via, { x: x2, y: y2 }];
+  // Tangent at each point: endpoints stay horizontal (that is how a socket leaves a card);
+  // interior points follow the direction from the previous point to the next.
+  const tan = pts.map((p, i) => {
+    if (i === 0 || i === pts.length - 1) return { x: 1, y: 0 };
+    const a = pts[i - 1], c = pts[i + 1];
+    const vx = c.x - a.x, vy = c.y - a.y, len = Math.hypot(vx, vy) || 1;
+    return { x: vx / len, y: vy / len };
+  });
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1];
+    const seg = Math.hypot(q.x - p.x, q.y - p.y);
+    const h = Math.max(12, Math.min(seg * 0.42, 120));
+    const c1 = { x: p.x + tan[i].x * h, y: p.y + tan[i].y * h };
+    const c2 = { x: q.x - tan[i + 1].x * h, y: q.y - tan[i + 1].y * h };
+    d += ` C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${q.x} ${q.y}`;
+  }
+  return d;
+}
+// Which leg of a routed noodle a canvas point is nearest — i.e. where a new redirector grabbed at
+// that point belongs in via[]. Distance to each segment of the polyline through the waypoints;
+// the winning segment's index is the insertion index.
+function bizViaInsertIndex(p1, p2, via, px, py) {
+  const pts = [p1, ...(via || []), p2];
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], c = pts[i + 1];
+    const vx = c.x - a.x, vy = c.y - a.y;
+    const len2 = vx * vx + vy * vy;
+    const t = len2 ? Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / len2)) : 0;
+    const d = Math.hypot(px - (a.x + vx * t), py - (a.y + vy * t));
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
 }
 
 // Which socket an edge endpoint actually attaches to. Resolution order, and each step exists for
@@ -10218,6 +10337,8 @@ function drawBizEdges(rubber) {
   b.edges.forEach(e => { fromCount[e.from] = (fromCount[e.from] || 0) + 1; });
   Object.keys(fromCount).forEach(k => { if (fromCount[k] >= 2) branchSrc.add(k); });
   const byId = new Map(b.tasks.map(x => [x.id, x]));
+  let redirs = '';                 // collected separately so every handle paints above every noodle
+  _bizEdgeEnds = Object.create(null);
   b.edges.forEach(e => {
     const from = byId.get(e.from), to = byId.get(e.to);
     if (!from || !to) return;
@@ -10229,20 +10350,39 @@ function drawBizEdges(rubber) {
     const p1 = pointAt(bizEndpointSel(b, e.from, e.fromPort, 'out'));
     const p2 = pointAt(bizEndpointSel(b, e.to, e.toPort, 'in'));
     if (!p1 || !p2) return;
+    // Cached for routing: where a redirector belongs in via[] depends on the whole polyline, and
+    // the two ends of it are measured from live sockets that only this pass knows.
+    _bizEdgeEnds[e.id] = { p1, p2 };
     const nested = isSubflow(from) || isSubflow(to);
     const branch = branchSrc.has(e.from);
     const stroke = nested ? C_NEST : branch ? C_BRANCH : C_PLAIN;
     const marker = nested ? 'bz-arrow-n' : branch ? 'bz-arrow-b' : 'bz-arrow';
-    inner += `<path class="bz-edge${nested ? ' is-nested' : ''}" data-bz-edge="${e.id}" d="${bizEdgePath(p1.x, p1.y, p2.x, p2.y)}" fill="none" stroke="${stroke}" stroke-width="2.5" marker-end="url(#${marker})"/>`;
+    const via = e.via || [];
+    inner += `<path class="bz-edge${nested ? ' is-nested' : ''}" data-bz-edge="${e.id}" d="${bizEdgePathVia(p1.x, p1.y, p2.x, p2.y, via)}" fill="none" stroke="${stroke}" stroke-width="2.5" marker-end="url(#${marker})"/>`;
+    // Redirector handles. Drawn after the noodle so they sit on top of it, and only for edges that
+    // have any — an un-routed handoff shows nothing, so the canvas stays as quiet as it was.
+    via.forEach((v, i) => {
+      redirs += `<circle class="bz-via" data-bz-via="${e.id}" data-via-i="${i}" cx="${v.x}" cy="${v.y}" r="6" fill="${stroke}"><title>Redirector — drag to route this handoff. Double-click to remove it.</title></circle>`;
+    });
+    // The label rides the middle of the route, not the straight line between the two ends —
+    // otherwise routing a noodle around an obstacle leaves its condition stranded on the obstacle.
     if (e.label) {
-      const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
-      inner += `<text class="bz-edge-label" x="${mx}" y="${my - 4}" text-anchor="middle">${escapeHtml(e.label)}</text>`;
+      const mid = via.length ? via[(via.length - 1) >> 1] : { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const lx = via.length % 2 === 0 && via.length ? (via[via.length / 2 - 1].x + via[via.length / 2].x) / 2 : mid.x;
+      const ly = via.length % 2 === 0 && via.length ? (via[via.length / 2 - 1].y + via[via.length / 2].y) / 2 : mid.y;
+      inner += `<text class="bz-edge-label" x="${lx}" y="${ly - 10}" text-anchor="middle">${escapeHtml(e.label)}</text>`;
     }
   });
+  inner += redirs;
   if (rubber) {
     inner += `<path class="bz-rubber" d="${bizEdgePath(rubber.x1, rubber.y1, rubber.x2, rubber.y2)}" fill="none" stroke="${C_PLAIN}" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>`;
   }
   svg.innerHTML = inner;
+  const rsvg = document.getElementById('bz-redirs');
+  if (rsvg) {
+    rsvg.setAttribute('width', maxX); rsvg.setAttribute('height', maxY);
+    rsvg.innerHTML = redirs;
+  }
   drawBizMinimap();
 }
 
@@ -10963,6 +11103,9 @@ function bizDeleteCase() {
 function bizToggleGallery() {
   state.bizGallery = !state.bizGallery;
   saveState(); renderBizcase();
+  // Hiding a pane with an × is a one-way door unless something names the way back — the ⊞ Gallery
+  // button is right there, but nobody reads a toolbar looking for the thing they just dismissed.
+  if (!state.bizGallery) showToast('Gallery hidden — ⊞ Gallery in the toolbar brings it back.', 'suggest');
 }
 function bizToggleTable() {
   abc().showTable = !abc().showTable;
@@ -10971,6 +11114,13 @@ function bizToggleTable() {
 
 // ---- bizcase canvas interactions (each guarded to viewMode === 'bizcase') ----
 let bizDrag = null, bizConnect = null, bizPan = null, bizDragSuppressClick = false, bizFrontId = null;
+// An in-flight redirector drag. `pending` means the grab landed on the noodle rather than on an
+// existing handle: the waypoint is not created until the pointer actually travels, so a plain click
+// on a handoff still opens its popover and the canvas gains nothing from a mis-click.
+let bizViaDrag = null;
+// Endpoint geometry from the last paint, keyed by edge id — see drawBizEdges.
+let _bizEdgeEnds = Object.create(null);
+let _bizRoutedOnce = false;
 // Frame drag (by its header) and shift-drag marquee — both live alongside the box drag above.
 let bizGroupDrag = null, bizMarquee = null;
 // Selection is a SET since v0.30 (grouping needs more than one box at a time). The last box added
@@ -11081,7 +11231,31 @@ document.addEventListener('mousedown', e => {
     }
     return;                                         // no preventDefault — lets the name caret work
   }
-  if (e.target.closest('[data-bz-edge]')) return;  // edge click handled on click
+  // ---- Redirectors (v0.35): grab a handle to move it, or the noodle itself to bend it ----
+  const viaEl = e.target.closest('[data-bz-via]');
+  if (viaEl) {
+    const ed = abc().edges.find(x => x.id === viaEl.dataset.bzVia);
+    const i = +viaEl.dataset.viaI;
+    if (ed && ed.via && ed.via[i]) {
+      e.preventDefault();
+      bizViaDrag = { edgeId: ed.id, index: i, sx: e.clientX, sy: e.clientY,
+                     ox: ed.via[i].x, oy: ed.via[i].y, moved: false, pending: false };
+      document.body.classList.add('bz-routing');
+    }
+    return;
+  }
+  const edgeEl = e.target.closest('[data-bz-edge]');
+  if (edgeEl) {
+    // Where on the route the grab landed decides which leg the new redirector splits, so a noodle
+    // already routed through two points gains a third in the right place rather than at the end.
+    const ed = abc().edges.find(x => x.id === edgeEl.dataset.bzEdge);
+    if (ed) {
+      const w = bzScreenToWorld(e.clientX, e.clientY);
+      bizViaDrag = { edgeId: ed.id, index: -1, sx: e.clientX, sy: e.clientY,
+                     ox: w.x, oy: w.y, moved: false, pending: true };
+    }
+    return;                                        // a click without travel still opens the popover
+  }
   if (e.target.closest('.bz-node')) return;        // cell click handled on click
   if (e.target.closest('#bz-minimap')) {           // minimap → jump the viewport, then drag to steer
     e.preventDefault();
@@ -11109,6 +11283,29 @@ document.addEventListener('mousedown', e => {
 });
 document.addEventListener('mousemove', e => {
   if (state.viewMode !== 'bizcase') return;
+  if (bizViaDrag) {
+    const z = abc().view.zoom || 1;
+    const dx = (e.clientX - bizViaDrag.sx) / z, dy = (e.clientY - bizViaDrag.sy) / z;
+    if (!bizViaDrag.moved && Math.hypot(dx, dy) < 4) return;   // below the threshold it is a click
+    const ed = abc().edges.find(x => x.id === bizViaDrag.edgeId);
+    if (!ed) { bizViaDrag = null; return; }
+    ed.via = ed.via || [];
+    // First real travel on a noodle grab is what creates the redirector — and it is created at the
+    // point that was grabbed, so the line bends from under the cursor rather than jumping to it.
+    if (bizViaDrag.pending) {
+      const p1 = _bizEdgeEnds[ed.id] && _bizEdgeEnds[ed.id].p1;
+      const p2 = _bizEdgeEnds[ed.id] && _bizEdgeEnds[ed.id].p2;
+      const at = (p1 && p2) ? bizViaInsertIndex(p1, p2, ed.via, bizViaDrag.ox, bizViaDrag.oy) : ed.via.length;
+      ed.via.splice(at, 0, { x: Math.round(bizViaDrag.ox), y: Math.round(bizViaDrag.oy) });
+      bizViaDrag.index = at; bizViaDrag.pending = false; bizViaDrag.created = true;
+      document.body.classList.add('bz-routing');
+    }
+    bizViaDrag.moved = true;
+    const v = ed.via[bizViaDrag.index];
+    if (v) { v.x = Math.round(bizViaDrag.ox + dx); v.y = Math.round(bizViaDrag.oy + dy); }
+    drawBizEdges();
+    return;
+  }
   if (_bizMiniDrag) { bizMiniNavigate(e.clientX, e.clientY); return; }
   if (bizMarquee) {
     const cv = document.getElementById('bz-canvas');
@@ -11175,6 +11372,20 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mouseup', e => {
   if (state.viewMode !== 'bizcase') return;
+  if (bizViaDrag) {
+    document.body.classList.remove('bz-routing');
+    if (bizViaDrag.moved) {
+      bizDragSuppressClick = true;                 // a bend is not a click on the handoff
+      saveState();
+      // Taught once per session, and only when a redirector was actually created — the gesture is
+      // discoverable by accident, but "double-click removes it" is not discoverable at all.
+      if (bizViaDrag.created && !_bizRoutedOnce) {
+        _bizRoutedOnce = true;
+        showToast('Redirector added — drag it to route the handoff around anything in the way, double-click it to remove.', 'suggest');
+      }
+    }
+    bizViaDrag = null; return;
+  }
   if (_bizMiniDrag) { _bizMiniDrag = false; saveState(); return; }
   if (bizMarquee) {
     const cv = document.getElementById('bz-canvas');
@@ -12219,7 +12430,8 @@ document.addEventListener('click', e => {
   // ---- Business Case (node-graph) handlers ----
   if (state.viewMode === 'bizcase') {
     // A box drag just ended — swallow the trailing click if it lands on a node (don't open a cell).
-    if (bizDragSuppressClick) { bizDragSuppressClick = false; if (e.target.closest('.bz-node') || e.target.closest('.bz-group')) return; }
+    if (bizDragSuppressClick) { bizDragSuppressClick = false;
+      if (e.target.closest('.bz-node') || e.target.closest('.bz-group') || e.target.closest('[data-bz-edge]') || e.target.closest('[data-bz-via]')) return; }
     if (e.target.closest('#bz-new')) { bizAddCase(); return; }
     if (e.target.closest('#bz-rename')) { bizRenameCase(); return; }
     if (e.target.closest('#bz-del')) { bizDeleteCase(); return; }
