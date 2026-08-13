@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Everything that shipped in the ASIC RACI Tool between 5 and 13 August 2026 — seven releases, 0.29 through 0.35.">
+<!-- Standalone archive copy of the 0.29-0.35 changelog. The published page is the same
+     content without this wrapper (the publisher supplies its own skeleton); edit both
+     together, or re-derive this file by wrapping that one. -->
+<title>RACI Tool 0.29–0.35</title>
+<style>
+/* ============================================================================
+   Palette is lifted from the tool's own token contract rather than invented:
+   the surface ramp, the R/A/C/I letter hues, and the accent green are the same
+   values the app ships. The letter hues do real work here — they classify each
+   entry by kind — so the page reads in the app's own vocabulary.
+   ========================================================================= */
+:root{
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* light — a cool near-white, biased toward the app's ASIC blue */
+  --paper:#eef1f6;
+  --card:#ffffff;
+  --inset:#f5f7fb;
+  --line:#c9d2e0;
+  --line-soft:#e0e6ef;
+  --ink:#131a26;
+  --muted:#54607a;
+  --faint:#8590a6;
+
+  --accent:#2b8a3e;      /* the app's green */
+  --accent-ink:#1e6b30;
+  --accent-soft:#2b8a3e14;
+
+  --new:#1971c2;         /* R-blue    — new capability */
+  --chg:#e09600;         /* C-amber   — changed behaviour */
+  --fix:#2b8a3e;         /* accent    — fixed */
+  --note:#c92a2a;        /* A-crimson — heads-up */
+
+  --shadow: 0 1px 2px rgba(20,32,55,.05), 0 10px 28px rgba(20,32,55,.07);
+  --grid: rgba(24,50,84,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d0e12;
+    --card:#191b21;
+    --inset:#131519;
+    --line:#333741;
+    --line-soft:#24272e;
+    --ink:#e8eaf0;
+    --muted:#9aa2b2;
+    --faint:#6c7486;
+
+    --accent:#51cf66;
+    --accent-ink:#8ce99a;
+    --accent-soft:#51cf6618;
+
+    --new:#4dabf7;
+    --chg:#fcc419;
+    --fix:#51cf66;
+    --note:#ff8787;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px rgba(0,0,0,.45);
+    --grid: rgba(120,165,225,.055);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d0e12;
+  --card:#191b21;
+  --inset:#131519;
+  --line:#333741;
+  --line-soft:#24272e;
+  --ink:#e8eaf0;
+  --muted:#9aa2b2;
+  --faint:#6c7486;
+
+  --accent:#51cf66;
+  --accent-ink:#8ce99a;
+  --accent-soft:#51cf6618;
+
+  --new:#4dabf7;
+  --chg:#fcc419;
+  --fix:#51cf66;
+  --note:#ff8787;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px rgba(0,0,0,.45);
+  --grid: rgba(120,165,225,.055);
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0;
+  background:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:26px 26px;
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{ width:min(1080px, 100% - 3rem); margin-inline:auto; }
+
+/* ---------- masthead ---------- */
+.mast{ padding:4.5rem 0 2.6rem; border-bottom:1px solid var(--line); }
+.eyebrow{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--accent-ink); margin:0 0 1.1rem;
+}
+h1{
+  margin:0; font-size:clamp(2.4rem, 6vw, 3.9rem); line-height:1.02; letter-spacing:-.035em;
+  font-weight:800; text-wrap:balance;
+}
+.mast .sub{
+  margin:1.1rem 0 0; max-width:64ch; font-size:1.08rem; color:var(--muted);
+}
+.mast .sub b{ color:var(--ink); font-weight:650; }
+
+.stats{
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:1px;
+  margin-top:2.4rem; background:var(--line-soft);
+  border:1px solid var(--line-soft); border-radius:10px; overflow:hidden;
+}
+.stat{ background:var(--card); padding:.95rem 1.1rem; }
+.stat .n{
+  display:block; font-family:var(--mono); font-size:1.6rem; font-weight:700;
+  letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.2;
+}
+.stat .l{
+  display:block; font-family:var(--mono); font-size:.6rem; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--faint); margin-top:.25rem;
+}
+
+/* ---------- section furniture ---------- */
+section{ padding:3.4rem 0; border-bottom:1px solid var(--line-soft); }
+section:last-of-type{ border-bottom:0; }
+h2{
+  margin:0 0 .35rem; font-size:1.6rem; letter-spacing:-.02em; font-weight:750; text-wrap:balance;
+}
+.lede{ margin:0 0 2rem; color:var(--muted); max-width:66ch; }
+
+/* ---------- highlights ---------- */
+.hi{ display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; }
+.hi-card{
+  background:var(--card); border:1px solid var(--line); border-radius:12px;
+  padding:1.15rem 1.3rem 1.3rem; box-shadow:var(--shadow);
+  border-top:3px solid var(--accent);
+}
+.hi-card:nth-child(2){ border-top-color:var(--new); }
+.hi-card:nth-child(3){ border-top-color:var(--chg); }
+.hi-card:nth-child(4){ border-top-color:var(--note); }
+.hi-card h3{ margin:.1rem 0 .4rem; font-size:1.06rem; letter-spacing:-.01em; }
+.hi-card p{ margin:0; font-size:.92rem; color:var(--muted); line-height:1.6; }
+.hi-ver{
+  font-family:var(--mono); font-size:.6rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint);
+}
+
+/* ---------- the release spine ----------
+   A dated spine, because the content genuinely is a sequence: three working
+   days, seven versions, in order. The rail carries the day; the cards carry
+   what shipped that day. */
+.day{ display:grid; grid-template-columns:170px minmax(0,1fr); gap:28px; padding:0 0 2.2rem; }
+.day:last-child{ padding-bottom:0; }
+.day-rail{ position:relative; }
+.day-rail::after{
+  content:""; position:absolute; left:-14px; top:.55rem; bottom:-2.2rem; width:1px; background:var(--line);
+}
+.day:last-child .day-rail::after{ display:none; }
+.day-rail .dot{
+  position:absolute; left:-18px; top:.5rem; width:9px; height:9px; border-radius:50%;
+  background:var(--accent); box-shadow:0 0 0 3px var(--paper);
+}
+.day-date{
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; text-transform:uppercase;
+  font-weight:700; color:var(--ink);
+}
+.day-note{ margin:.3rem 0 0; font-size:.82rem; color:var(--faint); line-height:1.5; }
+
+.rel{
+  background:var(--card); border:1px solid var(--line); border-radius:12px;
+  padding:1.2rem 1.35rem 1.35rem; box-shadow:var(--shadow); margin-bottom:14px;
+}
+.rel:last-child{ margin-bottom:0; }
+.rel-head{ display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; margin-bottom:.15rem; }
+.ver{
+  font-family:var(--mono); font-size:.7rem; font-weight:700; letter-spacing:.06em;
+  color:var(--accent-ink); background:var(--accent-soft);
+  border:1px solid var(--accent); border-radius:5px; padding:1px 7px; white-space:nowrap;
+}
+.rel-head h3{ margin:0; font-size:1.14rem; letter-spacing:-.015em; }
+.rel > p{ margin:.5rem 0 0; color:var(--muted); font-size:.95rem; }
+
+.entries{ list-style:none; margin:1.05rem 0 0; padding:0; display:flex; flex-direction:column; gap:.85rem; }
+.entries li{ display:grid; grid-template-columns:74px minmax(0,1fr); gap:14px; align-items:start; }
+.kind{
+  font-family:var(--mono); font-size:.56rem; font-weight:700; letter-spacing:.11em; text-transform:uppercase;
+  border-radius:4px; padding:3px 0; text-align:center; margin-top:.28rem;
+  border:1px solid currentColor;
+}
+.kind.new{ color:var(--new); }
+.kind.chg{ color:var(--chg); }
+.kind.fix{ color:var(--fix); }
+.kind.note{ color:var(--note); background:color-mix(in srgb, var(--note) 12%, transparent); }
+.entries b{ font-weight:650; }
+.entries p{ margin:.15rem 0 0; font-size:.9rem; color:var(--muted); line-height:1.6; }
+.entries .why{
+  display:block; margin-top:.35rem; padding-left:.7rem; border-left:2px solid var(--line);
+  font-size:.85rem; color:var(--faint); font-style:italic;
+}
+
+kbd{
+  font-family:var(--mono); font-size:.76em; font-weight:700; white-space:nowrap;
+  color:var(--ink); background:var(--inset);
+  border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:1px 5px;
+}
+code{
+  font-family:var(--mono); font-size:.84em; color:var(--ink);
+  background:var(--inset); border:1px solid var(--line-soft); border-radius:4px; padding:.5px 4px;
+}
+
+/* ---------- heads-up ---------- */
+.heads{
+  background:var(--card); border:1px solid var(--note); border-radius:12px;
+  padding:1.2rem 1.35rem 1.35rem; box-shadow:var(--shadow);
+}
+.heads h3{ margin:0 0 .2rem; font-size:1.06rem; color:var(--note); }
+.heads dl{ margin:1rem 0 0; display:flex; flex-direction:column; gap:.9rem; }
+.heads dt{ font-weight:650; font-size:.95rem; }
+.heads dd{ margin:.15rem 0 0; font-size:.9rem; color:var(--muted); line-height:1.6; }
+
+/* ---------- ledger ---------- */
+.ledger-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+table.ledger{ width:100%; border-collapse:collapse; font-size:.9rem; min-width:560px; }
+table.ledger th{
+  text-align:left; font-family:var(--mono); font-size:.58rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint); font-weight:600; padding:.9rem 1rem; border-bottom:1px solid var(--line);
+  background:var(--inset);
+}
+table.ledger td{ padding:.75rem 1rem; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+table.ledger tr:last-child td{ border-bottom:0; }
+table.ledger td:first-child{ font-family:var(--mono); white-space:nowrap; font-variant-numeric:tabular-nums; }
+table.ledger td:last-child{ color:var(--faint); white-space:nowrap; font-family:var(--mono); font-size:.78rem; }
+.shipped{ color:var(--accent-ink); }
+.pending{ color:var(--chg); }
+
+footer{
+  padding:2.6rem 0 4rem; color:var(--faint); font-size:.86rem;
+  border-top:1px solid var(--line);
+}
+footer b{ color:var(--muted); }
+
+:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+@media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+@media (max-width:860px){
+  .stats{ grid-template-columns:repeat(2, 1fr); }
+  .hi{ grid-template-columns:1fr; }
+  .day{ grid-template-columns:1fr; gap:14px; }
+  .day-rail::after, .day-rail .dot{ display:none; }
+  .entries li{ grid-template-columns:1fr; gap:.3rem; }
+  .kind{ justify-self:start; padding:2px 8px; margin-top:0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">ASIC RACI Tool · changelog</p>
+    <h1>Seven releases in three working days</h1>
+    <p class="sub">Everything that changed between <b>Wed 5 Aug</b> and <b>Thu 13 Aug 2026</b> — seven releases, <b>0.29</b> through <b>0.35</b>. Themes, flow modes, a lifecycle, a routing system, and a manual.</p>
+
+    <div class="stats">
+      <div class="stat"><span class="n">7</span><span class="l">releases</span></div>
+      <div class="stat"><span class="n">0.29→0.35</span><span class="l">version span</span></div>
+      <div class="stat"><span class="n">3</span><span class="l">working days</span></div>
+      <div class="stat"><span class="n">5</span><span class="l">themes, up from 1</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>The four that matter most</h2>
+    <p class="lede">If you read nothing else this week, read these.</p>
+    <div class="hi">
+      <div class="hi-card">
+        <span class="hi-ver">0.32</span>
+        <h3>Nothing is signed until someone signs it</h3>
+        <p>Every chart and every flow now carries Draft or Final, and <em>both</em> states are always labelled. Final locks the artifact three ways over, and every export carries the status through — including a diagonal DRAFT watermark on paper.</p>
+      </div>
+      <div class="hi-card">
+        <span class="hi-ver">0.31</span>
+        <h3>A flow can now be tied to the chart</h3>
+        <p>Chart-Linked mode makes every step name the org-chart row it implements and read that row's letters live, so a chart edit reaches the flow immediately. Free-Form stays for tabletops. Switching is lossless both ways.</p>
+      </div>
+      <div class="hi-card">
+        <span class="hi-ver">0.29 · 0.34</span>
+        <h3>One theme became five</h3>
+        <p>Light and High Contrast joined Dark, then High Contrast split into a family of three — Light, Dark and Neon — sharing one structural stylesheet. Your stored preference migrates; nothing resets.</p>
+      </div>
+      <div class="hi-card">
+        <span class="hi-ver">0.35</span>
+        <h3>Handoffs can be routed around obstacles</h3>
+        <p>Drag any noodle and it bends, leaving a redirector handle you can steer or double-click away. Routing is pure geometry — the handoff is still A to B, so nothing that reads the graph is affected.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Release by release</h2>
+    <p class="lede">In order, with the reasoning where the reasoning is the interesting part.</p>
+
+    <div class="day">
+      <div class="day-rail">
+        <span class="dot" aria-hidden="true"></span>
+        <div class="day-date">Fri 7 Aug</div>
+        <p class="day-note">Themes, then reuse and structure for flows.</p>
+      </div>
+      <div>
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.29</span><h3>Light and High Contrast join Dark</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Three application themes</b>, picked from a segmented control in the toolbar; arrow keys move through it.
+              <span class="why">The choice is a device preference, not document data — it stays out of the exported JSON and survives Load, Merge, Demo and Clear, so opening a colleague's chart never repaints your app.</span></div></li>
+            <li><span class="kind fix">Fixed</span><div><b>No dark flash on load.</b> An inline <code>&lt;head&gt;</code> bootstrap puts the stored theme on <code>&lt;html&gt;</code> before the first paint.</div></li>
+            <li><span class="kind chg">Changed</span><div><b>Dark stays the default, always.</b> An unset preference is deliberately <em>not</em> resolved against the operating system, so a fresh browser always opens dark.</div></li>
+          </ul>
+        </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.30</span><h3>A gallery, nested flows, mating points, groups</h3></div>
+          <p>Four features that together let a flow be reused instead of retyped.</p>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Flow gallery.</b> Every flow in the workspace as a card carrying a sketch of its actual graph, its counts, and its chart anchor.
+              <span class="why">The dropdown answers "which one is it called". The gallery answers "which one is it".</span></div></li>
+            <li><span class="kind new">New</span><div><b>Nested flows.</b> Drag a card onto the canvas and it becomes one box standing in for that whole flow — a reference, not a copy, so one edit updates every host. Reference loops are blocked at the source and flagged if one arrives by import.</div></li>
+            <li><span class="kind new">New</span><div><b>Per entry/exit mating points.</b> A nested box gets a socket per entry and per exit of the flow inside, so a procedure that ends two ways can feed two different next steps.
+              <span class="why">Ports store the selection, not a count, and empty means "all of them" — so a host keeps following the referenced flow as it grows instead of silently re-wiring.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Groups.</b> Labelled frames around steps: visual, conceptual, and functional — collapse one and it folds into a single box whose sockets are its real boundary crossings.</div></li>
+            <li><span class="kind fix">Fixed</span><div><b>Flow noodles follow the theme.</b> They were still using baked colour literals, so the canvas ignored Light and High Contrast.</div></li>
+          </ul>
+        </article>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-rail">
+        <span class="dot" aria-hidden="true"></span>
+        <div class="day-date">Tue 11 Aug</div>
+        <p class="day-note">The two structural features of the week.</p>
+      </div>
+      <div>
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.31</span><h3>Flows get two explicit modes</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Chart-Linked mode.</b> Every step names the org-chart row it implements and reads that row's RACI live — no copy, so a chart edit reaches the flow immediately. A step with no row is an error, not a gap: that is the mode's whole contract.</div></li>
+            <li><span class="kind new">New</span><div><b>Free-Form mode</b> is what every flow was before, and stays the default — right for a tabletop, a dry run, or work not yet mapped onto the chart.</div></li>
+            <li><span class="kind chg">Changed</span><div><b>The rail says these are two systems.</b> The task flow got its own outlined, tinted box away from Chart / Roster / Tasks.</div></li>
+          </ul>
+        </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.32</span><h3>Draft and Final, and what Final locks</h3></div>
+          <p>Two states, one question: is this still being written, or has someone signed it?</p>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Status on every chart and every flow</b>, shown on the chart tabs, the flow picker, the gallery cards, and a permanent strip above the canvas.
+              <span class="why">Both states are labelled, always. A DRAFT marking that appeared only when something was wrong would teach people to read "no marking" as "approved" — the exact failure this exists to prevent.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Final locks the artifact</b> three ways over: affordances removed at render, fields made inert, and a capture-phase gate for what neither reaches — keys typed into a focused field, the delete shortcut, drag, drop and paste. Behind all of it, a check on every save puts back anything that moved, whatever path produced it.
+              <span class="why">An accident guard, not a permission system: one click lifts it, nothing is destroyed, and undo steps back through a finalize like any other edit.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Draft and Final cross.</b> A Final flow reading rows from a Draft chart is a settled claim resting on ground that can still move. Allowed — sign-off order is your call — but flagged per step, never silent.</div></li>
+            <li><span class="kind new">New</span><div><b>Every export carries it:</b> a Document sheet and Status column in Excel, attributes in XML, a header line in Mermaid, stamps on PowerPoint's title and flow slides, and a diagonal DRAFT watermark on every printed page.
+              <span class="why">A draft printed and circulated as if settled is how this goes wrong on paper.</span></div></li>
+          </ul>
+        </article>
+      </div>
+    </div>
+
+    <div class="day">
+      <div class="day-rail">
+        <span class="dot" aria-hidden="true"></span>
+        <div class="day-date">Thu 13 Aug</div>
+        <p class="day-note">Interaction and chrome — plus the manual.</p>
+      </div>
+      <div>
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.33</span><h3>Both systems in the rail get the same box</h3></div>
+          <ul class="entries">
+            <li><span class="kind chg">Changed</span><div><b>Chart / Roster / Tasks are boxed too</b>, in R-blue, alongside the flow's green box.
+              <span class="why">0.31 boxed only the flow, which read as "the flow is the special one" rather than "these are two systems". It is now one box component used twice, each carrying its own hue in a single token.</span></div></li>
+          </ul>
+        </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.34</span><h3>Flow chrome, five themes, and groups that hold on</h3></div>
+          <ul class="entries">
+            <li><span class="kind chg">Changed</span><div><b>The mode picker is now the strip's label</b> — right-justified, where the badge used to be. It was two places to read one fact and two to keep in step.</div></li>
+            <li><span class="kind note">Heads-up</span><div><b>Flows are RACI only.</b> DACI and RAPID are gone from task flows. Charts keep RACI and RASCI.
+              <span class="why">A flow's steps are execution work, and the decision variants only ever split the vocabulary of a tool whose point is one responsibility language across chart and flow.</span></div></li>
+            <li><span class="kind new">New</span><div><b>High Contrast becomes a family of three:</b> Light (white paper, black rules, hues deepened rather than brightened), Dark (the previous palette, unchanged), and Neon (near-black violet ground with cyan, hot pink, electric yellow and lime at full voltage).
+              <span class="why">All three share one structural stylesheet through a prefix selector, so a new variant is a palette and a picker entry — nothing else.</span></div></li>
+            <li><span class="kind fix">Fixed</span><div><b>Group membership survives a drag.</b> A step used to leave its frame the moment it was dropped past the frame's edge — and the frame froze mid-drag, so that edge was wherever it had been when you started. Rearranging inside a group lost steps out of it.
+              <span class="why">Now the frame follows its members live and the step stays put at any distance. To take one out, hold <kbd>Alt</kbd> (<kbd>⌥</kbd>) while dragging; the frame freezes and goes amber, and says so in its own header while you drag.</span></div></li>
+          </ul>
+        </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.35</span><h3>Redirectors, chrome fixes, and the manual</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Redirectors on a handoff.</b> Drag any noodle and it bends around whatever is in the way, leaving a handle you can drag again or double-click to remove. A click without travel still opens the handoff popover.
+              <span class="why">Routing lives on the edge, not in the task list. A routed handoff is still one handoff from A to B — so derived inputs and outputs, group boundary crossings, the flow table, the rules and all five exports are untouched by how the line gets there.</span></div></li>
+            <li><span class="kind new">New</span><div><b>A third field guide: the manual.</b> Every screen and every gesture in the order you meet them, plus a cheat sheet of the ones clicking around will never reveal.</div></li>
+            <li><span class="kind fix">Fixed</span><div><b>The product name no longer wraps</b> in the right rail. It widened to 244px and the version chip drops to its own line — a title snapped into "ASIC / RACI / Tool" reads as three words, not one product.</div></li>
+            <li><span class="kind fix">Fixed</span><div><b>The breadcrumb's tier label is legible on every theme.</b> It was painted in ink at 62%, which works only while every tier fill is bright; the new light high-contrast theme deepens its fills and the label went dark-on-dark.</div></li>
+            <li><span class="kind fix">Fixed</span><div><b>Hiding the flow gallery now names the way back.</b> The <kbd>⊞ Gallery</kbd> button always reopened it, but an × with no hint reads as a one-way door.</div></li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Worth knowing before you open an old file</h2>
+    <div class="heads">
+      <h3>Two changes that touch existing data</h3>
+      <dl>
+        <dt>A flow saved as DACI or RAPID now loads as RACI.</dt>
+        <dd>The framework picker is gone from task flows, and normalization coerces the value on load rather than leaving state with no way to see or change it. Letters outside RACI are preserved in the cells but are no longer offered. Charts are unaffected — RACI and RASCI both remain.</dd>
+        <dt>The old "Contrast" theme is now "High contrast · Dark".</dt>
+        <dd>Same palette, new name. A stored preference migrates automatically in both the pre-paint bootstrap and the main script, so nobody gets reset to Dark.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <h2>The ledger</h2>
+    <p class="lede">Where each version currently sits.</p>
+    <div class="ledger-wrap">
+      <table class="ledger">
+        <thead><tr><th>Version</th><th>Headline</th><th>Day</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td>0.29</td><td>Light and High Contrast themes</td><td>Fri 7 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.30</td><td>Gallery, nested flows, mating points, groups</td><td>Fri 7 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.31</td><td>Chart-Linked and Free-Form flow modes</td><td>Tue 11 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.32</td><td>Draft / Final lifecycle and locking</td><td>Tue 11 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.33</td><td>Both rail systems boxed alike</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.34</td><td>Mode picker, RACI-only, five themes, sticky groups</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.35</td><td>Redirectors, chrome fixes, the manual</td><td>Thu 13 Aug</td><td class="pending">on branch</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <b>ASIC RACI Tool</b> — changelog for 5–13 Aug 2026. Versions 0.29 through 0.34 are merged to <code>main</code>; 0.35 is on <code>claude/raci-chart-colorized-box-vujotf</code>, pushed and awaiting review.
+  </footer>
+
+</div>
+</body>
+</html>
