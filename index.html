@@ -1839,18 +1839,26 @@ input[type="file"] { display: none; }
    The rail holds two SYSTEMS, not one list of screens. Chart / Roster / Tasks are three cuts of the
    same nested RACI matrix; the Business Case task flow is a parallel system with its own graph, its
    own responsibility rules and its own two modes. Boxing them apart says so before anything is
-   clicked. Horizontally the flow box reads as a tinted, outlined cluster beside the plain group;
-   in the wide left rail (>=1200px) each box becomes a titled panel. */
+   clicked. Each system reads as a tinted, outlined cluster in its own hue; in the wide left rail
+   (>=1200px) each box becomes a titled panel.
+   A box is one component used twice: it carries its system's hue in --vt-hue-rgb, and the frame,
+   the tint, the panel title and the active pill's edge all resolve from that single token. The
+   chart takes R-blue — the matrix's own hue — and the flow keeps the accent green, so the two
+   still read apart at a glance. .view-tabs seeds the default hue for the un-boxed Help tab. */
+.view-tabs { --vt-hue-rgb: var(--accent-rgb); }
 .view-tabs .vt-box { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; }
 .view-tabs .vt-box-label { display: none; }
+.view-tabs .vt-box--raci { --vt-hue-rgb: var(--r-rgb); }
+.view-tabs .vt-box--raci,
 .view-tabs .vt-box--flow {
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
-  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--vt-hue-rgb), 0.45);
+  background: rgba(var(--vt-hue-rgb), 0.08);
   border-radius: 5px;
   padding: 1px;
-  margin-left: 7px;
 }
-.view-tabs .vt-box--flow button.active { border: 1px solid rgba(var(--accent-rgb), 0.55); }
+.view-tabs .vt-box--flow { margin-left: 7px; }
+.view-tabs .vt-box--raci button.active,
+.view-tabs .vt-box--flow button.active { border: 1px solid rgba(var(--vt-hue-rgb), 0.55); }
 .view-tabs button.tab-help { display: inline-flex; align-items: center; gap: 5px; }
 .view-tabs button.tab-help .vt-help-ico {
   display: inline-grid; place-items: center;
@@ -1946,11 +1954,11 @@ input[type="file"] { display: none; }
   }
   #view-tabs button:hover { background: var(--bg-4); color: var(--text); }
   #view-tabs button.active {
-    background: var(--bg); color: var(--text); border-color: var(--accent);
+    background: var(--bg); color: var(--text); border-color: rgb(var(--vt-hue-rgb));
     margin-left: 14px; width: calc(100% - 14px);
   }
   #view-tabs button.tab-help { justify-content: flex-start; }
-  /* Each system becomes a titled panel. The flow panel is outlined and tinted so the rail reads as
+  /* Each system becomes a titled panel, outlined and tinted in its own hue, so the rail reads as
      "these three are the chart — this one is its own thing", which is the whole point of the split. */
   #view-tabs .vt-box {
     flex-direction: column; align-items: stretch; gap: 9px;
@@ -1959,15 +1967,16 @@ input[type="file"] { display: none; }
   #view-tabs .vt-box-label {
     display: block; padding: 0 4px 1px;
     font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.09em; color: var(--text-dim);
+    letter-spacing: 0.09em; color: rgb(var(--vt-hue-rgb));
   }
+  #view-tabs .vt-box--raci,
   #view-tabs .vt-box--flow {
-    margin: 14px 0 0; padding: 9px 8px 10px;
+    padding: 9px 8px 10px;
     border-radius: 9px;
-    border: 1px solid rgba(var(--accent-rgb), 0.4);
-    background: rgba(var(--accent-rgb), 0.07);
+    border: 1px solid rgba(var(--vt-hue-rgb), 0.4);
+    background: rgba(var(--vt-hue-rgb), 0.07);
   }
-  #view-tabs .vt-box--flow .vt-box-label { color: var(--accent); }
+  #view-tabs .vt-box--flow { margin: 14px 0 0; }
   #view-tabs .vt-sep { width: auto; height: 1px; align-self: stretch; margin: 7px 6px; }
   #view-tabs .vt-lg { display: inline; }   /* room for the full label in the rail */
   #view-tabs .vt-sm { display: none; }
@@ -3800,8 +3809,11 @@ body[data-view="roster"] #legend { display: none; }
 :root[data-theme="contrast"] #bz-party-panel { border-color: var(--border); }
 /* Flow modes at high contrast: the accent washes carry the grouping in the other themes, and a
    wash is exactly what this theme removes — so the same distinctions are redrawn as solid edges.
-   The rail's flow box and each step's link bar have to keep reading as separate things. */
-:root[data-theme="contrast"] #view-tabs .vt-box--flow,
+   The rail's two system boxes and each step's link bar have to keep reading as separate things.
+   The boxes keep their per-system hue (--vt-hue-rgb) — at 2px it is the edge, not a tint, doing
+   the work, and this theme's hues are already at maximum chroma. */
+:root[data-theme="contrast"] #view-tabs .vt-box--raci,
+:root[data-theme="contrast"] #view-tabs .vt-box--flow { border-width: 2px; border-color: rgb(var(--vt-hue-rgb)); background: transparent; }
 :root[data-theme="contrast"] .bz-bind { border-width: 2px; border-color: var(--accent); background: transparent; }
 :root[data-theme="contrast"] .bz-bind.is-unset,
 :root[data-theme="contrast"] .bz-bind.is-broken { border-color: var(--err); background: transparent; }
@@ -3986,7 +3998,7 @@ body[data-view="roster"] #legend { display: none; }
 <header>
   <div class="view-tabs" id="view-tabs">
     <span class="vt-heading">Mode</span>
-    <div class="vt-box" data-box="raci">
+    <div class="vt-box vt-box--raci" data-box="raci">
       <span class="vt-box-label">RACI Chart</span>
       <button data-view="chart">Chart</button>
       <button data-view="roster">Roster</button>
@@ -5713,6 +5725,14 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.33 alpha - The mode rail's two systems are now boxed the SAME way. 0.31 gave the task flow
+//                  a tinted, outlined box and left Chart/Roster/Tasks bare, which read as "the
+//                  flow is the special one" rather than "these are two systems". Both are now the
+//                  one box component, each carrying its own hue in --vt-hue-rgb — the chart takes
+//                  R-blue, the flow keeps the accent green — and the frame, tint, panel title and
+//                  active pill edge all resolve from that single token, in the top bar and in the
+//                  wide rail alike. High contrast redraws both as 2px hued edges, as it already
+//                  did for the flow box.
 //     0.32 alpha - Every chart and every flow now carries a LIFECYCLE STATUS: Draft or Final.
 //                  Two states, one question: is this still being written, or has someone signed
 //                  it? A workspace mixes both constantly — a settled chart with three exploratory
@@ -5989,7 +6009,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.32';
+const APP_VERSION = '0.33';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
