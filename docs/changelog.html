@@ -283,7 +283,7 @@ footer b{ color:var(--muted); }
   </header>
 
   <section>
-    <h2>The five that matter most</h2>
+    <h2>The six that matter most</h2>
     <p class="lede">If you read nothing else this week, read these.</p>
     <div class="hi">
       <div class="hi-card">
@@ -305,6 +305,11 @@ footer b{ color:var(--muted); }
         <span class="hi-ver">0.35</span>
         <h3>Handoffs can be routed around obstacles</h3>
         <p>Drag any noodle and it bends, leaving a redirector handle you can steer or double-click away. Routing is pure geometry — the handoff is still A to B, so nothing that reads the graph is affected.</p>
+      </div>
+      <div class="hi-card">
+        <span class="hi-ver">0.37</span>
+        <h3>Excel is a way in, not just a way out</h3>
+        <p>Download a blank template, fill it in, and load it back — the picker takes a .xlsx anywhere it took a .json. It is the same shape the Excel export writes, so export, edit in a spreadsheet, and bring it back is a closed loop.</p>
       </div>
       <div class="hi-card">
         <span class="hi-ver">0.36</span>
@@ -436,6 +441,19 @@ footer b{ color:var(--muted); }
             <li><span class="kind fix">Fixed</span><div><b>A Final artifact shows its details read-only</b> rather than hiding them. The lock is about editing, not about reading.</div></li>
           </ul>
         </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.37</span><h3>Excel comes back in, and a template to start from</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Import a .xlsx.</b> The file picker takes a workbook anywhere it took a JSON file. Charts can now come back out of a spreadsheet, not only go into one.
+              <span class="why">Export has existed since 0.19, so the tool was a place work went to rather than a place it could return from. A .xlsx is a ZIP of XML, and the browser's own DecompressionStream is the inflater — which is why this ships with no library.</span></div></li>
+            <li><span class="kind new">New</span><div><b>A blank Excel template</b>, under Export. One flat sheet: the first columns are the hierarchy, the rest are your parties. Each row repeats its ancestors and the deepest filled cell names the row being defined; naming a parent on a child's row creates it.
+              <span class="why">It is deliberately the same shape the Excel export writes, so export → edit in Excel → load back is a closed loop rather than two formats that happen to share an extension.</span></div></li>
+            <li><span class="kind new">New</span><div><b>It reads real spreadsheets, not just its own template.</b> The header row is found rather than assumed to be row 1, so a title and a note above the table are fine. Blank rows and extra columns are ignored, letters are case-insensitive, and your party column headers become the chart's column labels.</div></li>
+            <li><span class="kind new">New</span><div><b>Rows that cannot be placed are reported, not guessed at.</b> A row with Project filled and Program blank has no sensible home, so it is skipped and counted in the summary.</div></li>
+            <li><span class="kind new">New</span><div><b>Every import lands as a new chart tab</b>, behind a confirmation stating what was found. Nothing already in the workspace is touched, so Load and Merge mean the same thing for a workbook.</div></li>
+          </ul>
+        </article>
       </div>
     </div>
   </section>
@@ -469,7 +487,8 @@ footer b{ color:var(--muted); }
           <tr><td>0.33</td><td>Both rail systems boxed alike</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.34</td><td>Mode picker, RACI-only, five themes, sticky groups</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.35</td><td>Redirectors, chrome fixes, the manual</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
-          <tr><td>0.36</td><td>Entities, and details on charts and flows</td><td>Fri 14 Aug</td><td class="pending">on branch</td></tr>
+          <tr><td>0.36</td><td>Entities, and details on charts and flows</td><td>Fri 14 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.37</td><td>Excel import and a blank template</td><td>Fri 14 Aug</td><td class="pending">on branch</td></tr>
         </tbody>
       </table>
     </div>

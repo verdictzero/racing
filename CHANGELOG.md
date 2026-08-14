@@ -30,6 +30,16 @@
 - A Final flow reading rows from a Draft chart is flagged per step.
 - Status carries into every export: an Excel Document sheet and Status column, XML attributes, a Mermaid header line, PowerPoint title and flow slides, and a diagonal DRAFT watermark on printed pages.
 
+- Excel import: the file picker now takes a .xlsx anywhere it took a .json. Charts can come back out of a spreadsheet, not just go into one.
+- A blank Excel template to fill in, under Export. One flat sheet: the first columns are the hierarchy, the rest are your parties, and each row repeats its ancestors with the deepest filled cell naming the row being defined.
+- Naming a parent on a child's row creates it, so nobody writes scaffolding rows by hand.
+- The template is the same shape the Excel export writes, so export, edit in Excel, and load back is a closed loop.
+- Party column headers become the chart's column labels, so a source workbook's own vocabulary survives the trip.
+- It reads real spreadsheets, not only its own template: the header row is found rather than assumed, a title and notes above the table are fine, blank rows and extra columns are ignored, letters are case-insensitive.
+- Optional Entities and Document sheets carry the entity registry and the metadata block.
+- A row that skips a level is skipped and counted rather than guessed at.
+- Everything imported arrives as a new chart tab behind a summary of what was found. Nothing already open is touched.
+
 - Entities: parties that are neither people nor directorates — boards, committees, vendors, standing teams — created in a section at the bottom of the Roster.
 - An entity is flat. It has a name, a kind, a short label and a lead, and nothing underneath it, because it names a party at the depth RACI already stops at.
 - An entity is assignable anywhere a directorate is: the Responsible Party panel switches between Directorate and Entity, and a Program or Project row's org list has an Entities group.

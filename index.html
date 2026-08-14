@@ -4415,7 +4415,7 @@ body[data-view="roster"] #legend { display: none; }
     <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents">💾 Save</button>
     <button id="btn-import" title="Load a previously-saved JSON file (replaces current state)">📂 Load</button>
     <button id="btn-merge" title="Merge another saved JSON file into this workspace — its charts and business cases are added as new tabs">⧉ Merge</button>
-    <input type="file" id="file-import" accept=".json,application/json">
+    <input type="file" id="file-import" accept=".json,.xlsx,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
     <button id="btn-ingest" title="Download the LLM Ingest Kit — hand this file plus your raw notes, spreadsheet or slides to any LLM and it writes a JSON file you can Load or Merge here">🤖 Ingest Kit</button>
     <span class="actions-divider" aria-hidden="true"></span>
     <button id="btn-arrange" title="Snap all panes back into a tight nested cascade">⤧ Auto Arrange</button>
@@ -4427,6 +4427,7 @@ body[data-view="roster"] #legend { display: none; }
         <button class="em-item" role="menuitem" type="button" id="btn-print" title="Print or save the matrix as a PDF (clean, chrome-free layout)"><span class="em-ico">🖨</span><span class="em-label">Print / PDF</span></button>
         <button class="em-item" role="menuitem" type="button" id="btn-export-pptx" title="Export as PowerPoint (.pptx) — one slide per tier"><span class="em-ico">📊</span><span class="em-label">PowerPoint</span><span class="em-ext">.pptx</span></button>
         <button class="em-item" role="menuitem" type="button" id="btn-export-xlsx" title="Export as Excel (.xlsx) for spreadsheet review"><span class="em-ico">📗</span><span class="em-label">Excel</span><span class="em-ext">.xlsx</span></button>
+        <button class="em-item" role="menuitem" type="button" id="btn-export-template" title="Download a blank Excel workbook to fill in — Load it back here when it is done"><span class="em-ico">📋</span><span class="em-label">Blank template</span><span class="em-ext">.xlsx</span></button>
         <button class="em-item" role="menuitem" type="button" id="btn-export-xml" title="Export as XML for programmatic processing"><span class="em-ico">📄</span><span class="em-label">XML</span><span class="em-ext">.xml</span></button>
         <button class="em-item" role="menuitem" type="button" id="btn-export-mmd" title="Export as Mermaid (.mmd) for diagramming"><span class="em-ico">🧭</span><span class="em-label">Mermaid</span><span class="em-ext">.mmd</span></button>
       </div>
@@ -6667,6 +6668,12 @@ body[data-view="roster"] #legend { display: none; }
         </div>
       </div>
       <p class="sub" style="margin-top:1.4rem"><b>Export</b> gives you the document forms: Print/PDF for a clean chrome-free layout, PowerPoint with one slide per tier, Excel for spreadsheet review, XML for anything programmatic, and Mermaid for diagramming.</p>
+      <h3>The Excel route — for people who would rather work in a spreadsheet</h3>
+      <p>Under <b>Export</b> there is a <span class="kbd">📋 Blank template</span>. Download it, fill it in, and bring it back through <span class="kbd">📂 Load</span> — the file picker takes a <code>.xlsx</code> anywhere it takes a <code>.json</code>.</p>
+      <p>The template is one flat sheet. The first four columns are the hierarchy; the rest are your parties. Put an activity's name in the column for its level and repeat its parents to the left — the deepest filled column is the row you are defining. A parent does not need a row of its own; naming it on a child's row creates it.</p>
+      <p>Rename the party headers to your own parties if you like. Whatever you type becomes the column label in the tool.</p>
+      <p>It reads real spreadsheets, not just its own template: a title line and notes above the table are fine, blank rows and extra columns are ignored, and letters are case-insensitive. A row that skips a level — Project filled, Program blank — is skipped and counted, because there is no sensible place to put it and guessing would be worse than saying so.</p>
+      <p>The template is the same shape the Excel <em>export</em> writes, so the loop closes: export a chart, edit it in Excel, load it back. Anything you import arrives as a new chart tab behind a summary of what was found — nothing already open is touched.</p>
     </div>
   </section>
 
@@ -6880,6 +6887,34 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.37 alpha - EXCEL IMPORT, and a blank template to fill in. "Hate to say it, but
+//                  import/export in excel formats — I think most folks responsible for updating,
+//                  developing and maintaining RACI's would prefer it." Export has existed since
+//                  0.19; this is the half that was missing, and without it the tool was a place
+//                  work went to rather than a place it could come back from.
+//                  A .xlsx is a ZIP of XML, so reading one needs an inflater — DecompressionStream
+//                  ('deflate-raw') is that inflater, which is why this ships with no library and no
+//                  bundled zlib. Entries come from the central directory; the local header is read
+//                  only for where its data starts, because its extra field can differ.
+//                  The TEMPLATE is deliberately the same shape the export writes, so the workflow
+//                  people actually have — export, edit in Excel, bring it back — round-trips
+//                  instead of being two unrelated formats that happen to share a file extension.
+//                  One flat sheet carries the whole tree: each row names its ancestors and the
+//                  DEEPEST filled cell is the row being defined, which is exactly how an export's
+//                  Task sheet already read. Naming a parent on a child's row creates it, so nobody
+//                  has to write scaffolding rows by hand.
+//                  Import reads EVERY recognizable sheet into one tree, not the best one. An export
+//                  writes a sheet per tier and each tier's letters live only on its own sheet, so
+//                  reading the deepest alone would rebuild the whole shape with every row above the
+//                  bottom blank. Headers are FOUND rather than assumed to be row 1 (a title and a
+//                  note above the table are normal in a real spreadsheet), context columns an
+//                  export writes between the path and the party columns are excluded (feeding
+//                  "DIRECTORATE C" to normalizeRaci would mine a C out of prose and shift every
+//                  real column along by two), and party headers are taken as the chart's column
+//                  labels so a source workbook's own vocabulary survives the trip.
+//                  A row that skips a level is counted and reported, never guessed at. Everything
+//                  lands as a NEW chart tab behind a confirmation that states what was found, so
+//                  no import can quietly overwrite a workspace.
 //     0.36 alpha - Two things the stakeholder review asked for by name.
 //                  ENTITIES — "be able to create non-person entities (example: BoD, PG Board,
 //                  teams)". The roster models six directorates and the people inside them; a board
@@ -7245,7 +7280,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.36';
+const APP_VERSION = '0.37';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -13773,6 +13808,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('.em-item')) closeExportMenu();
   if (e.target.closest('#btn-export')) { exportJSON(); return; }
   if (e.target.closest('#btn-export-xlsx')) { exportXLSX(); return; }
+  if (e.target.closest('#btn-export-template')) { exportTemplate(); return; }
   if (e.target.closest('#btn-export-pptx')) { exportPPTX(); return; }
   if (e.target.closest('#btn-print')) { window.print(); return; }
   if (e.target.closest('#btn-export-xml')) { exportXML(); return; }
@@ -14468,7 +14504,18 @@ function ingestKitMarkdown() {
     '`{id, name, chief, people: [{id, name, title}]}`. Depth is optional at every level — divisions',
     'may have no branches, branches no teams.',
     '',
-    '### 3.7 Labels, mappings and view preferences',
+    '### 3.7 The Excel route',
+    '',
+    'A chart can arrive as a workbook instead of JSON. **Export → Excel → Blank template** downloads',
+    'one to fill in; the same picker that takes a `.json` takes a `.xlsx`.',
+    'One sheet holds the tree: the first columns are named for the tiers',
+    '(`' + TIER_LABELS.join('`, `') + '`), the columns after them are the parties, and each row',
+    'repeats its ancestors with the deepest filled cell naming the row being defined. Naming a',
+    'parent on a child row creates it. Party headers become the chart\'s column labels.',
+    'Optional `Entities` and `Document` sheets carry the entity registry and the metadata block.',
+    'A workbook always lands as a NEW chart tab, so Load and Merge do the same thing with one.',
+    '',
+    '### 3.8 Labels, mappings and view preferences',
     '',
     '- `actorLabels` — display name per directorate key.',
     '- `columnLabels` / `columnShort` — full and abbreviated header per org column key. **This is how',
@@ -14988,10 +15035,14 @@ function xlsxBytes() {
     headers: ['Deliverable', 'Type', 'Produced by', 'Consumed by'], rows: buildDeliverableRows() });
   if ((state.entities || []).length) sheets.push({ name: 'Entities',
     headers: ['Entity', 'Kind', 'Short', 'Lead', 'Description', 'Named by'], rows: buildEntityRows() });
+  return xlsxBytesFor(sheets);
+}
+// Assemble a workbook from [{name, headers, rows}]. Split out of xlsxBytes so the blank template
+// (which shares nothing with the export's content) can use the same writer.
+function xlsxBytesFor(sheets) {
   // Guard against a free chart's user-named level colliding with the fixed extra-sheet names.
   const seen = new Set();
   sheets.forEach(s => { let nm = s.name, j = 2; while (seen.has(nm)) nm = s.name + ' ' + (j++); seen.add(nm); s.name = nm; });
-  const enc = new TextEncoder();
   const files = [];
   files.push(['[Content_Types].xml',
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -15033,6 +15084,412 @@ function zipBytes(files) {
   const out = new Uint8Array(total); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; });
   return out;
 }
+// ===================== Excel template + import (v0.37) =====================
+// The stakeholder note was blunt: "most folks responsible for updating, developing and maintaining
+// RACI's would prefer" Excel. Export already existed; this is the other half.
+//
+// The template is deliberately the SAME shape the export writes, so the workflow people actually
+// have — export, edit in Excel, bring it back — round-trips. One flat sheet carries the whole tree:
+// every row names its full ancestor path, and the DEEPEST filled path cell is the row being
+// defined. That is exactly how an export's Task sheet already reads.
+
+const TEMPLATE_SHEET = 'RACI';
+// Path columns are matched by header against the tier names. Anything else left of the party
+// columns (an export's "Division", "Branch (inherited)") is context, and is skipped.
+function templateTierNames() { return TIER_LABELS.slice(); }
+
+function buildTemplateSheets() {
+  const tiers = templateTierNames();
+  const colHdrs = COLS.map(k => COL_LABELS[k]);
+  const letters = FRAMEWORKS.raci.roles.join(' / ');
+  const blank = () => tiers.map(() => '').concat(COLS.map(() => ''));
+  const instructions = {
+    name: 'Instructions',
+    headers: ['How to fill this in'],
+    rows: [
+      ['Fill in the "' + TEMPLATE_SHEET + '" sheet, then use Load or Merge in the tool and pick this file.'],
+      [''],
+      ['ONE ROW PER ACTIVITY.'],
+      ['The first ' + tiers.length + ' columns are the hierarchy: ' + tiers.join(' → ') + '.'],
+      ['Put the activity name in the column for its level, and repeat its parents to its left.'],
+      ['The deepest filled column is the row being defined.'],
+      [''],
+      ['  ' + tiers[0] + ' alone → a top-level activity.'],
+      ['  ' + tiers[0] + ' + ' + tiers[1] + ' → a ' + tiers[1].toLowerCase() + ' under that ' + tiers[0].toLowerCase() + '.'],
+      ['  All four → a ' + tiers[3].toLowerCase() + ' at the bottom of that path.'],
+      [''],
+      ['A parent does not need its own row. Naming one on a child row creates it.'],
+      ['Do not leave a gap: a row with ' + tiers[2] + ' filled but ' + tiers[1] + ' blank is skipped.'],
+      [''],
+      ['THE PARTY COLUMNS.'],
+      ['Put responsibility letters in them: ' + letters + '.'],
+      ['More than one letter in a cell is fine — write them together, e.g. "AR".'],
+      ['Leave a cell blank where a party has no role. Case does not matter.'],
+      ['Anything that is not a role letter is ignored.'],
+      [''],
+      ['RENAMING THE PARTY COLUMNS.'],
+      ['Rename the headers to your own parties if you like. They are matched by position, and'],
+      ['whatever you type becomes the column label in the tool.'],
+      [''],
+      ['THE OTHER SHEETS ARE OPTIONAL.'],
+      ['Entities — parties that are neither people nor directorates (boards, vendors, teams).'],
+      ['Document — the name and metadata for the chart this becomes.'],
+      ['Delete either sheet if you do not need it.'],
+      [''],
+      ['Rows above the header line, blank rows and extra columns are all ignored.']
+    ]
+  };
+  const raci = {
+    name: TEMPLATE_SHEET,
+    headers: [...tiers, ...colHdrs],
+    rows: [
+      ['Example portfolio activity', '', '', '', 'A', '', 'R', 'C', '', 'I', ''],
+      ['Example portfolio activity', 'Example program', '', '', '', 'A', 'R', '', 'C', '', 'I'],
+      ['Example portfolio activity', 'Example program', 'Example project', '', '', '', 'A', 'R', 'C', '', ''],
+      ['Example portfolio activity', 'Example program', 'Example project', 'Example task', '', '', '', 'AR', '', 'C', 'I'],
+      ...Array.from({ length: 14 }, blank)
+    ]
+  };
+  const entities = {
+    name: 'Entities',
+    headers: ['Entity', 'Kind', 'Short', 'Lead', 'Description'],
+    rows: [
+      ['Example Review Board', 'board', 'ERB', '', 'Kind is one of: ' + ENTITY_KINDS.join(', ')],
+      ...Array.from({ length: 9 }, () => ['', '', '', '', ''])
+    ]
+  };
+  const doc = {
+    name: 'Document',
+    headers: DOCUMENT_SHEET_HEADERS,
+    rows: [['Chart', 'Untitled chart', 'Draft', '', '', '', '', '', '']]
+  };
+  return [instructions, raci, entities, doc];
+}
+function exportTemplate() {
+  downloadBlob('raci-template.xlsx',
+    new Blob([xlsxBytesFor(buildTemplateSheets())],
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  showToast('Template downloaded — fill in the RACI sheet, then Load it back.', 'suggest');
+}
+
+// ---------- reading a .xlsx ----------
+// A .xlsx is a ZIP of XML. Entries come from the central directory (the authoritative index) and
+// are inflated with DecompressionStream, so there is no library and no bundled inflater.
+async function unzipEntries(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  // Scan back from the tail for the end-of-central-directory signature: some writers append a
+  // comment, which sits between it and the end of the file.
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= 0 && i >= bytes.length - 66000; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('That is not a .xlsx file — no ZIP directory in it.');
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  if (p === 0xFFFFFFFF) throw new Error('That workbook is ZIP64, which this importer cannot read. Re-save it from Excel as .xlsx.');
+  const out = new Map();
+  const dec = new TextDecoder();
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true);
+    const compSize = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true);
+    const extraLen = dv.getUint16(p + 30, true);
+    const cmtLen = dv.getUint16(p + 32, true);
+    const localOff = dv.getUint32(p + 42, true);
+    const name = dec.decode(bytes.subarray(p + 46, p + 46 + nameLen));
+    // Only the local header knows where the data starts: its extra field can differ from the
+    // central directory's, so the length has to be read there rather than reused from here.
+    const lNameLen = dv.getUint16(localOff + 26, true);
+    const lExtraLen = dv.getUint16(localOff + 28, true);
+    const start = localOff + 30 + lNameLen + lExtraLen;
+    const raw = bytes.subarray(start, start + compSize);
+    if (name.endsWith('.xml') || name.endsWith('.rels')) {
+      out.set(name, method === 0 ? raw : await inflateRaw(raw));
+    }
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  return out;
+}
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream !== 'function') {
+    throw new Error('This browser cannot decompress .xlsx files. Chrome, Edge or a current Firefox will.');
+  }
+  const ds = new DecompressionStream('deflate-raw');
+  const buf = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+function colFromRef(ref) {
+  let n = 0;
+  for (let i = 0; i < ref.length; i++) {
+    const c = ref.charCodeAt(i);
+    if (c < 65 || c > 90) break;
+    n = n * 26 + (c - 64);
+  }
+  return n - 1;
+}
+// -> [{ name, rows: [[cell, ...], ...] }], every cell a trimmed string.
+async function readXlsx(arrayBuffer) {
+  const files = await unzipEntries(new Uint8Array(arrayBuffer));
+  const dec = new TextDecoder();
+  const text = path => { const b = files.get(path); return b ? dec.decode(b) : null; };
+  const parse = xml => new DOMParser().parseFromString(xml, 'application/xml');
+  const wbXml = text('xl/workbook.xml');
+  if (!wbXml) throw new Error('Not a .xlsx workbook — xl/workbook.xml is missing.');
+  const wb = parse(wbXml);
+  // rId -> part path, so sheets are read in the workbook's own order under their real names.
+  const rels = {};
+  const relsXml = text('xl/_rels/workbook.xml.rels');
+  if (relsXml) {
+    [...parse(relsXml).getElementsByTagName('Relationship')].forEach(r => {
+      let t = r.getAttribute('Target') || '';
+      if (t.startsWith('/')) t = t.slice(1);
+      else if (!t.startsWith('xl/')) t = 'xl/' + t;
+      rels[r.getAttribute('Id')] = t;
+    });
+  }
+  // A shared string may be one <t> or a run of them.
+  const shared = [];
+  const ssXml = text('xl/sharedStrings.xml');
+  if (ssXml) {
+    [...parse(ssXml).getElementsByTagName('si')].forEach(si => {
+      shared.push([...si.getElementsByTagName('t')].map(t => t.textContent).join(''));
+    });
+  }
+  const RNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const sheets = [];
+  [...wb.getElementsByTagName('sheet')].forEach((sh, i) => {
+    const rid = sh.getAttributeNS(RNS, 'id') || sh.getAttribute('r:id');
+    const path = rels[rid] || ('xl/worksheets/sheet' + (i + 1) + '.xml');
+    const xml = text(path);
+    if (!xml) return;
+    const doc = parse(xml);
+    const rows = [];
+    [...doc.getElementsByTagName('row')].forEach(r => {
+      const cells = [];
+      [...r.getElementsByTagName('c')].forEach(c => {
+        const ref = c.getAttribute('r') || '';
+        const at = ref ? colFromRef(ref) : cells.length;
+        const type = c.getAttribute('t');
+        let v = '';
+        if (type === 'inlineStr') {
+          v = [...c.getElementsByTagName('t')].map(t => t.textContent).join('');
+        } else {
+          const vEl = c.getElementsByTagName('v')[0];
+          const raw = vEl ? vEl.textContent : '';
+          v = (type === 's') ? (shared[parseInt(raw, 10)] || '') : raw;
+        }
+        while (cells.length < at) cells.push('');
+        cells[at] = String(v == null ? '' : v).trim();
+      });
+      // Rows carry their own index; a sparse sheet must not shift everything up.
+      const rIdx = parseInt(r.getAttribute('r') || '0', 10) - 1;
+      const at = rIdx >= 0 ? rIdx : rows.length;
+      while (rows.length < at) rows.push([]);
+      rows[at] = cells;
+    });
+    sheets.push({ name: sh.getAttribute('name') || ('Sheet' + (i + 1)), rows });
+  });
+  return sheets;
+}
+
+// ---------- mapping a workbook onto a chart ----------
+function xlNorm(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+// Columns an export writes for context, which sit between the path columns and the party columns.
+// They carry org names, not role letters — feeding them to normalizeRaci would mine letters out of
+// prose ("DIRECTORATE C" contains a C) and shift every real party column along by two.
+const XL_CONTEXT_HEADERS = ['division', 'branch', 'team', 'unit', 'org', 'organization', 'notes', 'note'];
+function isContextHeader(h) {
+  const t = xlNorm(h).replace(/\s*\(inherited\)\s*$/, '').trim();
+  return XL_CONTEXT_HEADERS.includes(t);
+}
+// A sheet holds a RACI table if some row reads like a header: at least one cell matching a tier
+// name, then two or more party cells after the last of them. The header is FOUND rather than
+// assumed to be row 1, so a title or a note above the table does not break the import.
+function findRaciHeader(rows) {
+  const tiers = templateTierNames().map(xlNorm);
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const r = rows[i] || [];
+    const hits = r.map((c, j) => tiers.includes(xlNorm(c)) ? j : -1).filter(j => j >= 0);
+    if (!hits.length) continue;
+    const last = hits[hits.length - 1];
+    const party = [];
+    for (let j = last + 1; j < r.length; j++) {
+      const h = String(r[j] || '').trim();
+      if (h && !isContextHeader(h)) party.push(j);
+    }
+    if (party.length >= 2) return { headerRow: i, pathCols: hits, partyCols: party };
+  }
+  return null;
+}
+function xlsxToChart(sheets, fileName) {
+  const warn = [];
+  // EVERY recognizable sheet is read into one tree, not just the best one. An export writes one
+  // sheet per tier, and each tier's letters live only on its own sheet — reading the deepest sheet
+  // alone would rebuild the whole shape with every row above the bottom left blank.
+  const found = sheets.map(sh => ({ sh, hit: findRaciHeader(sh.rows) })).filter(x => x.hit);
+  if (!found.length) {
+    throw new Error('No RACI table found. Looked for a header row naming at least one of: '
+      + templateTierNames().join(', ') + ' — followed by two or more party columns. '
+      + 'Download the Excel template to see the layout.');
+  }
+  // Column labels come from the widest header seen; every sheet of an export repeats the same set.
+  const widest = found.slice().sort((a, b) => b.hit.partyCols.length - a.hit.partyCols.length)[0];
+  const wHeader = widest.sh.rows[widest.hit.headerRow] || [];
+  const partyLabels = widest.hit.partyCols.map(j => String(wHeader[j] || '').trim());
+  const nCols = Math.min(partyLabels.length, COLS.length);
+  if (partyLabels.length > COLS.length) {
+    warn.push(partyLabels.length + ' party columns found; an org chart has ' + COLS.length
+      + ', so the last ' + (partyLabels.length - COLS.length) + ' were dropped.');
+  }
+  const chart = makeChart(String(fileName || '').replace(/\.xlsx$/i, '') || 'Imported chart', []);
+  const byPath = new Map();       // path key -> node, so a parent named on a child row is made once
+  const ensure = path => {
+    const key = path.join('\u0001');
+    if (byPath.has(key)) return byPath.get(key);
+    const parent = path.length > 1 ? ensure(path.slice(0, -1)) : null;
+    const node = makeNode(path[path.length - 1], COLS);
+    (parent ? parent.children : chart.activities).push(node);
+    byPath.set(key, node);
+    return node;
+  };
+  let rowsRead = 0, skipped = 0;
+  const sheetsRead = [];
+  found.forEach(({ sh, hit }) => {
+    let mine = 0;
+    for (let i = hit.headerRow + 1; i < sh.rows.length; i++) {
+      const r = sh.rows[i] || [];
+      const vals = hit.pathCols.map(j => String(r[j] || '').trim());
+      const filled = vals.filter(Boolean).length;
+      const path = [];
+      for (let k = 0; k < vals.length && vals[k]; k++) path.push(vals[k]);
+      if (!path.length) { if (r.some(c => String(c || '').trim())) skipped++; continue; }
+      // A row that skips a level (Project filled, Program blank) cannot be placed anywhere
+      // sensible. Excel users do this constantly, so it is counted and reported, never guessed at.
+      if (filled !== path.length || path.length > MAX_TIER + 1) { skipped++; continue; }
+      const node = ensure(path);
+      hit.partyCols.slice(0, nCols).forEach((j, k) => {
+        const letters = normalizeRaci(String(r[j] || '').toUpperCase());
+        // Only write letters — a blank cell on one sheet must not wipe what another sheet set.
+        if (letters) node.raci[COLS[k]] = letters;
+      });
+      rowsRead++; mine++;
+    }
+    if (mine) sheetsRead.push(sh.name);
+  });
+  if (skipped) {
+    warn.push(skipped + ' row' + (skipped === 1 ? '' : 's') + ' skipped — a row has to fill its '
+      + 'hierarchy columns from the left with no gaps.');
+  }
+  if (!rowsRead) {
+    throw new Error('Found a header but no usable rows. Every row needs a name in at least the '
+      + 'first hierarchy column.');
+  }
+  if (sheetsRead.length > 1) {
+    warn.push('Letters are taken exactly as written. A workbook exported from here spells out the '
+      + 'inherited owner on every row, so re-importing one makes that cascade explicit.');
+  }
+  // The workbook's own party names come across as the chart's column labels, so a source
+  // spreadsheet's vocabulary survives the trip instead of being re-typed here.
+  const labels = {}, shorts = {};
+  partyLabels.slice(0, nCols).forEach((lab, k) => { labels[COLS[k]] = lab; shorts[COLS[k]] = deriveShort(lab); });
+
+  const ents = [];
+  const entSheet = sheets.find(x => xlNorm(x.name) === 'entities');
+  if (entSheet) {
+    let h = -1;
+    for (let i = 0; i < Math.min(entSheet.rows.length, 20); i++) {
+      if ((entSheet.rows[i] || []).some(c => xlNorm(c) === 'entity')) { h = i; break; }
+    }
+    if (h >= 0) {
+      const hdr = (entSheet.rows[h] || []).map(xlNorm);
+      const cName = hdr.indexOf('entity'), cKind = hdr.indexOf('kind');
+      const cShort = hdr.indexOf('short'), cLead = hdr.indexOf('lead'), cDesc = hdr.indexOf('description');
+      for (let i = h + 1; i < entSheet.rows.length; i++) {
+        const r = entSheet.rows[i] || [];
+        const nm = String(r[cName] || '').trim();
+        if (!nm) continue;
+        const e = makeEntity(nm, cKind >= 0 ? xlNorm(r[cKind]) : 'other');
+        if (cShort >= 0) e.short = String(r[cShort] || '').trim();
+        if (cDesc >= 0) e.description = String(r[cDesc] || '').trim();
+        const ld = cLead >= 0 ? String(r[cLead] || '').trim() : '';
+        if (ld) e.lead = { id: uid(), name: ld };
+        ents.push(e);
+      }
+    }
+  }
+  const docSheet = sheets.find(x => xlNorm(x.name) === 'document');
+  if (docSheet) {
+    let h = -1;
+    for (let i = 0; i < Math.min(docSheet.rows.length, 20); i++) {
+      if ((docSheet.rows[i] || []).some(c => xlNorm(c) === 'name')) { h = i; break; }
+    }
+    if (h >= 0) {
+      const hdr = (docSheet.rows[h] || []).map(xlNorm);
+      const r = docSheet.rows[h + 1] || [];
+      const val = nm => { const j = hdr.indexOf(nm); return j >= 0 ? String(r[j] || '').trim() : ''; };
+      const nm = val('name');
+      if (nm && xlNorm(nm) !== 'untitled chart') chart.title = nm;
+      chart.meta.customer = val('customer');
+      chart.meta.budget = val('budget');
+      chart.meta.description = val('description');
+      const pr = xlNorm(val('priority'));
+      chart.meta.priority = META_PRIORITIES.includes(pr) ? pr : '';
+      chart.meta.tags = val('tags').split(',').map(t => t.trim()).filter(Boolean);
+    }
+  }
+  let nodes = 0;
+  (function w(l) { (l || []).forEach(x => { nodes++; w(x.children); }); })(chart.activities);
+  return { chart, entities: ents, labels, shorts, warnings: warn,
+    stats: { sheet: sheetsRead.join(', '), rows: rowsRead, nodes: nodes, cols: nCols, entities: ents.length } };
+}
+
+async function importXlsx(file) {
+  let parsed;
+  try {
+    parsed = xlsxToChart(await readXlsx(await file.arrayBuffer()), file.name);
+  } catch (err) {
+    showToast(err.message || 'Could not read that workbook.', 'error');
+    return;
+  }
+  const chart = parsed.chart, st = parsed.stats;
+  const renamed = COLS.filter(k => parsed.labels[k] && parsed.labels[k] !== COL_LABELS[k]);
+  const lines = [
+    'Read ' + st.sheet.split(', ').map(n => '"' + n + '"').join(' + ') + ' from ' + file.name + ':',
+    '',
+    '  ' + st.nodes + ' activit' + (st.nodes === 1 ? 'y' : 'ies') + ' from ' + st.rows + ' row' + (st.rows === 1 ? '' : 's'),
+    '  ' + st.cols + ' party column' + (st.cols === 1 ? '' : 's'),
+    st.entities ? '  ' + st.entities + ' entit' + (st.entities === 1 ? 'y' : 'ies') : null,
+    '',
+    ...parsed.warnings.map(w => '  ! ' + w),
+    renamed.length ? '  ! The party column headers differ from this workspace’s. Importing renames'
+      + ' them for every organization chart, not just this one.' : null,
+    parsed.warnings.length || renamed.length ? '' : null,
+    'Add it as a new chart tab? Nothing already in the workspace is changed.'
+  ].filter(x => x !== null);
+  if (!confirm(lines.join('\n'))) return;
+  state.charts.push(chart);
+  state.activeChartId = chart.id;
+  if (renamed.length) {
+    Object.keys(parsed.labels).forEach(k => {
+      state.columnLabels[k] = parsed.labels[k];
+      state.columnShort[k] = parsed.shorts[k];
+    });
+    applyColumnLabels();
+  }
+  // Entities dedupe by name — the same contract Merge already uses for deliverables.
+  let added = 0;
+  parsed.entities.forEach(e => {
+    if ((state.entities || []).some(x => xlNorm(x.name) === xlNorm(e.name))) return;
+    state.entities.push(e); added++;
+  });
+  state.viewMode = 'chart';
+  saveState();
+  render();
+  showToast('Imported ' + st.nodes + ' activities into a new chart tab'
+    + (added ? ', plus ' + added + ' entit' + (added === 1 ? 'y' : 'ies') : '') + '.', 'suggest');
+}
+
 // ---------- PowerPoint (.pptx) export — one slide per tier (paginated), reusing the Excel tables ----------
 // Hand-rolled OOXML (like the .xlsx writer). A title slide + one slide per tier page, each a native
 // PowerPoint table so leadership can drop it straight into the PG deck the chart came from.
@@ -15954,7 +16411,10 @@ function importJSON(file, merge) {
 let _importMerge = false;
 document.getElementById('file-import').addEventListener('change', e => {
   const f = e.target.files[0];
-  if (f) importJSON(f, _importMerge);
+  // One picker, two formats. A workbook always lands as a NEW chart tab, so Load and Merge mean
+  // the same thing for it — there is nothing in a spreadsheet that could replace a workspace.
+  if (f && /\.xlsx$/i.test(f.name)) importXlsx(f);
+  else if (f) importJSON(f, _importMerge);
   _importMerge = false;
   e.target.value = '';
 });

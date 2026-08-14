@@ -653,6 +653,12 @@
         </div>
       </div>
       <p class="sub" style="margin-top:1.4rem"><b>Export</b> gives you the document forms: Print/PDF for a clean chrome-free layout, PowerPoint with one slide per tier, Excel for spreadsheet review, XML for anything programmatic, and Mermaid for diagramming.</p>
+      <h3>The Excel route — for people who would rather work in a spreadsheet</h3>
+      <p>Under <b>Export</b> there is a <span class="kbd">📋 Blank template</span>. Download it, fill it in, and bring it back through <span class="kbd">📂 Load</span> — the file picker takes a <code>.xlsx</code> anywhere it takes a <code>.json</code>.</p>
+      <p>The template is one flat sheet. The first four columns are the hierarchy; the rest are your parties. Put an activity's name in the column for its level and repeat its parents to the left — the deepest filled column is the row you are defining. A parent does not need a row of its own; naming it on a child's row creates it.</p>
+      <p>Rename the party headers to your own parties if you like. Whatever you type becomes the column label in the tool.</p>
+      <p>It reads real spreadsheets, not just its own template: a title line and notes above the table are fine, blank rows and extra columns are ignored, and letters are case-insensitive. A row that skips a level — Project filled, Program blank — is skipped and counted, because there is no sensible place to put it and guessing would be worse than saying so.</p>
+      <p>The template is the same shape the Excel <em>export</em> writes, so the loop closes: export a chart, edit it in Excel, load it back. Anything you import arrives as a new chart tab behind a summary of what was found — nothing already open is touched.</p>
     </div>
   </section>
 
