@@ -283,7 +283,7 @@ footer b{ color:var(--muted); }
   </header>
 
   <section>
-    <h2>The four that matter most</h2>
+    <h2>The five that matter most</h2>
     <p class="lede">If you read nothing else this week, read these.</p>
     <div class="hi">
       <div class="hi-card">
@@ -305,6 +305,11 @@ footer b{ color:var(--muted); }
         <span class="hi-ver">0.35</span>
         <h3>Handoffs can be routed around obstacles</h3>
         <p>Drag any noodle and it bends, leaving a redirector handle you can steer or double-click away. Routing is pure geometry — the handoff is still A to B, so nothing that reads the graph is affected.</p>
+      </div>
+      <div class="hi-card">
+        <span class="hi-ver">0.36</span>
+        <h3>A party no longer has to be a directorate</h3>
+        <p>Boards, committees, vendors and standing teams are first-class parties now, created in the Roster and assignable anywhere a directorate is. Flat by design — they name a party at the depth RACI already stops at, without pretending to sit in the org tree.</p>
       </div>
     </div>
   </section>
@@ -417,6 +422,20 @@ footer b{ color:var(--muted); }
             <li><span class="kind fix">Fixed</span><div><b>Hiding the flow gallery now names the way back.</b> The <kbd>⊞ Gallery</kbd> button always reopened it, but an × with no hint reads as a one-way door.</div></li>
           </ul>
         </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.36</span><h3>Non-person parties, and metadata on everything</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Entities — boards, committees, vendors, standing teams.</b> Created in a section at the bottom of the Roster, and assignable anywhere a directorate is: the Responsible Party panel switches between Directorate and Entity, and a Program or Project row's org list gained an Entities group.
+              <span class="why">The roster models six fixed directorates and the people inside them. A PG Board is neither, and until now the only way to name one was to fake it as a division or spend one of the six slots. An entity is deliberately flat — no divisions, no people under it — because it names a party at exactly the depth RACI already stops at.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Entities count their own uses.</b> Each card says how many things name it, and deleting one that is in use lists what would be left pointing at nothing before you commit.
+              <span class="why">References are not rewritten on delete. They read “(missing entity)” until re-pointed — the same contract a deleted deliverable already had, and the honest one: a party that quietly emptied itself would be worse than one that says it is broken.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Details on every chart and every flow.</b> Description, customer, priority, budget and tags, in one panel opened with <kbd>✎ Details</kbd> — on the chart-tab bar for a chart, on the strip above the canvas for a flow. A dot on the button means something is filled in.</div></li>
+            <li><span class="kind new">New</span><div><b>The filter box got much better.</b> It matches every metadata field, not just name and description, so a customer name, a fiscal year or a tag narrows the gallery. Tags show on the cards.</div></li>
+            <li><span class="kind new">New</span><div><b>Both new blocks export.</b> An <code>&lt;entities&gt;</code> element and a <code>&lt;meta&gt;</code> element in the XML; an Entities sheet and five new columns on the Document sheet in Excel.</div></li>
+            <li><span class="kind fix">Fixed</span><div><b>A Final artifact shows its details read-only</b> rather than hiding them. The lock is about editing, not about reading.</div></li>
+          </ul>
+        </article>
       </div>
     </div>
   </section>
@@ -424,12 +443,14 @@ footer b{ color:var(--muted); }
   <section>
     <h2>Worth knowing before you open an old file</h2>
     <div class="heads">
-      <h3>Two changes that touch existing data</h3>
+      <h3>Three changes that touch existing data</h3>
       <dl>
         <dt>A flow saved as DACI or RAPID now loads as RACI.</dt>
         <dd>The framework picker is gone from task flows, and normalization coerces the value on load rather than leaving state with no way to see or change it. Letters outside RACI are preserved in the cells but are no longer offered. Charts are unaffected — RACI and RASCI both remain.</dd>
         <dt>The old "Contrast" theme is now "High contrast · Dark".</dt>
         <dd>Same palette, new name. A stored preference migrates automatically in both the pre-paint bootstrap and the main script, so nobody gets reset to Dark.</dd>
+        <dt>A flow's description moved into the new details block.</dt>
+        <dd>It was the only metadata a flow had; charts had none at all. Both now carry the same block, so one panel edits either and one predicate searches both. An older file's top-level <code>description</code> is folded into <code>meta.description</code> on load — nothing is lost and nothing needs re-typing.</dd>
       </dl>
     </div>
   </section>
@@ -447,7 +468,8 @@ footer b{ color:var(--muted); }
           <tr><td>0.32</td><td>Draft / Final lifecycle and locking</td><td>Tue 11 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.33</td><td>Both rail systems boxed alike</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.34</td><td>Mode picker, RACI-only, five themes, sticky groups</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
-          <tr><td>0.35</td><td>Redirectors, chrome fixes, the manual</td><td>Thu 13 Aug</td><td class="pending">on branch</td></tr>
+          <tr><td>0.35</td><td>Redirectors, chrome fixes, the manual</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.36</td><td>Entities, and details on charts and flows</td><td>Fri 14 Aug</td><td class="pending">on branch</td></tr>
         </tbody>
       </table>
     </div>

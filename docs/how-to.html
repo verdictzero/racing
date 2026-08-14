@@ -566,6 +566,10 @@
       <p class="sub">A column header says <em>Cyber &amp; EW Directorate</em>. The roster says which division, which branch, which team, and which people.</p>
       <p>Build it top-down: directorate → division → branch → team → people. Once a directorate is mapped to a column, every cell in that column can name the real unit behind the letter — and the Tasks lens can answer "what lands on my branch?" for a unit four levels down.</p>
       <p>This is optional. A chart with no roster still works; it just cannot tell you who, specifically.</p>
+      <h3>Entities — the parties that are not in the tree</h3>
+      <p>Plenty of real parties are neither a person nor one of the six directorates: a board that approves, a committee that reviews, a vendor that delivers, a standing team that spans two directorates. Those go in the <b>Entities</b> section at the bottom of the Roster.</p>
+      <p>An entity is deliberately flat. It has a name, a kind, a short label and whoever speaks for it — and nothing underneath. That is the point: it names a party at exactly the depth RACI already stops at, without pretending it sits somewhere in the org tree it does not belong to.</p>
+      <p>Once one exists it is assignable anywhere a directorate is. In the <b>Responsible Party</b> panel, the first dropdown switches between <em>Directorate</em> and <em>Entity</em>; on a Program or Project row, the org badge's list has an <b>Entities</b> group at the bottom. Each card shows how many things name it, and deleting one that is in use tells you exactly what would be left pointing at nothing.</p>
     </div>
   </section>
 
@@ -618,6 +622,16 @@
       <p class="sub">Every chart and every flow carries a status, and both states are always labelled — a marking that appeared only when something was wrong would teach everyone to read "no marking" as "approved".</p>
       <p><b>Draft</b> is a working copy: still being written, free to change. <b>Final</b> means someone signed it, and the tool locks it — the add, delete and rename affordances are taken away, the cells go inert, and anything that tries to move on a Final artifact is put back whatever path produced it. Reopen it as a draft to edit again.</p>
       <p>Status rides on each artifact, not the workspace, because a settled chart with three exploratory flows hanging off it is the normal case. One cross-check runs anyway: a Final flow reading rows from a Draft chart is flagged per step, since the ground can still move under a claim that reads as settled.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Details</span>Metadata, and why the filter box gets better</h2>
+      <p class="sub">Every chart and every flow carries the same small block: description, customer, priority, budget and tags.</p>
+      <p>Open it with <span class="kbd">✎ Details</span> — on the chart-tab bar for a chart, on the strip above the canvas for a flow. A dot on the button means something is filled in.</p>
+      <p>It is not decoration. The gallery's filter box matches <em>every</em> one of those fields, so typing a customer name, a fiscal year or a tag narrows the list the same way typing a flow name does. Tags show on the gallery cards. All of it rides into the Excel export as columns on the Document sheet and into the XML as a <code>&lt;meta&gt;</code> element, so the answer to "what is this and whose is it" survives leaving the tool.</p>
+      <p>A Final chart or flow shows its details read-only. The lock is about editing, not about reading.</p>
     </div>
   </section>
 

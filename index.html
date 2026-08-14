@@ -1541,6 +1541,11 @@ body.show-bz-party[data-view="bizcase"] #bz-party-panel { display: block; }
   border-radius: 5px; padding: 6px 8px; font: inherit; font-size: 12px; cursor: pointer;
 }
 .bzp-field select:disabled { opacity: 0.5; cursor: not-allowed; }
+.bzp-none {
+  font-size: 11px; line-height: 1.45; color: var(--text-dim);
+  border: 1px dashed var(--border); border-radius: 8px; padding: 8px 10px;
+}
+.bzp-none b { color: var(--text); }
 .bzp-preview { margin: 6px 0 14px; padding: 8px 10px; background: var(--bg); border: 1px dashed var(--border); border-radius: 6px; font-size: 11px; color: var(--text-dim); min-height: 18px; }
 .bzp-preview.set { color: var(--text); border-style: solid; }
 .bzp-actions { display: flex; gap: 8px; }
@@ -1820,6 +1825,80 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 #splash-actions .sc-dismiss:hover { background: var(--accent-hover); }
 
 /* ===== New-chart chooser (organization vs free-form) ===== */
+/* ---- Details panel (v0.36): the metadata block, one panel for charts and flows alike ---- */
+#meta-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: var(--scrim); backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#meta-overlay.open { display: flex; }
+#meta-card {
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+  max-width: 520px; width: 100%; max-height: 88vh; overflow: auto;
+  padding: 20px 24px 22px; color: var(--text);
+}
+.mt-head { display: flex; align-items: center; gap: 12px; }
+.mt-head h2 { margin: 0; font-size: 18px; flex: 1 1 auto; }
+#meta-close {
+  flex: 0 0 auto; background: none; border: none; color: var(--text-dim);
+  font-size: 22px; line-height: 1; cursor: pointer; padding: 0 2px;
+}
+#meta-close:hover { color: var(--text); }
+.mt-sub { margin: 4px 0 16px; font-size: 12px; color: var(--text-dim); }
+.mt-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 13px; }
+.mt-field > label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--text-dim); }
+.mt-field > .mt-hint { font-size: 10.5px; color: var(--text-dim); }
+.mt-field input, .mt-field select, .mt-field textarea {
+  font: inherit; font-size: 13px; color: var(--text);
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 9px; width: 100%;
+}
+.mt-field textarea { min-height: 78px; resize: vertical; line-height: 1.45; }
+.mt-field input:focus, .mt-field select:focus, .mt-field textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.22);
+}
+.mt-field input:disabled, .mt-field select:disabled, .mt-field textarea:disabled {
+  opacity: 0.65; cursor: not-allowed;
+}
+.mt-two { display: flex; gap: 12px; }
+.mt-two > .mt-field { flex: 1 1 0; min-width: 0; }
+.mt-locked {
+  font-size: 11.5px; line-height: 1.45; margin: 0 0 14px;
+  border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 8px;
+  background: rgba(var(--accent-rgb), 0.08); color: var(--text); padding: 8px 11px;
+}
+.mt-tagrow { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.mt-tag {
+  font-size: 10.5px; border-radius: 999px; padding: 1px 8px;
+  background: rgba(var(--accent-rgb), 0.13); color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+/* The "this has details" dot, on a chart tab and on a gallery card. */
+.has-meta-dot {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); flex: 0 0 auto; margin-left: 1px;
+}
+.bz-gal-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.bz-gal-tag {
+  font-size: 9.5px; border-radius: 999px; padding: 0 6px;
+  background: rgba(var(--accent-rgb), 0.12); color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+}
+.chart-meta-btn, .bzm-meta {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px;
+  font: inherit; font-size: 11px; cursor: pointer;
+  background: var(--bg-3); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 10px; padding: 2px 9px;
+}
+.chart-meta-btn:hover, .bzm-meta:hover { border-color: var(--accent); color: var(--accent); }
+.bzm-meta { margin-left: 8px; }
+:root[data-theme^="hc-"] #meta-card,
+:root[data-theme^="hc-"] .mt-field input,
+:root[data-theme^="hc-"] .mt-field select,
+:root[data-theme^="hc-"] .mt-field textarea,
+:root[data-theme^="hc-"] .chart-meta-btn,
+:root[data-theme^="hc-"] .bzm-meta { border-width: 2px; }
+
 #newchart-overlay {
   position: fixed; inset: 0; z-index: 210;
   background: var(--scrim);
@@ -2300,6 +2379,51 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
   color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer;
 }
 .rost-add:hover { border-color: var(--accent); color: var(--accent); }
+/* ---- Entities (v0.36): non-person parties, peers of a directorate rather than children ---- */
+.ent-section { margin: 22px 0 4px; border-top: 1px solid var(--border); padding-top: 16px; }
+.ent-sec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.ent-sec-head h3 { margin: 0; font-size: 15px; }
+.ent-sec-note { font-size: 11px; color: var(--text-dim); flex: 1 1 280px; min-width: 0; }
+.ent-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.ent-card {
+  flex: 0 0 236px;
+  display: flex; flex-direction: column; gap: 5px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px 9px;
+}
+.ent-head { display: flex; align-items: center; gap: 6px; }
+.ent-kind {
+  flex: 1 1 auto; min-width: 0;
+  font: inherit; font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+  background: var(--bg-3); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 1px 7px; cursor: pointer;
+}
+.ent-kind:hover { border-color: var(--accent); color: var(--text); }
+.ent-name { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.ent-row { display: flex; align-items: baseline; gap: 8px; font-size: 11px; }
+.ent-row label { flex: 0 0 32px; color: var(--text-dim); }
+.ent-short, .ent-lead { flex: 1 1 auto; min-width: 0; color: var(--text); }
+.ent-desc { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+.ent-card [contenteditable="true"] {
+  border-radius: 4px; padding: 1px 3px; margin: 0 -3px; outline: none; word-break: break-word;
+}
+.ent-card [contenteditable="true"]:hover { background: rgba(var(--accent-rgb), 0.08); }
+.ent-card [contenteditable="true"]:focus { background: rgba(var(--accent-rgb), 0.14); box-shadow: inset 0 0 0 1px var(--accent); }
+.ent-card [contenteditable="true"]:empty::before {
+  content: attr(data-placeholder); color: var(--text-dim); opacity: 0.7; pointer-events: none;
+}
+.ent-uses {
+  align-self: flex-start; margin-top: 3px; font-size: 10px; cursor: help;
+  background: rgba(var(--accent-rgb), 0.11); color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 999px; padding: 0 7px;
+}
+.ent-uses.none { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.ent-add { flex: 0 0 236px; min-height: 96px; }
+:root[data-theme^="hc-"] .ent-card,
+:root[data-theme^="hc-"] .ent-uses,
+:root[data-theme^="hc-"] .ent-kind { border-width: 2px; }
+
 .rost-unit-head { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
 .rost-uh-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .rost-uh-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); flex: 0 0 auto; }
@@ -2596,7 +2720,9 @@ body.show-legend #btn-legend { background: var(--bg-4); color: var(--text); bord
 .division:hover > .div-header > .del-icon,
 .branch:hover > .branch-header > .del-icon,
 .team:hover > .team-header > .del-icon,
-.person:hover > .del-icon { visibility: visible; }
+.person:hover > .del-icon,
+.ent-card:hover .ent-del,
+.ent-card:focus-within .ent-del { visibility: visible; }
 .del-icon:hover { color: var(--text-strong); background: var(--err); }
 
 /* ===== Business Case (node-graph) view — tabletop exercises ===== */
@@ -3225,6 +3351,10 @@ body.bz-routing .bz-redirs .bz-via { cursor: grabbing; }
 .bz-party-lvl.k-div > .bz-party-lbl,
 .bz-party-lvl.k-branch > .bz-party-lbl,
 .bz-party-lvl.k-team > .bz-party-lbl { font-size: 10px; color: var(--text); }
+/* An entity is not a rung of the org tree, so it does not borrow the tree's colour. */
+.bz-party-lvl.k-entity > .bz-party-lbl { font-size: 10px; color: var(--text); font-style: italic; }
+.bz-party-lvl.k-entity { border-style: dashed; border-color: rgba(var(--c-rgb), 0.6); background: rgba(var(--c-rgb), 0.09); }
+.bz-party-lvl.k-entity.is-leaf { border-color: rgba(var(--c-rgb), 0.6); background: rgba(var(--c-rgb), 0.09); }
 .bz-party-lvl.is-leaf { border-color: rgba(var(--accent-rgb),0.55); background: rgba(var(--accent-rgb),0.10); }
 .bz-party-lvl.is-leaf > .bz-party-lbl { color: var(--accent); font-weight: 600; }
 
@@ -4246,6 +4376,16 @@ body[data-view="roster"] #legend { display: none; }
       </button>
     </div>
     <button type="button" class="nc-cancel" id="newchart-cancel">Cancel</button>
+  </div>
+</div>
+<div id="meta-overlay" role="dialog" aria-modal="true" aria-labelledby="meta-title">
+  <div id="meta-card">
+    <div class="mt-head">
+      <h2 id="meta-title">Details</h2>
+      <button type="button" id="meta-close" title="Close (Esc)" aria-label="Close">×</button>
+    </div>
+    <p class="mt-sub" id="meta-sub"></p>
+    <div id="meta-body"><!-- filled by renderMetaPanel() --></div>
   </div>
 </div>
 <img id="bg-watermark" alt="" aria-hidden="true">
@@ -6347,7 +6487,7 @@ body[data-view="roster"] #legend { display: none; }
       <div class="ht-map-box ht-map-box--raci">
         <span class="ht-map-lbl">RACI Chart</span>
         <div class="ht-map-row"><b>Chart</b><span>the matrix — who owns what, at every altitude</span></div>
-        <div class="ht-map-row"><b>Roster</b><span>the org — directorates, divisions, branches, teams, people</span></div>
+        <div class="ht-map-row"><b>Roster</b><span>the org — directorates, divisions, branches, teams, people, plus entities</span></div>
         <div class="ht-map-row"><b>Tasks</b><span>one unit's work, read back out of everything</span></div>
       </div>
       <div class="ht-map-box ht-map-box--flow">
@@ -6440,6 +6580,10 @@ body[data-view="roster"] #legend { display: none; }
       <p class="sub">A column header says <em>Cyber &amp; EW Directorate</em>. The roster says which division, which branch, which team, and which people.</p>
       <p>Build it top-down: directorate → division → branch → team → people. Once a directorate is mapped to a column, every cell in that column can name the real unit behind the letter — and the Tasks lens can answer "what lands on my branch?" for a unit four levels down.</p>
       <p>This is optional. A chart with no roster still works; it just cannot tell you who, specifically.</p>
+      <h3>Entities — the parties that are not in the tree</h3>
+      <p>Plenty of real parties are neither a person nor one of the six directorates: a board that approves, a committee that reviews, a vendor that delivers, a standing team that spans two directorates. Those go in the <b>Entities</b> section at the bottom of the Roster.</p>
+      <p>An entity is deliberately flat. It has a name, a kind, a short label and whoever speaks for it — and nothing underneath. That is the point: it names a party at exactly the depth RACI already stops at, without pretending it sits somewhere in the org tree it does not belong to.</p>
+      <p>Once one exists it is assignable anywhere a directorate is. In the <b>Responsible Party</b> panel, the first dropdown switches between <em>Directorate</em> and <em>Entity</em>; on a Program or Project row, the org badge's list has an <b>Entities</b> group at the bottom. Each card shows how many things name it, and deleting one that is in use tells you exactly what would be left pointing at nothing.</p>
     </div>
   </section>
 
@@ -6492,6 +6636,16 @@ body[data-view="roster"] #legend { display: none; }
       <p class="sub">Every chart and every flow carries a status, and both states are always labelled — a marking that appeared only when something was wrong would teach everyone to read "no marking" as "approved".</p>
       <p><b>Draft</b> is a working copy: still being written, free to change. <b>Final</b> means someone signed it, and the tool locks it — the add, delete and rename affordances are taken away, the cells go inert, and anything that tries to move on a Final artifact is put back whatever path produced it. Reopen it as a draft to edit again.</p>
       <p>Status rides on each artifact, not the workspace, because a settled chart with three exploratory flows hanging off it is the normal case. One cross-check runs anyway: a Final flow reading rows from a Draft chart is flagged per step, since the ground can still move under a claim that reads as settled.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Details</span>Metadata, and why the filter box gets better</h2>
+      <p class="sub">Every chart and every flow carries the same small block: description, customer, priority, budget and tags.</p>
+      <p>Open it with <span class="kbd">✎ Details</span> — on the chart-tab bar for a chart, on the strip above the canvas for a flow. A dot on the button means something is filled in.</p>
+      <p>It is not decoration. The gallery's filter box matches <em>every</em> one of those fields, so typing a customer name, a fiscal year or a tag narrows the list the same way typing a flow name does. Tags show on the gallery cards. All of it rides into the Excel export as columns on the Document sheet and into the XML as a <code>&lt;meta&gt;</code> element, so the answer to "what is this and whose is it" survives leaving the tool.</p>
+      <p>A Final chart or flow shows its details read-only. The lock is about editing, not about reading.</p>
     </div>
   </section>
 
@@ -6726,6 +6880,32 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.36 alpha - Two things the stakeholder review asked for by name.
+//                  ENTITIES — "be able to create non-person entities (example: BoD, PG Board,
+//                  teams)". The roster models six directorates and the people inside them; a board
+//                  that approves, a vendor that delivers and a standing team that spans two
+//                  directorates are none of those, and until now the only way to name one was to
+//                  fake it as a division or spend one of the six fixed directorate slots on it.
+//                  state.entities[] is a flat registry beside state.artifacts[] — deliberately
+//                  flat, with no divisions and no people under it, because an entity names a party
+//                  at exactly the grain RACI already stops at (a team) and pretending otherwise
+//                  would put it back in a tree it does not belong to. { entityId } IS an org ref,
+//                  so normalizeOrgRef/orgLabel/partyLabel each grew one branch and every consumer
+//                  that already took a party — chart row, flow step column, work scope, deliverable
+//                  owner — took an entity for free. The Responsible Party picker gained a
+//                  Directorate-or-Entity switch above the hierarchy; entities are created and
+//                  edited in a section under the Roster. Deleting one that is in use names what
+//                  would be left dangling and counts it, because refs are NOT rewritten on delete:
+//                  they read "(missing entity)" until re-pointed, exactly as a deleted deliverable
+//                  does. Both exports carry them (an <entities> block, an Entities sheet).
+//                  DETAILS — "metadata for RACIs and workflows for improving search/indexing",
+//                  plus the description / customer / budget / priority the intake discussion named.
+//                  Charts and flows now carry the SAME meta block, so one panel edits either, one
+//                  predicate searches both, and the exports have one place to look. The flow
+//                  gallery filter went from matching name+description to matching everything
+//                  indexed, tags included, and the cards show their tags. A flow's old top-level
+//                  `description` migrates into meta.description on load. Final artifacts show the
+//                  panel read-only rather than hiding it — the lock is about editing, not reading.
 //     0.35 alpha - REDIRECTORS on a handoff: drag any noodle and it bends around whatever is in
 //                  the way, leaving a handle you can drag again or double-click to remove. They
 //                  live on the EDGE (edge.via[]), not in b.tasks, and that is the whole design:
@@ -7065,7 +7245,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.35';
+const APP_VERSION = '0.36';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -7605,6 +7785,40 @@ function statusStripHtml(kind, o) {
 // A chart = a single nested-RACI hierarchy. Multiple charts live as tabs in state.charts.
 // The DIRECTORATE roster + actor/column labels are GLOBAL (shared across tabs); each chart owns
 // its own activity tree, drill path, and per-pane layout.
+// ---- Document metadata (v0.36) ----
+// Charts and flows carry the SAME block, so one panel edits either, one predicate searches both,
+// and every export has one place to look. The named fields are the ones the intake discussion
+// actually asked for (description / customer / priority / budget); tags are the free axis for
+// everything that discussion did not anticipate.
+const META_PRIORITIES = ['', 'low', 'normal', 'high', 'critical'];
+const META_PRIORITY_LABELS = { '': '— none —', low: 'Low', normal: 'Normal', high: 'High', critical: 'Critical' };
+function makeMeta() { return { description: '', customer: '', priority: '', budget: '', tags: [] }; }
+function normalizeMeta(m) {
+  const x = (m && typeof m === 'object') ? m : {};
+  const str = v => typeof v === 'string' ? v.trim() : '';
+  return {
+    description: typeof x.description === 'string' ? x.description : '',
+    customer: str(x.customer),
+    priority: META_PRIORITIES.includes(x.priority) ? x.priority : '',
+    budget: str(x.budget),
+    tags: Array.isArray(x.tags)
+      ? [...new Set(x.tags.map(t => String(t == null ? '' : t).trim()).filter(Boolean))].slice(0, 24)
+      : []
+  };
+}
+// Everything a filter box should match on for one chart or flow, flattened and lowercased once.
+function metaSearchText(x) {
+  const m = (x && x.meta) || {};
+  return [x.title, x.name, m.description, m.customer, m.budget, (m.tags || []).join(' ')]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+// True once anything past the defaults is filled in — drives the "has details" dot on tabs and cards.
+function hasMeta(x) {
+  const m = (x && x.meta) || {};
+  return !!(m.description || m.customer || m.priority || m.budget || (m.tags || []).length);
+}
+function metaOf(x) { if (!x.meta) x.meta = makeMeta(); return x.meta; }
+
 function makeChart(title, activities) {
   return {
     id: 'c_' + uid(),
@@ -7612,6 +7826,7 @@ function makeChart(title, activities) {
     framework: 'raci',
     status: 'draft',            // 'draft' | 'final'; Final locks the chart (v0.32)
     finalizedAt: null,          // ISO stamp of the moment it was signed, cleared on reopen
+    meta: makeMeta(),           // description / customer / priority / budget / tags (v0.36)
     custom: null,               // null = org chart; free-form charts get { cols, tiers }
     activities: Array.isArray(activities) ? activities : [],
     drillPath: [],
@@ -7664,11 +7879,61 @@ const BIZ_MODE_META = {
             blurb: 'Every step names the chart row it implements and inherits that row’s RACI.' }
 };
 function makeBizCase(name) {
-  return { id: 'b_' + uid(), name: name || 'Untitled business case', description: '', framework: 'raci',
+  return { id: 'b_' + uid(), name: name || 'Untitled business case', meta: makeMeta(), framework: 'raci',
     mode: 'free', sourceChartId: null,
     status: 'draft', finalizedAt: null,
     anchor: null, tasks: [], edges: [], groups: [], view: { panX: 0, panY: 0, zoom: 1 }, showTable: false };
 }
+// ---- Entities: parties that are neither people nor directorates (v0.36) ----
+// The roster models six directorates and the people inside them. Plenty of real parties are
+// neither: a board that approves, a vendor that delivers, a standing team that spans directorates.
+// An entity is deliberately FLAT — no divisions, no people — because it names a party at exactly
+// the grain RACI already stops at, without pretending it sits somewhere in the org tree.
+// It is referenced like any roster unit: { entityId } IS an org ref, so every place that already
+// accepts a party (chart row, flow step column, work scope, deliverable owner) takes one for free.
+const ENTITY_KINDS = ['board', 'committee', 'team', 'vendor', 'agency', 'office', 'other'];
+const ENTITY_KIND_META = {
+  board:     { label: 'Board',     icon: '⚖', blurb: 'A standing decision body — BoD, PG Board, a review board.' },
+  committee: { label: 'Committee', icon: '☷', blurb: 'A working group or panel convened around a topic.' },
+  team:      { label: 'Team',      icon: '⬡', blurb: 'A standing team that does not sit inside one directorate.' },
+  vendor:    { label: 'Vendor',    icon: '⚑', blurb: 'A contractor or supplier outside the organization.' },
+  agency:    { label: 'Agency',    icon: '◈', blurb: 'An external government or partner organization.' },
+  office:    { label: 'Office',    icon: '▣', blurb: 'A named office that is not one of the directorates.' },
+  other:     { label: 'Other',     icon: '○', blurb: 'Anything else that acts as a responsible party.' }
+};
+function makeEntity(name, kind) {
+  return { id: 'e_' + uid(), name: name || '', kind: ENTITY_KINDS.includes(kind) ? kind : 'other',
+           short: '', description: '', lead: null };
+}
+function entityById(id) { return (state.entities || []).find(e => e.id === id) || null; }
+function entityKindMeta(k) { return ENTITY_KIND_META[k] || ENTITY_KIND_META.other; }
+function entityName(e) { return (e && e.name && e.name.trim()) || 'Untitled entity'; }
+function entityShort(e) { return (e && e.short && e.short.trim()) || (e ? deriveShort(entityName(e)) : '?'); }
+// Every place an entity is named as a party, across charts, flows and the deliverable registry.
+// Same contract as computeArtifactUses — computed on demand; powers the ref-count and the
+// delete confirmation, so removing a board that 9 steps point at is never a silent loss.
+function entityUses(id) {
+  const out = [];
+  state.charts.forEach(c => (function walk(ns) {
+    (ns || []).forEach(n => {
+      if (n.org && n.org.entityId === id) out.push({ kind: 'row', name: n.name || '(untitled)', where: c.title || 'Untitled chart' });
+      walk(n.children);
+    });
+  })(c.activities));
+  state.bizCases.forEach(b => b.tasks.forEach(t => {
+    Object.keys(t.parties || {}).forEach(col => {
+      if (t.parties[col] && t.parties[col].entityId === id) {
+        out.push({ kind: 'step', name: t.name || '(untitled step)', where: b.name || 'Untitled flow' });
+      }
+    });
+  }));
+  (state.artifacts || []).forEach(a => {
+    if (a.ownerRef && a.ownerRef.entityId === id) out.push({ kind: 'deliverable', name: a.name, where: 'Deliverables' });
+  });
+  if (state.workScope && state.workScope.entityId === id) out.push({ kind: 'scope', name: 'Work view scope', where: 'Work' });
+  return out;
+}
+
 // ---- Artifacts: the global deliverable registry (v0.20) ----
 // One named entity per real-world deliverable ("Triage Report", "ATO decision"). Chart nodes
 // declare boundary IO against it (node.inputs/outputs = artifact ids); flow edges carry it as a
@@ -8042,7 +8307,7 @@ function bizDefaultPartyForTask(b, t, col, ctx) {
 // otherwise the whole feature is invisible until someone builds a second flow by hand.
 function seedEvidenceFlow() {
   const bc = makeBizCase('Evidence Preservation (procedure)');
-  bc.description = 'Reusable procedure: preserve and hand over evidence. Nested inside the incident tabletop — and available to nest anywhere else that needs it.';
+  bc.meta.description = 'Reusable procedure: preserve and hand over evidence. Nested inside the incident tabletop — and available to nest anywhere else that needs it.';
   const defs = [
     { key: 'freeze', name: 'Freeze the host',      x: 60,  y: 80,  raci: { cyber: 'R', hq: 'A' } },
     { key: 'image',  name: 'Capture disk image',   x: 340, y: 80,  raci: { infra: 'R', cyber: 'C' } },
@@ -8066,7 +8331,7 @@ function seedEvidenceFlow() {
 }
 function seedBizCase() {
   const bc = makeBizCase('Cyber Incident Response (Tabletop)');
-  bc.description = 'Example tabletop: who is R / A / C / I at each step — including a decision point that branches into more than one path.';
+  bc.meta.description = 'Example tabletop: who is R / A / C / I at each step — including a decision point that branches into more than one path.';
   // Detect & Triage is a DECISION POINT: it branches (confirmed incident vs. false positive).
   const defs = [
     { key: 'detect',  name: 'Detect & Triage',     x: 60,   y: 220, raci: { cyber: 'R', hq: 'A' } },
@@ -8129,6 +8394,7 @@ function defaultState() {
     activeChartId: demo.id,
     bizCases: cases,
     artifacts: [],
+    entities: [],
     workScope: null,
     activeBizCaseId: bc.id,
     actorLabels: { ...ACTOR_LABELS_DEFAULT },
@@ -8174,7 +8440,12 @@ const ALL_VIEW_MODES = ['chart','roster','bizcase','work'];
 // (IDs are not checked against the live roster here — dangling refs degrade gracefully at display time
 // via orgLabel/partyLabel, exactly like node.org.)
 function normalizeOrgRef(ref) {
-  if (!ref || typeof ref !== 'object' || !ACTORS.includes(ref.actor)) return null;
+  if (!ref || typeof ref !== 'object') return null;
+  // An entity ref is complete on its own — flat, so there is nothing beneath it to scrub. Checked
+  // for shape only, not existence: a ref to a deleted entity renders as "(missing entity)" rather
+  // than vanishing, exactly as a ref to a deleted deliverable does.
+  if (typeof ref.entityId === 'string' && ref.entityId) return { entityId: ref.entityId };
+  if (!ACTORS.includes(ref.actor)) return null;
   const out = { actor: ref.actor };
   if (typeof ref.divisionId === 'string' && ref.divisionId) {
     out.divisionId = ref.divisionId;
@@ -8216,7 +8487,8 @@ function normalizeNodes(nodes, depth, opts) {
     if (opts && opts.free) { delete n.org; }
     else {
       const ref = normalizeOrgRef(n.org);
-      if (ref && ref.divisionId) n.org = ref; else delete n.org;
+      // Division depth or deeper for a roster ref; an entity is flat, so it qualifies as-is.
+      if (ref && (ref.divisionId || ref.entityId)) n.org = ref; else delete n.org;
     }
     if (depth >= maxTier) n.children = [];
     else n.children = normalizeNodes(Array.isArray(n.children) ? n.children : [], depth + 1, opts);
@@ -8253,6 +8525,16 @@ function migrateState(s) {
     ownerRef: normalizeOrgRef(a.ownerRef),
     description: typeof a.description === 'string' ? a.description : '',
     doc: (a.doc && typeof a.doc === 'object' && typeof a.doc.id === 'string') ? a.doc : null
+  }));
+  // Entities (v0.36) — the non-person party registry. Normalized beside artifacts because it is
+  // the same kind of thing: a flat global list that charts and flows point into by id.
+  s.entities = (Array.isArray(s.entities) ? s.entities : []).filter(e => e && typeof e === 'object').map(e => ({
+    id: typeof e.id === 'string' && e.id ? e.id : 'e_' + uid(),
+    name: typeof e.name === 'string' ? e.name : '',
+    kind: ENTITY_KINDS.includes(e.kind) ? e.kind : 'other',
+    short: typeof e.short === 'string' ? e.short : '',
+    description: typeof e.description === 'string' ? e.description : '',
+    lead: normalizeLead(e.lead)
   }));
   const _artIds = new Set(s.artifacts.map(a => a.id));
   const cleanIO = arr => (Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && _artIds.has(x)) : []);
@@ -8292,6 +8574,7 @@ function migrateState(s) {
     // off, so an absent field reads as 'draft' — the state that claims nothing.
     status: ART_STATUSES.includes(c.status) ? c.status : 'draft',
     finalizedAt: (c.status === 'final' && typeof c.finalizedAt === 'string') ? c.finalizedAt : null,
+    meta: normalizeMeta(c.meta),
     custom,
     activities: normalizeNodes(Array.isArray(c.activities) ? c.activities : [], 0,
       custom ? { cols: custom.cols.map(x => x.key), maxTier: Infinity, free: true } : null),
@@ -8503,7 +8786,10 @@ function migrateState(s) {
     return {
       id: typeof b.id === 'string' && b.id ? b.id : 'b_' + uid(),
       name: typeof b.name === 'string' ? b.name : 'Untitled business case',
-      description: typeof b.description === 'string' ? b.description : '',
+      // v0.35 -> v0.36: the flow's lone `description` becomes one field of the shared meta block,
+      // so a chart and a flow carry the same shape and one panel edits either.
+      meta: normalizeMeta((b.meta && typeof b.meta === 'object') ? b.meta
+        : { description: typeof b.description === 'string' ? b.description : '' }),
       framework: BIZ_FRAMEWORKS.includes(b.framework) ? b.framework : 'raci',
       status: ART_STATUSES.includes(b.status) ? b.status : 'draft',
       finalizedAt: (b.status === 'final' && typeof b.finalizedAt === 'string') ? b.finalizedAt : null,
@@ -8734,6 +9020,13 @@ function resolveCascade() {
 // Resolve a stored roster ref {actor,divisionId[,branchId[,teamId]]} into display strings.
 function orgLabel(org) {
   if (!org) return null;
+  if (org.entityId) {
+    const e = entityById(org.entityId);
+    if (!e) return { short: '(missing entity)', full: 'This party named an entity that has since been deleted' };
+    const K = entityKindMeta(e.kind);
+    const lead = e.lead && e.lead.name ? ` · Lead: ${e.lead.name}` : '';
+    return { short: entityName(e), full: `${K.label}: ${entityName(e)}${lead}` };
+  }
   if (org.teamId) {
     const tm = findTeam(org.actor, org.divisionId, org.branchId, org.teamId);
     if (!tm) return null;
@@ -8764,7 +9057,9 @@ function orgLabel(org) {
 // Like orgLabel, but also resolves a directorate-only ref (no division) to the directorate name — used
 // by the Business Case responsible-party rows, where a user may scrub only as deep as they want.
 function partyLabel(ref) {
-  if (!ref || !ACTORS.includes(ref.actor)) return null;
+  if (!ref) return null;
+  if (ref.entityId) return orgLabel(ref);
+  if (!ACTORS.includes(ref.actor)) return null;
   if (ref.divisionId) return orgLabel(ref);   // division / branch depth (null if the unit was deleted)
   return { short: ACTOR_LABELS[ref.actor] || ref.actor, full: ACTOR_LABELS[ref.actor] || ref.actor };
 }
@@ -8772,6 +9067,12 @@ function partyLabel(ref) {
 // deep as the ref goes. Returns null for an invalid/dangling ref (caller then renders the "unset" state).
 function partyHierarchy(ref) {
   if (!partyLabel(ref)) return null;          // reuse the same validity/dangling check as the label
+  // An entity is one capsule with nothing under it — flat is the whole point, and a fake
+  // directorate wrapper around a board would say something about it that is not true.
+  if (ref.entityId) {
+    const e = entityById(ref.entityId);
+    return [{ kind: 'entity', name: e ? entityName(e) : '(missing entity)' }];
+  }
   const out = [{ kind: 'dir', name: ACTOR_LABELS[ref.actor] || ref.actor }];
   if (ref.divisionId) {
     const d = findDivision(ref.actor, ref.divisionId);
@@ -8897,6 +9198,97 @@ function renameTier(tier, label) {
 }
 
 // ---------- chart tabs ----------
+// ---- Details panel (v0.36) ----
+// One panel, two subjects. `_metaTarget` names which — 'chart' or 'flow' — and everything else
+// reads through metaOf(), so the two never drift apart. Writes land straight on the object and
+// go through saveState(), which is already debounced; there is no OK/Cancel because there is
+// nothing here that a stray keystroke could break irreversibly.
+let _metaTarget = null;
+function metaSubject() {
+  if (_metaTarget === 'chart') return ac();
+  if (_metaTarget === 'flow') return abc();
+  return null;
+}
+function openMetaPanel(kind) {
+  _metaTarget = (kind === 'flow') ? 'flow' : 'chart';
+  if (!metaSubject()) { _metaTarget = null; return; }
+  document.getElementById('meta-overlay').classList.add('open');
+  renderMetaPanel();
+  const first = document.querySelector('#meta-body textarea, #meta-body input');
+  if (first && !first.disabled) first.focus();
+}
+function closeMetaPanel() {
+  const ov = document.getElementById('meta-overlay');
+  if (ov) ov.classList.remove('open');
+  const had = _metaTarget;
+  _metaTarget = null;
+  // Repaint: a name/tag change shows up on the tab strip, the gallery cards and the flow picker.
+  if (had) render();
+}
+function renderMetaPanel() {
+  const x = metaSubject();
+  const body = document.getElementById('meta-body');
+  if (!x || !body) return;
+  const m = metaOf(x);
+  const isFlow = _metaTarget === 'flow';
+  const locked = isFinal(x);
+  const dis = locked ? ' disabled' : '';
+  document.getElementById('meta-title').textContent = isFlow ? 'Flow details' : 'Chart details';
+  document.getElementById('meta-sub').textContent = isFlow
+    ? `Metadata for “${x.name || 'Untitled'}” — searched by the gallery filter and carried into every export.`
+    : `Metadata for “${x.title || 'Untitled'}” — searched by the chart filter and carried into every export.`;
+  const prOpts = META_PRIORITIES.map(k =>
+    `<option value="${k}"${m.priority === k ? ' selected' : ''}>${escapeHtml(META_PRIORITY_LABELS[k])}</option>`).join('');
+  body.innerHTML = `
+    ${locked ? `<p class="mt-locked">This ${isFlow ? 'flow' : 'chart'} is <b>Final</b>. Its details are read-only — reopen it as a draft to change them.</p>` : ''}
+    <div class="mt-field">
+      <label for="mt-desc">Description</label>
+      <textarea id="mt-desc" data-meta-field="description" spellcheck="true"${dis}
+        placeholder="What this ${isFlow ? 'flow' : 'chart'} covers — scope, the opportunity behind it, anything a reader needs before the first row.">${escapeHtml(m.description)}</textarea>
+    </div>
+    <div class="mt-two">
+      <div class="mt-field">
+        <label for="mt-customer">Customer</label>
+        <input id="mt-customer" type="text" data-meta-field="customer" value="${escapeHtml(m.customer)}"${dis}
+          placeholder="Who it is for" spellcheck="false">
+      </div>
+      <div class="mt-field">
+        <label for="mt-priority">Priority</label>
+        <select id="mt-priority" data-meta-field="priority"${dis}>${prOpts}</select>
+      </div>
+    </div>
+    <div class="mt-field">
+      <label for="mt-budget">Budget</label>
+      <input id="mt-budget" type="text" data-meta-field="budget" value="${escapeHtml(m.budget)}"${dis}
+        placeholder="Free text — a figure, a line of accounting, or a pointer" spellcheck="false">
+    </div>
+    <div class="mt-field">
+      <label for="mt-tags">Tags</label>
+      <input id="mt-tags" type="text" data-meta-field="tags" value="${escapeHtml(m.tags.join(', '))}"${dis}
+        placeholder="Comma separated — intake, FY26, cyber" spellcheck="false">
+      <span class="mt-hint">Everything here is matched by the filter box, alongside the name, description, customer and budget.</span>
+      ${m.tags.length ? `<div class="mt-tagrow">${m.tags.map(t => `<span class="mt-tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+    </div>`;
+}
+// Live write-through. Tags re-render (to refresh the chips); every other field does not, so the
+// caret is never yanked out from under the person typing.
+function commitMetaField(el) {
+  const x = metaSubject();
+  if (!x) return;
+  if (isFinal(x)) { refuseLockedEdit(_metaTarget === 'flow' ? 'flow' : 'chart'); renderMetaPanel(); return; }
+  const f = el.dataset.metaField, m = metaOf(x);
+  if (f === 'tags') {
+    m.tags = [...new Set(el.value.split(',').map(t => t.trim()).filter(Boolean))].slice(0, 24);
+  } else if (f === 'priority') {
+    m.priority = META_PRIORITIES.includes(el.value) ? el.value : '';
+  } else if (f === 'description') {
+    m.description = el.value;
+  } else if (f === 'customer' || f === 'budget') {
+    m[f] = el.value.trim();
+  } else return;
+  saveState();
+}
+
 function renderChartTabs() {
   const bar = document.getElementById('chart-tabs');
   if (!bar) return;
@@ -8920,7 +9312,10 @@ function renderChartTabs() {
       <span class="cf-label">Framework</span>
       <select id="chart-framework">${fwOpts}</select>
     </div>`;
-  bar.innerHTML = tabs + `<button id="chart-tab-add" type="button" title="Add a new blank chart tab">+</button>` + fwSel;
+  const metaBtn = `<button type="button" class="chart-meta-btn" data-open-meta="chart"
+      title="Description, customer, priority, budget and tags for this chart — searched and exported">✎ Details${
+      hasMeta(ac()) ? '<span class="has-meta-dot" aria-hidden="true"></span>' : ''}</button>`;
+  bar.innerHTML = tabs + `<button id="chart-tab-add" type="button" title="Add a new blank chart tab">+</button>` + metaBtn + fwSel;
 }
 function setChartFramework(key) {
   if (!CHART_FRAMEWORKS.includes(key) || ac().framework === key) return;
@@ -9000,6 +9395,10 @@ function closeNewChartDialog() {
     if (e.target.closest('#newchart-cancel')) { closeNewChartDialog(); return; }
     const ncOv = document.getElementById('newchart-overlay');
     if (ncOv && ncOv.classList.contains('open') && !e.target.closest('#newchart-card')) { closeNewChartDialog(); return; }
+    // Details panel: × or a backdrop click. Same contract as the chooser above.
+    if (e.target.closest('#meta-close')) { closeMetaPanel(); return; }
+    const mtOv = document.getElementById('meta-overlay');
+    if (mtOv && mtOv.classList.contains('open') && !e.target.closest('#meta-card')) { closeMetaPanel(); return; }
     const close = e.target.closest('[data-tab-close]');
     if (close) { e.stopPropagation(); deleteChart(close.getAttribute('data-tab-close')); return; }
     // Click on the label while editing should NOT switch tabs (it's already editing).
@@ -9099,7 +9498,11 @@ function renderLegend() {
 // (what + to whom), and a jump link. "Lands on" = the assignment ref and the scope lie on the
 // same roster path — at/below the scope is DIRECT work; strictly above it is INHERITED (assigned
 // to a parent org with no deeper unit named, so it falls on every unit underneath).
-function orgRefPath(ref) { return ref ? [ref.actor, ref.divisionId, ref.branchId, ref.teamId].filter(Boolean) : []; }
+function orgRefPath(ref) {
+  if (!ref) return [];
+  if (ref.entityId) return [ref.entityId];   // flat — an entity is its own entire path
+  return [ref.actor, ref.divisionId, ref.branchId, ref.teamId].filter(Boolean);
+}
 function scopeRelation(scopeRef, ref) {
   const a = orgRefPath(scopeRef), b = orgRefPath(ref);
   if (!a.length || !b.length) return null;
@@ -9214,7 +9617,10 @@ function orgUnitStat(kind, u) {
   return '';
 }
 // Serialize / parse a contiguous org ref as a "|"-joined path (ids are "|"-safe, like the roster attrs).
-function refStr(ref) { return [ref.actor, ref.divisionId, ref.branchId, ref.teamId].filter(Boolean).join('|'); }
+function refStr(ref) {
+  if (ref && ref.entityId) return 'e:' + ref.entityId;   // entities are flat — nothing to drill into
+  return [ref.actor, ref.divisionId, ref.branchId, ref.teamId].filter(Boolean).join('|');
+}
 function refFromStr(s) {
   const [actor, divisionId, branchId, teamId] = s.split('|');
   const r = { actor };
@@ -10021,6 +10427,54 @@ function normalizeRosterPick() {
   }
   _rosterPick = out;
 }
+// ---- Entities panel (v0.36) ----
+// Rendered in BOTH roster layouts, below the directorates, because an entity is a peer of a
+// directorate as a party — not a thing you drill into. Flat by design: no divisions, no people,
+// just the name, what kind of body it is, and who speaks for it.
+function entityCardHtml(e) {
+  const K = entityKindMeta(e.kind);
+  const uses = entityUses(e.id).length;
+  const opts = ENTITY_KINDS.map(k =>
+    `<option value="${k}"${k === e.kind ? ' selected' : ''}>${ENTITY_KIND_META[k].icon} ${ENTITY_KIND_META[k].label}</option>`).join('');
+  return `<div class="ent-card" data-entity-id="${e.id}">
+      <div class="ent-head">
+        <select class="ent-kind" data-ent-kind="${e.id}" title="${escapeHtml(K.blurb)}">${opts}</select>
+        <button class="del-icon ent-del" data-del-entity="${e.id}" title="Delete this entity">×</button>
+      </div>
+      <span class="ent-name" contenteditable="true" spellcheck="false"
+            data-entity-id="${e.id}" data-field="ent-name"
+            data-placeholder="Name — e.g. PG Board">${escapeHtml(e.name)}</span>
+      <div class="ent-row">
+        <label>Short</label>
+        <span class="ent-short" contenteditable="true" spellcheck="false"
+              data-entity-id="${e.id}" data-field="ent-short"
+              data-placeholder="${escapeHtml(deriveShort(entityName(e)))}">${escapeHtml(e.short)}</span>
+      </div>
+      <div class="ent-row">
+        <label>Lead</label>
+        <span class="ent-lead" contenteditable="true" spellcheck="false"
+              data-entity-id="${e.id}" data-field="ent-lead"
+              data-placeholder="Who speaks for it">${escapeHtml((e.lead && e.lead.name) || '')}</span>
+      </div>
+      <span class="ent-desc" contenteditable="true" spellcheck="false"
+            data-entity-id="${e.id}" data-field="ent-desc"
+            data-placeholder="＋ what this body is for">${escapeHtml(e.description)}</span>
+      <span class="ent-uses${uses ? '' : ' none'}" title="${uses
+        ? escapeHtml(entityUses(e.id).map(u => `${u.where} › ${u.name}`).join('\n'))
+        : 'Nothing names this entity as a party yet'}">${uses ? `named by ${uses} ${uses === 1 ? 'thing' : 'things'}` : 'unused'}</span>
+    </div>`;
+}
+function entitiesSectionHtml() {
+  const list = state.entities || [];
+  return `<section class="ent-section">
+      <div class="ent-sec-head">
+        <h3>Entities</h3>
+        <span class="ent-sec-note">Parties that are not people and not directorates — boards, committees, vendors, standing teams. Assignable anywhere a directorate is.</span>
+      </div>
+      <div class="ent-grid">${list.map(entityCardHtml).join('')}<button class="rost-add ent-add" data-add-entity="1">+ Add entity</button></div>
+    </section>`;
+}
+
 function renderRoster() {
   const main = document.getElementById('ws-main');
   const mode = state.rosterMode === 'full' ? 'full' : 'explore';
@@ -10031,6 +10485,9 @@ function renderRoster() {
   const body = mode === 'full'
     ? `<div class="roster-body">${ACTORS.map(k => renderDirectoratePanel(k)).join('')}</div>`
     : rosterExploreHtml();
+  // Entities hang off the top level only — inside a drilled-in division they would read as though
+  // they belonged to it, which is the one thing an entity explicitly does not do.
+  const ents = (mode === 'full' || !_rosterPick) ? entitiesSectionHtml() : '';
   main.innerHTML = `
     <div class="roster-header">
       <h2>Roster</h2>
@@ -10038,6 +10495,7 @@ function renderRoster() {
       ${modeBtns}
     </div>
     ${body}
+    ${ents}
   `;
 }
 // A big drillable box for a child unit (division / branch / team). Carries the same delete/edit data
@@ -10251,8 +10709,9 @@ function bizRenderGalleryList() {
 function bizGalleryCardsHtml() {
   const active = abc();
   const q = _bizGalQ.trim().toLowerCase();
-  const list = state.bizCases.filter(b => !q || (b.name || '').toLowerCase().includes(q)
-    || (b.description || '').toLowerCase().includes(q));
+  // Filter spans everything the metadata block indexes — name, description, customer, budget and
+  // tags — so "search/indexing" means one box rather than one box per field.
+  const list = state.bizCases.filter(b => !q || metaSearchText(b).includes(q));
   return list.map(b => {
     const an = resolveAnchor(b);
     const isActive = b.id === active.id;
@@ -10266,7 +10725,7 @@ function bizGalleryCardsHtml() {
       : `Nest "${b.name || 'Untitled'}" inside "${active.name || 'Untitled'}" as a single box`;
     return `<article class="bz-gal-card${isActive ? ' is-active' : ''}${blocked ? ' is-blocked' : ''}"
         ${blocked ? '' : 'draggable="true"'} data-gal-case="${b.id}"
-        title="${escapeHtml((b.description || b.name || 'Untitled') + (blocked ? '' : ' — drag onto the canvas to nest it'))}">
+        title="${escapeHtml((b.meta.description || b.name || 'Untitled') + (blocked ? '' : ' — drag onto the canvas to nest it'))}">
       ${bizFlowThumbSvg(b)}
       <div class="bz-gal-name"><span class="bz-gal-status is-${artStatus(b)}" title="${escapeHtml(STATUS_META[artStatus(b)].blurb)}">${STATUS_META[artStatus(b)].short}</span>${escapeHtml(b.name || 'Untitled')}${isActive ? '<span class="bz-gal-open">open</span>' : ''}</div>
       <div class="bz-gal-meta">
@@ -10275,6 +10734,8 @@ function bizGalleryCardsHtml() {
         ${nSub ? `<span class="is-sub" title="Contains ${nSub} nested flow${nSub === 1 ? '' : 's'}">⧉ ${nSub}</span>` : ''}
         ${hosts ? `<span class="is-reused" title="Nested inside ${hosts} other flow${hosts === 1 ? '' : 's'}">↻ ${hosts}</span>` : ''}
       </div>
+      ${b.meta.tags.length ? `<div class="bz-gal-tags">${b.meta.tags.slice(0, 4).map(t => `<span class="bz-gal-tag">${escapeHtml(t)}</span>`).join('')}${
+        b.meta.tags.length > 4 ? `<span class="bz-gal-tag" title="${escapeHtml(b.meta.tags.slice(4).join(', '))}">+${b.meta.tags.length - 4}</span>` : ''}</div>` : ''}
       ${an ? `<div class="bz-gal-anchor" title="Anchored to a chart task">⚓ ${escapeHtml(an.node.name || 'untitled task')}</div>` : ''}
       <div class="bz-gal-acts">
         <button type="button" data-gal-open="${b.id}"${isActive ? ' disabled' : ''} title="Open this flow (same as picking it in the dropdown)">Open</button>
@@ -10765,9 +11226,12 @@ function bizModeStripHtml(b) {
   const sel = `<select id="bz-mode" class="bzm-badge" data-mode="${b.mode}" title="${
     escapeHtml(BIZ_MODES.map(k => `${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name} — ${BIZ_MODE_META[k].blurb}`).join('\n'))}">${
     BIZ_MODES.map(k => `<option value="${k}"${b.mode === k ? ' selected' : ''}>${BIZ_MODE_META[k].icon} ${BIZ_MODE_META[k].name}</option>`).join('')}</select>`;
+  const metaBtn = `<button type="button" class="bzm-meta" data-open-meta="flow"
+      title="Description, customer, priority, budget and tags for this flow — searched by the gallery filter and carried into every export">✎ Details${
+      hasMeta(b) ? '<span class="has-meta-dot" aria-hidden="true"></span>' : ''}</button>`;
   if (!bizIsLinked(b)) {
     return `<div class="bz-mode-strip is-free">
-      <span class="bzm-txt">${escapeHtml(M.blurb)}</span>${sel}</div>`;
+      <span class="bzm-txt">${escapeHtml(M.blurb)}</span>${metaBtn}${sel}</div>`;
   }
   const steps = b.tasks.filter(t => !isSubflow(t));
   const bound = steps.filter(t => bizBindCtx(t)).length;
@@ -10786,6 +11250,7 @@ function bizModeStripHtml(b) {
          broken ? `${broken} step${broken === 1 ? '' : 's'} point${broken === 1 ? 's' : ''} at a row that no longer exists — re-point or unlink ${broken === 1 ? 'it' : 'them'}.` : ''].filter(Boolean).join('\n')
       : 'Every step names the chart row it implements.')}">${bound}/${steps.length} step${steps.length === 1 ? '' : 's'} linked${broken ? ` · ${broken} broken` : ''}</span>
     ${unset ? `<button type="button" class="bzm-fix" data-bz-bind-next="1" title="Centre the next unlinked step and pick its row">Link the next one →</button>` : ''}
+    ${metaBtn}
     ${sel}
   </div>`;
 }
@@ -12509,6 +12974,56 @@ function deletePerson(actor, divId, brId, teamId, pId) {
   saveState();
   renderRoster();
 }
+// ---- Entity mutations (v0.36) ----
+function addEntity() {
+  const e = makeEntity('', 'board');
+  state.entities.push(e);
+  saveState();
+  renderRoster();
+  const el = document.querySelector(`.ent-name[data-entity-id="${e.id}"]`);
+  if (el) { el.focus(); document.execCommand && document.execCommand('selectAll', false, null); }
+}
+function deleteEntity(id) {
+  const e = entityById(id);
+  if (!e) return;
+  // Refs are not rewritten on delete — they render as "(missing entity)" — so the count is the
+  // whole warning, and it names what would be left dangling rather than just how many.
+  const uses = entityUses(id);
+  if (uses.length && !confirm(
+      `"${entityName(e)}" is named as a party by ${uses.length} ${uses.length === 1 ? 'thing' : 'things'}:\n\n` +
+      uses.slice(0, 8).map(u => `  • ${u.where} › ${u.name}`).join('\n') +
+      (uses.length > 8 ? `\n  … and ${uses.length - 8} more` : '') +
+      `\n\nDelete it anyway? Those parties will read "(missing entity)" until they are re-pointed.`)) return;
+  state.entities = state.entities.filter(x => x.id !== id);
+  saveState();
+  render();
+  showToast(`Entity "${entityName(e)}" deleted.`);
+}
+function setEntityKind(id, kind) {
+  const e = entityById(id);
+  if (!e || !ENTITY_KINDS.includes(kind) || e.kind === kind) return;
+  e.kind = kind;
+  saveState();
+  renderRoster();
+}
+function commitEntityEdit(target) {
+  const e = entityById(target.dataset.entityId);
+  if (!e) return;
+  const v = target.textContent.trim();
+  const f = target.dataset.field;
+  if (f === 'ent-name') { if (e.name === v) return; e.name = v; }
+  else if (f === 'ent-short') { if (e.short === v) return; e.short = v; }
+  else if (f === 'ent-desc') { if (e.description === v) return; e.description = v; }
+  else if (f === 'ent-lead') {
+    const cur = (e.lead && e.lead.name) || '';
+    if (cur === v) return;
+    e.lead = v ? { id: (e.lead && e.lead.id) || uid(), name: v } : null;
+  } else return;
+  saveState();
+  // A rename ripples into every party chip that names it, so repaint the whole app, not the roster.
+  render();
+}
+
 function commitRosterEdit(target) {
   const a = target.dataset.actor;
   const divId = target.dataset.divisionId;
@@ -12578,13 +13093,17 @@ function closePopover() { if (openPopover) { openPopover.remove(); openPopover =
 // only renderBizPartyPanel() rebuilds the panel body. bizPartyDraft holds the in-progress selection
 // (seeded from the committed party when the panel opens; updated as the cascading selects change).
 let bizPartyTarget = null;   // { taskId, col }
-let bizPartyDraft = null;    // { actor, divisionId?, branchId?, teamId? } currently shown in the selects
+let bizPartyDraft = null;    // { actor, divisionId?, branchId?, teamId? } or { entityId } in the selects
+// Which half of the picker is showing (v0.36). Kept beside the draft rather than derived from it,
+// so choosing "Entity" holds while no entity is picked yet — a derived flag would snap straight back.
+let bizPartyKind = 'org';    // 'org' = roster hierarchy | 'entity' = the non-person registry
 function openBizPartyPanel(taskId, col) {
   const t = bizTaskById(taskId); if (!t) return;
   bizPartyTarget = { taskId, col };
   // Seed the draft from the committed party; on an anchored flow with none set, from the
   // chart-context default (the dashed capsules the card is already showing).
   bizPartyDraft = (t.parties && t.parties[col]) ? { ...t.parties[col] } : (bizDefaultPartyForTask(abc(), t, col) || null);
+  bizPartyKind = (bizPartyDraft && bizPartyDraft.entityId) ? 'entity' : 'org';
   document.body.classList.add('show-bz-party');
   renderBizPartyPanel();
   renderBizcase();            // reflect the .active row highlight on the card
@@ -12635,6 +13154,7 @@ function renderBizPartyPanel() {
       ? `<div class="bzp-src is-override">± column overridden on this step — the linked row is not driving it</div>`
       : '';
   const d0 = bizPartyDraft || {};
+  const isEnt = bizPartyKind === 'entity';
   const actor = ACTORS.includes(d0.actor) ? d0.actor : '';
   const divId = actor && d0.divisionId ? d0.divisionId : '';
   const brId  = divId && d0.branchId ? d0.branchId : '';
@@ -12650,9 +13170,35 @@ function renderBizPartyPanel() {
   const tmList = (actor && divId && brId) ? ((findBranch(actor, divId, brId) || {}).teams || []) : [];
   const tmOpts = `<option value="">— whole branch —</option>` +
     tmList.map(tm => `<option value="${tm.id}"${tm.id === tmId ? ' selected' : ''}>${escapeHtml(tm.name || 'Unnamed team')}</option>`).join('');
-  const previewRef = actor ? Object.assign({ actor }, divId ? { divisionId: divId } : {}, brId ? { branchId: brId } : {}, tmId ? { teamId: tmId } : {}) : null;
+  const entList = state.entities || [];
+  const entOpts = `<option value="">— select entity —</option>` +
+    entList.map(e => `<option value="${e.id}"${e.id === d0.entityId ? ' selected' : ''}>${
+      escapeHtml(entityKindMeta(e.kind).icon + '  ' + entityName(e))}</option>`).join('');
+  const previewRef = isEnt
+    ? (d0.entityId ? { entityId: d0.entityId } : null)
+    : (actor ? Object.assign({ actor }, divId ? { divisionId: divId } : {}, brId ? { branchId: brId } : {}, tmId ? { teamId: tmId } : {}) : null);
   const lbl = previewRef ? partyLabel(previewRef) : null;
   const committed = !!(t.parties && t.parties[col]);
+  // The two halves of the picker. A roster unit is scrubbed down a hierarchy; an entity is flat,
+  // so it is one select — which is the whole point of entities existing.
+  const kindField = `<div class="bzp-field"><label>Party</label>
+      <select data-bz-party-sel="kind" title="Where this party comes from">
+        <option value="org"${isEnt ? '' : ' selected'}>Directorate — a unit in the roster</option>
+        <option value="entity"${isEnt ? ' selected' : ''}>Entity — board, vendor, standing team</option>
+      </select></div>`;
+  const orgFields = `
+    <div class="bzp-field"><label>Directorate</label>
+      <select data-bz-party-sel="directorate">${dirOpts}</select></div>
+    <div class="bzp-field"><label>Division</label>
+      <select data-bz-party-sel="division"${actor ? '' : ' disabled'}>${divOpts}</select></div>
+    <div class="bzp-field"><label>Branch</label>
+      <select data-bz-party-sel="branch"${divId ? '' : ' disabled'}>${brOpts}</select></div>
+    <div class="bzp-field"><label>Team</label>
+      <select data-bz-party-sel="team"${brId ? '' : ' disabled'}>${tmOpts}</select></div>`;
+  const entFields = `
+    <div class="bzp-field"><label>Entity</label>
+      <select data-bz-party-sel="entity"${entList.length ? '' : ' disabled'}>${entOpts}</select></div>
+    ${entList.length ? '' : `<div class="bzp-none">No entities yet — the Roster view has an <b>Entities</b> section at the bottom where boards, committees and vendors are created.</div>`}`;
   body.innerHTML = `
     <div class="bzp-context">
       ${renderChipsHtml(colLetters)}
@@ -12662,17 +13208,12 @@ function renderBizPartyPanel() {
       </div>
     </div>
     ${srcNote}
-    <div class="bzp-field"><label>Directorate</label>
-      <select data-bz-party-sel="directorate">${dirOpts}</select></div>
-    <div class="bzp-field"><label>Division</label>
-      <select data-bz-party-sel="division"${actor ? '' : ' disabled'}>${divOpts}</select></div>
-    <div class="bzp-field"><label>Branch</label>
-      <select data-bz-party-sel="branch"${divId ? '' : ' disabled'}>${brOpts}</select></div>
-    <div class="bzp-field"><label>Team</label>
-      <select data-bz-party-sel="team"${brId ? '' : ' disabled'}>${tmOpts}</select></div>
-    <div class="bzp-preview${lbl ? ' set' : ''}">${lbl ? escapeHtml(lbl.full) : 'No party selected yet — scrub the hierarchy above.'}</div>
+    ${kindField}
+    ${isEnt ? entFields : orgFields}
+    <div class="bzp-preview${lbl ? ' set' : ''}">${lbl ? escapeHtml(lbl.full)
+      : (isEnt ? 'No entity selected yet — pick one above.' : 'No party selected yet — scrub the hierarchy above.')}</div>
     <div class="bzp-actions">
-      <button type="button" id="bz-party-assign" data-bz-party-assign="1"${actor ? '' : ' disabled'}>Assign</button>
+      <button type="button" id="bz-party-assign" data-bz-party-assign="1"${previewRef ? '' : ' disabled'}>Assign</button>
       <button type="button" id="bz-party-clear" data-bz-party-clear="1"${committed ? '' : ' disabled'}>Clear</button>
     </div>`;
 }
@@ -12891,6 +13432,9 @@ function openTaskViewPopover(nodeId, anchorEl) {
 function setNodeOrg(id, org) { const f = findNode(id); if (!f) return; if (org) f.node.org = org; else delete f.node.org; saveState(); renderChart(); }
 // Build the option list for the picker. kind 'division' lists all roster divisions;
 // 'branch' lists all roster branches, grouped by directorate › division.
+// kind is 'division' (Program rows) or 'branch' (Project rows). Entities are offered for both:
+// a Program run by a standing board is as real as one run by a division, and an entity is flat,
+// so there is no depth for it to be wrong about.
 function orgOptions(kind) {
   const groups = [];
   ACTORS.forEach(actor => {
@@ -12904,6 +13448,9 @@ function orgOptions(kind) {
         });
       }
     });
+  });
+  (state.entities || []).forEach(e => {
+    groups.push({ ref: { entityId: e.id }, label: `${entityKindMeta(e.kind).icon}  ${entityName(e)}`, g: 'Entities' });
   });
   return groups;
 }
@@ -12922,9 +13469,11 @@ function openOrgPopover(id, kind, anchorEl) {
     let lastG = null;
     opts.forEach((o, i) => {
       if (o.g !== lastG) { html += `<div class="op-group">${escapeHtml(o.g)}</div>`; lastG = o.g; }
-      const on = kind === 'division'
-        ? (cur.divisionId === o.ref.divisionId && !cur.branchId)
-        : (cur.branchId === o.ref.branchId);
+      const on = o.ref.entityId
+        ? (cur.entityId === o.ref.entityId)
+        : kind === 'division'
+          ? (cur.divisionId === o.ref.divisionId && !cur.branchId)
+          : (cur.branchId === o.ref.branchId);
       html += `<button class="op-item${on ? ' on' : ''}" data-pick="${i}">${escapeHtml(o.label)}</button>`;
     });
   }
@@ -13318,6 +13867,12 @@ document.addEventListener('click', e => {
   if (addLead) { const [a, d, b, t, role] = addLead.dataset.addLead.split('|'); setLead(a, d || null, b || null, t || null, role); return; }
   const delLead = e.target.closest('[data-del-lead]');
   if (delLead) { const [a, d, b, t, role] = delLead.dataset.delLead.split('|'); removeLead(a, d || null, b || null, t || null, role); return; }
+  const openMeta = e.target.closest('[data-open-meta]');
+  if (openMeta) { openMetaPanel(openMeta.dataset.openMeta); return; }
+  const addEnt = e.target.closest('[data-add-entity]');
+  if (addEnt) { addEntity(); return; }
+  const delEnt = e.target.closest('[data-del-entity]');
+  if (delEnt) { deleteEntity(delEnt.dataset.delEntity); return; }
   // Roster layout: switch Explore (boxes) ↔ Full hierarchy.
   const rMode = e.target.closest('[data-roster-mode]');
   if (rMode) { state.rosterMode = rMode.dataset.rosterMode === 'full' ? 'full' : 'explore'; saveState(); renderRoster(); return; }
@@ -13333,9 +13888,17 @@ document.addEventListener('click', e => {
   if (openPopover && !e.target.closest('.raci-popover') && !e.target.closest('.org-popover') && !e.target.closest('.bz-edge-popover')) closePopover();
 });
 
+document.addEventListener('input', e => {
+  const mf = e.target.closest('[data-meta-field]');
+  if (mf && mf.dataset.metaField !== 'priority') commitMetaField(mf);
+});
 document.addEventListener('change', e => {
+  const mfc = e.target.closest('[data-meta-field]');
+  if (mfc) { commitMetaField(mfc); if (mfc.dataset.metaField === 'tags') renderMetaPanel(); return; }
   const cfSel = e.target.closest('#chart-framework');
   if (cfSel) { setChartFramework(cfSel.value); return; }
+  const entKind = e.target.closest('[data-ent-kind]');
+  if (entKind) { setEntityKind(entKind.dataset.entKind, entKind.value); return; }
   // Node boundary IO: add a deliverable to the active node's inputs/outputs (Details rail).
   const ioAdd = e.target.closest('[data-io-add]');
   if (ioAdd) {
@@ -13395,7 +13958,16 @@ document.addEventListener('change', e => {
   const pSel = e.target.closest('[data-bz-party-sel]');
   if (pSel) {
     const kind = pSel.dataset.bzPartySel, val = pSel.value, d = bizPartyDraft || {};
-    if (kind === 'directorate') bizPartyDraft = val ? { actor: val } : null;
+    if (kind === 'kind') {
+      // Switching halves discards the other half's draft rather than trying to translate it —
+      // a directorate and a board are not two spellings of the same party.
+      bizPartyKind = val === 'entity' ? 'entity' : 'org';
+      bizPartyDraft = null;
+      renderBizPartyPanel();
+      return;
+    }
+    if (kind === 'entity') bizPartyDraft = val ? { entityId: val } : null;
+    else if (kind === 'directorate') bizPartyDraft = val ? { actor: val } : null;
     else if (kind === 'division') bizPartyDraft = val ? { actor: d.actor, divisionId: val } : (d.actor ? { actor: d.actor } : null);
     else if (kind === 'branch') bizPartyDraft = (d.actor && d.divisionId)
       ? (val ? { actor: d.actor, divisionId: d.divisionId, branchId: val } : { actor: d.actor, divisionId: d.divisionId })
@@ -13432,6 +14004,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const ncOv = document.getElementById('newchart-overlay');
     if (ncOv && ncOv.classList.contains('open')) { closeNewChartDialog(); return; }
+    if (_metaTarget) { closeMetaPanel(); return; }
   }
   if (e.key === 'Escape' && exportMenuOpen()) {
     closeExportMenu();
@@ -13509,6 +14082,8 @@ document.addEventListener('blur', e => {
   const rosterFields = ['div-name','branch-name','team-name','p-name','p-title'];
   if (rosterFields.includes(el.dataset.field) && el.dataset.actor) { commitRosterEdit(el); return; }
   if (el.dataset.field === 'lead-name' && el.dataset.role) { commitLeadEdit(el); return; }
+  const entFields = ['ent-name','ent-short','ent-desc','ent-lead'];
+  if (entFields.includes(el.dataset.field) && el.dataset.entityId) { commitEntityEdit(el); return; }
 }, true);
 
 // ---------- export / import ----------
@@ -13866,7 +14441,26 @@ function ingestKitMarkdown() {
     'On **Merge**, artifacts dedupe by `name` + `type`, so reusing an existing deliverable’s exact',
     'name is how you connect a new flow to work that is already in the workspace.',
     '',
-    '### 3.4 `directorates` — the roster',
+    '### 3.4 `entities[]` — non-person parties',
+    '',
+    'Parties that are neither people nor directorates: boards, committees, vendors, standing teams.',
+    '`{id, name, kind, short, description, lead}` with `kind` one of',
+    '`' + ENTITY_KINDS.join('` | `') + '`, and `lead` either `{id,name}` or null.',
+    'Flat by design — an entity has no divisions and no people under it.',
+    'Anywhere a party can be named (`org` on a chart row, `parties[col]` on a step, `workScope`,',
+    'an artifact `ownerRef`) a ref of the form `{entityId: "e_…"}` is accepted in place of a roster ref.',
+    'A ref to an id that is not in `entities[]` is kept and renders as “(missing entity)”.',
+    '',
+    '### 3.5 `meta` — chart and flow metadata',
+    '',
+    'Charts and business cases each carry the same block:',
+    '`{description, customer, priority, budget, tags: []}` with `priority` one of',
+    '`' + META_PRIORITIES.filter(Boolean).join('` | `') + '` or `""`.',
+    'Every field is matched by the filter boxes and carried into the XML and Excel exports.',
+    'A pre-0.36 business case with a top-level `description` string has it folded into',
+    '`meta.description` on load.',
+    '',
+    '### 3.6 `directorates` — the roster',
     '',
     'Exactly these six keys: `' + ACTORS.join('`, `') + '`. Each is',
     '`{lead: {id,name} | null, divisions: [...]}`, a division is',
@@ -13874,7 +14468,7 @@ function ingestKitMarkdown() {
     '`{id, name, chief, people: [{id, name, title}]}`. Depth is optional at every level — divisions',
     'may have no branches, branches no teams.',
     '',
-    '### 3.5 Labels, mappings and view preferences',
+    '### 3.7 Labels, mappings and view preferences',
     '',
     '- `actorLabels` — display name per directorate key.',
     '- `columnLabels` / `columnShort` — full and abbreviated header per org column key. **This is how',
@@ -14109,14 +14703,27 @@ const FLOW_SHEET_HEADERS = ['Chart task', 'Flow', 'Status', 'Mode', 'Step', 'Des
 // The document header sheet: one place a reader (or a script) can look to see what this file
 // claims to be. A spreadsheet of a draft chart that says nothing about being a draft is the
 // paper version of the failure the status feature exists to prevent.
+// The metadata block rides in the Document sheet next to the status it belongs to, so one sheet
+// answers "what is this, whose is it, how urgent, and is it signed" without opening the tool.
+const DOCUMENT_SHEET_HEADERS = ['Kind', 'Name', 'Status', 'Signed', 'Customer', 'Priority', 'Budget', 'Tags', 'Description'];
+function documentRow(kind, name, o) {
+  const m = (o && o.meta) || {};
+  return [kind, name, STATUS_META[artStatus(o)].name, finalizedOn(o),
+    m.customer || '', META_PRIORITY_LABELS[m.priority] === META_PRIORITY_LABELS[''] ? '' : (META_PRIORITY_LABELS[m.priority] || ''),
+    m.budget || '', (m.tags || []).join(', '), m.description || ''];
+}
 function buildDocumentRows(chart) {
-  const rows = [
-    ['Chart', chart.title || 'Untitled chart', STATUS_META[artStatus(chart)].name, finalizedOn(chart)]
-  ];
-  flowsForChart(chart.id).forEach(b => rows.push([
-    'Flow', b.name || 'Untitled', STATUS_META[artStatus(b)].name, finalizedOn(b)
-  ]));
+  const rows = [documentRow('Chart', chart.title || 'Untitled chart', chart)];
+  flowsForChart(chart.id).forEach(b => rows.push(documentRow('Flow', b.name || 'Untitled', b)));
   return rows;
+}
+function buildEntityRows() {
+  return (state.entities || []).map(e => {
+    const uses = entityUses(e.id);
+    return [entityName(e), entityKindMeta(e.kind).label, entityShort(e),
+      (e.lead && e.lead.name) || '', e.description || '',
+      uses.length ? uses.map(u => `${u.where} › ${u.name}`).join('; ') : ''];
+  });
 }
 function buildDeliverableRows() {
   const uses = computeArtifactUses();
@@ -14189,6 +14796,25 @@ function exportXML() {
 ${roster}
   </roster>
 `;
+  // Entity registry (v0.36) — global, like the deliverables below it.
+  const entitiesSection = (state.entities || []).length ? `  <entities>
+${state.entities.map(e => {
+    const u = entityUses(e.id);
+    return `    <entity name="${esc(entityName(e))}" kind="${esc(e.kind)}" short="${esc(entityShort(e))}"${
+      e.lead && e.lead.name ? ` lead="${esc(e.lead.name)}"` : ''}${
+      e.description ? ` description="${esc(e.description)}"` : ''}${
+      u.length ? ` namedBy="${esc(u.map(x => `${x.where} › ${x.name}`).join('; '))}"` : ''}/>`;
+  }).join('\n')}
+  </entities>
+` : '';
+  // Document metadata (v0.36) — the block the intake discussion asked for, one element.
+  const _m = ac().meta || {};
+  const metaSection = hasMeta(ac()) ? `  <meta${
+    _m.customer ? ` customer="${esc(_m.customer)}"` : ''}${
+    _m.priority ? ` priority="${esc(_m.priority)}"` : ''}${
+    _m.budget ? ` budget="${esc(_m.budget)}"` : ''}${
+    (_m.tags || []).length ? ` tags="${esc(_m.tags.join(', '))}"` : ''}>${esc(_m.description || '')}</meta>
+` : '';
   // Deliverable registry (v0.22) — global, so it exports on every chart that has one.
   const uses = computeArtifactUses();
   const artifactsSection = state.artifacts.length ? `  <artifacts>
@@ -14202,7 +14828,7 @@ ${cols}
   </columns>
   <activities>
 ${acts}  </activities>
-${artifactsSection}${rosterSection}</raciTool>
+${metaSection}${artifactsSection}${entitiesSection}${rosterSection}</raciTool>
 `;
   download(`${chartFileBase()}.xml`, xml, 'application/xml');
 }
@@ -14354,12 +14980,14 @@ function exportXLSX() {
 }
 function xlsxBytes() {
   const sheets = buildLevelSheets();
-  sheets.unshift({ name: 'Document', headers: ['Kind', 'Name', 'Status', 'Signed'], rows: buildDocumentRows(ac()) });
+  sheets.unshift({ name: 'Document', headers: DOCUMENT_SHEET_HEADERS, rows: buildDocumentRows(ac()) });
   // Anchored flows + the deliverable registry ride along as extra sheets (v0.22).
   const flowRows = buildFlowRows(ac());
   if (flowRows.length) sheets.push({ name: 'Flows', headers: FLOW_SHEET_HEADERS, rows: flowRows });
   if (state.artifacts.length) sheets.push({ name: 'Deliverables',
     headers: ['Deliverable', 'Type', 'Produced by', 'Consumed by'], rows: buildDeliverableRows() });
+  if ((state.entities || []).length) sheets.push({ name: 'Entities',
+    headers: ['Entity', 'Kind', 'Short', 'Lead', 'Description', 'Named by'], rows: buildEntityRows() });
   // Guard against a free chart's user-named level colliding with the fixed extra-sheet names.
   const seen = new Set();
   sheets.forEach(s => { let nm = s.name, j = 2; while (seen.has(nm)) nm = s.name + ' ' + (j++); seen.add(nm); s.name = nm; });

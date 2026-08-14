@@ -30,6 +30,18 @@
 - A Final flow reading rows from a Draft chart is flagged per step.
 - Status carries into every export: an Excel Document sheet and Status column, XML attributes, a Mermaid header line, PowerPoint title and flow slides, and a diagonal DRAFT watermark on printed pages.
 
+- Entities: parties that are neither people nor directorates — boards, committees, vendors, standing teams — created in a section at the bottom of the Roster.
+- An entity is flat. It has a name, a kind, a short label and a lead, and nothing underneath it, because it names a party at the depth RACI already stops at.
+- An entity is assignable anywhere a directorate is: the Responsible Party panel switches between Directorate and Entity, and a Program or Project row's org list has an Entities group.
+- Each entity card counts how many things name it. Deleting one that is in use names what would be left pointing at nothing, and those parties read "(missing entity)" rather than silently emptying.
+- Entities carry into the exports — an `<entities>` block in the XML, an Entities sheet in the Excel file, each row listing everywhere the entity is named.
+
+- Details: every chart and every flow now carries the same metadata block — description, customer, priority, budget and tags — edited in one panel, opened with ✎ Details on the chart-tab bar or the strip above a flow.
+- The gallery filter matches every one of those fields instead of just name and description, so a customer, a fiscal year or a tag narrows the list. Tags show on the gallery cards.
+- Metadata rides into the exports: extra columns on the Excel Document sheet, a `<meta>` element in the XML.
+- A Final chart or flow shows its details read-only rather than hiding them.
+- A flow's old top-level description folds into the new block when an older file is loaded.
+
 - Chart, Roster and Tasks now sit in their own boxed group in the left rail, matching the box Task Flows already had. The two boxes carry different hues so the two systems still read apart.
 - The right rail is wider and the product name no longer wraps; the version chip drops to its own line.
 - The tier label on the current breadcrumb chip is legible on every theme.
