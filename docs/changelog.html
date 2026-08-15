@@ -283,7 +283,7 @@ footer b{ color:var(--muted); }
   </header>
 
   <section>
-    <h2>The six that matter most</h2>
+    <h2>The seven that matter most</h2>
     <p class="lede">If you read nothing else this week, read these.</p>
     <div class="hi">
       <div class="hi-card">
@@ -305,6 +305,11 @@ footer b{ color:var(--muted); }
         <span class="hi-ver">0.35</span>
         <h3>Handoffs can be routed around obstacles</h3>
         <p>Drag any noodle and it bends, leaving a redirector handle you can steer or double-click away. Routing is pure geometry — the handoff is still A to B, so nothing that reads the graph is affected.</p>
+      </div>
+      <div class="hi-card">
+        <span class="hi-ver">0.38</span>
+        <h3>One place for every named thing</h3>
+        <p>The Object Gallery is a third system in the rail: the catalogue the chart and the flow both point at. Deliverables and entities in one browser, with the answer to "where is this used?" on the card you click.</p>
       </div>
       <div class="hi-card">
         <span class="hi-ver">0.37</span>
@@ -454,6 +459,19 @@ footer b{ color:var(--muted); }
             <li><span class="kind new">New</span><div><b>Every import lands as a new chart tab</b>, behind a confirmation stating what was found. Nothing already in the workspace is touched, so Load and Merge mean the same thing for a workbook.</div></li>
           </ul>
         </article>
+
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.38</span><h3>The Object Gallery</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>A third system in the mode rail</b>, in its own box below Task Flows and set apart by a rule. The chart is who owns what, the flow is how work moves, and this is the catalogue of the things both of them point at.
+              <span class="why">Nothing new is modelled. Two flat registries already existed and neither had a home worth the name — deliverables were reachable only through a slide-out Legend panel, entities only through a section at the bottom of the Roster. They are the same kind of thing, so they belong in one browser.</span></div></li>
+            <li><span class="kind new">New</span><div><b>The detail pane answers "where is this used?"</b> Click any card and every place in the workspace that names that object is listed — each one a button that opens the chart or flow it belongs to.
+              <span class="why">Both reverse indexes were already being computed for the rules engine. This is the first screen that shows them.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Filter and facets.</b> Match on name, type or description, or narrow to deliverables or entities. Create, edit and delete either kind in place — a deliverable with uses cannot be deleted, an entity can, and anything still naming it reads “(missing entity)” until re-pointed.</div></li>
+            <li><span class="kind new">New</span><div><b>The demo seeds both registries</b> — four deliverables carried on the tabletop's handoffs, two entities.
+              <span class="why">A gallery that is empty the first time you open it teaches nothing about what belongs in it.</span></div></li>
+          </ul>
+        </article>
       </div>
     </div>
   </section>
@@ -488,7 +506,8 @@ footer b{ color:var(--muted); }
           <tr><td>0.34</td><td>Mode picker, RACI-only, five themes, sticky groups</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.35</td><td>Redirectors, chrome fixes, the manual</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.36</td><td>Entities, and details on charts and flows</td><td>Fri 14 Aug</td><td class="shipped">on main</td></tr>
-          <tr><td>0.37</td><td>Excel import and a blank template</td><td>Fri 14 Aug</td><td class="pending">on branch</td></tr>
+          <tr><td>0.37</td><td>Excel import and a blank template</td><td>Fri 14 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.38</td><td>The Object Gallery</td><td>Fri 14 Aug</td><td class="pending">on branch</td></tr>
         </tbody>
       </table>
     </div>

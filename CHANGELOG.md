@@ -30,6 +30,14 @@
 - A Final flow reading rows from a Draft chart is flagged per step.
 - Status carries into every export: an Excel Document sheet and Status column, XML attributes, a Mermaid header line, PowerPoint title and flow slides, and a diagonal DRAFT watermark on printed pages.
 
+- Object Gallery: a third mode in the left rail, in its own box below Task Flows and set apart from it. One place to browse every named thing the charts and flows point at.
+- It holds the two registries that already existed but had no home: deliverables, which were only reachable through the Legend panel, and entities, which were only reachable at the bottom of the Roster.
+- Filter by name, type or description; narrow to deliverables or entities with the facets.
+- Click a card and the detail pane answers where the object is used. Every use is a button that opens the chart or flow it names.
+- Create, edit and delete either kind from the gallery. A deliverable that something still references cannot be deleted; an entity can be, and anything still naming it reads "(missing entity)" until re-pointed.
+- Entities stay editable in the Roster too — two doors onto one registry.
+- The demo now ships with four deliverables carried on the tabletop's handoffs and two entities, so the gallery has something in it the first time it opens.
+
 - Excel import: the file picker now takes a .xlsx anywhere it took a .json. Charts can come back out of a spreadsheet, not just go into one.
 - A blank Excel template to fill in, under Export. One flat sheet: the first columns are the hierarchy, the rest are your parties, and each row repeats its ancestors with the deepest filled cell naming the row being defined.
 - Naming a parent on a child's row creates it, so nobody writes scaffolding rows by hand.

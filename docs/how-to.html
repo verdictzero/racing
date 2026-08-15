@@ -422,6 +422,8 @@
   .ht-map{ display:grid; grid-template-columns:2fr 1fr; gap:14px; margin:1.6rem 0 .6rem; text-align:left; }
   .ht-map-box{ border:1px solid var(--line); border-radius:12px; padding:12px 14px 14px; background:var(--card); box-shadow:var(--shadow); }
   .ht-map-box--raci{ border-color:var(--r); }
+  .ht-map-box--obj{ border-color:color-mix(in srgb, var(--p) 45%, transparent); background:color-mix(in srgb, var(--p) 7%, transparent); }
+  .ht-map-box--obj .ht-map-lbl{ color:var(--p); }
   .ht-map-box--flow{ border-color:var(--accent); }
   .ht-map-lbl{ display:block; font-family:var(--mono); font-size:.58rem; letter-spacing:.14em; text-transform:uppercase; margin-bottom:.6rem; }
   .ht-map-box--raci .ht-map-lbl{ color:var(--r); }
@@ -469,19 +471,23 @@
     <h1>How do I actually use this thing?</h1>
     <p class="lede">Parts one and two explain what a nested RACI <em>is</em> and how the three lenses fit together. This one is the manual: every screen, every gesture, in the order you would meet them — from an empty workspace to a signed chart with flows hanging off it.</p>
 
-    <div class="ht-map" role="img" aria-label="The five screens: Chart, Roster and Tasks are three lenses on one matrix; Task Flows is a separate system; Help holds the guides.">
+    <div class="ht-map" role="img" aria-label="The six screens: Chart, Roster and Tasks are three lenses on one matrix; Task Flows is a separate system; the Object Gallery is the catalogue both point at; Help holds the guides.">
       <div class="ht-map-box ht-map-box--raci">
         <span class="ht-map-lbl">RACI Chart</span>
         <div class="ht-map-row"><b>Chart</b><span>the matrix — who owns what, at every altitude</span></div>
-        <div class="ht-map-row"><b>Roster</b><span>the org — directorates, divisions, branches, teams, people</span></div>
+        <div class="ht-map-row"><b>Roster</b><span>the org — directorates, divisions, branches, teams, people, plus entities</span></div>
         <div class="ht-map-row"><b>Tasks</b><span>one unit's work, read back out of everything</span></div>
       </div>
       <div class="ht-map-box ht-map-box--flow">
         <span class="ht-map-lbl">Task Flows</span>
         <div class="ht-map-row"><b>Business Case</b><span>steps wired into a graph, below the chart's bottom row</span></div>
       </div>
+      <div class="ht-map-box ht-map-box--obj">
+        <span class="ht-map-lbl">Objects</span>
+        <div class="ht-map-row"><b>Object Gallery</b><span>the catalogue both systems point at — deliverables and entities</span></div>
+      </div>
     </div>
-    <p class="hero-cap">Five screens, two systems. The left rail groups them the same way this guide does.</p>
+    <p class="hero-cap">Six screens, three systems. The left rail groups them the same way this guide does.</p>
   </div>
 </header>
 
@@ -605,6 +611,16 @@
       <p><b>Groups hold on to their steps.</b> Drag a step around inside its frame and the frame grows to follow it — you cannot lose a step out of a group by moving it. To take one out deliberately, hold <span class="kbd">Alt</span> (<span class="kbd">⌥</span> on a Mac) while dragging; the frame freezes and goes amber, and the step lands wherever you drop it. The frame tells you so itself while you drag.</p>
 
       <p><b>Flows reuse flows.</b> The gallery (<span class="kbd">⊞ Gallery</span>) shows every flow in the workspace by shape. Click one to open it; drag one onto the canvas and it becomes a single box standing in for that whole flow — a reference, not a copy, so an edit over there shows up everywhere it is used.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2><span class="lead-num">Objects</span>The catalogue both systems point at</h2>
+      <p class="sub">Two kinds of named thing are shared across the whole workspace, and the Object Gallery is where you see all of them at once.</p>
+      <p><b>Deliverables</b> are what moves: a report, a decision, an approval. Attach one to a handoff in a flow (click the line) or declare it as a chart row's input or output. <b>Entities</b> are parties that are neither people nor directorates — boards, committees, vendors, standing teams. Both are referenced by the charts and flows rather than contained in them, which is why they live in one place instead of being copied into each.</p>
+      <p>Filter by name, type or description, or narrow to one kind with the facets. Click a card and the pane on the right answers the question you actually have about a registry entry: <b>where is this used?</b> Every use is a button that opens the chart or flow it names.</p>
+      <p>Create either kind here, edit them in place, and delete them. A deliverable that something still references cannot be deleted until those uses are gone; an entity can be, and anything still naming it will read <em>(missing entity)</em> until it is re-pointed. Entities also stay editable in their Roster section — two doors onto one registry, the way a flow is reachable from both the gallery and the dropdown.</p>
     </div>
   </section>
 
