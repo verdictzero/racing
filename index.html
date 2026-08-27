@@ -139,7 +139,9 @@
   --lc-tl: #51cf66;
 
   /* -- background ASIC watermark -- */
-  --wm-opacity: 0.12;
+  /* Tuned for painting OVER the chart (z-index 2), not behind it: the same number reads far
+     stronger on top of an opaque table than it did through a gap in one. */
+  --wm-opacity: 0.09;
   --wm-filter: grayscale(1) brightness(1.15);
 }
 
@@ -217,7 +219,7 @@
 
   /* The emblem is light-on-transparent, so it has to be darkened rather than
      brightened to stay visible behind a light page. */
-  --wm-opacity: 0.10;
+  --wm-opacity: 0.075;
   --wm-filter: grayscale(1) brightness(0.45) contrast(1.15);
 }
 
@@ -302,10 +304,12 @@
   --lc-bc: #c7a8ff;
   --lc-tl: #57f085;
 
-  /* A 12%-opacity emblem behind text is exactly the low-contrast wash this mode
-     removes, so it goes entirely. */
-  --wm-opacity: 0;
-  --wm-filter: none;
+  /* The emblem stays in high contrast, but as a MARK rather than a wash: pushed to
+     white and dropped to 7% so it reads as a corner emblem against the black ground
+     without ever competing with text set over it. (It was suppressed entirely before
+     v0.39; the brief is now that the ASIC mark holds in every theme.) */
+  --wm-opacity: 0.05;
+  --wm-filter: grayscale(1) brightness(2.2);
 }
 
 /* ===== HIGH CONTRAST (LIGHT) =====
@@ -389,8 +393,12 @@
   --lc-bc: #4b0f9c;
   --lc-tl: #006427;
 
-  --wm-opacity: 0;
-  --wm-filter: none;
+  /* White paper: the emblem has to DARKEN to be seen at all, the same inversion the
+     plain Light theme makes. Held at 7% for the same reason as hc-dark. */
+  /* White ground swallows a dark ghost faster than black ground swallows a light one, so this
+     one sits a touch higher than hc-dark to land at the same perceived weight. */
+  --wm-opacity: 0.065;
+  --wm-filter: grayscale(1) brightness(0.25) contrast(1.2);
 }
 
 /* ===== HIGH CONTRAST (NEON) =====
@@ -475,8 +483,10 @@
   --lc-bc: #bd6bff;
   --lc-tl: #39ff14;
 
-  --wm-opacity: 0;
-  --wm-filter: none;
+  /* Near-black violet ground. The emblem goes white rather than neon — no ROLE owns
+     white here, so the mark stays structure and never reads as data. */
+  --wm-opacity: 0.045;
+  --wm-filter: grayscale(1) brightness(2.4);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -525,16 +535,28 @@ header {
   bottom: var(--wm-bottom, 20px);
   width: var(--wm-w, 18vw);
   height: auto;
-  z-index: 0;
+  /* Above #ws-main's content, not behind it (v0.39). At z-index 0 the emblem was painted over by
+     the chart block, which carries an OPAQUE fill — so it only ever showed in whatever margin the
+     cascade left uncovered, which on a full-width chart is none of it. A watermark is meant to be
+     read through the content sitting on it, so it goes over the pane and stays under every piece
+     of chrome: chart tabs (3), drill crumbs (4), the right rails (5), the header (20), and every
+     overlay above those. pointer-events:none keeps it out of every hit test regardless. */
+  z-index: 2;
   pointer-events: none;
-  opacity: 0.12;
-  filter: grayscale(1) brightness(1.15);
+  opacity: var(--wm-opacity, 0.12);
+  filter: var(--wm-filter, grayscale(1) brightness(1.15));
   display: none;
 }
-body[data-view="chart"] #bg-watermark { display: block; }
-/* Belt and braces: the right rails paint above the watermark (z-index 0) regardless of what its
-   measured geometry says, so it can never bleed over a side panel even for a frame. */
-#details, #legend, #bz-party-panel { position: relative; z-index: 1; }
+/* The emblem marks the RACI Chart system, not one screen inside it: Chart, Roster and Tasks are
+   three modes of the same box in the mode rail, so the corner mark holds across all three rather
+   than blinking out the moment you switch tabs within it. Task Flows and the Object Gallery are
+   separate systems and keep their own bare canvas. */
+body[data-view="chart"] #bg-watermark,
+body[data-view="roster"] #bg-watermark,
+body[data-view="work"] #bg-watermark { display: block; }
+/* Belt and braces: the right rails paint above the watermark regardless of what its measured
+   geometry says, so it can never bleed over a side panel even for a frame. */
+#details, #legend, #bz-party-panel { position: relative; z-index: 5; }
 /* complementary (ASIC blue + crimson) gradient behind the RACI chart screen */
 body[data-view="chart"] {
   background:
@@ -547,7 +569,7 @@ body[data-view="chart"] {
 #drill-crumbs {
   display: none;
   position: relative;
-  z-index: 2; /* above the background watermark */
+  z-index: 4; /* above the background watermark (2) */
   align-items: stretch;
   gap: 10px;
   padding: 12px 22px;
@@ -1934,6 +1956,33 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
   font: inherit; font-size: 12px; cursor: pointer;
 }
 .nc-cancel:hover { color: var(--text); border-color: var(--text-dim); }
+
+/* Excel chooser (v0.39) — the same centered card as the new-chart chooser, and deliberately the
+   same class names for its innards (.nc-opt/.nc-name/.nc-desc): two dialogs that ask "which of
+   these two?" should not look like two different dialogs. */
+#xlsx-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#xlsx-overlay.open { display: flex; }
+#xlsx-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 560px; width: 100%;
+  padding: 24px 26px;
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(var(--shadow-rgb),0.7);
+}
+#xlsx-card h2 { margin: 0 0 4px; font-size: 17px; }
+#xlsx-card .nc-desc code {
+  font-size: 11px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0 3px;
+}
+:root[data-theme^="hc-"] #xlsx-card { border-width: 2px; }
 
 /* ===== "Don't forget to export" floating reminder ===== */
 #save-nag {
@@ -4387,7 +4436,7 @@ body[data-view="roster"] #legend { display: none; }
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   /* Hide all interactive chrome — leave just the matrix. */
   header, #chart-tabs, #drill-crumbs, #legend, #details, #bz-party-panel, #violations-toast, #violations-popover, #arrange-fab,
-  #save-nag, #splash-overlay, #newchart-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
+  #save-nag, #splash-overlay, #newchart-overlay, #xlsx-overlay, #sidebar-arrow, #bg-watermark, .actions, .bz-toolbar, .chart-fw,
   #zoom-ctl, #bz-zoom-ctl, #bz-minimap, .bz-gallery, .bz-marquee, .chart-resize, .ch-add, .ch-del, .col-del, .col-add, .col-view, .row-view, .ch-toggle .ch-caret, .tab-close, #chart-tab-add, .add-activity, .ws-add,
   [data-del-node], [data-bz-del-task], .bzm-fix, .bzb-jump, .bz-node-copy, .ast-set, #toast-tray { display: none !important; }
   /* The mode banner and each step's linked row DO print: on a signed document, "which chart row
@@ -4532,6 +4581,27 @@ body[data-view="roster"] #legend { display: none; }
     <button type="button" class="nc-cancel" id="newchart-cancel">Cancel</button>
   </div>
 </div>
+<!-- Excel chooser (v0.39). The spreadsheet route has two directions and you almost never want the
+     one you have not got: with no workbook yet you need the template, with a filled-in one you need
+     the import. Both hang off one clearly-named button rather than being split between a generic
+     "Load" (which never said it took .xlsx) and an item buried under Export. -->
+<div id="xlsx-overlay" role="dialog" aria-modal="true" aria-labelledby="xlsx-title">
+  <div id="xlsx-card">
+    <h2 id="xlsx-title">📗 Excel</h2>
+    <p class="nc-sub">Build a chart from a spreadsheet — or get the blank workbook to fill in first.</p>
+    <div class="nc-options">
+      <button type="button" class="nc-opt" data-xlsx="import">
+        <span class="nc-name">⭱ Import a workbook</span>
+        <span class="nc-desc">Read a filled-in <code>.xlsx</code> and turn it into a chart. It arrives as a <b>new tab</b> behind a summary of what was found — nothing already open is touched. Real spreadsheets are fine: the header row is found rather than assumed, and a title, notes or blank rows above the table are ignored.</span>
+      </button>
+      <button type="button" class="nc-opt" data-xlsx="template">
+        <span class="nc-name">⭳ Download the input template</span>
+        <span class="nc-desc">A blank workbook laid out the way the importer reads it: the first columns are the hierarchy, the rest are your parties. Naming a parent on a child's row creates it, so there is no scaffolding to write by hand.</span>
+      </button>
+    </div>
+    <button type="button" class="nc-cancel" id="xlsx-cancel">Cancel</button>
+  </div>
+</div>
 <div id="meta-overlay" role="dialog" aria-modal="true" aria-labelledby="meta-title">
   <div id="meta-card">
     <div class="mt-head">
@@ -4576,6 +4646,8 @@ body[data-view="roster"] #legend { display: none; }
     <button id="btn-merge" title="Merge another saved JSON file into this workspace — its charts and business cases are added as new tabs">⧉ Merge</button>
     <input type="file" id="file-import" accept=".json,.xlsx,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
     <button id="btn-ingest" title="Download the LLM Ingest Kit — hand this file plus your raw notes, spreadsheet or slides to any LLM and it writes a JSON file you can Load or Merge here">🤖 Ingest Kit</button>
+    <button id="btn-xlsx" title="Build a chart from a spreadsheet — import a filled-in workbook, or download the blank template to fill in first">📗 Import Excel</button>
+    <input type="file" id="file-xlsx" data-lock-ok accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
     <span class="actions-divider" aria-hidden="true"></span>
     <button id="btn-arrange" title="Snap all panes back into a tight nested cascade">⤧ Auto Arrange</button>
     <button id="btn-details" title="Show/hide the Activity Details panel (definitions + documents)">Details</button>
@@ -6844,7 +6916,8 @@ body[data-view="roster"] #legend { display: none; }
       </div>
       <p class="sub" style="margin-top:1.4rem"><b>Export</b> gives you the document forms: Print/PDF for a clean chrome-free layout, PowerPoint with one slide per tier, Excel for spreadsheet review, XML for anything programmatic, and Mermaid for diagramming.</p>
       <h3>The Excel route — for people who would rather work in a spreadsheet</h3>
-      <p>Under <b>Export</b> there is a <span class="kbd">📋 Blank template</span>. Download it, fill it in, and bring it back through <span class="kbd">📂 Load</span> — the file picker takes a <code>.xlsx</code> anywhere it takes a <code>.json</code>.</p>
+      <p><span class="kbd">📗 Import Excel</span> in the toolbar opens both halves of the round trip: <b>Import a workbook</b> reads a filled-in <code>.xlsx</code>, and <b>Download the input template</b> gives you the blank one to fill in first. Pick whichever end you are at.</p>
+      <p>(The template is also still listed under <b>Export</b>, and <span class="kbd">📂 Load</span> still accepts a <code>.xlsx</code> — the same two doors, for anyone who already knows where they were.)</p>
       <p>The template is one flat sheet. The first four columns are the hierarchy; the rest are your parties. Put an activity's name in the column for its level and repeat its parents to the left — the deepest filled column is the row you are defining. A parent does not need a row of its own; naming it on a child's row creates it.</p>
       <p>Rename the party headers to your own parties if you like. Whatever you type becomes the column label in the tool.</p>
       <p>It reads real spreadsheets, not just its own template: a title line and notes above the table are fine, blank rows and extra columns are ignored, and letters are case-insensitive. A row that skips a level — Project filled, Program blank — is skipped and counted, because there is no sensible place to put it and guessing would be worse than saying so.</p>
@@ -8541,12 +8614,17 @@ function bizDefaultPartyForTask(b, t, col, ctx) {
 function seedEvidenceFlow() {
   const bc = makeBizCase('Evidence Preservation (procedure)');
   bc.meta.description = 'Reusable procedure: preserve and hand over evidence. Nested inside the incident tabletop — and available to nest anywhere else that needs it.';
+  // Laid out as a straight run that forks once at the end. The two exits are spread far enough
+  // apart vertically to clear each other's boxes — a card is ~250-300px tall, so the old 180px
+  // stagger overlapped them — and the fork sits to the RIGHT of the step it leaves, because a
+  // socket is out-on-the-right / in-on-the-left and any target placed left of its source draws a
+  // handoff that doubles back on itself.
   const defs = [
-    { key: 'freeze', name: 'Freeze the host',      x: 60,  y: 80,  raci: { cyber: 'R', hq: 'A' } },
-    { key: 'image',  name: 'Capture disk image',   x: 340, y: 80,  raci: { infra: 'R', cyber: 'C' } },
-    { key: 'chain',  name: 'Log chain of custody', x: 620, y: 80,  raci: { cos: 'R', hq: 'A' } },
-    { key: 'hand',   name: 'Hand to legal',        x: 900, y: 20,  raci: { cos: 'R', hq: 'A' } },
-    { key: 'store',  name: 'Seal in evidence store', x: 900, y: 200, raci: { infra: 'R', cyber: 'C' } }
+    { key: 'freeze', name: 'Freeze the host',      x: 60,   y: 300, raci: { cyber: 'R', hq: 'A' } },
+    { key: 'image',  name: 'Capture disk image',   x: 380,  y: 300, raci: { infra: 'R', cyber: 'C' } },
+    { key: 'chain',  name: 'Log chain of custody', x: 700,  y: 300, raci: { cos: 'R', hq: 'A' } },
+    { key: 'hand',   name: 'Hand to legal',        x: 1020, y: 100, raci: { cos: 'R', hq: 'A' } },
+    { key: 'store',  name: 'Seal in evidence store', x: 1020, y: 520, raci: { infra: 'R', cyber: 'C' } }
   ];
   const byKey = {};
   defs.forEach(d => {
@@ -8566,13 +8644,20 @@ function seedBizCase() {
   const bc = makeBizCase('Cyber Incident Response (Tabletop)');
   bc.meta.description = 'Example tabletop: who is R / A / C / I at each step — including a decision point that branches into more than one path.';
   // Detect & Triage is a DECISION POINT: it branches (confirmed incident vs. false positive).
+  // One left-to-right spine on the top row, with the two things that hang off it on a second row
+  // BELOW AND TO THE RIGHT of whatever feeds them. Sockets are out-right / in-left, so a step
+  // placed left of its own producer draws a handoff that loops backwards across the canvas —
+  // which is exactly what the first cut of this demo did with the evidence flow and the review.
+  // The gap between Contain and Eradicate is wide on purpose: the nested procedure runs in
+  // PARALLEL with the direct Contain -> Eradicate handoff, so it needs a lane of its own to drop
+  // into rather than a diagonal across the steps either side of it.
   const defs = [
-    { key: 'detect',  name: 'Detect & Triage',     x: 60,   y: 220, raci: { cyber: 'R', hq: 'A' } },
-    { key: 'declare', name: 'Declare Incident',     x: 360,  y: 80,  raci: { hq: 'RA', cos: 'C' } },
-    { key: 'contain', name: 'Contain',              x: 660,  y: 80,  raci: { cyber: 'R', infra: 'C', hq: 'A' } },
-    { key: 'erad',    name: 'Eradicate',            x: 960,  y: 80,  raci: { sw: 'R', cyber: 'C', hq: 'A' } },
-    { key: 'recover', name: 'Recover',              x: 1260, y: 80,  raci: { infra: 'R', sw: 'C', hq: 'A' } },
-    { key: 'aar',     name: 'After-Action Review',  x: 660,  y: 400, raci: { cos: 'R', hq: 'A', mission: 'I' } }
+    { key: 'detect',  name: 'Detect & Triage',      x: 60,   y: 80,  raci: { cyber: 'R', hq: 'A' } },
+    { key: 'declare', name: 'Declare Incident',     x: 380,  y: 80,  raci: { hq: 'RA', cos: 'C' } },
+    { key: 'contain', name: 'Contain',              x: 700,  y: 80,  raci: { cyber: 'R', infra: 'C', hq: 'A' } },
+    { key: 'erad',    name: 'Eradicate',            x: 1330, y: 80,  raci: { sw: 'R', cyber: 'C', hq: 'A' } },
+    { key: 'recover', name: 'Recover',              x: 1650, y: 80,  raci: { infra: 'R', sw: 'C', hq: 'A' } },
+    { key: 'aar',     name: 'After-Action Review',  x: 1970, y: 640, raci: { cos: 'R', hq: 'A', mission: 'I' } }
   ];
   const byKey = {};
   defs.forEach(d => {
@@ -8581,15 +8666,24 @@ function seedBizCase() {
     Object.keys(d.raci).forEach(k => { if (COLS.includes(k)) t.raci[k] = normalizeRaci(d.raci[k]); });
     bc.tasks.push(t); byKey[d.key] = t.id;
   });
-  const link = (f, to, label, arts) => {
+  const link = (f, to, label, arts, via) => {
     const e = makeBizEdge(byKey[f], byKey[to], label);
     if (arts) e.artifactIds = arts;
+    if (via) e.via = via;
     bc.edges.push(e);
   };
   // Typed handoffs, so the demo shows what a deliverable IS: a named thing that moves between two
   // steps, not a note on a line. These ids are seeded into state.artifacts by seedArtifacts().
   link('detect', 'declare', 'Confirmed incident', ['a_triage']);   // decision branch A
-  link('detect', 'aar', 'False positive', ['a_triage']);           // branch B — straight to review
+  // Branch B skips the whole response and lands on the review, so it is the one edge that has to
+  // travel the length of the flow. Two redirectors carry it along the bottom instead of cutting a
+  // diagonal through Declare Incident and Contain. The lane sits BELOW the second row (which
+  // bottoms out at ~950) rather than in the gap above it: a condition label rides the middle of
+  // its routed line, and the obvious mid-height lane put "False positive" on exactly the band
+  // where "Preserve first" and "Evidence secured" already sit. It also means the demo ships one
+  // routed handoff, which is otherwise a feature you have to go looking for.
+  link('detect', 'aar', 'False positive', ['a_triage'],
+       [{ x: 620, y: 1050 }, { x: 1640, y: 1050 }]);               // branch B — straight to review
   link('declare', 'contain', '', ['a_decl']);
   link('contain', 'erad', '', ['a_scope']);
   link('erad', 'recover', '', ['a_scope']);
@@ -8631,7 +8725,7 @@ function seedBizCases() {
   const aar = byName('After-Action Review');
   const nest = makeBizSubflow(sub.id);
   nest.name = 'Preserve evidence';
-  nest.x = 250; nest.y = 640;
+  nest.x = 1010; nest.y = 640;
   nest.description = 'Runs alongside containment — the same procedure every incident uses.';
   main.tasks.push(nest);
   if (contain) main.edges.push(makeBizEdge(contain.id, nest.id, 'Preserve first', null, bizEntryPoints(sub)[0].id));
@@ -9650,6 +9744,14 @@ function closeNewChartDialog() {
   const ov = document.getElementById('newchart-overlay');
   if (ov) ov.classList.remove('open');
 }
+function openXlsxDialog() {
+  const ov = document.getElementById('xlsx-overlay');
+  if (ov) ov.classList.add('open');
+}
+function closeXlsxDialog() {
+  const ov = document.getElementById('xlsx-overlay');
+  if (ov) ov.classList.remove('open');
+}
 (function wireChartTabs() {
   document.addEventListener('click', e => {
     if (e.target.closest('#chart-tab-add')) { openNewChartDialog(); return; }
@@ -9659,6 +9761,17 @@ function closeNewChartDialog() {
     if (e.target.closest('#newchart-cancel')) { closeNewChartDialog(); return; }
     const ncOv = document.getElementById('newchart-overlay');
     if (ncOv && ncOv.classList.contains('open') && !e.target.closest('#newchart-card')) { closeNewChartDialog(); return; }
+    // Excel chooser: same contract as the new-chart chooser above — pick, cancel, or click out.
+    const xlOpt = e.target.closest('[data-xlsx]');
+    if (xlOpt) {
+      closeXlsxDialog();
+      if (xlOpt.dataset.xlsx === 'import') document.getElementById('file-xlsx').click();
+      else exportTemplate();
+      return;
+    }
+    if (e.target.closest('#xlsx-cancel')) { closeXlsxDialog(); return; }
+    const xlOv = document.getElementById('xlsx-overlay');
+    if (xlOv && xlOv.classList.contains('open') && !e.target.closest('#xlsx-card')) { closeXlsxDialog(); return; }
     // Details panel: × or a backdrop click. Same contract as the chooser above.
     if (e.target.closest('#meta-close')) { closeMetaPanel(); return; }
     const mtOv = document.getElementById('meta-overlay');
@@ -14229,6 +14342,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#btn-print')) { window.print(); return; }
   if (e.target.closest('#btn-export-xml')) { exportXML(); return; }
   if (e.target.closest('#btn-export-mmd')) { exportMermaid(); return; }
+  if (e.target.closest('#btn-xlsx')) { openXlsxDialog(); return; }
   if (e.target.closest('#btn-import')) { _importMerge = false; document.getElementById('file-import').click(); return; }
   if (e.target.closest('#btn-merge')) { _importMerge = true; document.getElementById('file-import').click(); return; }
   if (e.target.closest('#btn-ingest')) { downloadIngestKit(); return; }
@@ -14490,6 +14604,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     const ncOv = document.getElementById('newchart-overlay');
     if (ncOv && ncOv.classList.contains('open')) { closeNewChartDialog(); return; }
+    const xlOv = document.getElementById('xlsx-overlay');
+    if (xlOv && xlOv.classList.contains('open')) { closeXlsxDialog(); return; }
     if (_metaTarget) { closeMetaPanel(); return; }
   }
   if (e.key === 'Escape' && exportMenuOpen()) {
@@ -14962,8 +15078,8 @@ function ingestKitMarkdown() {
     '',
     '### 3.7 The Excel route',
     '',
-    'A chart can arrive as a workbook instead of JSON. **Export → Excel → Blank template** downloads',
-    'one to fill in; the same picker that takes a `.json` takes a `.xlsx`.',
+    'A chart can arrive as a workbook instead of JSON. **📗 Import Excel** in the toolbar offers both',
+    'directions: import a filled-in workbook, or download the blank template to fill in first.',
     'One sheet holds the tree: the first columns are named for the tiers',
     '(`' + TIER_LABELS.join('`, `') + '`), the columns after them are the parties, and each row',
     'repeats its ancestors with the deepest filled cell naming the row being defined. Naming a',
@@ -16865,6 +16981,14 @@ function importJSON(file, merge) {
   reader.readAsText(file);
 }
 let _importMerge = false;
+// The Excel chooser's own picker. #file-import still takes a .xlsx (an old habit, and a workbook
+// dropped on Load should not be refused), but this one is filtered to .xlsx alone, so the dialog
+// the button opens can only offer what the button promised.
+document.getElementById('file-xlsx').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) importXlsx(f);
+  e.target.value = '';
+});
 document.getElementById('file-import').addEventListener('change', e => {
   const f = e.target.files[0];
   // One picker, two formats. A workbook always lands as a NEW chart tab, so Load and Merge mean
