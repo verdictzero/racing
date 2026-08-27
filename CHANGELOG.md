@@ -66,3 +66,14 @@
 - Hiding the flow gallery now tells you how to bring it back.
 
 - New field guide under Help: "How do I use this tool" — every screen and gesture in the order you meet them, with a cheat sheet of the ones that are not discoverable by clicking.
+
+- Right-click menus on every object: chart rows, chart tabs, flow steps, group frames, empty canvas, gallery cards, deliverables and entities. The innermost surface wins, so a step inside a frame gets the step's menu.
+- Almost nothing in them is new — the entries were already on a button, a keystroke or a drag. What was missing was a way to ask a thing what it can do rather than hunt for where its affordance was put.
+- Duplicate, on rows (with everything under them), steps, whole charts, whole flows, and registry objects — plus copy and paste for chart rows, which flows had and charts did not.
+- Every copy mints fresh ids, attachments included, so one copy's delete can never pull the bytes out from under the other. Deliverable references are left pointing at the same deliverable.
+- A pasted row is refused rather than truncated when it would not fit under its new parent.
+- A Final chart or flow offers only what cannot change it, and the menu carries one line saying why — the first place the edit lock ever explains itself.
+- A text field you are typing in keeps the browser's own menu, where spellcheck and the system clipboard live.
+- The ASIC watermark now actually appears: it sat behind the chart block, which is opaque, so it only ever showed through gaps the cascade left. It also holds across all five themes and across Chart, Roster and Tasks, instead of the Chart tab alone.
+- 📗 Import Excel in the toolbar opens a centered chooser — import a filled-in workbook, or download the blank template to fill in first. There was no import button before; a workbook could only arrive through Load, which never said it took one.
+- The demo flow is laid out left to right. The nested evidence procedure and the after-action review used to sit left of the steps feeding them, so three handoffs swept backwards over the group frame. The false-positive branch is routed along the bottom on two redirectors, and the evidence procedure's two exits no longer overlap.

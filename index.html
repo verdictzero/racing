@@ -2118,6 +2118,52 @@ body.show-details #btn-details { background: var(--bg-4); color: var(--text); bo
 
 input[type="file"] { display: none; }
 
+/* ===== Right-click context menus (v0.39) ===== */
+/* One menu element at a time, built fresh on every open and thrown away on close — there is no
+   state worth keeping between two right-clicks, and a rebuilt menu can never show a stale label
+   (a step's "Unlink from chart row" depends on whether it is bound right now).
+   z-index 300 puts it over every surface it can be summoned from, including the popovers and
+   dialogs at 100-210, because a menu that its own anchor covered would be useless. Toasts (2000)
+   still win, which is right: a refusal has to be readable over whatever raised it. */
+.ctx-menu {
+  position: fixed; z-index: 300; min-width: 216px; max-width: 340px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px;
+  box-shadow: 0 16px 44px rgba(var(--shadow-rgb), 0.7);
+  padding: 5px; color: var(--text); font-size: 12.5px;
+  max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
+}
+.ctx-title {
+  padding: 5px 9px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctx-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  font: inherit; text-align: left; cursor: pointer;
+  background: none; border: none; color: var(--text);
+  border-radius: 6px; padding: 6px 9px;
+}
+.ctx-item:hover:not(:disabled), .ctx-item.is-active:not(:disabled) { background: var(--bg-4); }
+.ctx-item:disabled { opacity: 0.42; cursor: default; }
+.ctx-item.danger { color: var(--err-ink, var(--a)); }
+.ctx-item.danger:hover:not(:disabled) { background: rgba(var(--a-rgb), 0.16); }
+.ctx-ico { flex: 0 0 auto; width: 1.2em; text-align: center; font-size: 12px; }
+.ctx-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-kbd {
+  flex: 0 0 auto; font-size: 10px; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px; padding: 0 4px;
+}
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 7px; }
+/* The line a locked artifact shows in place of the edits it will not accept. The menu is the one
+   surface that can say WHY the affordances are gone, which the CSS lock alone cannot. */
+.ctx-note {
+  padding: 6px 9px 7px; font-size: 11px; line-height: 1.45; color: var(--text-dim);
+  white-space: normal;
+}
+:root[data-theme^="hc-"] .ctx-menu { border-width: 2px; }
+:root[data-theme^="hc-"] .ctx-item:hover:not(:disabled),
+:root[data-theme^="hc-"] .ctx-item.is-active:not(:disabled) { outline: 2px solid var(--accent); outline-offset: -2px; }
+
 /* ===== View tabs ===== */
 .view-tabs {
   display: flex;
@@ -6696,6 +6742,12 @@ body[data-view="roster"] #legend { display: none; }
     color:var(--ink); background:var(--inset);
     border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:1px 6px;
   }
+  .ht-list{ margin:.9rem 0 0; padding:0; list-style:none; max-width:70ch; }
+  .ht-list li{
+    position:relative; padding:0 0 .62rem 1.1rem; font-size:.92rem; line-height:1.6; color:var(--muted);
+  }
+  .ht-list li::before{ content:'·'; position:absolute; left:.2rem; color:var(--faint); font-weight:700; }
+  .ht-list li b{ color:var(--ink); }
   .ht-keys{ width:100%; border-collapse:collapse; margin-top:.8rem; font-size:.9rem; }
   .ht-keys th{
     text-align:left; font-family:var(--mono); font-size:.6rem; letter-spacing:.12em; text-transform:uppercase;
@@ -6935,10 +6987,24 @@ body[data-view="roster"] #legend { display: none; }
 
   <section>
     <div class="wrap">
+      <h2><span class="lead-num">Right-click</span>Asking a thing what it can do</h2>
+      <p class="sub">Every object in the tool has a menu on its right button. It is the fastest way to find out what something can do without hunting for the button.</p>
+      <ul class="ht-list">
+        <li><b>A chart row</b> — node view, drill, rename, add a child or a sibling, duplicate the row with everything under it, copy, paste, delete.</li>
+        <li><b>A chart tab</b> — switch, details, duplicate the whole chart, mark final or reopen, rename, close.</li>
+        <li><b>A flow step</b> — rename, duplicate, copy, cut, paste, link or unlink its chart row, group the selection, pull it out of its frame, delete.</li>
+        <li><b>A group frame's header</b> — collapse, rename, recolour, ungroup, delete the frame.</li>
+        <li><b>Empty flow canvas</b> — add a step <em>where you clicked</em>, paste there, fit, show the table or the gallery.</li>
+        <li><b>A gallery card</b> — open, nest, duplicate, details, mark final, delete. Deliverables and entities offer the same, plus where they are used.</li>
+      </ul>
+      <p>Two things stay out of its way. A text field you are typing in keeps the browser's own menu, because that is where spellcheck and the system clipboard live. And a <b>Final</b> chart or flow offers only what does not change it — the menu says so in a line, which is the one place the lock ever explains itself.</p>
+      <p>Nothing here is new capability except <b>Duplicate</b> and the chart's copy/paste. Everything else was already on a button, a keystroke or a drag; the menu just gathers it at the thing it acts on.</p>
+
       <h2><span class="lead-num">Cheat sheet</span>Every gesture worth knowing</h2>
       <table class="ht-keys">
         <thead><tr><th>Do this</th><th>Get that</th><th>Where</th></tr></thead>
         <tbody>
+          <tr><td><b>Right-click anything</b></td><td>Its own menu — add, rename, duplicate, copy, delete, and whatever else that thing can do</td><td>Anywhere</td></tr>
           <tr><td><span class="kbd">Ctrl</span>+<span class="kbd">Z</span></td><td>Undo</td><td>Anywhere</td></tr>
           <tr><td><span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">Z</span> · <span class="kbd">Ctrl</span>+<span class="kbd">Y</span></td><td>Redo</td><td>Anywhere</td></tr>
           <tr><td><span class="kbd">Esc</span></td><td>Close the popover, panel or menu that is open</td><td>Anywhere</td></tr>
@@ -7135,6 +7201,37 @@ function initTheme() {
 //   Pre-1.0 = "alpha" (rapid iteration, schema may break). When feature-complete -> "beta".
 //   1.0+ stable, follow loose semver. Tag changes here AND in CHANGELOG-style git messages.
 //   History so far:
+//     0.39 alpha - RIGHT-CLICK MENUS on every object, plus three fixes that had been sitting in
+//                  plain sight.
+//                  The menus add almost no capability: every entry was already on a button, a
+//                  keystroke or a drag. What was missing was a way to ASK a thing what it can do —
+//                  the affordances are scattered across a row's ×, a card's footer, a toolbar and
+//                  two shortcuts, and nothing gathered them at the object they act on. Ten
+//                  surfaces have one; the innermost wins, so a step inside a frame gets the step's.
+//                  Genuinely new: Duplicate (rows with their whole subtree, steps, charts, flows,
+//                  registry objects) and a chart-side copy/paste, which the flow had and the chart
+//                  did not. Duplicates mint fresh ids everywhere, including attachment ids — the
+//                  blob store is keyed by doc id, so a shared one would let either copy's delete
+//                  pull the bytes out from under the other. Deliverable refs deliberately do NOT
+//                  re-mint: a copy of a row that produces the Triage Report produces that same
+//                  report, not a second one.
+//                  A Final artifact offers only what does not change it, and the menu carries the
+//                  one line saying why — the CSS lock takes the affordances away but can never
+//                  explain itself. A text field you are typing in keeps the browser's own menu.
+//                  WATERMARK — it had never actually been visible. It sat at z-index 0, under a
+//                  chart block with an opaque fill, so it only showed through gaps the cascade
+//                  left, which on a full-width chart is none. Now over the pane and under every
+//                  piece of chrome. Its per-theme --wm-opacity/--wm-filter were declared in all
+//                  five themes and read by nothing; wired up, retuned, and given real values in
+//                  the three high-contrast themes that had zeroed it. Spans Chart, Roster and
+//                  Tasks — one system in the rail, one mark.
+//                  EXCEL — there was no import button at all. One labelled door now opens a
+//                  centered chooser: import a filled-in workbook, or download the template to
+//                  fill in first.
+//                  FLOW DEMO — sockets are out-right / in-left, so a step left of its producer
+//                  draws a handoff that loops backwards. The tabletop did it twice. Re-laid as a
+//                  left-to-right spine, with the false-positive branch routed along the bottom on
+//                  two redirectors — which also ships the demo's first routed handoff.
 //     0.38 alpha - OBJECT GALLERY — a third system in the mode rail, in its own box below the
 //                  flow, set apart by a rule because it is not a third tab of the flow: the chart
 //                  is who owns what, the flow is how work moves, and this is the catalogue of the
@@ -7551,7 +7648,7 @@ function initTheme() {
 //     0.2  alpha - cascading nested-RACI chart (replaced workstream view)
 //     0.1  alpha - initial nested RACI: tree view, org lens, roster teams
 const APP_NAME = 'ASIC RACI Tool';
-const APP_VERSION = '0.38';
+const APP_VERSION = '0.39';
 const APP_STAGE = 'alpha';
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
@@ -11208,7 +11305,7 @@ function bizSelectorHtml() {
     <button id="bz-add-task" title="Add a task box to the canvas">+ Add task</button>
     <button id="bz-group" ${nSel ? '' : 'disabled '}title="${nSel ? `Wrap the ${nSel} selected step${nSel === 1 ? '' : 's'} in a labelled frame` : 'Select steps first — click one, then shift-click others, or shift-drag a box around them'}">⊟ Group${nSel ? ` (${nSel})` : ''}</button>
     <button id="bz-toggle-table" class="${b.showTable ? 'active' : ''}" title="Show/hide the RACI table pane">▦ Table</button>
-    <span class="bz-meta">${b.tasks.length - nSub} step${b.tasks.length - nSub === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}${nSub ? ` · ${nSub} nested flow${nSub === 1 ? '' : 's'}` : ''}${nGrp ? ` · ${nGrp} group${nGrp === 1 ? '' : 's'}` : ''} · drag a socket to connect · drag a handoff to route it · shift-drag to select · scroll to zoom</span>`;
+    <span class="bz-meta">${b.tasks.length - nSub} step${b.tasks.length - nSub === 1 ? '' : 's'} · ${b.edges.length} handoff${b.edges.length === 1 ? '' : 's'}${nSub ? ` · ${nSub} nested flow${nSub === 1 ? '' : 's'}` : ''}${nGrp ? ` · ${nGrp} group${nGrp === 1 ? '' : 's'}` : ''} · drag a socket to connect · drag a handoff to route it · shift-drag to select · scroll to zoom · right-click for actions</span>`;
 }
 
 // ---- Flow gallery (v0.30) ----
@@ -17067,6 +17164,622 @@ document.addEventListener('keydown', e => {
   if (el && (el.isContentEditable || /^(INPUT|TEXTAREA)$/.test(el.tagName || ''))) return;
   e.preventDefault(); e.stopPropagation();
   refuseLockedEdit(L.kind);
+}, true);
+
+// ================= Right-click context menus (v0.39) =================
+// Every action here already existed behind a button, a keystroke or a drag. What was missing was a
+// way to ASK an object what it can do: the affordances are spread across a row's × , a card's
+// footer, a toolbar and two keyboard shortcuts, and nothing gathers them in one place at the thing
+// they act on. The menu is that gathering — it adds no capability the app did not have, except the
+// duplicate/paste family below, which the clipboard shortcuts implied but only flows ever had.
+
+// ---------- duplication ----------
+// A duplicate must not SHARE ids with its original. That is obvious for the rows themselves and
+// easy to forget for their attachments: the blob store is keyed by doc id, so two rows pointing at
+// one key means deleting either one's copy pulls the bytes out from under the other. Each copy
+// gets a fresh id and the bytes are written under it — from memory when the dataUrl is hydrated,
+// and from the store when it is not (hydration is async, so a duplicate taken early would
+// otherwise copy an empty shell).
+function cloneDoc(d) {
+  const c = Object.assign({}, d, { id: uid() });
+  if (d.dataUrl) idbPutDoc(c.id, d.dataUrl);
+  else idbGetDoc(d.id).then(u => { if (u) { c.dataUrl = u; idbPutDoc(c.id, u); } });
+  return c;
+}
+// Deep-copy a chart row and everything under it under fresh ids. Deliverable refs (inputs/outputs)
+// are deliberately NOT re-minted: they point into the shared registry, and a copy of a row that
+// produces the Triage Report still produces that same Triage Report, not a second one.
+function cloneNodeTree(n) {
+  const c = JSON.parse(JSON.stringify(n));
+  (function walk(x) {
+    x.id = uid();
+    x.documents = (x.documents || []).map(cloneDoc);
+    (x.children || []).forEach(walk);
+  })(c);
+  return c;
+}
+// "Copy of X", "Copy of X (2)", … — never a silent duplicate name, because the gallery, the tab
+// strip and the flow picker are all lists you pick from by name.
+function copyName(base, taken) {
+  const want = /^Copy of /.test(base) ? base : 'Copy of ' + (base || 'Untitled');
+  if (!taken.includes(want)) return want;
+  for (let i = 2; ; i++) if (!taken.includes(`${want} (${i})`)) return `${want} (${i})`;
+}
+function duplicateNode(id) {
+  if (!guardChartEdit()) return;
+  const f = findNode(id);
+  if (!f) return;
+  const copy = cloneNodeTree(f.node);
+  copy.name = copyName(f.node.name, f.siblings.map(x => x.name));
+  const at = f.siblings.findIndex(x => x.id === id);
+  f.siblings.splice(at < 0 ? f.siblings.length : at + 1, 0, copy);
+  saveState(); renderChart();
+}
+function addSiblingActivity(id) {
+  if (!guardChartEdit()) return;
+  const f = findNode(id);
+  if (!f) return;
+  const fresh = makeNode('', chartCols());
+  const at = f.siblings.findIndex(x => x.id === id);
+  f.siblings.splice(at < 0 ? f.siblings.length : at + 1, 0, fresh);
+  saveState(); renderChart();
+  focusNodeName(fresh.id);
+}
+// Put the caret in a row's name after the repaint that created it — a new row you have to go and
+// click before you can name it is a new row you will leave called "Untitled".
+function focusNodeName(id) {
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`.ch-name-edit[data-node-id="${id}"]`);
+    if (!el) return;
+    el.focus();
+    const sel = document.getSelection();
+    if (sel && sel.selectAllChildren) sel.selectAllChildren(el);
+  });
+}
+// The chart-side clipboard. Deliberately separate from the flow's (_bizClip): the two hold
+// different shapes and pasting one into the other could only ever fail, so they do not share a
+// slot that would let you try.
+let _nodeClip = null;
+function copyNodeTree(id) {
+  const f = findNode(id);
+  if (!f) return false;
+  _nodeClip = { tree: JSON.parse(JSON.stringify(f.node)), title: f.node.name || 'Untitled' };
+  showToast(`Copied "${_nodeClip.title}"${countNodes(f.node.children) ? ' and everything under it' : ''}.`, 'suggest');
+  return true;
+}
+// parentId null = paste at the top level of the focused tier. Depth is checked against the chart's
+// own maximum, so an org chart cannot grow a fifth tier by way of the clipboard.
+function pasteNodeInto(parentId) {
+  if (!guardChartEdit()) return;
+  if (!_nodeClip) { showToast('Nothing to paste — copy a row first.', 'suggest'); return; }
+  const depth = _nodeClip.tree.children && _nodeClip.tree.children.length ? treeDepth(_nodeClip.tree) : 0;
+  let siblings, at;
+  if (parentId) {
+    const f = findNode(parentId);
+    if (!f) return;
+    if (f.depth + 1 + depth > chartMaxTier()) {
+      showToast(`"${_nodeClip.title}" is too deep to sit under this row — an org chart stops at ${chartTierLabel(chartMaxTier())}.`, 'error');
+      return;
+    }
+    siblings = f.node.children; at = siblings.length;
+  } else {
+    siblings = ac().activities; at = siblings.length;
+  }
+  const copy = cloneNodeTree(_nodeClip.tree);
+  copy.name = copyName(_nodeClip.tree.name, siblings.map(x => x.name));
+  siblings.splice(at, 0, copy);
+  saveState(); renderChart();
+  showToast(`Pasted "${copy.name}".`, 'suggest');
+}
+function treeDepth(n) {
+  return 1 + (n.children || []).reduce((m, c) => Math.max(m, treeDepth(c)), -1);
+}
+function duplicateChart(id) {
+  const src = chartById(id);
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'c_' + uid();
+  copy.title = copyName(src.title, state.charts.map(c => c.title));
+  copy.activities = (src.activities || []).map(cloneNodeTree);
+  // A copy is a working document however the original was signed — otherwise "duplicate to try
+  // something" would hand you a locked tab and the first thing you did would be to unlock it.
+  copy.status = 'draft'; copy.finalizedAt = null;
+  copy.drillPath = [];
+  state.charts.push(copy);
+  state.activeChartId = copy.id;
+  _activeNodeId = null;
+  saveState(); render();
+}
+// Flows are duplicated whole: every step and group is re-minted and the edges are rewritten
+// through the map, so the copy is wired exactly like the original and shares nothing with it.
+// A nested-flow box keeps pointing at the SAME flow it did before — the box is a reference, and
+// copying the host has never meant copying what it refers to.
+function duplicateFlow(id) {
+  const src = bizCaseById(id);
+  if (!src) return null;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'b_' + uid();
+  copy.name = copyName(src.name, state.bizCases.map(b => b.name));
+  copy.status = 'draft'; copy.finalizedAt = null;
+  const idMap = {}, gMap = {};
+  (copy.groups || []).forEach(g => { const o = g.id; g.id = 'g_' + uid(); gMap[o] = g.id; });
+  (copy.tasks || []).forEach(t => {
+    const o = t.id; t.id = 't_' + uid(); idMap[o] = t.id;
+    if (t.groupId) t.groupId = gMap[t.groupId] || null;
+  });
+  copy.edges = (copy.edges || []).map(e => Object.assign({}, e, {
+    id: 'e_' + uid(), from: idMap[e.from] || e.from, to: idMap[e.to] || e.to,
+    // Ports on a nested box are that box's own exposed entry/exit ids and belong to the flow it
+    // references, not to this one — so they survive the re-mint untouched. Ports on a plain step
+    // are the step id itself, which does not.
+    fromPort: idMap[e.fromPort] || e.fromPort, toPort: idMap[e.toPort] || e.toPort
+  }));
+  state.bizCases.push(copy);
+  return copy;
+}
+// One step, copied in place. bizCopyTask + bizPasteTask already do exactly this in two keystrokes;
+// this is the one-gesture version, and it leaves the clipboard alone so a duplicate never costs
+// you whatever you had copied earlier.
+function bizDuplicateTask(id) {
+  if (!guardFlowEdit()) return;
+  const b = abc(), t = bizTaskById(id);
+  if (!t) return;
+  const copy = JSON.parse(JSON.stringify(t));
+  copy.id = 't_' + uid();
+  copy.x = Math.round((t.x || 0) + 28);
+  copy.y = Math.round((t.y || 0) + 28);
+  if (!isSubflow(copy)) copy.name = copyName(t.name, b.tasks.map(x => x.name));
+  b.tasks.push(copy);
+  _bizSel.clear(); _bizSel.add(copy.id);
+  saveState(); renderBizcase();
+}
+// Registry objects. A duplicate starts with NO uses — the reverse index is derived from who names
+// it, and nothing names a thing that was made a second ago.
+function duplicateObject(oid) {
+  const art = (state.artifacts || []).find(a => a.id === oid);
+  if (art) {
+    const copy = Object.assign({}, JSON.parse(JSON.stringify(art)), { id: 'a_' + uid() });
+    copy.name = copyName(art.name, state.artifacts.map(a => a.name));
+    if (copy.doc) copy.doc = cloneDoc(copy.doc);
+    state.artifacts.push(copy);
+    _objSel = copy.id;
+    saveState(); renderObjects();
+    return;
+  }
+  const ent = entityById(oid);
+  if (!ent) return;
+  const copy = Object.assign({}, JSON.parse(JSON.stringify(ent)), { id: 'e_' + uid() });
+  copy.name = copyName(ent.name, (state.entities || []).map(e => e.name));
+  state.entities.push(copy);
+  _objSel = copy.id;
+  saveState(); renderObjects();
+}
+
+// ---------- the menu itself ----------
+// Rebuilt on every open and destroyed on close. Nothing about a menu is worth keeping between two
+// right-clicks, and a rebuilt one can never show a stale label — whether a step reads "Unlink from
+// chart row" depends on whether it is bound at the instant you ask.
+let _ctxMenu = null;
+let _ctxItems = [];
+function closeCtxMenu() {
+  if (!_ctxMenu) return;
+  _ctxMenu.remove(); _ctxMenu = null; _ctxItems = [];
+}
+// items: { label, ico, kbd, hint, run, danger, disabled } | { sep:true } | { title } | { note }
+// Falsy entries are dropped, so a builder can write `cond && {…}` inline rather than assembling
+// the array in branches.
+function openCtxMenu(x, y, items) {
+  closeCtxMenu();
+  const live = items.filter(Boolean);
+  // Trim rules that ended up at an edge or doubled up once the falsy entries were dropped.
+  const trimmed = live.filter((it, i) => !it.sep || (i > 0 && i < live.length - 1 && !live[i - 1].sep));
+  // Nothing to offer AND nothing to explain → let the browser have the event. A note on its own is
+  // enough reason to put a menu up: it is the answer to "why is there no × on this thing?", which
+  // is a question the CSS lock creates and cannot itself answer.
+  if (!trimmed.some(it => it.run || it.note)) return;
+  const el = document.createElement('div');
+  el.className = 'ctx-menu';
+  el.setAttribute('role', 'menu');
+  el.innerHTML = trimmed.map((it, i) => {
+    if (it.sep) return '<div class="ctx-sep" role="separator"></div>';
+    if (it.title) return `<div class="ctx-title">${escapeHtml(it.title)}</div>`;
+    if (it.note) return `<div class="ctx-note">${escapeHtml(it.note)}</div>`;
+    return `<button class="ctx-item${it.danger ? ' danger' : ''}" role="menuitem" type="button" data-ctx-i="${i}"${
+      it.disabled ? ' disabled' : ''}${it.hint ? ` title="${escapeHtml(it.hint)}"` : ''}>
+      <span class="ctx-ico" aria-hidden="true">${it.ico || ''}</span>
+      <span class="ctx-label">${escapeHtml(it.label)}</span>
+      ${it.kbd ? `<span class="ctx-kbd">${escapeHtml(it.kbd)}</span>` : ''}
+    </button>`;
+  }).join('');
+  document.body.appendChild(el);
+  _ctxMenu = el; _ctxItems = trimmed;
+  // Flip rather than clamp: a menu pinned to the bottom edge under the cursor covers the thing it
+  // was opened on, whereas one flipped above it never does.
+  const r = el.getBoundingClientRect();
+  const px = (x + r.width > window.innerWidth - 8) ? Math.max(8, x - r.width) : x;
+  const py = (y + r.height > window.innerHeight - 8)
+    ? Math.max(8, (y - r.height > 8) ? y - r.height : window.innerHeight - r.height - 8)
+    : y;
+  el.style.left = Math.round(px) + 'px';
+  el.style.top = Math.round(py) + 'px';
+  el.addEventListener('click', ev => {
+    const btn = ev.target.closest('.ctx-item');
+    if (!btn || btn.disabled) return;
+    const it = _ctxItems[+btn.getAttribute('data-ctx-i')];
+    closeCtxMenu();
+    if (it && typeof it.run === 'function') it.run();
+  });
+  return el;
+}
+// Keyboard: the menu is opened by the context-menu KEY as often as by the mouse, so it has to be
+// drivable without one.
+function ctxMove(dir) {
+  if (!_ctxMenu) return;
+  const btns = [..._ctxMenu.querySelectorAll('.ctx-item:not(:disabled)')];
+  if (!btns.length) return;
+  const at = btns.findIndex(b => b.classList.contains('is-active'));
+  btns.forEach(b => b.classList.remove('is-active'));
+  const next = btns[(at + dir + btns.length + (at < 0 && dir < 0 ? 1 : 0)) % btns.length] || btns[0];
+  next.classList.add('is-active');
+  next.scrollIntoView({ block: 'nearest' });
+}
+
+
+// ---------- what each surface offers ----------
+// One builder per surface. Each returns the item list for the thing under the cursor; the
+// dispatcher below picks the innermost surface that has one. Read-only entries (open, jump, view)
+// are listed even on a Final artifact — looking is never an edit — while the writes are replaced
+// by a single line saying why they are gone, which is the one thing the CSS lock cannot say.
+const CTX_LOCK_NOTE = k => ({ note: `This ${k === 'chart' ? 'chart' : 'flow'} is Final. Reopen it as a draft — the button is in the strip above — to edit it.` });
+
+function ctxChartRowItems(id) {
+  const f = findNode(id);
+  if (!f) return null;
+  const locked = isFinal(ac());
+  const leaf = f.depth >= chartMaxTier();
+  const tier = chartTierLabel(f.depth).toLowerCase();
+  const childTier = leaf ? '' : chartTierLabel(f.depth + 1).toLowerCase();
+  const kids = countNodes(f.node.children);
+  const flows = leaf && !isFreeChart() ? flowsForNode(ac().id, id) : [];
+  const view = [
+    { title: f.node.name || `Untitled ${tier}` },
+    { label: 'Node view', ico: '👁', hint: 'How each party lands on this row', run: () => openRowView(id) },
+    !leaf && { label: ac().drillPath[f.depth] === id ? 'Collapse breakdown' : 'Drill into breakdown',
+               ico: '▸', run: () => drillToggle(id, f.depth) },
+    leaf && !isFreeChart() && { label: flows.length ? `Open task flow${flows.length > 1 ? ` (${flows.length})` : ''}` : 'Create a task flow…',
+               ico: '⤵', hint: 'Continue the drill into a business-case flow', run: () => openFlowForNode(id) }
+  ];
+  if (locked) return view.concat([{ sep: true }, CTX_LOCK_NOTE('chart')]);
+  return view.concat([
+    { sep: true },
+    { label: 'Rename', ico: '✎', run: () => focusNodeName(id) },
+    !leaf && { label: `Add ${childTier} inside`, ico: '＋', run: () => addChildActivity(id) },
+    { label: `Add ${tier} below`, ico: '⤵', run: () => addSiblingActivity(id) },
+    { sep: true },
+    { label: 'Duplicate' + (kids ? ` (with ${kids} below)` : ''), ico: '⧉', run: () => duplicateNode(id) },
+    { label: 'Copy', ico: '⎘', hint: 'Copy this row and everything under it', run: () => copyNodeTree(id) },
+    !leaf && { label: _nodeClip ? `Paste "${_nodeClip.title}" inside` : 'Paste inside',
+               ico: '⎙', disabled: !_nodeClip, run: () => pasteNodeInto(id) },
+    { sep: true },
+    { label: 'Delete' + (kids ? ` (and ${kids} below)` : ''), ico: '✕', danger: true, run: () => deleteNode(id) }
+  ]);
+}
+function ctxChartBlankItems() {
+  // Arranging the panes is camera work, not a document edit, and Details opens read-only on a
+  // signed chart by design — so both survive the lock, and the note explains what did not.
+  const view = [
+    { title: ac().title || 'Chart' },
+    { label: 'Auto arrange', ico: '⤧', hint: 'Snap the panes back into a tight nested cascade',
+      run: () => clickAffordance('#btn-arrange') },
+    { label: 'Chart details…', ico: '✎', run: () => openMetaPanel('chart') }
+  ];
+  if (isFinal(ac())) return view.concat([{ sep: true }, CTX_LOCK_NOTE('chart')]);
+  const top = chartTierLabel(0).toLowerCase();
+  return [
+    view[0],
+    { label: `Add ${top} activity`, ico: '＋', run: () => addRootActivity() },
+    { label: _nodeClip ? `Paste "${_nodeClip.title}" here` : 'Paste', ico: '⎙', disabled: !_nodeClip,
+      run: () => pasteNodeInto(null) },
+    { sep: true }, view[1], view[2]
+  ];
+}
+function ctxChartTabItems(id) {
+  const c = chartById(id);
+  if (!c) return null;
+  const locked = isFinal(c);
+  const only = state.charts.length <= 1;
+  return [
+    { title: c.title || 'Untitled chart' },
+    id !== state.activeChartId && { label: 'Switch to this chart', ico: '→', run: () => switchChart(id) },
+    { label: 'Details…', ico: '✎', hint: 'Description, customer, priority, budget and tags',
+      run: () => { switchChart(id); openMetaPanel('chart'); } },
+    // Duplicating a signed chart is how you branch off it without disturbing it, so it stays
+    // available while locked — the copy lands as a draft.
+    { label: 'Duplicate chart', ico: '⧉', run: () => duplicateChart(id) },
+    { sep: true },
+    { label: locked ? 'Reopen as draft' : 'Mark final', ico: locked ? '↺' : '✓',
+      run: () => setChartStatus(id, locked ? 'draft' : 'final') },
+    !locked && { label: 'Rename', ico: '✏', run: () => focusChartTabLabel(id) },
+    { sep: true },
+    { label: 'Close chart', ico: '✕', danger: true, disabled: only,
+      hint: only ? 'The last chart cannot be closed' : 'Discard this tab', run: () => deleteChart(id) }
+  ];
+}
+function ctxChartTabBarItems() {
+  return [
+    { title: 'Chart tabs' },
+    { label: 'New chart…', ico: '＋', hint: 'Organization or free-form', run: () => openNewChartDialog() },
+    { label: 'Duplicate the open chart', ico: '⧉', run: () => duplicateChart(state.activeChartId) }
+  ];
+}
+function ctxFlowGalleryItems() {
+  return [
+    { title: 'Flow gallery' },
+    { label: 'New flow', ico: '＋', run: () => bizAddCase() },
+    { label: 'Duplicate the open flow', ico: '⧉',
+      run: () => { const c = duplicateFlow(abc().id); if (c) { saveState(); bizSwitchCase(c.id); } } },
+    { sep: true },
+    { label: 'Hide the gallery', ico: '✕', run: () => bizToggleGallery() }
+  ];
+}
+function ctxFlowStepItems(id) {
+  const b = abc(), t = bizTaskById(id);
+  if (!t) return null;
+  const sub = isSubflow(t);
+  const head = [{ title: bizTaskLabel(t) }];
+  if (sub) head.push({ label: 'Open the nested flow', ico: '⤢', run: () => bizOpenSubflow(id) });
+  if (isFinal(b)) return head.concat([{ sep: true }, CTX_LOCK_NOTE('flow')]);
+  const selN = _bizSel.size;
+  const bound = !sub && bizIsLinked(b) && t.bind;
+  return head.concat([
+    !sub && { label: 'Rename', ico: '✎', run: () => focusFlowStepName(id) },
+    { sep: true },
+    { label: 'Duplicate', ico: '⧉', run: () => bizDuplicateTask(id) },
+    { label: 'Copy', ico: '⎘', kbd: 'Ctrl+C', run: () => { if (bizCopyTask(id)) showToast('Step copied — Ctrl+V to paste.', 'suggest'); } },
+    { label: 'Cut', ico: '✂', kbd: 'Ctrl+X', run: () => bizCutTask(id) },
+    { label: _bizClip ? 'Paste step' : 'Paste', ico: '⎙', kbd: 'Ctrl+V', disabled: !_bizClip, run: () => bizPasteTask() },
+    { sep: true },
+    !sub && bizIsLinked(b) && { label: bound ? 'Re-point at another chart row…' : 'Link to a chart row…',
+      ico: '⛓', run: () => openBindPicker(id) },
+    !sub && bound && { label: 'Unlink from the chart row', ico: '⛓', run: () => bizUnbindStep(id) },
+    { label: selN > 1 ? `Group the ${selN} selected steps` : 'Group with…', ico: '▭',
+      disabled: selN < 2, hint: selN < 2 ? 'Select two or more steps first (shift-click, or shift-drag a marquee)' : '',
+      run: () => bizGroupSelection() },
+    t.groupId && { label: 'Take out of its frame', ico: '⤨',
+      hint: `Same as holding ${BZ_DETACH_KEY_LONG} while dragging it out`,
+      run: () => { t.groupId = null; saveState(); renderBizcase(); } },
+    { sep: true },
+    { label: sub ? 'Remove this nested box' : 'Delete step', ico: '✕', danger: true,
+      hint: sub ? 'Removes the reference only — the flow itself stays in the gallery' : 'Also removes its handoffs',
+      run: () => bizDeleteTask(id) }
+  ]);
+}
+function ctxFlowGroupItems(gid) {
+  const b = abc(), g = bizGroupById(b, gid);
+  if (!g) return null;
+  const head = [{ title: g.name || 'Unnamed frame' }];
+  if (isFinal(b)) return head.concat([CTX_LOCK_NOTE('flow')]);
+  return head.concat([
+    { label: g.collapsed ? 'Expand — show the steps' : 'Collapse into one box', ico: g.collapsed ? '▾' : '▸',
+      run: () => bizToggleGroupCollapse(gid) },
+    { label: 'Rename', ico: '✎', run: () => focusFlowGroupName(gid) },
+    { label: 'Cycle the frame colour', ico: '◧', run: () => bizCycleGroupColor(gid) },
+    { sep: true },
+    { label: 'Ungroup', ico: '⤨', hint: 'Release the steps and keep them where they are', run: () => bizUngroup(gid) },
+    { label: 'Delete the frame', ico: '✕', danger: true, hint: 'The steps stay on the canvas', run: () => bizDeleteGroup(gid) }
+  ]);
+}
+function ctxFlowCanvasItems(ev) {
+  const b = abc();
+  const head = [{ title: b.name || 'Untitled flow' }];
+  if (isFinal(b)) return head.concat([
+    { label: 'Fit to the canvas', ico: '⤢', run: () => bizFit() },
+    { sep: true }, CTX_LOCK_NOTE('flow')]);
+  // A step added from the menu belongs where the menu was opened, not in the middle of the
+  // viewport — the click IS the placement, which is the whole reason to offer it here.
+  const at = bzScreenToWorld(ev.clientX, ev.clientY);
+  return head.concat([
+    { label: 'Add a step here', ico: '＋', run: () => bizAddTaskAt(at.x - BZ_NODE_W / 2, at.y - 24) },
+    { label: _bizClip ? 'Paste step here' : 'Paste', ico: '⎙', kbd: 'Ctrl+V', disabled: !_bizClip,
+      run: () => bizPasteTaskAt(at.x - BZ_NODE_W / 2, at.y - 24) },
+    _bizSel.size > 1 && { label: `Group the ${_bizSel.size} selected steps`, ico: '▭', run: () => bizGroupSelection() },
+    { sep: true },
+    { label: 'Fit to the canvas', ico: '⤢', run: () => bizFit() },
+    { label: b.showTable ? 'Hide the step table' : 'Show the step table', ico: '▤', run: () => bizToggleTable() },
+    { label: state.bizGallery ? 'Hide the flow gallery' : 'Show the flow gallery', ico: '▦', run: () => bizToggleGallery() },
+    { label: 'Flow details…', ico: '✎', run: () => openMetaPanel('flow') }
+  ]);
+}
+function ctxFlowCardItems(id) {
+  const b = bizCaseById(id);
+  if (!b) return null;
+  const active = b.id === abc().id;
+  const blocked = active || bizEmbedWouldCycle(abc().id, id);
+  const hosts = bizHostsOf(id).length;
+  return [
+    { title: b.name || 'Untitled flow' },
+    !active && { label: 'Open', ico: '→', run: () => bizSwitchCase(id) },
+    { label: 'Nest inside the open flow', ico: '⧉', disabled: blocked,
+      hint: blocked ? (active ? 'A flow cannot contain itself' : 'Blocked — nesting it here would close a reference loop') : '',
+      run: () => bizEmbedAtCentre(id) },
+    { label: 'Duplicate flow', ico: '⎘', run: () => { const c = duplicateFlow(id); if (c) { saveState(); bizSwitchCase(c.id); } } },
+    { sep: true },
+    { label: 'Details…', ico: '✎', run: () => { bizSwitchCase(id); openMetaPanel('flow'); } },
+    { label: isFinal(b) ? 'Reopen as draft' : 'Mark final', ico: isFinal(b) ? '↺' : '✓',
+      run: () => setCaseStatus(id, isFinal(b) ? 'draft' : 'final') },
+    { sep: true },
+    { label: 'Delete flow', ico: '✕', danger: true, disabled: state.bizCases.length <= 1 || hosts > 0,
+      hint: hosts ? `Nested inside ${hosts} other flow${hosts === 1 ? '' : 's'} — remove those boxes first`
+                  : (state.bizCases.length <= 1 ? 'The last flow cannot be deleted' : ''),
+      run: () => { bizSwitchCase(id); bizDeleteCase(); } }
+  ];
+}
+function ctxObjectCardItems(oid) {
+  const o = objRegistry().find(x => x.id === oid);
+  if (!o) return null;
+  const isEnt = o.kind === 'entity';
+  return [
+    { title: o.name || (isEnt ? 'Unnamed entity' : 'Untitled deliverable') },
+    { label: o.id === _objSel ? 'Hide where it is used' : 'Show where it is used',
+      ico: '👁', hint: `${o.uses.length} use${o.uses.length === 1 ? '' : 's'}`,
+      run: () => { _objSel = (_objSel === oid) ? null : oid; renderObjects(); } },
+    { label: 'Duplicate', ico: '⧉', hint: 'A copy starts with no uses of its own', run: () => duplicateObject(oid) },
+    { sep: true },
+    { label: isEnt ? 'Delete entity' : 'Delete deliverable', ico: '✕', danger: true,
+      hint: !isEnt && o.uses.length ? 'Something still references it — that has to go first' : '',
+      run: () => isEnt ? deleteEntity(oid) : deleteArtifactById(oid) }
+  ];
+}
+function ctxObjectBlankItems() {
+  return [
+    { title: 'Object Gallery' },
+    { label: 'New deliverable', ico: '＋', run: () => document.getElementById('art-new').click() },
+    { label: 'New entity', ico: '＋', run: () => addEntity() }
+  ];
+}
+
+
+// ---------- the small hooks the builders reach for ----------
+// Where an affordance already exists as a button, the menu drives THAT button rather than a second
+// copy of its logic — a popover that opens from the menu and a popover that opens from the row are
+// then the same popover, anchored to the same element, and can never drift apart.
+function clickAffordance(sel) { const el = document.querySelector(sel); if (el) el.click(); }
+function openRowView(id) { const el = document.querySelector(`[data-row-view="${id}"]`); if (el) openTaskViewPopover(id, el); }
+function openFlowForNode(id) { const el = document.querySelector(`[data-flow-btn="${id}"]`); if (el) openFlowPopover(id, el); }
+function openBindPicker(id) { const el = document.querySelector(`[data-bz-bind="${id}"]`); if (el) openBizBindPopover(id, el); }
+function deleteArtifactById(id) { clickAffordance(`[data-art-del="${id}"]`); }
+// Rename = put the caret in the field that already edits the name in place. There is no second
+// rename path to keep in step, and the commit hook is whichever one that field already had.
+function focusInto(sel) {
+  requestAnimationFrame(() => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    if (el.getAttribute('contenteditable') === null) el.setAttribute('contenteditable', 'true');
+    el.focus();
+    const sl = document.getSelection();
+    if (sl && sl.selectAllChildren) sl.selectAllChildren(el);
+  });
+}
+function focusFlowStepName(id) { focusInto(`.bz-node[data-bz-node="${id}"] .bz-node-name`); }
+function focusFlowGroupName(gid) { focusInto(`[data-bz-group-name="${gid}"]`); }
+function focusChartTabLabel(id) { focusInto(`.tab-label[data-tab-id="${id}"]`); }
+// bizAddTask / bizPasteTask place their result in the middle of the viewport. From a context menu
+// the cursor IS the placement, so these are the same operations taking a point.
+function bizAddTaskAt(wx, wy) {
+  if (!guardFlowEdit()) return;
+  const b = abc();
+  const t = makeBizTask('New task');
+  t.x = Math.round(wx); t.y = Math.round(wy);
+  const g = bizGroupAt(t.x + BZ_NODE_W / 2, t.y + 24);
+  if (g) t.groupId = g.id;
+  b.tasks.push(t);
+  _bizSel.clear(); _bizSel.add(t.id);
+  saveState(); renderBizcase();
+  focusFlowStepName(t.id);
+}
+function bizPasteTaskAt(wx, wy) {
+  if (!guardFlowEdit()) return;
+  if (!_bizClip) { showToast('Nothing to paste — copy a step first (Ctrl+C or ⧉)', 'suggest'); return; }
+  const b = abc();
+  const t = JSON.parse(JSON.stringify(_bizClip));
+  t.id = 't_' + uid();
+  t.x = Math.round(wx); t.y = Math.round(wy);
+  const g = bizGroupAt(t.x + BZ_NODE_W / 2, t.y + 24);
+  t.groupId = g ? g.id : null;
+  b.tasks.push(t);
+  _bizSel.clear(); _bizSel.add(t.id);
+  _bizPasteN = 0;              // this paste set the position, so the cascade restarts from here
+  saveState(); renderBizcase();
+}
+function bizEmbedAtCentre(id) {
+  const cv = document.getElementById('bz-canvas');
+  const r = cv ? cv.getBoundingClientRect() : null;
+  const c = r ? bzScreenToWorld(r.left + cv.clientWidth / 2, r.top + cv.clientHeight / 2) : { x: 80, y: 80 };
+  bizEmbedFlow(id, c.x - BZ_NODE_W / 2, c.y - 28);
+}
+
+// ---------- dispatch ----------
+// Innermost surface wins, so a right-click on a step inside a group frame gets the step's menu and
+// one on the frame's own chrome gets the frame's. Anything with no builder falls through to the
+// browser's own menu untouched: a link, an image, and above all a text field, where the native menu
+// carries spellcheck and the system clipboard and no in-app copy of it would be an improvement.
+function ctxItemsFor(e) {
+  const t = e.target;
+  if (t.closest('.ctx-menu')) return null;
+  // A real form field — the gallery filter, a details textarea — keeps the browser's own menu:
+  // that is where spellcheck and the system clipboard live, and an in-app copy of it would be
+  // strictly worse.
+  if (t.closest('input, textarea')) return null;
+  // Inline contenteditable is different. A step's header is MOSTLY its name, a group's header
+  // almost entirely so, and a chart row's name cell is the widest thing in the row — bailing on
+  // the element would put those three surfaces out of reach of their own menus. So the name is
+  // treated as part of the thing it names, with one exception: a live selection inside it means
+  // someone is lining up a copy, and that is the browser's menu to answer.
+  const ce = t.closest('[contenteditable="true"]');
+  if (ce) {
+    const sl = document.getSelection();
+    if (sl && !sl.isCollapsed && sl.anchorNode && ce.contains(sl.anchorNode)) return null;
+  }
+  // Dialogs and popovers are modal-ish surfaces with their own affordances; a menu summoned on top
+  // of one would act on the thing behind it.
+  if (t.closest('.raci-popover, .org-popover, .bz-edge-popover, .flow-popover, #meta-card, #newchart-card, #xlsx-card, #splash-card')) return null;
+
+  const objCard = t.closest('[data-obj-card]');
+  if (objCard) return ctxObjectCardItems(objCard.dataset.objCard);
+  if (t.closest('.objv')) return ctxObjectBlankItems();
+
+  const galCard = t.closest('[data-gal-case]');
+  if (galCard) return ctxFlowCardItems(galCard.dataset.galCase);
+  if (t.closest('#bz-gallery-pane')) return ctxFlowGalleryItems();
+
+  const tab = t.closest('[data-tab]');
+  if (tab) return ctxChartTabItems(tab.getAttribute('data-tab'));
+  if (t.closest('#chart-tabs')) return ctxChartTabBarItems();
+
+  const node = t.closest('[data-bz-node]');
+  if (node) return ctxFlowStepItems(node.dataset.bzNode);
+  // An expanded frame is pointer-events:none so it never eats a click meant for the canvas under
+  // it; only its header is hittable, which is exactly the strip the frame's own buttons live on.
+  // A right-click anywhere else inside the frame is a right-click on the canvas, and gets that.
+  const grp = t.closest('[data-bz-group]');
+  if (grp) return ctxFlowGroupItems(grp.dataset.bzGroup);
+  if (t.closest('#bz-canvas')) return ctxFlowCanvasItems(e);
+
+  const row = t.closest('tr.chart-row[data-id]');
+  if (row) return ctxChartRowItems(row.dataset.id);
+  if (state.viewMode === 'chart' && t.closest('#ws-main')) return ctxChartBlankItems();
+
+  return null;
+}
+document.addEventListener('contextmenu', e => {
+  const items = ctxItemsFor(e);
+  if (!items) return;                      // native menu
+  const menu = openCtxMenu(e.clientX, e.clientY, items);
+  if (menu) e.preventDefault();            // only swallow the event once we actually put one up
+});
+// Dismissal. mousedown rather than click so the menu is gone before whatever was underneath it
+// starts a drag, and capture so a handler that stops propagation cannot strand it on screen.
+document.addEventListener('mousedown', e => {
+  if (_ctxMenu && !e.target.closest('.ctx-menu')) closeCtxMenu();
+}, true);
+window.addEventListener('blur', closeCtxMenu);
+window.addEventListener('resize', closeCtxMenu);
+// The menu is position:fixed, so anything that scrolls under it leaves it pointing at nothing.
+document.addEventListener('scroll', () => { if (_ctxMenu) closeCtxMenu(); }, true);
+document.addEventListener('wheel', () => { if (_ctxMenu) closeCtxMenu(); }, { capture: true, passive: true });
+document.addEventListener('keydown', e => {
+  if (!_ctxMenu) return;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCtxMenu(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); ctxMove(1); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); ctxMove(-1); return; }
+  if (e.key === 'Enter' || e.key === ' ') {
+    const act = _ctxMenu.querySelector('.ctx-item.is-active');
+    if (act) { e.preventDefault(); act.click(); }
+    return;
+  }
+  // Any other key is a shortcut meant for the app, and it should not have to fight a menu to
+  // reach it — so the menu gets out of the way rather than swallowing the keystroke.
+  closeCtxMenu();
 }, true);
 
 // ---------- init ----------

@@ -470,6 +470,21 @@ footer b{ color:var(--muted); }
             <li><span class="kind new">New</span><div><b>Filter and facets.</b> Match on name, type or description, or narrow to deliverables or entities. Create, edit and delete either kind in place — a deliverable with uses cannot be deleted, an entity can, and anything still naming it reads “(missing entity)” until re-pointed.</div></li>
             <li><span class="kind new">New</span><div><b>The demo seeds both registries</b> — four deliverables carried on the tabletop's handoffs, two entities.
               <span class="why">A gallery that is empty the first time you open it teaches nothing about what belongs in it.</span></div></li>
+        <article class="rel">
+          <div class="rel-head"><span class="ver">0.39</span><h3>Right-click, and three things that were never quite finished</h3></div>
+          <ul class="entries">
+            <li><span class="kind new">New</span><div><b>Every object has a menu on its right button.</b> Chart rows, chart tabs, flow steps, group frames, empty canvas, gallery cards, deliverables and entities — ten surfaces, and the innermost one wins, so a step inside a frame gets the step's menu.
+              <span class="why">Almost nothing here is a new capability: the entries were already on a button, a keystroke or a drag. What was missing was a way to ask a thing what it can do, instead of hunting for where its affordance was put.</span></div></li>
+            <li><span class="kind new">New</span><div><b>Duplicate</b>, on rows (with everything under them), steps, whole charts, whole flows, and registry objects — plus <b>copy and paste</b> for chart rows, which flows had and charts did not. A pasted row is refused rather than truncated if it would not fit under its new parent.
+              <span class="why">Every copy mints fresh ids, attachments included: the blob store is keyed by document id, so a shared one would let either copy's delete pull the bytes out from under the other. Deliverable references are deliberately left alone — a copy of a row that produces the Triage Report produces that same report, not a second one.</span></div></li>
+            <li><span class="kind new">New</span><div><b>A Final chart or flow says why its menu is short.</b> Only what cannot change the artifact is offered, and one line explains the rest.
+              <span class="why">Taking the buttons away is the right lock, but it leaves no way to ask what happened to them. The menu is the one surface that can answer.</span></div></li>
+            <li><span class="kind fix">Fix</span><div><b>The ASIC watermark now actually appears</b> — in all five themes, and across Chart, Roster and Tasks rather than the Chart tab alone.
+              <span class="why">It sat behind the chart block, which is opaque, so it only ever showed through gaps the cascade left — on a full-width chart, none. Its per-theme opacity and filter were declared in every theme and read by nothing, so Light got the dark theme's settings and the three high-contrast themes had switched it off outright.</span></div></li>
+            <li><span class="kind new">New</span><div><b>📗 Import Excel</b> in the toolbar, opening a centered chooser: import a filled-in workbook, or download the blank template to fill in first.
+              <span class="why">There was no import button. A workbook could only arrive through Load, which never said it took one, and the template was filed under Export — the wrong half of the app for an input template.</span></div></li>
+            <li><span class="kind fix">Fix</span><div><b>The demo flow is laid out left to right.</b> The nested evidence procedure and the after-action review used to sit to the left of the steps that feed them, so three handoffs swept backwards across the canvas and over the group frame. The false-positive branch is now routed along the bottom on two redirectors, and the evidence procedure's two exits no longer overlap each other.
+              <span class="why">Sockets are out-on-the-right and in-on-the-left, so anything placed left of its own producer draws a line that doubles back. It also means the demo finally ships a routed handoff, which was otherwise a feature you had to go looking for.</span></div></li>
           </ul>
         </article>
       </div>
@@ -507,7 +522,8 @@ footer b{ color:var(--muted); }
           <tr><td>0.35</td><td>Redirectors, chrome fixes, the manual</td><td>Thu 13 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.36</td><td>Entities, and details on charts and flows</td><td>Fri 14 Aug</td><td class="shipped">on main</td></tr>
           <tr><td>0.37</td><td>Excel import and a blank template</td><td>Fri 14 Aug</td><td class="shipped">on main</td></tr>
-          <tr><td>0.38</td><td>The Object Gallery</td><td>Fri 14 Aug</td><td class="pending">on branch</td></tr>
+          <tr><td>0.38</td><td>The Object Gallery</td><td>Fri 14 Aug</td><td class="shipped">on main</td></tr>
+          <tr><td>0.39</td><td>Right-click menus, the watermark, the Excel door, the demo layout</td><td>Thu 27 Aug</td><td class="pending">on branch</td></tr>
         </tbody>
       </table>
     </div>
