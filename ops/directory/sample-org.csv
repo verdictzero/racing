@@ -1,0 +1,15 @@
+external_id,display_name,title,email,manager_external_id,unit_external_id,unit_name,unit_parent_external_id,unit_path,enabled
+,,,,,ou-ocio,OCIO,,"OU=OCIO,DC=asic,DC=army,DC=mil",
+,,,,,ou-ocio-gov,Governance Division,ou-ocio,"OU=Governance,OU=OCIO,DC=asic,DC=army,DC=mil",
+,,,,,ou-ocio-gov-pol,Policy Branch,ou-ocio-gov,"OU=Policy,OU=Governance,OU=OCIO,DC=asic,DC=army,DC=mil",
+,,,,,ou-ocio-gov-pol-a,Standards Team,ou-ocio-gov-pol,"OU=Standards,OU=Policy,OU=Governance,OU=OCIO,DC=asic,DC=army,DC=mil",
+p-1001,Dana Whitfield,Director,dana.whitfield@asic.army.mil,,ou-ocio-gov-pol-a,Standards Team,ou-ocio-gov-pol,,true
+p-1002,Marcus Reed,Policy Analyst,marcus.reed@asic.army.mil,p-1001,ou-ocio-gov-pol-a,Standards Team,ou-ocio-gov-pol,,true
+p-1003,Priya Raman,Standards Lead,priya.raman@asic.army.mil,p-1001,ou-ocio-gov-pol-a,Standards Team,ou-ocio-gov-pol,,true
+,,,,,ou-cyber,Cyber and EW,,"OU=Cyber,DC=asic,DC=army,DC=mil",
+,,,,,ou-cyber-ops,Operations Division,ou-cyber,"OU=Operations,OU=Cyber,DC=asic,DC=army,DC=mil",
+,,,,,ou-cyber-ops-soc,SOC Branch,ou-cyber-ops,"OU=SOC,OU=Operations,OU=Cyber,DC=asic,DC=army,DC=mil",
+,,,,,ou-cyber-ops-soc-t1,Triage Team,ou-cyber-ops-soc,"OU=Triage,OU=SOC,OU=Operations,OU=Cyber,DC=asic,DC=army,DC=mil",
+p-2001,Elena Vasquez,SOC Chief,elena.vasquez@asic.army.mil,,ou-cyber-ops-soc-t1,Triage Team,ou-cyber-ops-soc,,true
+p-2002,Tom Okafor,Incident Analyst,tom.okafor@asic.army.mil,p-2001,ou-cyber-ops-soc-t1,Triage Team,ou-cyber-ops-soc,,true
+p-2003,Sam Lindqvist,"Analyst, Tier 2",sam.lindqvist@asic.army.mil,p-2001,ou-cyber-ops-soc-t1,Triage Team,ou-cyber-ops-soc,,false

@@ -12,15 +12,28 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": { "@raci/core": "workspace:*", "zod": "^3.24.1" },
+  "dependencies": {
+    "@raci/core": "workspace:*",
+    "zod": "^3.24.1"
+  },
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "ldapts": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ldapts": {
+      "optional": true
+    }
   }
 }
