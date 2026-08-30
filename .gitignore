@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.nuxt/
+.output/
+.nitro/
+.cache/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+vendor/npm/
