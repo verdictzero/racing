@@ -94,8 +94,8 @@ The smallest real screen, and a good first slice for someone new.
 
 | Export | Where | Notes |
 |---|---|---|
-| XML | `exportXML` :15454 | Simplest. Good first slice. |
-| Mermaid | `exportMermaid` :15555 | Simple. |
+| ~~XML~~ | — | **Done.** `packages/core/src/export/xml.ts`, 25 tests. |
+| ~~Mermaid~~ | — | **Done.** `packages/core/src/export/mermaid.ts`, chart and flow. |
 | Excel | `exportXLSX` :15693 | Needs a server-side writer; the legacy one builds the file by hand in the browser. |
 | Excel template | `exportTemplate` :15837 | Pairs with the importer. |
 | PowerPoint | `exportPPTX` :16297 | Largest. |
@@ -103,6 +103,12 @@ The smallest real screen, and a good first slice for someone new.
 
 All of these are pure functions of the workspace, so **they belong in `packages/core`**, not in the
 app. That also means they can be tested without a browser — which the legacy ones cannot.
+
+The two that are done set the pattern: take a `Workspace`, return a string, inject anything
+non-deterministic (`now`). `packages/core/src/export/order.ts` already gives you flow steps in
+dependency order, and `stepIo()` derives a step's inputs and outputs from its handoffs. Reuse both
+rather than writing them again. The download route (`apps/web/server/api/workspaces/[id]/export.get.ts`)
+is where a new format gets hooked up — one case in a switch.
 
 ### 7 · Excel import — `importXlsx` (index.html, v0.37 section) — **parallel**
 

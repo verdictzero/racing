@@ -17,3 +17,5 @@ export * from './schema.js';
 export * from './tree.js';
 export * from './raci.js';
 export * from './legacy.js';
+export * from './export/xml.js';
+export * from './export/mermaid.js';
