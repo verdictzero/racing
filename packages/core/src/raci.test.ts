@@ -12,6 +12,8 @@ import {
   primaryDoerColumn,
   violationsByNode,
 } from './raci.js';
+import { computeArtifactUses } from './registry.js';
+import { workspaceViolations, anchorOwnerColumn } from './violations.js';
 import { framework, COLS } from './constants.js';
 import type { Chart, ChartNode } from './schema.js';
 import { keysBetween } from './fractional.js';
@@ -221,5 +223,163 @@ describe('against the real demo chart', () => {
   it('inherits an owner for the great majority of rows, which is what the cascade is for', () => {
     const withoutOwner = chartViolations(chart).filter((v) => v.rule === 'noOwner');
     expect(withoutOwner.length).toBeLessThan(Object.keys(chart.nodes).length / 2);
+  });
+});
+
+describe('the supply check — a declared input nothing produces', () => {
+  const base = importLegacy(demo).workspace;
+  const chartId = Object.keys(base.charts)[0]!;
+  const rowId = Object.keys(base.charts[chartId]!.nodes)[0]!;
+
+  /** Give one row one input, and return the rules that fire on that row. */
+  const withInput = (mutate: (ws: typeof base) => string) => {
+    const ws = structuredClone(base);
+    const artifactId = mutate(ws);
+    ws.charts[chartId]!.nodes[rowId]!.inputs = [artifactId];
+    const found = chartViolations(ws.charts[chartId]!, {
+      artifactUses: computeArtifactUses(ws),
+      artifacts: ws.artifacts,
+    });
+    return found.filter((v) => v.nodeId === rowId).map((v) => v.rule);
+  };
+
+  const addGhost = (ws: typeof base) => {
+    ws.artifacts['a_ghost'] = {
+      id: 'a_ghost', name: 'Ghost Report', type: 'document',
+      ownerRef: null, description: '', doc: null,
+    };
+    return 'a_ghost';
+  };
+
+  it('flags an input that nothing anywhere declares as an output or hands over', () => {
+    expect(withInput(addGhost)).toContain('inputWithoutProducer');
+  });
+
+  it('names the deliverable, so the message is actionable without hunting', () => {
+    const ws = structuredClone(base);
+    addGhost(ws);
+    ws.charts[chartId]!.nodes[rowId]!.inputs = ['a_ghost'];
+    const found = chartViolations(ws.charts[chartId]!, {
+      artifactUses: computeArtifactUses(ws),
+      artifacts: ws.artifacts,
+    });
+    const v = found.find((x) => x.rule === 'inputWithoutProducer')!;
+    expect(v.message).toContain('"Ghost Report"');
+    expect(v.severity).toBe('warn');
+  });
+
+  it('is satisfied by a producer in another chart', () => {
+    const rules = withInput((ws) => {
+      addGhost(ws);
+      const other = Object.values(ws.charts).find((c) => c.id !== chartId);
+      const host = other ?? ws.charts[chartId]!;
+      const supplier = Object.keys(host.nodes).find((id) => id !== rowId)!;
+      host.nodes[supplier]!.outputs = ['a_ghost'];
+      return 'a_ghost';
+    });
+    expect(rules).not.toContain('inputWithoutProducer');
+  });
+
+  it('is satisfied by a flow handoff, not just by a chart row', () => {
+    // The supply chain crosses documents: a deliverable produced by a step in a business case
+    // legitimately feeds a chart row, and a check that only looked at charts would warn about it.
+    const rules = withInput((ws) => {
+      addGhost(ws);
+      const flow = Object.values(ws.flows)[0]!;
+      Object.values(flow.edges)[0]!.artifactIds = ['a_ghost'];
+      return 'a_ghost';
+    });
+    expect(rules).not.toContain('inputWithoutProducer');
+  });
+
+  it('does not let a row supply itself', () => {
+    // "Takes the register, returns the register" is a row restating what it works on. Counting it
+    // as a supply would silence the rule exactly where a broken chain is easiest to create.
+    const ws = structuredClone(base);
+    addGhost(ws);
+    const node = ws.charts[chartId]!.nodes[rowId]!;
+    node.inputs = ['a_ghost'];
+    node.outputs = ['a_ghost'];
+    const found = chartViolations(ws.charts[chartId]!, {
+      artifactUses: computeArtifactUses(ws),
+      artifacts: ws.artifacts,
+    });
+    expect(found.map((v) => v.rule)).toContain('inputWithoutProducer');
+  });
+
+  it('ignores an input pointing at a deliverable that no longer exists', () => {
+    // A dangling id is a different fault, and reporting it as a broken supply chain would send
+    // someone looking for a producer that was never the problem.
+    const ws = structuredClone(base);
+    ws.charts[chartId]!.nodes[rowId]!.inputs = ['a_deleted'];
+    const found = chartViolations(ws.charts[chartId]!, {
+      artifactUses: computeArtifactUses(ws),
+      artifacts: ws.artifacts,
+    });
+    expect(found.map((v) => v.rule)).not.toContain('inputWithoutProducer');
+  });
+
+  it('does not run at all when the caller cannot supply the index', () => {
+    // Silence is the honest answer for a chart linted on its own — the producer may be in a
+    // document this call cannot see, and warning would be a guess.
+    const ws = structuredClone(base);
+    addGhost(ws);
+    ws.charts[chartId]!.nodes[rowId]!.inputs = ['a_ghost'];
+    const found = chartViolations(ws.charts[chartId]!);
+    expect(found.map((v) => v.rule)).not.toContain('inputWithoutProducer');
+  });
+});
+
+describe('linting the whole workspace', () => {
+  const base = importLegacy(demo).workspace;
+
+  it('runs the supply check without the caller having to remember the index', () => {
+    const ws = structuredClone(base);
+    ws.artifacts['a_ghost'] = {
+      id: 'a_ghost', name: 'Ghost Report', type: 'document',
+      ownerRef: null, description: '', doc: null,
+    };
+    const chartId = Object.keys(ws.charts)[0]!;
+    const rowId = Object.keys(ws.charts[chartId]!.nodes)[0]!;
+    ws.charts[chartId]!.nodes[rowId]!.inputs = ['a_ghost'];
+
+    const report = workspaceViolations(ws);
+    expect(report.charts.get(chartId)!.map((v) => v.rule)).toContain('inputWithoutProducer');
+  });
+
+  it('covers charts and flows in one flat list, with the counts adding up', () => {
+    const report = workspaceViolations(base);
+    const fromMaps =
+      [...report.charts.values()].reduce((n, v) => n + v.length, 0) +
+      [...report.flows.values()].reduce((n, v) => n + v.length, 0);
+    expect(report.all).toHaveLength(fromMaps);
+    expect(report.errors + report.warnings).toBe(report.all.length);
+  });
+
+  it('passes an anchored flow the owner its chart row cascades down', () => {
+    // The single most annoying false positive this engine can produce is nagging every step of an
+    // anchored flow for an owner it already has. The wrapper exists to make that unforgettable.
+    const ws = structuredClone(base);
+    const chartId = Object.keys(ws.charts)[0]!;
+    const chart = ws.charts[chartId]!;
+    const owned = Object.keys(chart.nodes).find((id) => {
+      const eff = effectiveRaci(chart, chart.nodes, id);
+      return COLS.some((c) => (eff[c]?.letters ?? '').includes(fw.owner));
+    })!;
+    const flowId = Object.keys(ws.flows)[0]!;
+    ws.flows[flowId]!.anchor = { chartId, nodeId: owned };
+
+    expect(anchorOwnerColumn(ws, ws.flows[flowId]!)).not.toBeNull();
+    const rules = (workspaceViolations(ws).flows.get(flowId) ?? []).map((v) => v.rule);
+    expect(rules).not.toContain('noOwner');
+  });
+
+  it('still reports an unanchored flow’s ownerless steps', () => {
+    const ws = structuredClone(base);
+    const flowId = Object.keys(ws.flows)[0]!;
+    ws.flows[flowId]!.anchor = null;
+    for (const step of Object.values(ws.flows[flowId]!.steps)) step.raci = {};
+    const rules = (workspaceViolations(ws).flows.get(flowId) ?? []).map((v) => v.rule);
+    expect(rules).toContain('noOwner');
   });
 });

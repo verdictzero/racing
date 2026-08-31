@@ -18,6 +18,7 @@
 import { framework, type Framework } from './constants.js';
 import { ancestorsOf, type NodeMap } from './tree.js';
 import { chartColumns, type Chart, type ChartNode } from './schema.js';
+import type { ArtifactUses } from './registry.js';
 
 /** Where a cell's letters came from. */
 export type RaciSource = 'explicit' | 'inherited' | 'none';
@@ -177,7 +178,22 @@ export interface Violation {
  * Advisory by design: this is a reading list, never a blocker. A chart mid-edit is allowed to be
  * wrong, and a tool that refused to save one would just be worked around.
  */
-export function chartViolations(chart: Chart): Violation[] {
+/**
+ * What `chartViolations` needs that a chart alone cannot answer.
+ *
+ * A row's declared input may be produced by a row in a DIFFERENT chart, or by a handoff in a flow.
+ * That makes the supply check workspace-scoped, and a chart-scoped function cannot do it honestly.
+ * Rather than pretend, the check simply does not run unless the caller hands over the index —
+ * `workspaceViolations` does, and is what most callers should use.
+ */
+export interface ChartRuleContext {
+  /** The producer/consumer index from `computeArtifactUses`, computed once for the workspace. */
+  readonly artifactUses?: Map<string, ArtifactUses>;
+  /** The deliverable registry, for names in the message and to ignore ids that no longer resolve. */
+  readonly artifacts?: Readonly<Record<string, { readonly name: string }>>;
+}
+
+export function chartViolations(chart: Chart, ctx: ChartRuleContext = {}): Violation[] {
   const columns = chartColumns(chart);
   const fw = framework(chart.framework);
   const out: Violation[] = [];
@@ -231,6 +247,33 @@ export function chartViolations(chart: Chart): Violation[] {
         severity: 'warn',
         message: `"${label}" names an owner different from the one it inherits. Allowed, but deliberate — check it is meant.`,
       });
+    }
+
+    // A declared input that nothing anywhere produces — the supply chain breaks upstream of this
+    // row. Skipped entirely when the caller gave no index, because a chart on its own cannot see
+    // the flow handoff or the sibling chart that might be the producer, and guessing would mean
+    // warning about supplies that exist.
+    //
+    // A row is never its own producer. Listing the same deliverable as both an input and an output
+    // is a row restating what it works on — "takes the register, returns the register" — and
+    // counting that as a supply would silence the rule exactly where it matters.
+    const uses = ctx.artifactUses;
+    if (uses) {
+      const orphans = node.inputs.filter((id) => {
+        if (ctx.artifacts && !ctx.artifacts[id]) return false;
+        const producers = uses.get(id)?.producers ?? [];
+        return !producers.some((p) => !(p.kind === 'chartRow' && p.nodeId === node.id));
+      });
+      if (orphans.length > 0) {
+        const names = orphans.map((id) => `"${ctx.artifacts?.[id]?.name ?? id}"`).join(', ');
+        const one = orphans.length === 1;
+        out.push({
+          nodeId: node.id,
+          rule: 'inputWithoutProducer',
+          severity: 'warn',
+          message: `"${label}" takes in ${names}, but nothing anywhere declares ${one ? 'it' : 'them'} as an output or hands ${one ? 'it' : 'them'} over.`,
+        });
+      }
     }
   }
 
