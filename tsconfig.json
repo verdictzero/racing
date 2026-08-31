@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/crdt" },
+    { "path": "./packages/directory" },
+    { "path": "./packages/db" },
+    { "path": "./packages/auth" }
+  ]
+}

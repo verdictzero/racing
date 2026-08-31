@@ -1,0 +1,71 @@
+# An organizational tree standing in for Active Directory, in the same six-directorate shape the
+# demo dataset uses — so the LDAP adapter and the sync reconciliation can be developed end to end
+# without a domain controller.
+
+dn: dc=asic,dc=army,dc=mil
+objectClass: dcObject
+objectClass: organization
+o: ASIC
+dc: asic
+
+dn: ou=OCIO,dc=asic,dc=army,dc=mil
+objectClass: organizationalUnit
+ou: OCIO
+
+dn: ou=Governance,ou=OCIO,dc=asic,dc=army,dc=mil
+objectClass: organizationalUnit
+ou: Governance
+
+dn: ou=Policy,ou=Governance,ou=OCIO,dc=asic,dc=army,dc=mil
+objectClass: organizationalUnit
+ou: Policy
+
+dn: ou=Cyber,dc=asic,dc=army,dc=mil
+objectClass: organizationalUnit
+ou: Cyber
+
+dn: ou=Operations,ou=Cyber,dc=asic,dc=army,dc=mil
+objectClass: organizationalUnit
+ou: Operations
+
+dn: ou=SOC,ou=Operations,ou=Cyber,dc=asic,dc=army,dc=mil
+objectClass: organizationalUnit
+ou: SOC
+
+dn: cn=Dana Whitfield,ou=Policy,ou=Governance,ou=OCIO,dc=asic,dc=army,dc=mil
+objectClass: inetOrgPerson
+cn: Dana Whitfield
+sn: Whitfield
+givenName: Dana
+title: Director
+mail: dana.whitfield@asic.army.mil
+userPassword: password
+
+dn: cn=Marcus Reed,ou=Policy,ou=Governance,ou=OCIO,dc=asic,dc=army,dc=mil
+objectClass: inetOrgPerson
+cn: Marcus Reed
+sn: Reed
+givenName: Marcus
+title: Policy Analyst
+mail: marcus.reed@asic.army.mil
+manager: cn=Dana Whitfield,ou=Policy,ou=Governance,ou=OCIO,dc=asic,dc=army,dc=mil
+userPassword: password
+
+dn: cn=Elena Vasquez,ou=SOC,ou=Operations,ou=Cyber,dc=asic,dc=army,dc=mil
+objectClass: inetOrgPerson
+cn: Elena Vasquez
+sn: Vasquez
+givenName: Elena
+title: SOC Chief
+mail: elena.vasquez@asic.army.mil
+userPassword: password
+
+dn: cn=Tom Okafor,ou=SOC,ou=Operations,ou=Cyber,dc=asic,dc=army,dc=mil
+objectClass: inetOrgPerson
+cn: Tom Okafor
+sn: Okafor
+givenName: Tom
+title: Incident Analyst
+mail: tom.okafor@asic.army.mil
+manager: cn=Elena Vasquez,ou=SOC,ou=Operations,ou=Cyber,dc=asic,dc=army,dc=mil
+userPassword: password

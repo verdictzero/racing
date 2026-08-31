@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint · typecheck · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `version:` here on purpose. pnpm/action-setup@v4 REFUSES to run when the version is
+      # given in both places, and package.json's `packageManager` is the better source of truth —
+      # it pins the exact version and Corepack reads the same field locally.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Packages are built before typecheck so cross-package imports resolve against real
+      # declaration output rather than source, which is how the app consumes them.
+      - run: pnpm build
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  legacy-app:
+    name: Legacy single-file app still parses
+    runs-on: ubuntu-latest
+    # index.html keeps shipping until the Nuxt app reaches parity, so a syntax error in it is a
+    # broken release even though nothing in the monorepo imports it.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse every inline script block
+        run: node scripts/check-legacy-app.mjs

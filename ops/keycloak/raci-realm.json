@@ -1,0 +1,72 @@
+{
+  "realm": "raci",
+  "enabled": true,
+  "displayName": "ASIC RACI (development)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginTheme": "keycloak",
+  "accessTokenLifespan": 3600,
+  "roles": {
+    "realm": [
+      { "name": "raci-viewer", "description": "Read every chart and flow in the organization" },
+      { "name": "raci-editor", "description": "Create and edit workspaces" },
+      { "name": "raci-admin", "description": "Manage members, run directory syncs, delete workspaces" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "raci-web",
+      "name": "ASIC RACI Tool",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "raci-web-dev-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/api/auth/callback"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin.user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin.user@asic.army.mil",
+      "firstName": "Dana",
+      "lastName": "Whitfield",
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["raci-admin"]
+    },
+    {
+      "username": "editor.user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "editor.user@asic.army.mil",
+      "firstName": "Marcus",
+      "lastName": "Reed",
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["raci-editor"]
+    }
+  ]
+}

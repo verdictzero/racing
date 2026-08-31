@@ -1,0 +1,7 @@
+index.html
+docs/*.html
+docs/import-template.json
+pnpm-lock.yaml
+dist/
+.nuxt/
+.output/

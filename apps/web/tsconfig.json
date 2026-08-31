@@ -1,0 +1,10 @@
+{
+  "//": "Nuxt generates the real configs into .nuxt/ (one per environment — app, server, shared, node). This root file only points at them, which is what `nuxt typecheck` and an editor look for.",
+  "files": [],
+  "references": [
+    { "path": "./.nuxt/tsconfig.app.json" },
+    { "path": "./.nuxt/tsconfig.server.json" },
+    { "path": "./.nuxt/tsconfig.shared.json" },
+    { "path": "./.nuxt/tsconfig.node.json" }
+  ]
+}
