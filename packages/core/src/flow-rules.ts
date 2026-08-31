@@ -11,9 +11,10 @@
  *
  * WHAT IS DELIBERATELY NOT A RULE
  * "This deliverable is never consumed" is not flagged. A terminal deliverable — the report at the
- * end that nothing else takes — is completely legitimate, and flagging it produces exactly the
- * warn-storm that makes people stop reading warnings. Unconsumed deliverables surface as a
- * registry annotation instead (`orphanArtifacts`), which is where the question actually belongs.
+ * end that nothing else takes — is completely legitimate, and is usually what the process was FOR;
+ * flagging it produces exactly the warn-storm that makes people stop reading warnings. It surfaces
+ * as a registry annotation instead (`terminalArtifacts`, beside `orphanArtifacts` for the ones
+ * nothing points at in either direction), which is where the question actually belongs.
  *
  * Nor is the mirror of it, "this input has no producer" — not HERE, at least. A deliverable can
  * only reach a flow step by riding a handoff, and a handoff registers its source step as that

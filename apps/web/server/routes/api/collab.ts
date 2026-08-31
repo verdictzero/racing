@@ -71,9 +71,11 @@ function attachRoomListeners(room: Room): void {
     syncProtocol.writeUpdate(encoder, update);
     broadcast(room, encoding.toUint8Array(encoder));
 
+    // The transaction origin is the Peer that sent the update, so attribution comes for free.
+    // A server-side write (a directory sync) has a string origin and is attributed to nobody.
     const userId =
-      origin && typeof origin === 'object' && 'ctx' in origin
-        ? ((origin as Peer).ctx as { userId?: string } | undefined)?.userId ?? null
+      origin && typeof origin === 'object' && 'context' in origin
+        ? ((origin as Peer).context as { userId?: string } | undefined)?.userId ?? null
         : null;
     void persist(room, update, userId);
   });
@@ -194,7 +196,9 @@ export default defineWebSocketHandler({
 
     const room = await getRoom(workspaceId);
     room.peers.add(peer);
-    peer.ctx = { workspaceId, userId: session.userId, role: session.role };
+    // `context` is crossws's per-connection bag. It is a getter with no setter, so it is mutated
+    // rather than replaced — assigning to `peer.ctx` happens to work but is off-API.
+    Object.assign(peer.context, { workspaceId, userId: session.userId, role: session.role });
 
     // Sync step 1: tell the client what the server has, so it can ask for the difference.
     const encoder = encoding.createEncoder();
@@ -216,7 +220,7 @@ export default defineWebSocketHandler({
   },
 
   async message(peer, message) {
-    const ctx = peer.ctx as { workspaceId?: string; userId?: string; role?: string } | undefined;
+    const ctx = peer.context as { workspaceId?: string; userId?: string; role?: string };
     const room = ctx?.workspaceId ? rooms.get(ctx.workspaceId) : undefined;
     if (!room) return;
 
@@ -252,7 +256,7 @@ export default defineWebSocketHandler({
   },
 
   close(peer) {
-    const ctx = peer.ctx as { workspaceId?: string } | undefined;
+    const ctx = peer.context as { workspaceId?: string };
     const room = ctx?.workspaceId ? rooms.get(ctx.workspaceId) : undefined;
     if (!room) return;
 

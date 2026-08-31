@@ -71,14 +71,27 @@ nested subflow boxes with per-entry/exit ports, group frames, the minimap, marqu
 - Watch for: step positions **are** document data (unlike chart camera state) — where a box sits is
   something a person decided.
 
-### 4 · Object Gallery — `renderObjects` (index.html:10427) — **parallel**
+### 4 · ~~Object Gallery~~ — `renderObjects` (index.html:10427)
 
-The smallest real screen, and a good first slice for someone new.
+**Done.** `apps/web/app/pages/w/[id]/objects.vue`, on `packages/core/src/registry.ts`.
 
-- Already in core: `Artifact`, `Entity` schemas.
-- Already in crdt: `addArtifact`, `deleteArtifact`, `addEntity`, `deleteEntity`.
-- To write: cards, facets, filter, and the "where is this used" reverse index — which is
-  **not yet in core** and should go there as a selector, since the rules engine needs the same index.
+Worth reading before you start a slice of your own — it is the smallest complete example of the
+shape every other screen should take. The component holds no rules at all: `objectRegistry` returns
+the cards, `filterObjects` the filter, `artifactRefCount` the delete guard, and the file is layout
+and event handlers. The two registries deliberately delete differently (a referenced deliverable
+cannot be, a referenced entity can) — that asymmetry is the legacy behaviour and is explained in
+the component header.
+
+It also brought across the structure the remaining screens hang off:
+
+- `apps/web/app/pages/w/[id].vue` is now the **workspace shell** — the live indicator, peer count,
+  undo, and the route tabs. Each screen is a child route under `w/[id]/`.
+- `useWorkspaceSession()` gives a screen the shared `Y.Doc` and a plain `Workspace` ref. **Use it.**
+  Calling `useCollab` from a screen opens a second socket and a second undo manager for the same
+  workspace, which is the bug it exists to prevent.
+- `workspaceViolations(ws)` is how you lint. `chartViolations(chart)` on its own silently skips the
+  supply check, and `flowViolations` without an anchor owner column invents a warning on every step
+  of every anchored flow.
 
 ### 5 · Tasks / work lens — `renderWork` (index.html:10185)
 
@@ -149,9 +162,21 @@ Before writing anything, check whether it is already done:
 packages/core/src/tree.ts        childrenOf, pathTo, subtreeOf, planMove, depthOf, findCycles…
 packages/core/src/raci.ts        effectiveRaci, inheritedOwnerColumn, primaryDoerColumn,
                                  isOwnerOverride, chartViolations
+packages/core/src/flow-rules.ts  flowViolations, flowHealth, reachableSteps, embedWouldCycle
+packages/core/src/violations.ts  workspaceViolations — lint everything, correctly. Start here.
+packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEntityUses,
+                                 artifactRefCount, filterObjects, orphanArtifacts,
+                                 terminalArtifacts, walkChartRows
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists
 ```
+
+Two rules the engine deliberately does NOT raise, so do not "fix" them:
+
+- **"this deliverable is never consumed"** — a terminal report is what a process is usually for.
+  It surfaces as `terminalArtifacts`, an annotation on the gallery card.
+- **"this flow input has no producer"** — unfalsifiable in a flow, because a handoff registers its
+  source step as the producer. It is a real rule about a chart row, and lives in `chartViolations`.
 
 `pnpm test` runs in about five seconds. Run it often.

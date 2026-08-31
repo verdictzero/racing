@@ -425,6 +425,23 @@ export function addArtifact(doc: Y.Doc, name: string, type = 'other'): string {
 }
 
 /**
+ * Edit one field of a deliverable.
+ *
+ * Per-field rather than per-record, like every other setter here, and for the same reason: two
+ * people in the gallery — one fixing a name, one filling in the description — must not overwrite
+ * each other. Writing the whole record would make the registry the one place in the document where
+ * they do.
+ */
+export function setArtifactField(
+  doc: Y.Doc,
+  artifactId: string,
+  field: 'name' | 'type' | 'description' | 'ownerRef' | 'doc',
+  value: unknown,
+): void {
+  doc.transact(() => setField(maps(doc).artifacts, artifactId, field, value), LOCAL_ORIGIN);
+}
+
+/**
  * Delete a deliverable, refusing while anything still points at it.
  *
  * The check is a read of the current document, so it is a best-effort guard: a peer can attach the
@@ -460,6 +477,15 @@ export function addEntity(doc: Y.Doc, name: string, kind = 'other'): string {
     LOCAL_ORIGIN,
   );
   return id;
+}
+
+export function setEntityField(
+  doc: Y.Doc,
+  entityId: string,
+  field: 'name' | 'kind' | 'short' | 'description' | 'lead',
+  value: unknown,
+): void {
+  doc.transact(() => setField(maps(doc).entities, entityId, field, value), LOCAL_ORIGIN);
 }
 
 /**

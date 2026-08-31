@@ -135,6 +135,49 @@ export const ENTITY_KINDS = [
 ] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
+/**
+ * The shared vocabulary for the two registries.
+ *
+ * Here rather than in a component because more than one surface says these words — the gallery's
+ * cards and facets, the kind picker, the party chooser, and eventually the exports. A second copy
+ * is how "Committee" in one place becomes "Working group" in another.
+ *
+ * `blurb` is the sentence that explains the difference between two kinds people confuse. It is the
+ * reason the picker is usable without documentation, so keep it when you touch this.
+ */
+export interface KindMeta {
+  readonly label: string;
+  readonly icon: string;
+  readonly blurb: string;
+}
+
+export const ENTITY_KIND_META: Readonly<Record<EntityKind, KindMeta>> = {
+  board: { label: 'Board', icon: '⚖', blurb: 'A standing decision body — BoD, PG Board, a review board.' },
+  committee: { label: 'Committee', icon: '☷', blurb: 'A working group or panel convened around a topic.' },
+  team: { label: 'Team', icon: '⬡', blurb: 'A standing team that does not sit inside one directorate.' },
+  vendor: { label: 'Vendor', icon: '⚑', blurb: 'A contractor or supplier outside the organization.' },
+  agency: { label: 'Agency', icon: '◈', blurb: 'An external government or partner organization.' },
+  office: { label: 'Office', icon: '▣', blurb: 'A named office that is not one of the directorates.' },
+  other: { label: 'Other', icon: '○', blurb: 'Anything else that acts as a responsible party.' },
+};
+
+export const ARTIFACT_TYPE_META: Readonly<Record<ArtifactType, KindMeta>> = {
+  document: { label: 'Document', icon: '📄', blurb: 'A written thing — a report, a plan, a procedure.' },
+  data: { label: 'Data', icon: '🗄', blurb: 'A dataset, an extract, a feed.' },
+  decision: { label: 'Decision', icon: '⚖', blurb: 'A determination that had to be made before the next step could run.' },
+  approval: { label: 'Approval', icon: '✔', blurb: 'A sign-off. Distinct from a decision: someone with authority said yes.' },
+  briefing: { label: 'Briefing', icon: '🖥', blurb: 'A pack or a session — information moved to people.' },
+  other: { label: 'Other', icon: '◇', blurb: 'Anything else that moves between steps.' },
+};
+
+export function entityKindMeta(kind: string | null | undefined): KindMeta {
+  return ENTITY_KIND_META[(kind ?? 'other') as EntityKind] ?? ENTITY_KIND_META.other;
+}
+
+export function artifactTypeMeta(type: string | null | undefined): KindMeta {
+  return ARTIFACT_TYPE_META[(type ?? 'other') as ArtifactType] ?? ARTIFACT_TYPE_META.other;
+}
+
 // ---- Lifecycle -----------------------------------------------------------------------------------
 export const STATUSES = ['draft', 'final'] as const;
 export type Status = (typeof STATUSES)[number];

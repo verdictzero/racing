@@ -3,7 +3,7 @@
   "version": "0.39.0",
   "private": true,
   "type": "module",
-  "description": "The Nuxt application \u2014 being built up to parity with index.html.",
+  "description": "The Nuxt application — being built up to parity with index.html.",
   "scripts": {
     "dev": "pnpm --filter \"./packages/**\" build && nuxt dev",
     "build": "pnpm --filter \"./packages/**\" build && nuxt build",
@@ -18,6 +18,7 @@
     "@raci/crdt": "workspace:*",
     "@raci/db": "workspace:*",
     "@raci/directory": "workspace:*",
+    "lib0": "^0.2.117",
     "nuxt": "^4.0.0",
     "vue": "^3.5.13",
     "y-protocols": "^1.0.6",

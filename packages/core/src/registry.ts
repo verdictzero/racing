@@ -12,6 +12,7 @@
  */
 
 import { childrenOf, rootsOf } from './tree.js';
+import { artifactTypeMeta, entityKindMeta } from './constants.js';
 import type { Artifact, Entity, OrgRef, Workspace } from './schema.js';
 
 /** Where a use was found, in terms a person recognizes. */
@@ -35,6 +36,14 @@ export interface ArtifactUses {
   readonly producers: UseSite[];
   /** Places that declare it as an input, or receive it. */
   readonly consumers: UseSite[];
+}
+
+/** How a place uses the object, in the words the detail pane prints. */
+export type UseVerb = 'produced by' | 'consumed by' | 'named by';
+
+/** A use site with the relationship it stands in. What the gallery's "where is this used" lists. */
+export interface UseRef extends UseSite {
+  readonly verb: UseVerb;
 }
 
 const rowName = (name: string) => name || '(untitled row)';
@@ -190,19 +199,27 @@ export interface RegistryObject {
   /** Secondary line: an entity's short name, a deliverable's owner. */
   readonly sub: string;
   readonly description: string;
-  readonly uses: UseSite[];
+  /** Every place that names it, de-duplicated by (verb, place). */
+  readonly uses: UseRef[];
   readonly ref: Artifact | Entity;
 }
 
-const ENTITY_KIND_LABELS: Record<string, string> = {
-  board: 'Board',
-  committee: 'Committee',
-  team: 'Team',
-  vendor: 'Vendor',
-  agency: 'Agency',
-  office: 'Office',
-  other: 'Other',
-};
+/**
+ * One entry per (verb, place), in the order given.
+ *
+ * A deliverable riding two handoffs OUT of the same step is produced there ONCE, however many lines
+ * carry it away. Listing the step twice would read as two producers — precisely the question this
+ * pane exists to answer correctly. The raw index keeps both sites, because each names a real edge;
+ * collapsing is a presentation decision and belongs here.
+ */
+function dedupe(verb: UseVerb, sites: readonly UseSite[], seen: Set<string>, into: UseRef[]): void {
+  for (const site of sites) {
+    const key = `${verb}\u0001${site.name}\u0001${site.chartId ?? site.flowId ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    into.push({ ...site, verb });
+  }
+}
 
 /** Both registries, flattened, with each object's uses resolved. */
 export function objectRegistry(ws: Workspace): RegistryObject[] {
@@ -211,28 +228,34 @@ export function objectRegistry(ws: Workspace): RegistryObject[] {
 
   for (const artifact of Object.values(ws.artifacts)) {
     const entry = artifactUses.get(artifact.id);
+    const uses: UseRef[] = [];
+    const seen = new Set<string>();
+    // Producers first: "where does this come from" is the question people ask first.
+    dedupe('produced by', entry?.producers ?? [], seen, uses);
+    dedupe('consumed by', entry?.consumers ?? [], seen, uses);
     out.push({
       id: artifact.id,
       kind: 'deliverable',
       name: artifact.name,
-      typeLabel: artifact.type,
+      typeLabel: artifactTypeMeta(artifact.type).label,
       sub: '',
       description: artifact.description,
-      // Producers first: "where does this come from" is the question people ask first.
-      uses: [...(entry?.producers ?? []), ...(entry?.consumers ?? [])],
+      uses,
       ref: artifact,
     });
   }
 
   for (const entity of Object.values(ws.entities)) {
+    const uses: UseRef[] = [];
+    dedupe('named by', computeEntityUses(ws, entity.id), new Set<string>(), uses);
     out.push({
       id: entity.id,
       kind: 'entity',
       name: entity.name,
-      typeLabel: ENTITY_KIND_LABELS[entity.kind] ?? entity.kind,
+      typeLabel: entityKindMeta(entity.kind).label,
       sub: entity.short,
       description: entity.description,
-      uses: computeEntityUses(ws, entity.id),
+      uses,
       ref: entity,
     });
   }
@@ -262,15 +285,35 @@ export function filterObjects(
 }
 
 /**
- * Deliverables nothing points at.
+ * Deliverables nothing points at, in either direction.
  *
- * Surfaced as an annotation rather than a violation, deliberately: a terminal deliverable — the
- * report at the end that nothing else consumes — is legitimate, and flagging it would produce the
- * warn-storm the roadmap's designers specifically wanted to avoid.
+ * A registry entry that was created and then never wired up. Almost always a leftover, so the
+ * gallery calls it out — but as an annotation and never a violation, because the moment before you
+ * attach a new deliverable to a handoff is a legitimate state to be in.
  */
 export function orphanArtifacts(ws: Workspace): Artifact[] {
   const uses = computeArtifactUses(ws);
   return Object.values(ws.artifacts).filter((a) => artifactRefCount(uses, a.id) === 0);
+}
+
+/**
+ * Deliverables something produces but nothing consumes.
+ *
+ * Distinct from an orphan, and the distinction is the whole point: an orphan is probably a mistake,
+ * whereas a TERMINAL deliverable — the report at the end of the process that nothing downstream
+ * takes — is what a process is usually FOR. So this is an annotation, never a violation. Flagging
+ * these is the single easiest way to produce the warn-storm that makes people stop reading
+ * warnings, which is why the rule engine deliberately does not.
+ *
+ * Worth surfacing anyway, because the reader can tell in one glance which of theirs are genuinely
+ * final and which are a handoff someone forgot to draw.
+ */
+export function terminalArtifacts(ws: Workspace): Artifact[] {
+  const uses = computeArtifactUses(ws);
+  return Object.values(ws.artifacts).filter((a) => {
+    const entry = uses.get(a.id);
+    return (entry?.producers.length ?? 0) > 0 && (entry?.consumers.length ?? 0) === 0;
+  });
 }
 
 /** Chart rows in the order the tree shows them — for anything that lists rows across charts. */

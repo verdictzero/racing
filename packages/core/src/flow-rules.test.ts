@@ -2,14 +2,7 @@ import { describe, it, expect } from 'vitest';
 import demo from './__fixtures__/demo-workspace.json' with { type: 'json' };
 import { importLegacy } from './legacy.js';
 import { embedWouldCycle, flowHealth, flowViolations, reachableSteps } from './flow-rules.js';
-import {
-  artifactRefCount,
-  computeArtifactUses,
-  computeEntityUses,
-  filterObjects,
-  objectRegistry,
-  orphanArtifacts,
-} from './registry.js';
+import { computeArtifactUses, orphanArtifacts } from './registry.js';
 import type { Workspace } from './schema.js';
 
 const { workspace } = importLegacy(demo);
@@ -146,9 +139,30 @@ describe('flow rules', () => {
     // See raci.test.ts.
   });
 
-  it('does not flag an unconsumed deliverable — a terminal report is legitimate', () => {
-    // Flagging these produces the warn-storm that makes people stop reading warnings.
-    expect(rulesOf(workspace, tabletopId)).not.toContain('outputNeverConsumed');
+  it('says nothing about a deliverable that is produced and never consumed', () => {
+    // The report at the end of the process is what the process was FOR. Flagging it produces the
+    // warn-storm that makes people stop reading warnings, so the engine stays quiet and the
+    // registry annotates instead.
+    const ws = structuredClone(workspace);
+    ws.artifacts['a_final'] = {
+      id: 'a_final', name: 'Post-Incident Report', type: 'document',
+      ownerRef: null, description: '', doc: null,
+    };
+    const flow = ws.flows[tabletopId]!;
+    // Carried on a handoff into the last step, and taken nowhere afterwards.
+    const terminal = Object.keys(flow.steps).find(
+      (id) => !Object.values(flow.edges).some((e) => e.from === id),
+    )!;
+    const inbound = Object.values(flow.edges).find((e) => e.to === terminal)!;
+    inbound.artifactIds = [...inbound.artifactIds, 'a_final'];
+
+    const rules = rulesOf(ws, tabletopId);
+    expect(rules).not.toContain('outputNeverConsumed');
+    expect(rules).not.toContain('inputWithoutProducer');
+
+    // …and it is not an orphan either: something DOES point at it. See registry.test.ts for the
+    // annotations that answer the question the rule engine deliberately stays quiet about.
+    expect(orphanArtifacts(ws).map((a) => a.id)).not.toContain('a_final');
   });
 
   it('is deterministic', () => {
@@ -237,90 +251,5 @@ describe('flowHealth', () => {
 
   it('returns null for a flow that does not exist', () => {
     expect(flowHealth(workspace, 'b_nope')).toBeNull();
-  });
-});
-
-describe('the reverse indexes', () => {
-  it('finds where a deliverable comes from and goes', () => {
-    const uses = computeArtifactUses(workspace);
-    const triage = Object.values(workspace.artifacts).find((a) => a.name === 'Triage Report')!;
-    const entry = uses.get(triage.id)!;
-    expect(entry.producers.length).toBeGreaterThan(0);
-    expect(entry.consumers.length).toBeGreaterThan(0);
-    expect(entry.producers[0]!.where).toMatch(/Tabletop/);
-  });
-
-  it('counts references for the delete guard', () => {
-    const uses = computeArtifactUses(workspace);
-    const triage = Object.values(workspace.artifacts).find((a) => a.name === 'Triage Report')!;
-    expect(artifactRefCount(uses, triage.id)).toBeGreaterThan(0);
-    expect(artifactRefCount(uses, 'a_never_used')).toBe(0);
-  });
-
-  it('finds where an entity is named', () => {
-    const ws = structuredClone(workspace);
-    const entity = Object.values(ws.entities)[0]!;
-    const step = Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'step')!;
-    step.parties = { hq: { entityId: entity.id } };
-
-    const uses = computeEntityUses(ws, entity.id);
-    expect(uses).toHaveLength(1);
-    expect(uses[0]!.kind).toBe('flowStep');
-    expect(uses[0]!.where).toMatch(/Tabletop/);
-  });
-
-  it('counts a step naming an entity in two columns once, not twice', () => {
-    const ws = structuredClone(workspace);
-    const entity = Object.values(ws.entities)[0]!;
-    const step = Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'step')!;
-    step.parties = { hq: { entityId: entity.id }, cos: { entityId: entity.id } };
-    expect(computeEntityUses(ws, entity.id)).toHaveLength(1);
-  });
-
-  it('reports an entity nothing names', () => {
-    expect(computeEntityUses(workspace, 'ent_nobody')).toEqual([]);
-  });
-});
-
-describe('the object registry', () => {
-  const objects = objectRegistry(workspace);
-
-  it('flattens both registries into one shape', () => {
-    expect(objects.filter((o) => o.kind === 'deliverable')).toHaveLength(4);
-    expect(objects.filter((o) => o.kind === 'entity')).toHaveLength(2);
-  });
-
-  it('is sorted by name, so the gallery is stable', () => {
-    const names = objects.map((o) => o.name);
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
-  });
-
-  it('resolves each object’s uses', () => {
-    const triage = objects.find((o) => o.name === 'Triage Report')!;
-    expect(triage.uses.length).toBeGreaterThan(0);
-  });
-
-  it('filters by kind and by text across every indexed field', () => {
-    expect(filterObjects(objects, { kind: 'entity' })).toHaveLength(2);
-    // Two hits, and both are right: the deliverable named "Triage Report", and the vendor whose
-    // description says it triages. Matching the description is the point.
-    expect(filterObjects(objects, { query: 'triage' }).map((o) => o.name).sort()).toEqual([
-      'Managed SOC Vendor',
-      'Triage Report',
-    ]);
-    // Matches the description, not just the name.
-    expect(filterObjects(objects, { query: 'blast radius' })[0]!.name).toBe('Containment Scope');
-    expect(filterObjects(objects, { query: 'nothing matches this' })).toHaveLength(0);
-  });
-
-  it('lists deliverables nothing points at as an annotation, not a violation', () => {
-    const ws = structuredClone(workspace);
-    ws.artifacts['a_lonely'] = {
-      id: 'a_lonely', name: 'Unused Report', type: 'document',
-      ownerRef: null, description: '', doc: null,
-    };
-    expect(orphanArtifacts(ws).map((a) => a.name)).toContain('Unused Report');
-    // …and it is NOT a flow violation.
-    expect(rulesOf(ws, tabletopId)).not.toContain('outputNeverConsumed');
   });
 });
