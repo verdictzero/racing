@@ -90,7 +90,7 @@ export interface SessionContext {
  * makes revocation immediate: an administrator ending a session takes effect on the very next
  * request, not whenever a token happens to expire.
  */
-export async function getSession(event: H3Event): Promise<SessionContext | null> {
+export async function getAppSession(event: H3Event): Promise<SessionContext | null> {
   const token = getCookie(event, SESSION_COOKIE);
   if (!token) return null;
 
@@ -110,7 +110,7 @@ export async function getSession(event: H3Event): Promise<SessionContext | null>
 
 /** The session, or a 401. Use in any handler that must not run for an anonymous caller. */
 export async function requireSession(event: H3Event): Promise<SessionContext> {
-  const session = await getSession(event);
+  const session = await getAppSession(event);
   if (!session) throw createError({ statusCode: 401, statusMessage: 'Not signed in' });
   return session;
 }

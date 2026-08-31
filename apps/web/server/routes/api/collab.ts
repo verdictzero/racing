@@ -181,7 +181,7 @@ export default defineWebSocketHandler({
     // The websocket carries the same session cookie as every other request, so authorization is
     // the one check it already was. A socket that skipped this would be an unauthenticated write
     // path straight into the document.
-    const session = await getSession(peer.request as never).catch(() => null);
+    const session = await getAppSession(peer.request as never).catch(() => null);
     if (!session) {
       peer.close(1008, 'not signed in');
       return;

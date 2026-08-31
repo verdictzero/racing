@@ -8,7 +8,7 @@
 import { recordAudit, revokeSession } from '@raci/db';
 
 export default defineEventHandler(async (event) => {
-  const session = await getSession(event);
+  const session = await getAppSession(event);
   const db = useDb();
 
   if (session) {

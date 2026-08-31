@@ -282,11 +282,29 @@ export function reconcile(snapshot: DirectorySnapshot, opts: ReconcileOptions): 
   }
   const personByExternalId = new Map(snapshot.people.map((p) => [p.externalId, p]));
 
+  /**
+   * One stable local id per directory person, resolved once and shared.
+   *
+   * Both the roster entry and any unit that person LEADS have to use it. Minting separately in two
+   * places was a real bug: a lead's id churned on every single sync, which made a re-sync against
+   * an unchanged directory look like a change, and put a pointless update into the document every
+   * night. Resolving here also means a lead's id genuinely IS that person's id, rather than a
+   * parallel identity that happens to carry the same name.
+   */
+  const personIds = new Map<string, string>();
+  const stablePersonId = (externalId: string): string => {
+    const known = personIds.get(externalId);
+    if (known) return known;
+    const id = index.people.get(externalId)?.id ?? newId('person');
+    personIds.set(externalId, id);
+    return id;
+  };
+
   const leadFor = (unit: DirectoryUnit): MutableLead | null => {
     if (!unit.leadExternalId) return null;
     const person = personByExternalId.get(unit.leadExternalId);
     if (!person) return null;
-    return { id: newId('person'), name: person.displayName };
+    return { id: stablePersonId(person.externalId), name: person.displayName };
   };
 
   const buildPeople = (unit: DirectoryUnit, unitName: string): MutablePerson[] =>
@@ -297,7 +315,7 @@ export function reconcile(snapshot: DirectorySnapshot, opts: ReconcileOptions): 
         if (prior) {
           peopleMatched++;
           return {
-            id: prior.id,
+            id: stablePersonId(p.externalId),
             name: p.displayName,
             title: p.title,
             externalId: p.externalId,
@@ -305,7 +323,7 @@ export function reconcile(snapshot: DirectorySnapshot, opts: ReconcileOptions): 
           };
         }
         peopleCreated++;
-        const id = newId('person');
+        const id = stablePersonId(p.externalId);
         changes.push({
           kind: 'person-added',
           tier: 'person',

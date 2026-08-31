@@ -10,4 +10,6 @@ export * from './reconcile.js';
 export * from './adapters/csv.js';
 export * from './adapters/ldap.js';
 export * from './adapters/graph.js';
+export * from './sync.js';
+export * from './schedule.js';
 export * from './factory.js';
