@@ -155,6 +155,7 @@ export const Team = z.object({
   externalId: z.string().nullable().default(null),
   people: z.array(Person).default([]),
 });
+export type Team = z.infer<typeof Team>;
 
 export const Branch = z.object({
   id: z.string().min(1),
@@ -163,6 +164,7 @@ export const Branch = z.object({
   externalId: z.string().nullable().default(null),
   teams: z.array(Team).default([]),
 });
+export type Branch = z.infer<typeof Branch>;
 
 export const Division = z.object({
   id: z.string().min(1),
@@ -171,12 +173,14 @@ export const Division = z.object({
   externalId: z.string().nullable().default(null),
   branches: z.array(Branch).default([]),
 });
+export type Division = z.infer<typeof Division>;
 
 export const Directorate = z.object({
   lead: Lead.nullable().default(null),
   externalId: z.string().nullable().default(null),
   divisions: z.array(Division).default([]),
 });
+export type Directorate = z.infer<typeof Directorate>;
 
 export const Roster = z.record(z.enum(ACTORS), Directorate);
 export type Roster = z.infer<typeof Roster>;

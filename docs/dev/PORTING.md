@@ -93,15 +93,27 @@ It also brought across the structure the remaining screens hang off:
   supply check, and `flowViolations` without an anchor owner column invents a warning on every step
   of every anchored flow.
 
-### 5 · Tasks / work lens — `renderWork` (index.html:10185)
+### 5 · ~~Tasks / work lens~~ — `renderWork` (index.html:10185)
 
-"What does my unit own", across charts and flows.
+**Done.** `apps/web/app/pages/w/[id]/tasks.vue`, on `packages/core/src/work.ts` and `org.ts`.
 
-- To write: the org-scope picker and the combined walker, as a core selector.
-- Depends on: nothing structural. Can start any time.
-- Watch for: `users.rosterPersonId` exists precisely so this can default to *your* unit rather than
-  making you pick it every time. Nothing sets it yet — matching an account to a roster person is
-  part of this slice.
+Two things it brought into core that other slices need:
+
+- **`org.ts`** — `orgLabel`, `orgRefPath`, `scopeRelation`, `inheritedOrg`, `orgScopes`. Everything
+  about resolving an OrgRef. The roster (slice 2) and the chart's org badges (slice 1) both want
+  these; do not write them again.
+- **`work.ts`** — `collectWork(ws, scope)`, the combined chart + flow walker.
+
+**Still open in this slice:** `users.rosterPersonId` exists so the screen can default to *your* unit
+instead of making you pick. Nothing sets it — matching an account to a roster person needs the
+directory sync to write a person's `externalId` against the user's OIDC subject, and belongs with
+slice 2. Until then the picker starts empty, which is correct but one click worse.
+
+**Also not ported, stated rather than silently wrong:** a Chart-Linked flow (`mode: 'linked'`) binds
+each step to a chart row and cascades that row's letters onto it, subject to `bindOverrides` and a
+letter translation between frameworks. That subsystem belongs with slice 3. Until it lands,
+`collectWork` treats a linked step exactly like a free one — it under-reports for a linked flow, and
+never mis-reports.
 
 ### 6 · Exports — **parallel, one person each**
 
@@ -167,6 +179,8 @@ packages/core/src/violations.ts  workspaceViolations — lint everything, correc
 packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEntityUses,
                                  artifactRefCount, filterObjects, orphanArtifacts,
                                  terminalArtifacts, walkChartRows
+packages/core/src/org.ts         orgLabel, scopeRelation, inheritedOrg, orgScopes, orgRefPath
+packages/core/src/work.ts        collectWork, summarizeWork — "what does my unit own"
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists
@@ -179,4 +193,24 @@ Two rules the engine deliberately does NOT raise, so do not "fix" them:
 - **"this flow input has no producer"** — unfalsifiable in a flow, because a handoff registers its
   source step as the producer. It is a real rule about a chart row, and lives in `chartViolations`.
 
-`pnpm test` runs in about five seconds. Run it often.
+`pnpm test` runs in about ten seconds. Run it often.
+
+---
+
+## One performance rule
+
+**The flat tree has no child pointers.** `childrenOf(nodes, parentId)` scans the whole node map, so
+calling it inside a traversal is quadratic — on the 810-row demo that cost 84ms for a single walk,
+which is a visible stall on a screen that re-renders on every keystroke of a shared document.
+
+Build the index once and pass it down:
+
+```ts
+const index = childIndex(chart.nodes);
+for (const node of walkInOrder(chart.nodes, index)) { … }
+```
+
+`walkInOrder`, `subtreeOf`, `subtreeDepth` and `descendantCount` all take an optional index and
+build their own if you omit it — fine for one call, wrong in a loop. `tree.test.ts` has a scaling
+test that fails if the quadratic shape comes back. Do not cache an index across edits: the document
+changes under you, and a stale index renders rows that no longer exist.

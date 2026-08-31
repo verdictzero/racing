@@ -11,6 +11,7 @@
 
     <nav class="tabs">
       <NuxtLink :to="`/w/${workspaceId}`">Chart</NuxtLink>
+      <NuxtLink :to="`/w/${workspaceId}/tasks`">Tasks</NuxtLink>
       <NuxtLink :to="`/w/${workspaceId}/objects`">
         Objects
         <b v-if="objectCount">{{ objectCount }}</b>

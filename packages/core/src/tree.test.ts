@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { keysBetween } from './fractional.js';
 import {
   ancestorsOf,
+  childIndex,
+  childrenIn,
   childrenOf,
   depthOf,
   descendantCount,
@@ -15,6 +17,7 @@ import {
   planRepair,
   repairTree,
   rootsOf,
+  subtreeDepth,
   subtreeOf,
   TreeError,
   walkInOrder,
@@ -229,5 +232,69 @@ describe('integrity under concurrent editing', () => {
     const { reparent } = planRepair(merged);
     const orders = reparent.map((m) => m.order);
     expect(new Set(orders).size).toBe(orders.length);
+  });
+});
+
+describe('the child index', () => {
+  /** A wide, shallow tree — the shape a real org chart has, and the one that hurts most. */
+  const wideTree = (count: number): NodeMap => {
+    const nodes: Record<string, ChartNode> = {};
+    const keys = keysBetween(null, null, count);
+    nodes['root'] = {
+      id: 'root', chartId: 'c', parentId: null, order: keys[0]!, name: 'root',
+      raci: {}, primaryR: null, org: null, description: '', documents: [], inputs: [], outputs: [],
+    };
+    for (let i = 1; i < count; i++) {
+      nodes[`n${i}`] = {
+        id: `n${i}`, chartId: 'c', parentId: 'root', order: keys[i]!, name: `n${i}`,
+        raci: {}, primaryR: null, org: null, description: '', documents: [], inputs: [], outputs: [],
+      };
+    }
+    return nodes;
+  };
+
+  it('buckets every node under its parent, in order', () => {
+    const nodes = wideTree(6);
+    const index = childIndex(nodes);
+    expect(childrenIn(index, null).map((n) => n.id)).toEqual(['root']);
+    expect(childrenIn(index, 'root').map((n) => n.id)).toEqual(childrenOf(nodes, 'root').map((n) => n.id));
+    expect(childrenIn(index, 'n_nobody')).toEqual([]);
+  });
+
+  it('gives walkInOrder the same answer as scanning does', () => {
+    const nodes = wideTree(40);
+    expect(walkInOrder(nodes, childIndex(nodes)).map((n) => n.id)).toEqual(
+      walkInOrder(nodes).map((n) => n.id),
+    );
+  });
+
+  it('keeps the traversal linear, not quadratic', () => {
+    // Not a micro-benchmark — the margin is two orders of magnitude. Walking the flat model by
+    // calling childrenOf per node scans the whole map each time, which cost 84ms on the 810-row
+    // demo and is a visible stall on a screen that re-renders per keystroke. At 4000 rows the old
+    // shape takes seconds; this bound only fails if that shape comes back.
+    const nodes = wideTree(4000);
+    const started = performance.now();
+    const rows = walkInOrder(nodes);
+    const elapsed = performance.now() - started;
+    expect(rows).toHaveLength(4000);
+    expect(elapsed).toBeLessThan(250);
+  });
+
+  it('survives a parent cycle instead of blowing the stack', () => {
+    // A CRDT merge can produce one — two people reparenting into each other's subtree. The walk
+    // simply does not reach the cycle from the roots; repairTree is what puts those rows back.
+    const nodes = { ...wideTree(4) } as Record<string, ChartNode>;
+    nodes['n1'] = { ...nodes['n1']!, parentId: 'n2' };
+    nodes['n2'] = { ...nodes['n2']!, parentId: 'n1' };
+    expect(() => walkInOrder(nodes)).not.toThrow();
+    expect(walkInOrder(nodes).map((n) => n.id)).not.toContain('n1');
+  });
+
+  it('subtreeDepth does not recurse forever on a cycle either', () => {
+    const nodes = { ...wideTree(4) } as Record<string, ChartNode>;
+    nodes['n1'] = { ...nodes['n1']!, parentId: 'n2' };
+    nodes['n2'] = { ...nodes['n2']!, parentId: 'n1' };
+    expect(() => subtreeDepth(nodes, 'n1')).not.toThrow();
   });
 });

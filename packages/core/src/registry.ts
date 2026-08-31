@@ -11,7 +11,7 @@
  * second copy of the truth, and the copy is what goes stale.
  */
 
-import { childrenOf, rootsOf } from './tree.js';
+import { childIndex, childrenIn } from './tree.js';
 import { artifactTypeMeta, entityKindMeta } from './constants.js';
 import type { Artifact, Entity, OrgRef, Workspace } from './schema.js';
 
@@ -320,13 +320,18 @@ export function terminalArtifacts(ws: Workspace): Artifact[] {
 export function walkChartRows(ws: Workspace): Array<{ chartId: string; nodeId: string; name: string }> {
   const out: Array<{ chartId: string; nodeId: string; name: string }> = [];
   for (const chart of Object.values(ws.charts)) {
+    // One index per chart, not one scan per row: the flat model makes finding a parent's children
+    // a pass over every node, so doing it inside the recursion is quadratic. See tree.ts.
+    const index = childIndex(chart.nodes);
+    const seen = new Set<string>();
     const visit = (nodeId: string) => {
       const node = chart.nodes[nodeId];
-      if (!node) return;
+      if (!node || seen.has(nodeId)) return;
+      seen.add(nodeId);
       out.push({ chartId: chart.id, nodeId, name: rowName(node.name) });
-      for (const child of childrenOf(chart.nodes, nodeId)) visit(child.id);
+      for (const child of childrenIn(index, nodeId)) visit(child.id);
     };
-    for (const root of rootsOf(chart.nodes)) visit(root.id);
+    for (const root of childrenIn(index, null)) visit(root.id);
   }
   return out;
 }
