@@ -18,3 +18,7 @@ vendor/npm/
 # Nuxt build output
 apps/web/.output/
 apps/web/.nuxt/
+
+# Node's V8 compile cache. Nuxt sets NODE_COMPILE_CACHE, so a build drops thousands of
+# machine-specific binary files here; 1072 of them reached a PR before this line existed.
+node-compile-cache/
