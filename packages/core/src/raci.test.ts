@@ -4,6 +4,7 @@ import { importLegacy } from './legacy.js';
 import {
   chartViolations,
   doerColumns,
+  displayRaci,
   effectiveRaci,
   inheritedOwnerColumn,
   isOwnerOverride,
@@ -17,6 +18,7 @@ import { workspaceViolations, anchorOwnerColumn } from './violations.js';
 import { framework, COLS } from './constants.js';
 import type { Chart, ChartNode } from './schema.js';
 import { keysBetween } from './fractional.js';
+import { childrenOf, rootsOf } from './tree.js';
 
 const fw = framework('raci');
 
@@ -381,5 +383,69 @@ describe('linting the whole workspace', () => {
     for (const step of Object.values(ws.flows[flowId]!.steps)) step.raci = {};
     const rules = (workspaceViolations(ws).flows.get(flowId) ?? []).map((v) => v.rule);
     expect(rules).toContain('noOwner');
+  });
+});
+
+describe('what the chart prints, versus what it assigns', () => {
+  const base = importLegacy(demo).workspace;
+  const chart = Object.values(base.charts)[0]!;
+
+  it('fills a blank cell with Informed, marked as a default', () => {
+    // index.html's convention: "any blank cell is treated as Informed". Both of its document
+    // exports write the letter out, so the two apps only agree if this one does too.
+    const ws = structuredClone(base);
+    const c = Object.values(ws.charts)[0]!;
+    const id = Object.keys(c.nodes)[0]!;
+    c.nodes[id]!.raci = { hq: 'A' };
+
+    const shown = displayRaci(c, c.nodes, id);
+    expect(shown.hq!.letters).toBe('A');
+    expect(shown.hq!.source).toBe('explicit');
+    expect(shown.cos!.letters).toBe('I');
+    expect(shown.cos!.source).toBe('default');
+  });
+
+  it('leaves a genuinely blank cell blank in effectiveRaci', () => {
+    // The two answer different questions and conflating them is wrong in a way that matters:
+    // a unit does not OWN work because a blank cell defaulted to Informed. The work lens would
+    // report every unit as Informed on everything.
+    const ws = structuredClone(base);
+    const c = Object.values(ws.charts)[0]!;
+    const id = Object.keys(c.nodes)[0]!;
+    c.nodes[id]!.raci = { hq: 'A' };
+    expect(effectiveRaci(c, c.nodes, id).cos!.letters).toBe('');
+    expect(effectiveRaci(c, c.nodes, id).cos!.source).toBe('none');
+  });
+
+  it('never overwrites an inherited owner with the default', () => {
+    const ws = structuredClone(base);
+    const c = Object.values(ws.charts)[0]!;
+    const root = rootsOf(c.nodes)[0]!;
+    const kid = childrenOf(c.nodes, root.id)[0]!;
+    root.raci = { hq: 'R' };
+    kid.raci = {};
+
+    const shown = displayRaci(c, c.nodes, kid.id);
+    expect(shown.hq!.letters).toBe('A');
+    expect(shown.hq!.source).toBe('inherited');
+    expect(shown.cos!.source).toBe('default');
+  });
+
+  it('takes the letter from the framework rather than hardcoding it', () => {
+    const ws = structuredClone(base);
+    const c = Object.values(ws.charts)[0]!;
+    c.framework = 'rasci';
+    const id = Object.keys(c.nodes)[0]!;
+    c.nodes[id]!.raci = {};
+    expect(displayRaci(c, c.nodes, id).hq!.letters).toBe(framework('rasci').informed);
+  });
+
+  it('never reports source "none" — that is what makes it a display row', () => {
+    for (const id of Object.keys(chart.nodes).slice(0, 50)) {
+      for (const cell of Object.values(displayRaci(chart, chart.nodes, id))) {
+        expect(cell.source).not.toBe('none');
+        expect(cell.letters).not.toBe('');
+      }
+    }
   });
 });

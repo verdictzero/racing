@@ -27,7 +27,7 @@ import {
   framework,
   type MetaPriority,
 } from '../constants.js';
-import { effectiveRaci } from '../raci.js';
+import { displayRaci } from '../raci.js';
 import { childIndex, childrenIn, pathTo } from '../tree.js';
 import { orgLabel } from '../org.js';
 import { computeArtifactUses, computeEntityUses } from '../registry.js';
@@ -215,7 +215,7 @@ export function buildChartSheets(ws: Workspace, chart: Chart): Sheet[] {
   const walk = (parentId: string | null, depth: number, ancestors: string[]) => {
     for (const node of childrenIn(index, parentId)) {
       const level = (byDepth[depth] ??= { name: tierLabel(chart, depth), rows: [] });
-      const effective = effectiveRaci(chart, chart.nodes, node.id);
+      const effective = displayRaci(chart, chart.nodes, node.id);
       level.rows.push([
         ...ancestors,
         node.name,

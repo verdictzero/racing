@@ -63,6 +63,13 @@ export interface Framework {
   readonly roles: readonly string[];
   readonly owner: string;
   readonly doer: string;
+  /**
+   * The role a blank cell means by convention.
+   *
+   * Named here rather than hardcoded as 'I' because `owner` and `doer` already are, and a
+   * framework that called it something else would otherwise silently print the wrong letter.
+   */
+  readonly informed: string;
   readonly meta: Readonly<Record<string, { label: string; desc: string }>>;
 }
 
@@ -74,6 +81,7 @@ export const FRAMEWORKS: Readonly<Record<string, Framework>> = {
     roles: ['R', 'A', 'C', 'I'],
     owner: 'A',
     doer: 'R',
+    informed: 'I',
     meta: {
       R: { label: 'Responsible', desc: 'Does the work' },
       A: { label: 'Accountable', desc: 'Owns the outcome' },
@@ -88,6 +96,7 @@ export const FRAMEWORKS: Readonly<Record<string, Framework>> = {
     roles: ['R', 'A', 'S', 'C', 'I'],
     owner: 'A',
     doer: 'R',
+    informed: 'I',
     meta: {
       R: { label: 'Responsible', desc: 'Does the work' },
       A: { label: 'Accountable', desc: 'Owns the outcome' },

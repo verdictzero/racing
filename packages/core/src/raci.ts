@@ -20,8 +20,15 @@ import { ancestorsOf, type NodeMap } from './tree.js';
 import { chartColumns, type Chart, type ChartNode } from './schema.js';
 import type { ArtifactUses } from './registry.js';
 
-/** Where a cell's letters came from. */
-export type RaciSource = 'explicit' | 'inherited' | 'none';
+/**
+ * Where a cell's letters came from.
+ *
+ *   explicit   the row states them
+ *   inherited  they cascaded down from an ancestor
+ *   default    the row states nothing, and a blank cell means Informed by convention
+ *   none       genuinely empty — only `effectiveRaci` returns this; `displayRaci` never does
+ */
+export type RaciSource = 'explicit' | 'inherited' | 'default' | 'none';
 
 export interface EffectiveCell {
   readonly letters: string;
@@ -295,6 +302,35 @@ export function chartViolations(chart: Chart, ctx: ChartRuleContext = {}): Viola
   }
 
   return out.sort((a, b) => a.nodeId.localeCompare(b.nodeId) || a.rule.localeCompare(b.rule));
+}
+
+/**
+ * What the chart PRINTS, which is not quite what the chart assigns.
+ *
+ * `effectiveRaci` answers "what is actually assigned here", and a blank cell is genuinely blank.
+ * The chart and the document exports answer a different question, and apply one more convention on
+ * top: a cell with nothing in it means Informed. Kept apart because conflating them is wrong in a
+ * way that matters — the work lens asks the first question, and a unit does not OWN work because a
+ * blank cell defaulted to Informed. It would report every unit as Informed on everything.
+ *
+ * The default is marked `source: 'default'` so a renderer can dim it, exactly as `index.html` does.
+ * Both its XML and Excel exports write the letter out, so this is the function they need if the two
+ * apps are to produce the same document.
+ */
+export function displayRaci(
+  chart: Pick<Chart, 'custom' | 'framework'>,
+  nodes: NodeMap,
+  nodeId: string,
+): EffectiveRow {
+  const resolved = effectiveRaci(chart, nodes, nodeId);
+  const fw = framework(chart.framework);
+  const out: Record<string, EffectiveCell> = {};
+  for (const [col, cell] of Object.entries(resolved)) {
+    out[col] = cell.letters
+      ? cell
+      : { letters: fw.informed, source: 'default', fromNodeId: null };
+  }
+  return out;
 }
 
 /** Violations keyed by node, for the per-row pins. */

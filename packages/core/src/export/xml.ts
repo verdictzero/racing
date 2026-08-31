@@ -13,7 +13,7 @@
  */
 
 import { framework, TIER_LABELS } from '../constants.js';
-import { effectiveRaci } from '../raci.js';
+import { displayRaci } from '../raci.js';
 import { childrenOf, rootsOf } from '../tree.js';
 import { chartColumns, type Chart, type ChartNode, type Flow, type Workspace } from '../schema.js';
 import { topologicalOrder } from './order.js';
@@ -128,7 +128,7 @@ function nodeXml(
   includeFlows: boolean,
 ): string {
   const columns = chartColumns(chart);
-  const eff = effectiveRaci(chart, chart.nodes, node.id);
+  const eff = displayRaci(chart, chart.nodes, node.id);
   const raci = columns
     .filter((k) => eff[k]?.letters)
     .map((k) => ` ${k}="${esc(eff[k]!.letters)}"`)

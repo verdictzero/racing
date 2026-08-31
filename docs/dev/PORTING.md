@@ -36,15 +36,31 @@ different people.
 
 ### 1 · The chart cascade — `renderChart` (index.html:10574)
 
-**The biggest slice, and the one everything else waits on.** The nested drill-down cascade: panes
-per tier, drill path, auto-arrange, zoom, per-pane positioning.
+**Mostly done.** `apps/web/app/pages/w/[id]/index.vue`, on `packages/core/src/cascade.ts`.
 
-- Already in core: `tree.ts` (navigation, moves), `raci.ts` (cascade, rules), `fractional.ts`.
-- Already in crdt: `addNode`, `moveNode`, `deleteNode`, `duplicateNode`, `renameNode`, `setNodeRaci`.
-- To write: the cascade layout, drill state (**client-side only** — camera is per-person and must
-  not be in the shared document), the pane chrome, the RACI popover, the violation pins.
-- Watch for: `effectiveRaci` already returns a `source` per cell (`explicit` | `inherited`) —
-  render the inherited ones dashed as the legacy app does, do not recompute it in the component.
+`resolveCascade(chart, drillPath)` turns a drill path into the pane stack, and it is pure: it takes
+a path and returns the panes plus **the path it could actually honour**, so a caller decides what to
+do about a stale one. In `index.html` the same logic is tangled with the renderer and mutates the
+chart's `drillPath` as a side effect of drawing.
+
+- **The drill path is not document data.** Which row *you* have open is a fact about your screen.
+  In the shared document it would mean one person drilling yanks everyone else's view. It lives in
+  component state, and the `trimmed` flag is how a row deleted by someone else while you had it open
+  collapses the stack instead of leaving an empty pane under a live breadcrumb.
+- **Two things cascade, separately**: the owner column (each drilled row's primary doer; a row that
+  designates none passes the ancestor's through rather than breaking the chain) and the org ref (a
+  Program contributes its division, a Project its branch).
+- **Cells go through `displayRaci`, never recomputed in the component.** It resolves the three cases
+  the chart must tell apart — stated here, cascaded from above, and the Informed a blank cell means
+  by convention — and each gets its own class so the difference is visible rather than implied.
+
+**Still to do here:** zoom, dragging a pane to reposition it, auto-arrange, the chart-tab strip, and
+the drill from a Task row into its anchored flow — that last one waits on slice 3. All chrome and
+camera; the cascade itself is done.
+
+**Note for whoever tests this:** all 810 rows of the demo state an owner of their own, so **nothing
+in the demo ever exercises the inherited-owner path.** It has to be constructed; `cascade.test.ts`
+does, under "the pane and the cells agree".
 
 ### 2 · ~~The roster~~ — `renderRoster` (index.html:11127)
 
@@ -225,6 +241,7 @@ packages/core/src/violations.ts  workspaceViolations — lint everything, correc
 packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEntityUses,
                                  artifactRefCount, filterObjects, orphanArtifacts,
                                  terminalArtifacts, walkChartRows
+packages/core/src/cascade.ts     resolveCascade, cascadeCrumbs, pathToOpen — the drill stack
 packages/core/src/org.ts         orgLabel, scopeRelation, inheritedOrg, orgScopes, orgRefPath
 packages/core/src/work.ts        collectWork, summarizeWork — "what does my unit own"
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
@@ -235,6 +252,13 @@ packages/crdt/src/roster.ts      flattenRoster, nestRoster — the roster's flat
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists
 ```
+
+**`effectiveRaci` vs `displayRaci`** — they answer different questions and the difference matters.
+`effectiveRaci` is what is actually assigned, and a blank cell is blank. `displayRaci` adds the
+convention that a blank cell means Informed, which is what the chart prints and what **both document
+exports write** (index.html does the same, so the two apps only agree if you use it). Do not reach
+for `displayRaci` in a lens that asks who owns what: a unit does not own work because a blank cell
+defaulted to Informed, and `collectWork` would report every unit as Informed on everything.
 
 Two rules the engine deliberately does NOT raise, so do not "fix" them:
 
