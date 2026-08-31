@@ -15967,7 +15967,8 @@ function xlNorm(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
 // Columns an export writes for context, which sit between the path columns and the party columns.
 // They carry org names, not role letters — feeding them to normalizeRaci would mine letters out of
 // prose ("DIRECTORATE C" contains a C) and shift every real party column along by two.
-const XL_CONTEXT_HEADERS = ['division', 'branch', 'team', 'unit', 'org', 'organization', 'notes', 'note'];
+const XL_CONTEXT_HEADERS = ['division', 'branch', 'team', 'unit', 'org', 'org unit',
+  'organization', 'organisation', 'notes', 'note'];
 function isContextHeader(h) {
   const t = xlNorm(h).replace(/\s*\(inherited\)\s*$/, '').trim();
   return XL_CONTEXT_HEADERS.includes(t);

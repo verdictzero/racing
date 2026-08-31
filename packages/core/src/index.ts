@@ -26,3 +26,6 @@ export * from './org.js';
 export * from './work.js';
 export * from './export/zip.js';
 export * from './export/xlsx.js';
+export * from './import/xml.js';
+export * from './import/unzip.js';
+export * from './import/xlsx.js';

@@ -32,6 +32,7 @@ import {
   subtreeDepth,
   Roster,
   type Chart,
+  type Entity,
   type NodeMap,
   type OrgRef,
 } from '@raci/core';
@@ -497,6 +498,86 @@ export function setEntityField(
  */
 export function deleteEntity(doc: Y.Doc, entityId: string): void {
   doc.transact(() => maps(doc).entities.delete(entityId), LOCAL_ORIGIN);
+}
+
+// ---- bulk insert -----------------------------------------------------------------------------------
+
+/**
+ * Add a whole chart — header and every row — in one transaction.
+ *
+ * What an Excel import lands as. One transaction rather than a row at a time for two reasons that
+ * both matter: peers see one coherent arrival instead of eight hundred, and undo treats the import
+ * as a single act, so a person who pressed the wrong button gets their workspace back with one
+ * Ctrl+Z rather than eight hundred.
+ *
+ * The chart arrives with its ids already minted (by `importWorkbook`), so nothing is renumbered
+ * here — the report a person just approved names the same rows that get written.
+ */
+export function insertChart(doc: Y.Doc, chart: Chart, origin: unknown = LOCAL_ORIGIN): string {
+  const { nodes, ...header } = chart;
+  doc.transact(() => {
+    const m = maps(doc);
+    m.charts.set(chart.id, toYMap(header as unknown as Record<string, unknown>));
+    for (const [id, node] of Object.entries(nodes)) {
+      m.nodes.set(id, toYMap(node as unknown as Record<string, unknown>));
+    }
+    const orders = [...m.chartOrder.values()].sort();
+    m.chartOrder.set(chart.id, keyBetween(orders.length > 0 ? (orders[orders.length - 1] as string) : null, null));
+  }, origin);
+  return chart.id;
+}
+
+/**
+ * Add entities, skipping any whose name is already taken.
+ *
+ * De-duplicated by name rather than by id, because an imported workbook mints fresh ids every time:
+ * importing the same file twice would otherwise stack a second "Cyber Review Board" beside the
+ * first. Name matching is the same contract the legacy app's merge uses.
+ *
+ * Returns the ids actually added, so the caller can report how many were new.
+ */
+export function insertEntities(
+  doc: Y.Doc,
+  entities: readonly Entity[],
+  origin: unknown = LOCAL_ORIGIN,
+): string[] {
+  const m = maps(doc);
+  const taken = new Set<string>();
+  for (const [, raw] of m.entities.entries()) {
+    taken.add(String(raw.get('name') ?? '').trim().toLowerCase());
+  }
+
+  const added: string[] = [];
+  doc.transact(() => {
+    for (const entity of entities) {
+      const key = entity.name.trim().toLowerCase();
+      if (!key || taken.has(key)) continue;
+      taken.add(key);
+      m.entities.set(entity.id, toYMap(entity as unknown as Record<string, unknown>));
+      added.push(entity.id);
+    }
+  }, origin);
+  return added;
+}
+
+/**
+ * Rename the responsibility columns.
+ *
+ * Workspace-wide, and deliberately so: the columns are the same set on every org chart, so a
+ * workbook that calls them something else renames them everywhere rather than making one chart
+ * disagree with its neighbours. The importer's caller is expected to say so before doing it.
+ */
+export function setColumnLabels(
+  doc: Y.Doc,
+  labels: Readonly<Record<string, string>>,
+  shorts: Readonly<Record<string, string>> = {},
+  origin: unknown = LOCAL_ORIGIN,
+): void {
+  doc.transact(() => {
+    const m = maps(doc);
+    m.meta.set('columnLabels', { ...(m.meta.get('columnLabels') as object), ...labels });
+    m.meta.set('columnShort', { ...(m.meta.get('columnShort') as object), ...shorts });
+  }, origin);
 }
 
 // ---- roster ---------------------------------------------------------------------------------------

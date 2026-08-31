@@ -158,10 +158,33 @@ dependency order, and `stepIo()` derives a step's inputs and outputs from its ha
 rather than writing them again. The download route (`apps/web/server/api/workspaces/[id]/export.get.ts`)
 is where a new format gets hooked up — one case in a switch.
 
-### 7 · Excel import — `importXlsx` (index.html, v0.37 section) — **parallel**
+### 7 · ~~Excel import~~ — `importXlsx` (index.html, v0.37 section)
 
-Header-row detection, tier inference, party columns, the Entities and Document sheets. Pure logic
-over a parsed workbook, so it belongs in core with the parsing injected.
+**Done.** `packages/core/src/import/` — `xlsx.ts`, `unzip.ts`, `xml.ts`. 42 tests.
+
+Split in two, and the split is the point:
+
+- `readWorkbook(bytes)` is I/O — unzip, inflate, parse XML — and is async.
+- `importWorkbook(sheets)` is the rules, and is a **pure function of a grid of strings**.
+
+Every question this importer has to answer well — where is the header row, which columns are the
+hierarchy, which are parties, what does a row that skips a level mean — is a question about a grid,
+so all of it is testable without a file.
+
+**No dependency.** The inflater is `DecompressionStream('deflate-raw')`, a platform API in Node 18+
+and every current browser. `import/xml.ts` is a purpose-built scanner rather than a parser, which is
+only safe because the input is machine-generated SpreadsheetML.
+
+**It runs in the browser.** The chart screen parses the chosen file client-side, shows a preview,
+and writes through the CRDT on confirm — so there is no upload endpoint, and an import arrives as a
+normal collaborative edit that peers see and undo can reach (`insertChart` is one transaction, so
+one Ctrl+Z takes it back).
+
+**`CONTEXT_HEADERS` is part of the file format, not a convenience.** Columns like `Org unit` and
+`Division (inherited)` sit between the hierarchy and the parties and carry org names. Read as role
+letters they would mine a `C` out of "DIRECTORATE C" and shift every real party column along by one
+— silently, on every row. **Adding a context column to the exporter without adding its header to
+that list corrupts every re-import**, in both apps.
 
 ### 8 · Themes — five palettes (index.html:141–500)
 
@@ -207,6 +230,7 @@ packages/core/src/work.ts        collectWork, summarizeWork — "what does my un
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
 packages/core/src/export/       exportXml, exportChartMermaid, exportFlowMermaid, exportXlsx,
                                  exportTemplate, writeWorkbook, zipBytes, topologicalOrder, stepIo
+packages/core/src/import/       importXlsx, readWorkbook, importWorkbook, findHeaderRow, unzip
 packages/crdt/src/roster.ts      flattenRoster, nestRoster — the roster's flat storage
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists
@@ -219,7 +243,15 @@ Two rules the engine deliberately does NOT raise, so do not "fix" them:
 - **"this flow input has no producer"** — unfalsifiable in a flow, because a handoff registers its
   source step as the producer. It is a real rule about a chart row, and lives in `chartViolations`.
 
-`pnpm test` runs in about ten seconds. Run it often.
+`pnpm test` runs in about fifteen seconds. Run it often.
+
+There are two fixtures, and both are real files rather than hand-written ones:
+
+- `demo-workspace.json` — the 810-row demo, dumped out of `index.html` v0.39.
+- `foreign-workbook.xlsx` — written by **openpyxl**, not by this repo. Our writer emits inline
+  strings in a store-only ZIP; Excel emits shared strings in deflated parts, so a reader tested only
+  against our own output would pass everything and still open nothing a user has. Regenerate with
+  `scripts/make-foreign-workbook.py`.
 
 ---
 

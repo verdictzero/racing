@@ -15,7 +15,7 @@
  * through from the nearest ancestor that WAS unambiguous.
  */
 
-import { framework, type Framework } from './constants.js';
+import { ALL_ROLE_LETTERS, framework, type Framework } from './constants.js';
 import { ancestorsOf, type NodeMap } from './tree.js';
 import { chartColumns, type Chart, type ChartNode } from './schema.js';
 import type { ArtifactUses } from './registry.js';
@@ -33,6 +33,23 @@ export interface EffectiveCell {
 export type EffectiveRow = Readonly<Record<string, EffectiveCell>>;
 
 const EMPTY: EffectiveCell = { letters: '', source: 'none', fromNodeId: null };
+
+/**
+ * Clean up a cell of role letters typed by a person.
+ *
+ * Keeps only real role letters, drops duplicates, and puts them in a canonical order so that "ar",
+ * "AR" and "RRA" all become the same cell. Anything else in the cell — a stray note, a tick, a
+ * space — is discarded rather than rejected, because the source is a spreadsheet a human edited and
+ * refusing the cell would lose the letters that WERE right.
+ *
+ * The canonical order is `ALL_ROLE_LETTERS`, so "AR" normalizes to "RA". That is the legacy app's
+ * behaviour and the two must agree: the same workbook has to import identically in both.
+ */
+export function normalizeRaci(cell: string | null | undefined): string {
+  if (!cell) return '';
+  const present = new Set(String(cell).toUpperCase().split(''));
+  return ALL_ROLE_LETTERS.filter((letter) => present.has(letter)).join('');
+}
 
 /** Columns where `node` holds the doer letter (R in every current framework). */
 export function doerColumns(node: ChartNode, columns: readonly string[], fw: Framework): string[] {
