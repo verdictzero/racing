@@ -90,19 +90,29 @@ model as `nodes`. `flattenRoster` / `nestRoster` convert at the boundary, so `Wo
 the Tasks screen default to *your* unit — needs a person's `externalId` compared against the OIDC
 subject at sign-in. Everything it needs now exists; nothing does it yet.
 
-### 3 · The flow canvas — `renderBizcase` (index.html:11948) — **parallel**
+### 3 · The flow canvas — `renderBizcase` (index.html:11948)
 
-The largest single UI surface: draggable steps, socket-to-socket handoffs, redirector waypoints,
-nested subflow boxes with per-entry/exit ports, group frames, the minimap, marquee selection.
+**Part (a) and (b) done.** `apps/web/app/pages/w/[id]/flow.vue`, on
+`packages/core/src/flow-geometry.ts` (29 tests).
 
-- Already in core: `Flow`, `FlowStep`, `FlowEdge`, `FlowGroup` schemas.
-- Already in crdt: `addStep`, `moveStep`, `addEdge`, `addGroup`, `deleteStep`, `deleteGroup`.
-- To write: essentially all of it. Suggest splitting again — (a) canvas, steps, drag; (b) edges,
-  routing, redirectors; (c) groups and nested flows.
-- Watch for: `moveStep` writes `x` and `y` as separate fields on purpose, so two people dragging
-  different steps never fight over a coordinate pair. Keep it that way.
-- Watch for: step positions **are** document data (unlike chart camera state) — where a box sits is
-  something a person decided.
+The arithmetic is all in core: `socketPoint`, `edgePath`, `edgePathVia`, `viaInsertIndex`,
+`endpointBox`, `edgeGeometry`, `flowBounds`. In `index.html` every one of those answers comes out of
+the DOM — `getBoundingClientRect`, CSS selectors, live measurement — so none of it could be tested
+without a browser, which is how a real bug in the curve arithmetic survived (see below).
+
+**One measurement is injected and only one:** a card's height, which is content-driven and genuinely
+only the renderer knows. Width is fixed at `STEP_WIDTH`. The component measures, core computes.
+
+- **Step positions ARE document data** — where a box sits is something a person decided and
+  everyone should see. The camera (pan, zoom) is per-person and stays in the component. That split
+  is the exact opposite of the chart screen's, and it is deliberate in both directions.
+- `moveStep` writes `x` and `y` as separate fields on purpose, so two people dragging different
+  steps never fight over a coordinate pair. Keep it that way.
+
+**Still to do — part (c) and the rest:** dragging a socket to draw a new handoff, creating
+redirector waypoints (the geometry renders and inserts them; no gesture makes one yet), group
+frames and collapsing (`endpointBox` already handles a collapsed frame's mating points), nested
+subflow per-port sockets, the minimap, and marquee selection.
 
 ### 4 · ~~Object Gallery~~ — `renderObjects` (index.html:10427)
 
@@ -242,6 +252,8 @@ packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEnt
                                  artifactRefCount, filterObjects, orphanArtifacts,
                                  terminalArtifacts, walkChartRows
 packages/core/src/cascade.ts     resolveCascade, cascadeCrumbs, pathToOpen — the drill stack
+packages/core/src/flow-geometry.ts
+                                 socketPoint, edgePath, edgePathVia, edgeGeometry, flowBounds
 packages/core/src/org.ts         orgLabel, scopeRelation, inheritedOrg, orgScopes, orgRefPath
 packages/core/src/work.ts        collectWork, summarizeWork — "what does my unit own"
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel

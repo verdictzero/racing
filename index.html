@@ -12068,7 +12068,10 @@ function bizEdgePathVia(x1, y1, x2, y2, via) {
   for (let i = 0; i < pts.length - 1; i++) {
     const p = pts[i], q = pts[i + 1];
     const seg = Math.hypot(q.x - p.x, q.y - p.y);
-    const h = Math.max(12, Math.min(seg * 0.42, 120));
+    // Capped at half the leg as well: without that the 12px floor wins on any leg under ~28px,
+    // and on a short leg between two long ones the handles overshoot both ends and the curve
+    // visibly doubles back through the waypoint.
+    const h = Math.min(Math.max(12, Math.min(seg * 0.42, 120)), seg * 0.5);
     const c1 = { x: p.x + tan[i].x * h, y: p.y + tan[i].y * h };
     const c2 = { x: q.x - tan[i + 1].x * h, y: q.y - tan[i + 1].y * h };
     d += ` C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)} ${c2.x.toFixed(1)} ${c2.y.toFixed(1)} ${q.x} ${q.y}`;
