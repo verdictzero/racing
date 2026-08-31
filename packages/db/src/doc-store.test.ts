@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import * as Y from 'yjs';
-import { schema, organizations, workspaces, docUpdates, docSnapshots } from './schema.js';
+import { schema, docSnapshots } from './schema.js';
 import { appendUpdate, compact, loadDoc, pendingUpdateCount, reindexWorkspace } from './doc-store.js';
 import {
   createOrganization,

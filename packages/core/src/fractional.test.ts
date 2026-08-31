@@ -31,7 +31,7 @@ describe('keyBetween', () => {
     // The property that matters: you can always insert again. If this terminates, no sequence of
     // inserts at one spot can ever run out of space.
     let lo = keyBetween(null, null);
-    let hi = keyBetween(lo, null);
+    const hi = keyBetween(lo, null);
     for (let i = 0; i < 500; i++) {
       const mid = keyBetween(lo, hi);
       expect(lo < mid, `iteration ${i}: ${lo} < ${mid}`).toBe(true);

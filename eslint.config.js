@@ -35,7 +35,15 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.spec.ts', '**/scripts/**'],
+    files: ['**/*.test.ts', '**/*.spec.ts', 'scripts/**'],
     rules: { 'no-console': 'off', '@typescript-eslint/no-explicit-any': 'off' },
+  },
+  {
+    // Build and maintenance scripts are plain Node ESM, so they get the Node globals the
+    // browser-leaning default config does not define.
+    files: ['scripts/**', '**/*.config.{js,ts,mjs}'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', fetch: 'readonly' },
+    },
   },
 );
