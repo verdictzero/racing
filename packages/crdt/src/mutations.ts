@@ -30,11 +30,13 @@ import {
   orderForAppend,
   planMove,
   subtreeDepth,
+  Roster,
   type Chart,
   type NodeMap,
   type OrgRef,
 } from '@raci/core';
 import { fromYMap, maps, setField, toYMap } from './doc.js';
+import { childKindOf, flattenRoster, type RosterUnitRecord } from './roster.js';
 
 /** Tags every local mutation so undo can be scoped to one user's own edits. */
 export const LOCAL_ORIGIN = 'local';
@@ -499,9 +501,175 @@ export function deleteEntity(doc: Y.Doc, entityId: string): void {
 
 // ---- roster ---------------------------------------------------------------------------------------
 
-/** Replace one directorate's subtree. This is the write the directory sync makes. */
-export function setDirectorate(doc: Y.Doc, actor: string, value: unknown, origin = LOCAL_ORIGIN): void {
-  doc.transact(() => maps(doc).roster.set(actor, value), origin);
+/**
+ * Roster units are stored flat, one record per unit — see roster.ts for why. These writes are
+ * therefore per-unit and per-field, like every other mutation here, and two people editing
+ * different corners of the same directorate no longer overwrite each other.
+ */
+
+const rosterUnit = (doc: Y.Doc, unitId: string): Y.Map<unknown> | undefined =>
+  maps(doc).rosterUnits.get(unitId);
+
+/** The children of one unit, in order. */
+export function rosterChildren(doc: Y.Doc, parentId: string | null): RosterUnitRecord[] {
+  const out: RosterUnitRecord[] = [];
+  for (const [id, raw] of maps(doc).rosterUnits.entries()) {
+    const unit = { ...(fromYMap(raw) as unknown as RosterUnitRecord), id };
+    if (unit.parentId === parentId) out.push(unit);
+  }
+  return out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : a.id < b.id ? -1 : 1));
+}
+
+/**
+ * Add a unit under `parentId`.
+ *
+ * The kind is derived from the parent rather than passed in, because there is exactly one kind that
+ * can sit inside another and letting a caller name it is letting a caller get it wrong.
+ */
+export function addRosterUnit(
+  doc: Y.Doc,
+  parentId: string,
+  name = '',
+  origin: unknown = LOCAL_ORIGIN,
+): string | null {
+  const parentRaw = rosterUnit(doc, parentId);
+  if (!parentRaw) return null;
+  const parent = fromYMap(parentRaw) as unknown as RosterUnitRecord;
+  const kind = childKindOf(parent.kind);
+  if (!kind) return null; // a person has nothing inside it
+
+  const siblings = rosterChildren(doc, parentId);
+  // `newId` already knows every roster prefix, so the id says what the unit is on sight.
+  const id = newId(kind);
+  const record: RosterUnitRecord = {
+    id,
+    kind,
+    actor: parent.actor,
+    parentId,
+    order: keyBetween(siblings[siblings.length - 1]?.order ?? null, null),
+    name,
+    // A hand-created unit has no externalId, and the directory sync deliberately preserves that:
+    // it is how "this team is ours, not the directory's" is recorded. Never assign one here.
+    externalId: null,
+    leadId: null,
+    leadName: '',
+    title: '',
+    email: null,
+  };
+  doc.transact(() => maps(doc).rosterUnits.set(id, toYMap({ ...record })), origin);
+  return id;
+}
+
+export function setRosterUnitField(
+  doc: Y.Doc,
+  unitId: string,
+  field: 'name' | 'title' | 'email' | 'leadId' | 'leadName',
+  value: unknown,
+  origin: unknown = LOCAL_ORIGIN,
+): void {
+  doc.transact(() => setField(maps(doc).rosterUnits, unitId, field, value), origin);
+}
+
+/** Set or clear a unit's lead. Two fields, one transaction — a half-written lead is not a state. */
+export function setRosterLead(
+  doc: Y.Doc,
+  unitId: string,
+  lead: { id: string; name: string } | null,
+  origin: unknown = LOCAL_ORIGIN,
+): void {
+  doc.transact(() => {
+    const units = maps(doc).rosterUnits;
+    setField(units, unitId, 'leadId', lead?.id ?? null);
+    setField(units, unitId, 'leadName', lead?.name ?? '');
+  }, origin);
+}
+
+/**
+ * Delete a unit and everything under it.
+ *
+ * Returns the ids removed. A directorate cannot be deleted — there are exactly six and they are
+ * the fixed spine the org refs point at.
+ */
+export function deleteRosterUnit(
+  doc: Y.Doc,
+  unitId: string,
+  origin: unknown = LOCAL_ORIGIN,
+): string[] {
+  const units = maps(doc).rosterUnits;
+  const raw = units.get(unitId);
+  if (!raw) return [];
+  if ((fromYMap(raw) as unknown as RosterUnitRecord).kind === 'directorate') return [];
+
+  const doomed: string[] = [];
+  const collect = (id: string) => {
+    doomed.push(id);
+    for (const child of rosterChildren(doc, id)) collect(child.id);
+  };
+  collect(unitId);
+
+  doc.transact(() => {
+    for (const id of doomed) units.delete(id);
+  }, origin);
+  return doomed;
+}
+
+/** Reorder a unit among its siblings, or move it under a different parent of the same kind. */
+export function moveRosterUnit(
+  doc: Y.Doc,
+  unitId: string,
+  parentId: string,
+  order: string,
+  origin: unknown = LOCAL_ORIGIN,
+): void {
+  const raw = rosterUnit(doc, unitId);
+  const parentRaw = rosterUnit(doc, parentId);
+  if (!raw || !parentRaw) return;
+  const unit = fromYMap(raw) as unknown as RosterUnitRecord;
+  const parent = fromYMap(parentRaw) as unknown as RosterUnitRecord;
+  // A branch cannot become a division by being dragged into a directorate. Refusing here rather
+  // than rewriting the kind keeps the tree's shape an invariant instead of a hope.
+  if (childKindOf(parent.kind) !== unit.kind) return;
+
+  doc.transact(() => {
+    const units = maps(doc).rosterUnits;
+    setField(units, unitId, 'parentId', parentId);
+    setField(units, unitId, 'order', order);
+    if (unit.actor !== parent.actor) setField(units, unitId, 'actor', parent.actor);
+  }, origin);
+}
+
+/**
+ * Replace one directorate's whole subtree. The write the directory sync makes.
+ *
+ * Still whole-subtree, and that is correct for a sync: it has just reconciled the entire tree
+ * against the directory and knows the answer for all of it. What changed is that it now lands as
+ * per-unit records, so a person editing a DIFFERENT directorate at the same moment is untouched,
+ * and `reconcile` keeps ids stable so the units that did not change are rewritten identically.
+ */
+export function setDirectorate(
+  doc: Y.Doc,
+  actor: string,
+  value: unknown,
+  origin: unknown = LOCAL_ORIGIN,
+): void {
+  const flat = flattenRoster(Roster.parse({ [actor]: value }));
+  doc.transact(() => {
+    const units = maps(doc).rosterUnits;
+    for (const [id, raw] of [...units.entries()]) {
+      const unit = fromYMap(raw) as unknown as RosterUnitRecord;
+      if (unit.actor === actor && !flat[id]) units.delete(id);
+    }
+    for (const [id, unit] of Object.entries(flat)) units.set(id, toYMap({ ...unit }));
+  }, origin);
+}
+
+/** Replace every directorate at once, in one transaction. What a full sync commit does. */
+export function setRoster(doc: Y.Doc, roster: Roster, origin: unknown = LOCAL_ORIGIN): void {
+  doc.transact(() => {
+    for (const [actor, directorate] of Object.entries(roster)) {
+      setDirectorate(doc, actor, directorate, origin);
+    }
+  }, origin);
 }
 
 /** Columns a chart uses — re-exported so callers do not need @raci/core for the common case. */

@@ -11,3 +11,4 @@ export * from './doc.js';
 export * from './mutations.js';
 export * from './repair.js';
 export * from './undo.js';
+export * from './roster.js';

@@ -9,6 +9,8 @@ import {
   orgScopes,
   orgTier,
   scopeRelation,
+  unitCounts,
+  unitStat,
 } from './org.js';
 import { rootsOf, childrenOf } from './tree.js';
 
@@ -183,5 +185,64 @@ describe('the scope picker', () => {
 
   it('resolves a label for every scope it offers', () => {
     for (const scope of scopes) expect(scope.label.missing).toBe(false);
+  });
+});
+
+describe('unit statistics', () => {
+  it('counts everything below a directorate', () => {
+    const counts = unitCounts(workspace, DIRECTORATE);
+    expect(counts.divisions).toBe(workspace.roster.cyber!.divisions.length);
+    expect(counts.branches).toBeGreaterThan(0);
+    expect(counts.teams).toBeGreaterThan(0);
+    expect(counts.people).toBeGreaterThan(0);
+  });
+
+  it('narrows as the unit narrows, and never counts sideways', () => {
+    const dir = unitCounts(workspace, DIRECTORATE);
+    const div = unitCounts(workspace, DIVISION);
+    const br = unitCounts(workspace, BRANCH);
+    expect(div.teams).toBeLessThanOrEqual(dir.teams);
+    expect(br.teams).toBeLessThanOrEqual(div.teams);
+    expect(br.people).toBeLessThanOrEqual(div.people);
+    // A division has no divisions inside it.
+    expect(div.divisions).toBe(0);
+    expect(br.branches).toBe(0);
+  });
+
+  it('counts a lead as a person — a chief is one', () => {
+    // A chief sits ON the unit rather than in its people list, and a headcount that left them out
+    // would be quietly wrong by one at every tier.
+    const ws = structuredClone(workspace);
+    const teamRef = { actor: 'cyber', divisionId: division.id, branchId: branch.id, teamId: team.id } as const;
+    const teamNode = ws.roster.cyber!.divisions[0]!.branches[0]!.teams[0]!;
+
+    teamNode.chief = null;
+    const without = unitCounts(ws, teamRef).people;
+    expect(without).toBe(teamNode.people.length);
+
+    teamNode.chief = { id: 'p_chief', name: 'Chief' };
+    expect(unitCounts(ws, teamRef).people).toBe(without + 1);
+  });
+
+  it('prints only the tiers that exist below the unit', () => {
+    expect(unitStat(workspace, DIRECTORATE)).toMatch(/division.* · .*branch.* · .*team.* · .*(person|people)/);
+    expect(unitStat(workspace, DIVISION)).not.toContain('division');
+    expect(unitStat(workspace, BRANCH)).not.toContain('branch');
+    expect(unitStat(workspace, TEAM)).toMatch(/^\d+ (person|people)$/);
+  });
+
+  it('says "1 branch" and "2 branches", not "1 branchs"', () => {
+    const ws = structuredClone(workspace);
+    ws.roster.cyber!.divisions[0]!.branches = [ws.roster.cyber!.divisions[0]!.branches[0]!];
+    expect(unitStat(ws, DIVISION)).toContain('1 branch ');
+    expect(unitStat(ws, DIVISION)).not.toContain('branchs');
+  });
+
+  it('is all zeroes for a unit that is not there, rather than throwing', () => {
+    expect(unitCounts(workspace, { actor: 'cyber', divisionId: 'gone' })).toEqual({
+      divisions: 0, branches: 0, teams: 0, people: 0,
+    });
+    expect(unitCounts(workspace, { entityId: 'e' }).people).toBe(0);
+    expect(unitCounts(workspace, null).people).toBe(0);
   });
 });

@@ -14,7 +14,7 @@
 
 import * as Y from 'yjs';
 import { Roster } from '@raci/core';
-import { maps, readWorkspace } from '@raci/crdt';
+import { readWorkspace, setRoster } from '@raci/crdt';
 import {
   runSync,
   tierMappingFromEnv,
@@ -96,14 +96,11 @@ export async function syncDirectoryIntoWorkspace(request: SyncRequest): Promise<
         if (request.dryRun) return;
 
         // One transaction over the whole roster, so peers see a single coherent change rather
-        // than six directorates arriving one at a time.
+        // than six directorates arriving one at a time. Through the mutation, not through
+        // `maps(doc)`: the roster is stored flat and re-nested at the boundary, and a writer that
+        // reached past that seam would put the nested shape back into the document.
         const before = Y.encodeStateVector(doc);
-        doc.transact(() => {
-          const m = maps(doc);
-          for (const [actor, directorate] of Object.entries(roster)) {
-            m.roster.set(actor, directorate);
-          }
-        }, SYNC_ORIGIN);
+        setRoster(doc, roster, SYNC_ORIGIN);
 
         await appendUpdate(db, {
           workspaceId: request.workspaceId,

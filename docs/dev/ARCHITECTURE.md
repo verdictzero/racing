@@ -116,7 +116,8 @@ snapshot.
 the most expensive screen in the app.
 
 **Directory sync.** Adapter reads a snapshot → `reconcile()` produces a roster plus a change list →
-the roster is written into the CRDT as one transaction → the run and its changes go to
+the roster is written into the CRDT as one transaction (through `setRoster`, so it lands as flat
+per-unit records rather than nested arrays) → the run and its changes go to
 `directory_sync_run`. Units that vanished are **reported, not deleted**.
 
 ---
@@ -162,11 +163,14 @@ table without disturbing this one.
 `document_blob` can hold bytes inline or name a `storage_key`. Only the inline path is implemented.
 Fine for a self-contained deployment, wrong for one with a lot of large attachments.
 
-### The Nuxt app is a vertical slice
+### The Nuxt app has four screens, not the whole product
 
-Auth, collaboration and one editable chart. The cascade layout, drilling, the flow canvas, the
-roster, the Object Gallery, the Tasks lens and all six export formats are still only in
-`index.html`. See [PORTING.md](PORTING.md).
+Auth, collaboration, a flat chart table, the Roster, the Tasks lens and the Object Gallery. Still
+only in `index.html`: the cascade layout and drilling, the flow canvas, four of the six export
+formats, the Excel importer, the themes and the field guides. See [PORTING.md](PORTING.md).
+
+`index.html` stays the shipping product until that list is empty, and both apps read and write the
+same v0.39 JSON — enforced by `core/legacy.test.ts` against the real demo workspace.
 
 ---
 
@@ -177,6 +181,7 @@ roster, the Object Gallery, the Tasks lens and all six export formats are still 
 | `core/legacy.test.ts` | The round trip against the **real** 810-row demo workspace, dumped out of the running legacy app. A hand-written fixture would only prove the converter agrees with itself. |
 | `core/fractional.test.ts` | You can always insert again — 500 successive bisections at one point. |
 | `crdt/convergence.test.ts` | A two-client harness with the wire under the test's control, so "concurrent" means both sides really did apply before either saw the other. |
+| `crdt/roster.test.ts` | The nested roster survives a flatten/nest round trip byte for byte against the real 694-unit demo, and two people editing one directorate no longer clobber each other. |
 | `db/doc-store.test.ts` | Real Postgres in process (PGlite/WASM) — the actual migration, the actual SQL. Exercises bytea round-tripping, composite-key upserts and tenant isolation. |
 | `auth/verify.test.ts` | Mints real tokens with real keys, then attacks them: `alg:none`, HMAC confusion, wrong key, wrong audience, replayed nonce, tampered payload. |
 

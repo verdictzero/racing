@@ -200,3 +200,89 @@ export function orgScopes(ws: Workspace): Array<{ ref: OrgRef; label: OrgLabel; 
   }
   return out;
 }
+
+// ---- unit statistics -----------------------------------------------------------------------------
+
+export interface UnitCounts {
+  readonly divisions: number;
+  readonly branches: number;
+  readonly teams: number;
+  /** Everyone below, leads included — a chief IS a person even though they sit on the unit. */
+  readonly people: number;
+}
+
+const EMPTY_COUNTS: UnitCounts = { divisions: 0, branches: 0, teams: 0, people: 0 };
+
+function countTeam(team: Team): UnitCounts {
+  return { divisions: 0, branches: 0, teams: 0, people: (team.chief ? 1 : 0) + team.people.length };
+}
+
+function countBranch(branch: Branch): UnitCounts {
+  let people = branch.chief ? 1 : 0;
+  for (const team of branch.teams) people += countTeam(team).people;
+  return { divisions: 0, branches: 0, teams: branch.teams.length, people };
+}
+
+function countDivision(division: Division): UnitCounts {
+  let teams = 0;
+  let people = division.chief ? 1 : 0;
+  for (const branch of division.branches) {
+    const counts = countBranch(branch);
+    teams += counts.teams;
+    people += counts.people;
+  }
+  return { divisions: 0, branches: division.branches.length, teams, people };
+}
+
+/**
+ * What sits under one unit, at every tier below it.
+ *
+ * The line under a unit's name on the roster — "3 branches · 11 teams · 74 people". It reads as a
+ * measure of how much of the org that box stands for, which is the one thing a person scanning a
+ * grid of boxes actually wants to know.
+ */
+export function unitCounts(ws: Workspace, ref: OrgRef | null | undefined): UnitCounts {
+  if (!ref || isEntityRef(ref) || !ACTORS.includes(ref.actor)) return EMPTY_COUNTS;
+
+  if (ref.divisionId && ref.branchId && ref.teamId) {
+    const team = findTeam(ws, ref.actor, ref.divisionId, ref.branchId, ref.teamId);
+    return team ? countTeam(team) : EMPTY_COUNTS;
+  }
+  if (ref.divisionId && ref.branchId) {
+    const branch = findBranch(ws, ref.actor, ref.divisionId, ref.branchId);
+    return branch ? countBranch(branch) : EMPTY_COUNTS;
+  }
+  if (ref.divisionId) {
+    const division = findDivision(ws, ref.actor, ref.divisionId);
+    return division ? countDivision(division) : EMPTY_COUNTS;
+  }
+
+  const directorate = ws.roster[ref.actor];
+  if (!directorate) return EMPTY_COUNTS;
+  let branches = 0;
+  let teams = 0;
+  let people = directorate.lead ? 1 : 0;
+  for (const division of directorate.divisions) {
+    const counts = countDivision(division);
+    branches += counts.branches;
+    teams += counts.teams;
+    people += counts.people;
+  }
+  return { divisions: directorate.divisions.length, branches, teams, people };
+}
+
+/** The counts as the line the roster prints, with only the tiers that apply. */
+export function unitStat(ws: Workspace, ref: OrgRef | null | undefined): string {
+  const counts = unitCounts(ws, ref);
+  const tier = orgTier(ref);
+  const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+  const parts: string[] = [];
+  if (tier === 'directorate') parts.push(plural(counts.divisions, 'division'));
+  if (tier === 'directorate' || tier === 'division') {
+    parts.push(plural(counts.branches, 'branch', 'branches'));
+  }
+  if (tier !== 'team') parts.push(plural(counts.teams, 'team'));
+  parts.push(plural(counts.people, 'person', 'people'));
+  return parts.join(' · ');
+}

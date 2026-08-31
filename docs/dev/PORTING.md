@@ -46,16 +46,33 @@ per tier, drill path, auto-arrange, zoom, per-pane positioning.
 - Watch for: `effectiveRaci` already returns a `source` per cell (`explicit` | `inherited`) —
   render the inherited ones dashed as the legacy app does, do not recompute it in the component.
 
-### 2 · The roster — `renderRoster` (index.html:11127) — **parallel**
+### 2 · ~~The roster~~ — `renderRoster` (index.html:11127)
 
-Directorate → division → branch → team → people, in both Explore (boxes) and Full modes.
+**Done (Explore mode).** `apps/web/app/pages/w/[id]/roster.vue`.
 
-- Already in core: the `Roster` schema.
-- Already in directory: the sync that populates it.
-- To write: the tree UI, the leadership cards, and the *edit* mutations — the roster is currently
-  written only by the sync, so `setDirectorate` is the sole mutation and finer ones are needed.
+The legacy app also has a **Full hierarchy** mode that prints all six directorates expanded at
+once. That is a printing affordance more than a browsing one and has not come across; it is a small
+piece of work on top of what is here.
+
+**The roster is now flattened inside the CRDT** — `packages/crdt/src/roster.ts`. It used to be one
+plain JSON value per directorate, on the reasoning that only the sync wrote it. This screen made
+that false, and the old shape was the worst available: any two edits anywhere under one directorate
+clobbered each other. It is now one record per unit with a parent pointer and an order key, the same
+model as `nodes`. `flattenRoster` / `nestRoster` convert at the boundary, so `Workspace`,
+`legacy.ts`, the exporters and every selector still see the nested tree — none of them changed.
+
+- Mutations: `addRosterUnit`, `setRosterUnitField`, `setRosterLead`, `moveRosterUnit`,
+  `deleteRosterUnit`, `rosterChildren`; `setDirectorate` / `setRoster` for the sync.
+- Selectors: `unitCounts`, `unitStat` in `org.ts`.
+- `readWorkspace` still reads the old shape when a document has only that, so a workspace persisted
+  by an earlier build opens with its roster intact. The first write migrates it.
 - Watch for: a hand-created unit has `externalId: null`, and the sync deliberately preserves it. Do
-  not "fix" that by assigning one.
+  not "fix" that by assigning one — it is how "ours, not the directory's" is recorded, and minting
+  one would make the next sync delete the unit.
+
+**Still open:** `users.rosterPersonId`. Matching an account to a roster person — the thing that lets
+the Tasks screen default to *your* unit — needs a person's `externalId` compared against the OIDC
+subject at sign-in. Everything it needs now exists; nothing does it yet.
 
 ### 3 · The flow canvas — `renderBizcase` (index.html:11948) — **parallel**
 
@@ -182,6 +199,7 @@ packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEnt
 packages/core/src/org.ts         orgLabel, scopeRelation, inheritedOrg, orgScopes, orgRefPath
 packages/core/src/work.ts        collectWork, summarizeWork — "what does my unit own"
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
+packages/crdt/src/roster.ts      flattenRoster, nestRoster — the roster's flat storage
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists
 ```

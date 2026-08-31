@@ -35,9 +35,11 @@
  *   - `documents`, `inputs`, `outputs`, `artifactIds`, `via`, `ports` are plain arrays. They are
  *     short, they are edited as a unit ("attach this deliverable"), and last-writer-wins on a
  *     five-element list is a cost worth paying to avoid a Y.Array per field on every row.
- *   - `roster` is one plain JSON value. It is written by the directory sync as a whole tree, not
- *     hand-edited row by row, so per-field merging would buy nothing. Hand edits to it go through
- *     the same replace-the-subtree path.
+ *   - `roster` USED TO BE one plain JSON value per directorate, on the reasoning that only the
+ *     directory sync wrote it. The Roster screen made that false, and the shape was the worst one
+ *     available: any two edits anywhere under one directorate clobbered each other. It is now
+ *     flattened into `rosterUnits`, one record per unit with a parent pointer and an order key —
+ *     the same model as `nodes`, for the same reason. See roster.ts.
  *
  * TEXT FIELDS ARE PLAIN STRINGS, NOT Y.TEXT. Y.Text would give character-level merging inside a
  * description, which sounds better than it is: it costs a Y.Text object per field on every record
@@ -56,9 +58,10 @@ import {
   FlowEdge,
   FlowGroup,
   FlowStep,
+  Roster,
   Workspace,
-  type Roster,
 } from '@raci/core';
+import { flattenRoster, nestRoster, type RosterUnitRecord } from './roster.js';
 
 export const TOP = {
   meta: 'meta',
@@ -72,6 +75,7 @@ export const TOP = {
   artifacts: 'artifacts',
   entities: 'entities',
   roster: 'roster',
+  rosterUnits: 'rosterUnits',
 } as const;
 
 /** Fields kept as a nested Y.Map so two people can write different keys concurrently. */
@@ -88,7 +92,9 @@ export interface DocMaps {
   readonly groups: Y.Map<Y.Map<unknown>>;
   readonly artifacts: Y.Map<Y.Map<unknown>>;
   readonly entities: Y.Map<Y.Map<unknown>>;
+  /** Legacy: one plain value per directorate. Read-only now, for documents written before the flattening. */
   readonly roster: Y.Map<unknown>;
+  readonly rosterUnits: Y.Map<Y.Map<unknown>>;
 }
 
 export function maps(doc: Y.Doc): DocMaps {
@@ -104,6 +110,7 @@ export function maps(doc: Y.Doc): DocMaps {
     artifacts: doc.getMap(TOP.artifacts),
     entities: doc.getMap(TOP.entities),
     roster: doc.getMap(TOP.roster),
+    rosterUnits: doc.getMap(TOP.rosterUnits),
   };
 }
 
@@ -197,7 +204,9 @@ export function loadWorkspace(doc: Y.Doc, ws: Workspace): void {
 
     for (const [id, a] of Object.entries(ws.artifacts)) m.artifacts.set(id, toYMap(a));
     for (const [id, e] of Object.entries(ws.entities)) m.entities.set(id, toYMap(e));
-    for (const [actor, d] of Object.entries(ws.roster)) m.roster.set(actor, d);
+    for (const [id, unit] of Object.entries(flattenRoster(ws.roster))) {
+      m.rosterUnits.set(id, toYMap({ ...unit }));
+    }
   }, 'load');
 }
 
@@ -267,8 +276,7 @@ export function readWorkspace(doc: Y.Doc): Workspace {
     entities[id] = Entity.parse({ ...fromYMap(raw), id });
   }
 
-  const roster: Record<string, unknown> = {};
-  for (const [actor, d] of m.roster.entries()) roster[actor] = d;
+  const roster = readRoster(m);
 
   return Workspace.parse({
     schemaVersion: m.meta.get('schemaVersion') ?? 1,
@@ -277,12 +285,36 @@ export function readWorkspace(doc: Y.Doc): Workspace {
     flows,
     artifacts,
     entities,
-    roster: roster as Roster,
+    roster,
     actorLabels: m.meta.get('actorLabels') ?? {},
     columnLabels: m.meta.get('columnLabels') ?? {},
     columnShort: m.meta.get('columnShort') ?? {},
     columnActor: m.meta.get('columnActor') ?? {},
   });
+}
+
+/**
+ * The roster, out of whichever shape the document happens to hold it in.
+ *
+ * `rosterUnits` is the current storage. The fallback reads the old one-value-per-directorate map,
+ * so a document persisted by a build from before the flattening still opens with its roster intact
+ * instead of silently coming back empty. Any write migrates it forward, because the writes only
+ * touch `rosterUnits` — the first roster edit or directory sync converts the document for good.
+ */
+function readRoster(m: DocMaps): Roster {
+  if (m.rosterUnits.size > 0) {
+    const units: Record<string, RosterUnitRecord> = {};
+    for (const [id, raw] of m.rosterUnits.entries()) {
+      units[id] = { ...(fromYMap(raw) as unknown as RosterUnitRecord), id };
+    }
+    return nestRoster(units);
+  }
+  if (m.roster.size > 0) {
+    const legacy: Record<string, unknown> = {};
+    for (const [actor, directorate] of m.roster.entries()) legacy[actor] = directorate;
+    return Roster.parse(legacy);
+  }
+  return {};
 }
 
 /** Just one chart, for the common case where a screen only needs the chart it is showing. */
