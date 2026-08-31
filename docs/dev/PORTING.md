@@ -138,16 +138,22 @@ never mis-reports.
 |---|---|---|
 | ~~XML~~ | — | **Done.** `packages/core/src/export/xml.ts`, 25 tests. |
 | ~~Mermaid~~ | — | **Done.** `packages/core/src/export/mermaid.ts`, chart and flow. |
-| Excel | `exportXLSX` :15693 | Needs a server-side writer; the legacy one builds the file by hand in the browser. |
-| Excel template | `exportTemplate` :15837 | Pairs with the importer. |
+| ~~Excel~~ | — | **Done.** `packages/core/src/export/xlsx.ts` + `zip.ts`, 34 tests. |
+| ~~Excel template~~ | — | **Done.** Same file — `exportTemplate`, shares the writer. |
 | PowerPoint | `exportPPTX` :16297 | Largest. |
 | Print / PDF | `beforeprint` handler | CSS-only in the legacy app; may stay client-side. |
 
 All of these are pure functions of the workspace, so **they belong in `packages/core`**, not in the
 app. That also means they can be tested without a browser — which the legacy ones cannot.
 
-The two that are done set the pattern: take a `Workspace`, return a string, inject anything
-non-deterministic (`now`). `packages/core/src/export/order.ts` already gives you flow steps in
+The ones that are done set the pattern: take a `Workspace`, return a string or bytes, inject
+anything non-deterministic (`now`). **Nothing may read the clock on its own** — the XLSX writer
+stamps every ZIP entry 1980-01-01 for exactly this reason, so two exports of an unchanged workspace
+are byte-identical and can be asserted on.
+
+`export/zip.ts` is a store-only ZIP writer with no dependency, shared by any format that is a ZIP of
+XML parts — which is both remaining Office formats. **PowerPoint should use it**; it does not need a
+library either. `packages/core/src/export/order.ts` already gives you flow steps in
 dependency order, and `stepIo()` derives a step's inputs and outputs from its handoffs. Reuse both
 rather than writing them again. The download route (`apps/web/server/api/workspaces/[id]/export.get.ts`)
 is where a new format gets hooked up — one case in a switch.
@@ -199,6 +205,8 @@ packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEnt
 packages/core/src/org.ts         orgLabel, scopeRelation, inheritedOrg, orgScopes, orgRefPath
 packages/core/src/work.ts        collectWork, summarizeWork — "what does my unit own"
 packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
+packages/core/src/export/       exportXml, exportChartMermaid, exportFlowMermaid, exportXlsx,
+                                 exportTemplate, writeWorkbook, zipBytes, topologicalOrder, stepIo
 packages/crdt/src/roster.ts      flattenRoster, nestRoster — the roster's flat storage
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists

@@ -182,7 +182,23 @@ export function artifactTypeMeta(type: string | null | undefined): KindMeta {
 export const STATUSES = ['draft', 'final'] as const;
 export type Status = (typeof STATUSES)[number];
 
-export const META_PRIORITIES = ['', 'low', 'medium', 'high', 'critical'] as const;
+/**
+ * Priorities, in the legacy app's vocabulary — note `normal`, not `medium`.
+ *
+ * These are wire values, not display strings: `index.html` writes them into the JSON both apps
+ * read, so this list is not ours to improve. It said `medium` until an import of any workspace
+ * where someone had set a priority threw on the enum.
+ */
+export const META_PRIORITIES = ['', 'low', 'normal', 'high', 'critical'] as const;
+export type MetaPriority = (typeof META_PRIORITIES)[number];
+
+export const META_PRIORITY_LABELS: Readonly<Record<MetaPriority, string>> = {
+  '': '',
+  low: 'Low',
+  normal: 'Normal',
+  high: 'High',
+  critical: 'Critical',
+};
 
 // ---- Flow modes ------------------------------------------------------------------------------------
 /** `linked` — every step names the chart row it implements. `free` — RACI authored on the step. */

@@ -235,3 +235,35 @@ describe('walkInOrder', () => {
     }
   });
 });
+
+describe('metadata that the legacy app actually writes', () => {
+  it('accepts the priority vocabulary index.html uses', () => {
+    // These are wire values, not ours to improve. Core said "medium" where the legacy app writes
+    // "normal", so importing any workspace where someone had set a priority threw on the enum —
+    // and the demo has none set, so nothing caught it.
+    for (const priority of ['', 'low', 'normal', 'high', 'critical']) {
+      const raw = structuredClone(demo) as Record<string, unknown>;
+      const charts = raw.charts as Array<Record<string, unknown>>;
+      charts[0]!.meta = { ...(charts[0]!.meta as object), priority };
+      const { workspace } = importLegacy(raw);
+      expect(Object.values(workspace.charts)[0]!.meta.priority).toBe(priority);
+    }
+  });
+
+  it('drops an unknown priority rather than failing the whole import', () => {
+    const raw = structuredClone(demo) as Record<string, unknown>;
+    const charts = raw.charts as Array<Record<string, unknown>>;
+    charts[0]!.meta = { ...(charts[0]!.meta as object), priority: 'urgent-ish' };
+    expect(() => importLegacy(raw)).not.toThrow();
+    expect(Object.values(importLegacy(raw).workspace.charts)[0]!.meta.priority).toBe('');
+  });
+
+  it('carries a priority back out unchanged', () => {
+    const raw = structuredClone(demo) as Record<string, unknown>;
+    const charts = raw.charts as Array<Record<string, unknown>>;
+    charts[0]!.meta = { ...(charts[0]!.meta as object), priority: 'critical' };
+    const { workspace } = importLegacy(raw);
+    const out = exportLegacy(workspace) as { charts: Array<{ meta: { priority: string } }> };
+    expect(out.charts[0]!.meta.priority).toBe('critical');
+  });
+});

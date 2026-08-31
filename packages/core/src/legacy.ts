@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { ACTORS, COLS, TIER_LABELS } from './constants.js';
+import { ACTORS, COLS, META_PRIORITIES, TIER_LABELS } from './constants.js';
 import { keysBetween } from './fractional.js';
 import { keepOrMint, newId } from './ids.js';
 import {
@@ -80,10 +80,14 @@ const rec = (v: unknown): Record<string, unknown> =>
 
 function parseMeta(v: unknown): Meta {
   const m = rec(v);
+  // An unrecognized priority becomes none rather than throwing. An import must never die on one
+  // unknown value in one optional field — the file may have been written by a newer build, and
+  // losing a label is a far smaller loss than losing the workspace.
+  const priority = str(m.priority);
   return Meta.parse({
     description: str(m.description),
     customer: str(m.customer).trim(),
-    priority: str(m.priority),
+    priority: (META_PRIORITIES as readonly string[]).includes(priority) ? priority : '',
     budget: str(m.budget).trim(),
     tags: arr(m.tags).filter((t): t is string => typeof t === 'string' && t.length > 0),
   });
