@@ -1,0 +1,32 @@
+{
+  "name": "@raci/web",
+  "version": "0.39.0",
+  "private": true,
+  "type": "module",
+  "description": "The Nuxt application — being built up to parity with index.html.",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@raci/auth": "workspace:*",
+    "@raci/core": "workspace:*",
+    "@raci/crdt": "workspace:*",
+    "@raci/db": "workspace:*",
+    "@raci/directory": "workspace:*",
+    "nuxt": "^4.0.0",
+    "vue": "^3.5.13",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.20",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "vue-tsc": "^2.2.0"
+  }
+}

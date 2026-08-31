@@ -14,3 +14,7 @@ coverage/
 .DS_Store
 *.log
 vendor/npm/
+
+# Nuxt build output
+apps/web/.output/
+apps/web/.nuxt/
