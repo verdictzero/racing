@@ -5,9 +5,9 @@
   "type": "module",
   "description": "The Nuxt application — being built up to parity with index.html.",
   "scripts": {
-    "dev": "pnpm --filter \"./packages/**\" build && nuxt dev",
-    "build": "pnpm --filter \"./packages/**\" build && nuxt build",
-    "preview": "nuxt preview",
+    "dev": "pnpm --filter \"@raci/web^...\" build && nuxt dev --dotenv ../../.env",
+    "build": "pnpm --filter \"@raci/web^...\" build && nuxt build --dotenv ../../.env",
+    "preview": "nuxt preview --dotenv ../../.env",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
     "test": "vitest run"

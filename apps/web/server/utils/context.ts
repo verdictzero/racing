@@ -43,8 +43,8 @@ export function useOidcConfig(): OidcConfig {
     AUTH_OIDC_REDIRECT_URI: config.authOidcRedirectUri || process.env.AUTH_OIDC_REDIRECT_URI,
     AUTH_OIDC_SCOPES: config.authOidcScopes,
     AUTH_OIDC_POST_LOGOUT_REDIRECT_URI: config.authOidcPostLogoutRedirectUri || undefined,
-    AUTH_ROLES_CLAIM: config.authRolesClaim,
-    AUTH_SUBJECT_CLAIM: config.authSubjectClaim,
+    AUTH_ROLES_CLAIM: process.env.AUTH_ROLES_CLAIM || config.authRolesClaim,
+    AUTH_SUBJECT_CLAIM: process.env.AUTH_SUBJECT_CLAIM || config.authSubjectClaim,
   });
   return _oidcConfig;
 }
@@ -60,10 +60,18 @@ export async function useDirectory(): Promise<DirectorySource | null> {
   return _directory;
 }
 
-/** Maps IdP group names onto the three application roles. */
+/**
+ * Maps IdP group names onto the three application roles.
+ *
+ * Read from the plain `AUTH_ROLE_MAP` as well as Nuxt's `NUXT_AUTH_ROLE_MAP`, because every other
+ * setting in `.env.example` uses the unprefixed name. Reading only the runtime config made the
+ * documented variable a no-op, and the failure is silent in the worst way: logins keep succeeding
+ * and every user is quietly demoted to viewer.
+ */
 export function useRoleMap(): Record<string, Role> {
   try {
-    return JSON.parse(useRuntimeConfig().authRoleMap || '{}') as Record<string, Role>;
+    const raw = process.env.AUTH_ROLE_MAP || useRuntimeConfig().authRoleMap || '{}';
+    return JSON.parse(raw) as Record<string, Role>;
   } catch {
     // A malformed map must not take the whole app down at login; everyone falls back to viewer,
     // which is the safe direction to fail in.
@@ -84,14 +92,13 @@ export interface SessionContext {
 }
 
 /**
- * Resolve the caller, or null when there is no valid session.
+ * Resolve a session from the raw cookie token.
  *
  * Read fresh from the database on every request rather than trusted from the cookie, which is what
  * makes revocation immediate: an administrator ending a session takes effect on the very next
  * request, not whenever a token happens to expire.
  */
-export async function getAppSession(event: H3Event): Promise<SessionContext | null> {
-  const token = getCookie(event, SESSION_COOKIE);
+async function sessionFromToken(token: string | null | undefined): Promise<SessionContext | null> {
   if (!token) return null;
 
   const { hashToken } = await import('@raci/auth');
@@ -106,6 +113,43 @@ export async function getAppSession(event: H3Event): Promise<SessionContext | nu
     role: (row.role ?? 'viewer') as Role,
     sessionId: row.session.id,
   };
+}
+
+/** The caller behind an ordinary HTTP request, or null when there is no valid session. */
+export async function getAppSession(event: H3Event): Promise<SessionContext | null> {
+  return sessionFromToken(getCookie(event, SESSION_COOKIE));
+}
+
+/**
+ * The caller behind a WebSocket upgrade, or null when there is no valid session.
+ *
+ * Separate from `getAppSession` because a crossws upgrade request is not an H3Event: it is a
+ * `Request`-shaped object whose headers are a `Headers` instance, and h3's `getCookie` reaches for
+ * `event.node.req.headers`, which is not there. Passing one to `getAppSession` throws, and with the
+ * throw swallowed every authenticated socket was rejected as anonymous — the document never
+ * loaded, and the app looked like an empty workspace rather than a broken auth check.
+ */
+export async function getSocketSession(
+  request: { headers?: Headers } | undefined,
+): Promise<SessionContext | null> {
+  const header = request?.headers?.get?.('cookie');
+  return sessionFromToken(readCookie(header, SESSION_COOKIE));
+}
+
+/** Minimal cookie-header read. Hand-rolled to keep this off h3's event-shaped helpers. */
+function readCookie(header: string | null | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() !== name) continue;
+    try {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    } catch {
+      return part.slice(eq + 1).trim();
+    }
+  }
+  return null;
 }
 
 /** The session, or a 401. Use in any handler that must not run for an anonymous caller. */

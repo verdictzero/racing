@@ -163,11 +163,11 @@ table without disturbing this one.
 `document_blob` can hold bytes inline or name a `storage_key`. Only the inline path is implemented.
 Fine for a self-contained deployment, wrong for one with a lot of large attachments.
 
-### The Nuxt app has four screens, not the whole product
+### The Nuxt app has five screens, not the whole product
 
-Auth, collaboration, a flat chart table, the Roster, the Tasks lens and the Object Gallery. Still
-only in `index.html`: the cascade layout and drilling, the flow canvas, four of the six export
-formats, the Excel importer, the themes and the field guides. See [PORTING.md](PORTING.md).
+Auth, collaboration, the chart cascade, the flow canvas, the Roster, the Tasks lens and the Object
+Gallery. Still only in `index.html`: PowerPoint and Print/PDF export, the themes, the field guides,
+and the deferred parts of the chart and flow screens listed in [PORTING.md](PORTING.md).
 
 `index.html` stays the shipping product until that list is empty, and both apps read and write the
 same v0.39 JSON — enforced by `core/legacy.test.ts` against the real demo workspace.
@@ -184,5 +184,23 @@ same v0.39 JSON — enforced by `core/legacy.test.ts` against the real demo work
 | `crdt/roster.test.ts` | The nested roster survives a flatten/nest round trip byte for byte against the real 694-unit demo, and two people editing one directorate no longer clobber each other. |
 | `db/doc-store.test.ts` | Real Postgres in process (PGlite/WASM) — the actual migration, the actual SQL. Exercises bytea round-tripping, composite-key upserts and tenant isolation. |
 | `auth/verify.test.ts` | Mints real tokens with real keys, then attacks them: `alg:none`, HMAC confusion, wrong key, wrong audience, replayed nonce, tampered payload. |
+| `web/collab.test.ts` | The socket answers a sync step 1 that arrives *while `open` is still loading the room*. Drives the real handler with a deliberately slow room load, because that race is won by the client every time on a cold room. |
 
 The negative tests are the point. A verifier that accepts a valid token is easy.
+
+### What unit tests could not catch
+
+Every test above passed while the application was unusable end to end. A first run of the real stack
+— Postgres and Keycloak in Docker, a real browser, the 810-row demo imported through the actual file
+picker — found five defects, four of them silent:
+
+| Defect | Why no test saw it |
+|---|---|
+| `nuxt dev` skipped building the workspace packages (`--filter './packages/**'` is resolved relative to the CWD, and the script runs from `apps/web`) | It exits 0. A stale `dist/` hides it entirely. |
+| Nuxt read `.env` from `apps/web`, never the repository root the README tells you to write | Every request 500s with "DATABASE_URL is not set", which reads as a missing file rather than a wrong path. |
+| `AUTH_ROLE_MAP` was undocumented, and `useRoleMap()` read only `NUXT_AUTH_ROLE_MAP` | Logins keep succeeding. Everyone is silently demoted to viewer, so the app looks read-only rather than misconfigured. |
+| The websocket's session lookup was handed a crossws upgrade request, which is not an `H3Event` | The `as never` cast silenced the type error, and the thrown `TypeError` was swallowed by a bare `.catch(() => null)` — indistinguishable from an anonymous visitor. |
+| `message` did not wait for an in-flight async `open`, so the client's sync step 1 was dropped | The socket reports "live". The document simply stays empty, forever, and no client re-sends step 1. |
+
+The shape is consistent: each one fails into a state that looks like ordinary emptiness. That is the
+argument for running the whole stack, not only the units.

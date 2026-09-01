@@ -171,60 +171,91 @@ async function persist(room: Room, update: Uint8Array, userId: string | null): P
   }
 }
 
+/**
+ * Peers whose `open` hook has not finished yet.
+ *
+ * crossws delivers `message` as soon as the frame arrives; it does not wait for an in-flight async
+ * `open`. The sync protocol loses that race every time on a cold room: the client sends sync step 1
+ * — the one message that ASKS for the document — within a few milliseconds of the socket opening,
+ * while `open` is still awaiting the session lookup, the workspace lookup and the room load. With
+ * nothing on the peer's context yet, the handler found no room and dropped the message, and no
+ * client ever re-sends step 1. The socket sat there reporting "live" against a document that stayed
+ * empty forever.
+ *
+ * So a message waits on its own peer's open promise. Authorization still runs first, and a queued
+ * message from a peer that failed it finds no room and is discarded exactly as before.
+ */
+const opening = new WeakMap<Peer, Promise<void>>();
+
+async function openPeer(peer: Peer): Promise<void> {
+  const url = new URL(peer.request?.url ?? '', 'http://localhost');
+  const workspaceId = url.searchParams.get('workspace');
+  if (!workspaceId) {
+    peer.close(1008, 'workspace query parameter is required');
+    return;
+  }
+
+  // The websocket carries the same session cookie as every other request, so authorization is
+  // the one check it already was. A socket that skipped this would be an unauthenticated write
+  // path straight into the document.
+  const session = await getSocketSession(peer.request).catch((err: unknown) => {
+    // Never silently: a session lookup that throws is a server fault, and swallowing it here is
+    // indistinguishable from an anonymous visitor.
+    console.error('[collab] session lookup failed', err);
+    return null;
+  });
+  if (!session) {
+    peer.close(1008, 'not signed in');
+    return;
+  }
+  const workspace = await getWorkspace(useDb(), session.organizationId, workspaceId);
+  if (!workspace) {
+    peer.close(1008, 'no such workspace');
+    return;
+  }
+
+  const room = await getRoom(workspaceId);
+  room.peers.add(peer);
+  // `context` is crossws's per-connection bag. It is a getter with no setter, so it is mutated
+  // rather than replaced — assigning to `peer.ctx` happens to work but is off-API.
+  Object.assign(peer.context, { workspaceId, userId: session.userId, role: session.role });
+
+  // Sync step 1: tell the client what the server has, so it can ask for the difference.
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, MESSAGE_SYNC);
+  syncProtocol.writeSyncStep1(encoder, room.doc);
+  peer.send(encoding.toUint8Array(encoder));
+
+  // And the current presence state, so a joiner sees who else is here immediately.
+  const states = room.awareness.getStates();
+  if (states.size > 0) {
+    const awarenessEncoder = encoding.createEncoder();
+    encoding.writeVarUint(awarenessEncoder, MESSAGE_AWARENESS);
+    encoding.writeVarUint8Array(
+      awarenessEncoder,
+      awarenessProtocol.encodeAwarenessUpdate(room.awareness, [...states.keys()]),
+    );
+    peer.send(encoding.toUint8Array(awarenessEncoder));
+  }
+}
+
 export default defineWebSocketHandler({
-  async open(peer) {
-    const url = new URL(peer.request?.url ?? '', 'http://localhost');
-    const workspaceId = url.searchParams.get('workspace');
-    if (!workspaceId) {
-      peer.close(1008, 'workspace query parameter is required');
-      return;
-    }
-
-    // The websocket carries the same session cookie as every other request, so authorization is
-    // the one check it already was. A socket that skipped this would be an unauthenticated write
-    // path straight into the document.
-    const session = await getAppSession(peer.request as never).catch(() => null);
-    if (!session) {
-      peer.close(1008, 'not signed in');
-      return;
-    }
-    const workspace = await getWorkspace(useDb(), session.organizationId, workspaceId);
-    if (!workspace) {
-      peer.close(1008, 'no such workspace');
-      return;
-    }
-
-    const room = await getRoom(workspaceId);
-    room.peers.add(peer);
-    // `context` is crossws's per-connection bag. It is a getter with no setter, so it is mutated
-    // rather than replaced — assigning to `peer.ctx` happens to work but is off-API.
-    Object.assign(peer.context, { workspaceId, userId: session.userId, role: session.role });
-
-    // Sync step 1: tell the client what the server has, so it can ask for the difference.
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.writeSyncStep1(encoder, room.doc);
-    peer.send(encoding.toUint8Array(encoder));
-
-    // And the current presence state, so a joiner sees who else is here immediately.
-    const states = room.awareness.getStates();
-    if (states.size > 0) {
-      const awarenessEncoder = encoding.createEncoder();
-      encoding.writeVarUint(awarenessEncoder, MESSAGE_AWARENESS);
-      encoding.writeVarUint8Array(
-        awarenessEncoder,
-        awarenessProtocol.encodeAwarenessUpdate(room.awareness, [...states.keys()]),
-      );
-      peer.send(encoding.toUint8Array(awarenessEncoder));
-    }
+  open(peer) {
+    // Registered synchronously — `openPeer` cannot yield before this line runs — so a message that
+    // arrives immediately after the upgrade always finds a promise to wait on.
+    const ready = openPeer(peer);
+    opening.set(peer, ready);
+    return ready;
   },
 
   async message(peer, message) {
+    // Copied before the await: the adapter is free to reuse the frame's buffer once this returns.
+    const data = new Uint8Array(message.uint8Array());
+    await opening.get(peer)?.catch(() => {});
+
     const ctx = peer.context as { workspaceId?: string; userId?: string; role?: string };
     const room = ctx?.workspaceId ? rooms.get(ctx.workspaceId) : undefined;
     if (!room) return;
-
-    const data = new Uint8Array(message.uint8Array());
     const decoder = decoding.createDecoder(data);
     const messageType = decoding.readVarUint(decoder);
 
@@ -256,6 +287,7 @@ export default defineWebSocketHandler({
   },
 
   close(peer) {
+    opening.delete(peer);
     const ctx = peer.context as { workspaceId?: string };
     const room = ctx?.workspaceId ? rooms.get(ctx.workspaceId) : undefined;
     if (!room) return;
