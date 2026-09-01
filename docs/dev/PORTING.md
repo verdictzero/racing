@@ -54,9 +54,10 @@ chart's `drillPath` as a side effect of drawing.
   the chart must tell apart — stated here, cascaded from above, and the Informed a blank cell means
   by convention — and each gets its own class so the difference is visible rather than implied.
 
-**Still to do here:** zoom, dragging a pane to reposition it, auto-arrange, the chart-tab strip, and
-the drill from a Task row into its anchored flow — that last one waits on slice 3. All chrome and
-camera; the cascade itself is done.
+**Still to do here:** zoom, dragging a pane to reposition it, auto-arrange, and the drill from a
+Task row into its anchored flow. All chrome and camera; the cascade itself is done. The chart-tab
+strip, the crumb capsules, the Definition and Documents columns, the draft/final strip and the
+colour-coded chips came across with the UI-parity work.
 
 **Note for whoever tests this:** all 810 rows of the demo state an owner of their own, so **nothing
 in the demo ever exercises the inherited-owner path.** It has to be constructed; `cascade.test.ts`
@@ -212,10 +213,44 @@ letters they would mine a `C` out of "DIRECTORATE C" and shift every real party 
 — silently, on every row. **Adding a context column to the exporter without adding its header to
 that list corrupts every re-import**, in both apps.
 
-### 8 · Themes — five palettes (index.html:141–500)
+### ~~8 · Themes — five palettes (index.html:141–500)~~
 
-Structural CSS plus five palettes, already cleanly separated in the legacy stylesheet. Mostly a
-copy-across into CSS custom properties. Keep the theme a device preference, out of the document.
+**Done.** The palettes are copied verbatim into `apps/web/app/assets/css/themes.css`, and the
+structural rules that consume them into `shell.css`, `chart.css` and `flow.css`, each block
+carrying the line range it came from. Same storage key as the legacy app, so a browser that has
+used `index.html` keeps the theme it was already set to; same `contrast` → `hc-dark` migration;
+applied by a script in the document head before first paint. It stays a device preference and is
+never written to the shared document.
+
+### 10 · The interface itself
+
+**Mostly done, and the reason this section exists at all.** Every slice above tracks a FEATURE. None
+of them tracked what the application looks like, so the port reached five working screens while
+still reading as a different product: one flat top bar where `index.html` has two rails, invented
+chip colours, missing columns, no themes. Rendering both apps side by side against the same demo
+data is the check that catches this, and it is worth doing at the end of every slice from here on.
+
+Ported: the five palettes, both rails, the chart tab strip, the crumb band, the draft/final strip,
+the ASIC watermark, the colour-coded RACI chips, the Definition and Documents columns, the flow
+toolbar with its affordance line, and the step card's description and entry/exit criteria — all of
+which the model already carried and none of which was drawn.
+
+**Still off the source:**
+
+| Gap | Where |
+|---|---|
+| Flow Gallery — thumbnails, filter, Open/Nest | flow screen, left panel |
+| Rename / Delete / Group / Table buttons | flow toolbar |
+| Step version badges, duplicate button, party rows | flow step card |
+| Minimap | flow canvas, bottom right |
+| Zoom control, pane dragging, auto-arrange | chart screen |
+| Details and Legend panels | right rail |
+| Ingest Kit | right rail |
+
+Deliberately NOT ported, rather than pending: Load, Merge, Demo and Clear. They are artefacts of a
+localStorage app — here the document is durable, shared and reached by URL, so "replace everything
+in this browser" has no meaning. Save keeps its meaning rather than its mechanism: it downloads the
+same v0.39 file.
 
 ### 9 · Field guides — `docs/*.html`
 

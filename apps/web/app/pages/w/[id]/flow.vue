@@ -1,24 +1,33 @@
 <template>
   <div class="flow-screen">
-    <div class="tools">
-      <select v-if="flows.length > 1" v-model="flowId" class="flow-pick" aria-label="Flow">
-        <option v-for="f in flows" :key="f.id" :value="f.id">{{ f.name }}</option>
+    <div class="bz-toolbar">
+      <select v-if="flows.length" id="bz-select" v-model="flowId" aria-label="Flow">
+        <option v-for="f in flows" :key="f.id" :value="f.id">
+          [{{ (f.status ?? 'draft') === 'final' ? 'FINAL' : 'DRAFT' }}] {{ f.name }}
+        </option>
       </select>
-      <span v-else-if="flow" class="flow-name">{{ flow.name }}</span>
 
-      <button :disabled="!canEdit || !flow" @click="addStepAtCentre">+ Step</button>
-      <button :disabled="!canEdit" @click="createFlow">+ Flow</button>
+      <button id="bz-new" :disabled="!canEdit" @click="createFlow">+ New Graph</button>
+      <button id="bz-add-task" :disabled="!canEdit || !flow" @click="addStepAtCentre">+ Add task</button>
 
-      <span v-if="health" class="health" :title="healthTitle">
-        {{ health.percent }}% <span class="dim">of {{ health.total }} checks</span>
-      </span>
-      <span v-if="issues.length" class="note warn" :title="issueTitle">
-        {{ issues.length }} advisory finding(s)
-      </span>
+      <span class="bz-sep" aria-hidden="true" />
 
-      <span class="spacer" />
       <button :disabled="!flow" title="Frame everything on the canvas" @click="fit">⤢ Fit</button>
       <span class="zoom">{{ Math.round(view.zoom * 100) }}%</span>
+
+      <!-- The count AND the affordances, as index.html states them: a canvas whose gestures are
+           undiscoverable is a canvas nobody uses past the first click. Only the gestures that
+           actually work here are listed. -->
+      <span class="bz-meta">{{ metaLine }}</span>
+    </div>
+
+    <div v-if="flow" class="art-status-strip is-draft">
+      <span class="ast-badge">DRAFT</span>
+      <span class="ast-txt">Working copy — still being written, and free to change.</span>
+      <span v-if="health" class="ast-txt" :title="healthTitle">
+        {{ health.percent }}% of {{ health.total }} checks
+        <span v-if="issues.length">· {{ issues.length }} advisory finding(s)</span>
+      </span>
     </div>
 
     <p v-if="!flow" class="note">
@@ -65,7 +74,7 @@
           v-for="step in steps"
           :key="step.id"
           :ref="(el) => registerCard(step.id, el as HTMLElement | null)"
-          class="node"
+          class="bz-node"
           :class="[`k-${step.kind}`, { dragging: dragging?.stepId === step.id }]"
           :style="{ left: `${step.x}px`, top: `${step.y}px` }"
           @pointerdown.stop="startDrag($event, step.id)"
@@ -73,16 +82,16 @@
           <span class="socket in" />
           <span class="socket out" />
 
-          <header class="node-head">
-            <span class="node-kind">{{ step.kind === 'subflow' ? '⧉ nested' : kindOf(step) }}</span>
-            <span v-if="severityOf(step.id)" class="pin" :class="severityOf(step.id)"
+          <header class="bz-node-head">
+            <span class="bz-node-kind">{{ step.kind === 'subflow' ? '⧉ NESTED' : kindOf(step).toUpperCase() }}</span>
+            <span v-if="severityOf(step.id)" class="violation-pin bz-pin" :class="severityOf(step.id)"
               :title="pinTitle(step.id)">!</span>
-            <button v-if="canEdit" class="del" title="Delete this step" @pointerdown.stop
+            <button v-if="canEdit" class="bz-node-del" title="Delete this step" @pointerdown.stop
               @click="removeStep(step.id)">×</button>
           </header>
 
           <input
-            class="node-name"
+            class="bz-node-name"
             :value="step.name"
             :disabled="!canEdit"
             placeholder="Step name"
@@ -90,26 +99,71 @@
             @change="renameStep(step.id, ($event.target as HTMLInputElement).value)"
           >
 
-          <p v-if="step.kind === 'subflow'" class="node-ref">
+          <!-- What the step is for. Carried by the model since the first import and drawn nowhere
+               until now, so a flow brought over from index.html was quietly losing it on screen. -->
+          <input
+            class="bz-node-desc"
+            :value="step.description"
+            :disabled="!canEdit"
+            placeholder="description — what this step is for"
+            @pointerdown.stop
+            @change="setField(step.id, 'description', ($event.target as HTMLInputElement).value)"
+          >
+
+          <p v-if="step.kind === 'subflow'" class="bz-node-ref">
             → {{ refName(step) }}
           </p>
 
-          <div v-else class="node-raci">
-            <span
-              v-for="col in columns"
-              :key="col"
-              class="rc"
-              :class="{ set: (step.raci[col] ?? '') !== '' }"
-              :title="`${columnLabel(col)}${step.raci[col] ? `: ${step.raci[col]}` : ' — no role'}`"
-              @pointerdown.stop
-              @click="canEdit && cycleRole(step.id, col)"
-            >
-              <span class="rc-col">{{ shortLabel(col) }}</span>
-              <span class="rc-letters">{{ step.raci[col] || '·' }}</span>
-            </span>
-          </div>
+          <template v-else>
+            <div class="bz-node-crit">
+              <div class="bz-crit-row">
+                <span class="bz-crit-lbl entry">ENTRY</span>
+                <input
+                  class="bz-crit-edit"
+                  :value="step.entry"
+                  :disabled="!canEdit"
+                  placeholder="entry criteria"
+                  @pointerdown.stop
+                  @change="setField(step.id, 'entry', ($event.target as HTMLInputElement).value)"
+                >
+              </div>
+              <div class="bz-crit-row">
+                <span class="bz-crit-lbl exit">EXIT</span>
+                <input
+                  class="bz-crit-edit"
+                  :value="step.exit"
+                  :disabled="!canEdit"
+                  placeholder="exit criteria"
+                  @pointerdown.stop
+                  @change="setField(step.id, 'exit', ($event.target as HTMLInputElement).value)"
+                >
+              </div>
+            </div>
 
-          <p v-if="stepIoText(step.id)" class="node-io">{{ stepIoText(step.id) }}</p>
+            <div class="bz-node-body">
+              <div
+                v-for="col in columns"
+                :key="col"
+                class="bz-cell"
+                :title="`${columnLabel(col)}${step.raci[col] ? `: ${step.raci[col]}` : ' — no role'}`"
+                @pointerdown.stop
+                @click="canEdit && cycleRole(step.id, col)"
+              >
+                <span class="bz-cell-col">{{ shortLabel(col) }}</span>
+                <span class="cell-chips" :class="{ empty: !step.raci[col] }">
+                  <template v-if="step.raci[col]">
+                    <span v-for="letter in step.raci[col].split('')" :key="letter"
+                      class="raci-chip" :class="letter">{{ letter }}</span>
+                  </template>
+                  <template v-else>·</template>
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <div v-if="stepIoText(step.id)" class="bz-node-io">
+            <span class="bz-io-line">{{ stepIoText(step.id) }}</span>
+          </div>
         </article>
       </div>
     </div>
@@ -163,7 +217,35 @@ const flow = computed(() =>
     : (flows.value[0] ?? null),
 );
 watch(flows, (list) => {
-  if (flowId.value && !session.workspace.value.flows[flowId.value]) flowId.value = list[0]?.id ?? null;
+  const stillThere = flowId.value && session.workspace.value.flows[flowId.value];
+  // Also covers the first load: `flow` falls back to the first flow, but the picker is bound to
+  // the id, so leaving it null renders a blank row above a canvas that is clearly showing one.
+  if (!stillThere) flowId.value = list[0]?.id ?? null;
+}, { immediate: true });
+
+const setField = (stepId: string, field: 'description' | 'entry' | 'exit', value: string) =>
+  setStepField(session.doc, stepId, field, value);
+
+/**
+ * The count and the gestures, the way index.html states them across the top of the canvas.
+ *
+ * Only the gestures that actually work here are listed. The legacy line also advertises socket
+ * dragging, handoff routing, shift-drag selection and a right-click menu; none of those are ported,
+ * and telling somebody to try a gesture that does nothing is worse than not mentioning it.
+ */
+const metaLine = computed(() => {
+  if (!flow.value) return '';
+  const all = Object.values(flow.value.steps);
+  const nested = all.filter((step) => step.kind === 'subflow').length;
+  const plain = all.length - nested;
+  const handoffs = Object.keys(flow.value.edges).length;
+  const parts = [
+    `${plain} step${plain === 1 ? '' : 's'}`,
+    `${handoffs} handoff${handoffs === 1 ? '' : 's'}`,
+  ];
+  if (nested) parts.push(`${nested} nested flow${nested === 1 ? '' : 's'}`);
+  parts.push('drag a card to move it', 'drag the canvas to pan', 'scroll to zoom');
+  return parts.join(' · ');
 });
 
 const steps = computed(() => (flow.value ? Object.values(flow.value.steps) : []));
@@ -444,14 +526,9 @@ function createFlow() {
 </script>
 
 <style scoped>
-.flow-screen { display: flex; flex-direction: column; height: calc(100vh - 190px); min-height: 420px; }
-.tools { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-.tools .spacer { flex: 1; }
-.flow-pick { font: inherit; font-size: 12px; background: var(--bg-2); color: inherit;
-  border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; }
-.flow-name { font-weight: 600; font-size: 13px; }
-.health { font-size: 12px; color: #51cf66; cursor: help; }
-.health .dim { color: var(--text-dim); }
+/* The shell's grid gives `main` a definite height, so the canvas can simply fill it. The old
+   calc(100vh - 190px) was counting chrome that has since changed shape. */
+.flow-screen { display: flex; flex-direction: column; height: 100%; min-height: 420px; }
 .zoom { font-size: 11px; color: var(--text-dim); min-width: 42px; text-align: right; }
 .note { color: var(--text-dim); font-size: 12px; }
 .note.warn { color: #ffd43b; cursor: help; }
@@ -473,36 +550,13 @@ function createFlow() {
   border-radius: 9px; padding: 1px 7px; white-space: nowrap; pointer-events: none; z-index: 1; }
 .wire-label.bare { color: #ffa94d; border-color: #7a4a12; font-style: italic; }
 
-.node { position: absolute; width: 220px; background: var(--bg-2);
-  border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px 9px;
-  box-shadow: 0 5px 16px rgba(0, 0, 0, .45); z-index: 2; cursor: grab;
-  display: flex; flex-direction: column; gap: 5px; }
-.node.dragging { border-color: var(--accent); box-shadow: 0 10px 28px rgba(0, 0, 0, .6); z-index: 5; }
-.node.k-subflow { border-style: dashed; }
 .socket { position: absolute; top: 50%; transform: translateY(-50%); width: 11px; height: 11px;
   border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); z-index: 3; }
 .socket.in { left: -7px; }
 .socket.out { right: -7px; }
 
-.node-head { display: flex; align-items: center; gap: 6px; }
-.node-kind { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); }
-.node-head .pin { margin-left: auto; color: #ffd43b; font-weight: 700; cursor: help; }
-.node-head .pin.err { color: #ff6b6b; }
-.node-head .del { background: none; border: 0; color: var(--text-dim); cursor: pointer;
-  font-size: 13px; padding: 0 3px; }
-.node-head .del:hover { color: #ff6b6b; }
-.node-name { font: inherit; font-size: 13px; font-weight: 600; width: 100%;
-  background: transparent; color: inherit; border: 0; border-bottom: 1px solid transparent;
-  padding: 1px 0; cursor: text; }
-.node-name:hover:not(:disabled) { border-bottom-color: var(--border); }
-.node-name:focus { outline: none; border-bottom-color: var(--accent); }
-.node-ref { margin: 0; font-size: 11px; color: var(--text-dim); font-style: italic; }
 
-.node-raci { display: flex; flex-wrap: wrap; gap: 3px; }
-.rc { display: flex; align-items: center; gap: 3px; font-size: 9px; cursor: pointer;
-  border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--text-dim); }
-.rc:hover { border-color: var(--accent); }
-.rc.set { color: var(--text); border-color: var(--accent); }
-.rc-letters { font-weight: 700; font-size: 10px; }
-.node-io { margin: 0; font-size: 10px; color: var(--text-dim); }
+/* The card, the toolbar and the meta line are the ported .bz-* rules (assets/css/flow.css).
+   Only the canvas plumbing below is ours — index.html measures its geometry out of the DOM, and
+   this one gets it from core. */
 </style>
