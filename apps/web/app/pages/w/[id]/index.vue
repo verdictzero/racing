@@ -14,15 +14,6 @@
     </p>
 
     <template v-else>
-      <!-- The breadcrumb. Each capsule brings that level back into focus; the last is where you are. -->
-      <nav class="crumbs" aria-label="Drill path">
-        <button :disabled="!drill.length" @click="drillTo(0)">{{ tierName(0) }}</button>
-        <template v-for="(crumb, i) in crumbs" :key="crumb.id">
-          <span class="sep">›</span>
-          <button :disabled="i === crumbs.length - 1" @click="drillTo(i + 1)">{{ crumb.name }}</button>
-        </template>
-      </nav>
-
       <!-- The stack. The focused pane is in front; the ones behind it are desaturated rather than
            transparent, so they cover each other cleanly instead of bleeding through. -->
       <div class="cascade">
@@ -249,8 +240,13 @@ const canEdit = inject<Ref<boolean>>('raci:canEdit', ref(false));
 /** Camera state. Per-person, never in the shared document — see the header. */
 const drill = ref<string[]>([]);
 
-// The first chart, until the chart-tab strip comes across.
-const chart = computed(() => Object.values(session.workspace.value.charts)[0] ?? null);
+// Which chart is open is the shell's business — it draws the tab strip — so this screen follows
+// rather than picking one of its own.
+const activeChartId = inject<Ref<string | null>>('raci:activeChartId', ref(null));
+const chart = computed(() => {
+  const charts = session.workspace.value.charts;
+  return (activeChartId.value ? charts[activeChartId.value] : null) ?? Object.values(charts)[0] ?? null;
+});
 const columns = computed(() => (chart.value ? chartColumns(chart.value) : []));
 const fw = computed(() => framework(chart.value?.framework));
 const frameworkRoles = computed(() => fw.value.roles);
@@ -352,6 +348,34 @@ const toggleDrill = (tier: number, nodeId: string) => {
   drill.value = drill.value[tier] === nodeId ? drill.value.slice(0, tier) : [...drill.value.slice(0, tier), nodeId];
 };
 const drillTo = (depth: number) => { drill.value = drill.value.slice(0, depth); };
+
+/**
+ * The crumb band is rendered by the shell, because it is a full-width strip above both rails — but
+ * only this screen knows the drill path, so it publishes one and takes the clicks back.
+ *
+ * The root capsule is always present: it is how you get back out of a drill, and a band that only
+ * appears once you are two levels deep is a band nobody finds.
+ */
+const band = useCrumbChannel();
+if (band) {
+  watchEffect(() => {
+    band.crumbs.value = [
+      { id: '\u0000root', tier: 0, tierName: tierName(0), name: chart.value?.title || 'All' },
+      ...crumbs.value.map((crumb, i) => ({
+        id: crumb.id,
+        tier: i + 1,
+        tierName: tierName(i + 1),
+        name: crumb.name || '(untitled)',
+      })),
+    ];
+  });
+  band.crumbNav.value = (index: number) => drillTo(index);
+  onBeforeUnmount(() => {
+    band.crumbs.value = [];
+    band.crumbNav.value = () => {};
+  });
+}
+
 
 // ---- editing ------------------------------------------------------------------------------------
 const editing = ref<{ nodeId: string; column: string; x: number; y: number } | null>(null);
@@ -471,15 +495,13 @@ function commitImport() {
 
 <style scoped>
 .tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.note { color: var(--dim); font-size: 12px; }
+.note { color: var(--text-dim); font-size: 12px; }
 .note.warn { color: #ffd43b; cursor: help; }
 .note.bad { color: #ff8787; }
 
-.crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.crumbs button { font-size: 12px; background: none; border: 0; padding: 2px 4px;
-  color: var(--accent); cursor: pointer; }
-.crumbs button:disabled { color: var(--text); cursor: default; font-weight: 600; }
-.crumbs .sep, .pane-head .sep { color: var(--dim); font-size: 10px; }
+/* The drill path now renders in the shell's full-width band (see useCrumbs.ts), styled by the
+   ported .crumb rules. Only the separator inside a pane header is still local. */
+.pane-head .sep { color: var(--text-dim); font-size: 10px; }
 
 /* The stack. Panes overlap so the ones behind peek out at the top edge, which is what makes the
    depth legible without a legend. */
@@ -492,18 +514,18 @@ function commitImport() {
   background: var(--bg); border-bottom: 1px solid var(--border); }
 .pane-parent { font-weight: 600; }
 .inbound { color: var(--accent); }
-.pane-count { margin-left: auto; color: var(--dim); font-size: 11px;
+.pane-count { margin-left: auto; color: var(--text-dim); font-size: 11px;
   border: 1px solid var(--border); border-radius: 9px; padding: 0 7px; }
 
 .chart { border-collapse: collapse; width: 100%; }
-.chart th { text-align: left; font-size: 10px; color: var(--dim); font-weight: 600;
+.chart th { text-align: left; font-size: 10px; color: var(--text-dim); font-weight: 600;
   text-transform: uppercase; letter-spacing: .04em; padding: 5px 8px;
   border-bottom: 1px solid var(--border); }
 .chart td { border-bottom: 1px solid var(--border); padding: 0 4px; }
 .chart tr:last-child td { border-bottom: 0; }
 .row.open { background: rgba(77, 171, 247, .07); }
 .row.err .c-name input { color: #ff8787; }
-.empty td { color: var(--dim); font-size: 12px; padding: 10px 12px; }
+.empty td { color: var(--text-dim); font-size: 12px; padding: 10px 12px; }
 
 .c-toggle { width: 30px; text-align: center; }
 .c-name { min-width: 280px; }
@@ -513,13 +535,13 @@ function commitImport() {
 .c-col { width: 58px; text-align: center; }
 .c-act { width: 54px; text-align: right; white-space: nowrap; }
 
-.caret { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 12px;
+.caret { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 12px;
   padding: 2px 4px; }
 .caret:hover { color: var(--accent); }
 .caret.open { color: var(--accent); }
 .caret.leaf { cursor: default; opacity: .4; }
 
-.org { font-size: 10px; color: var(--dim); border: 1px solid var(--border);
+.org { font-size: 10px; color: var(--text-dim); border: 1px solid var(--border);
   border-radius: 9px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
 
 .cell { text-align: center; cursor: pointer; padding: 3px 2px; }
@@ -533,13 +555,13 @@ function commitImport() {
 .chip.l-C { background: #4a3a6b; color: #d0bfff; }
 .chip.l-I { background: #2c313a; color: #adb5bd; }
 /* Inherited and defaulted cells read as ghosts: present, but not stated here. */
-.chip.inherited, .chip.default { background: transparent; color: var(--dim);
+.chip.inherited, .chip.default { background: transparent; color: var(--text-dim);
   border-style: dashed; border-color: var(--border); font-weight: 600; }
 .chip.default { opacity: .55; }
 
 .pin { color: #ffd43b; font-weight: 700; cursor: help; margin-right: 4px; }
 .pin.err { color: #ff6b6b; }
-.del { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 14px;
+.del { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 14px;
   padding: 2px 5px; }
 .del:hover { color: #ff6b6b; }
 .add { margin: 8px 12px 10px; border-style: dashed; font-size: 12px; }
@@ -548,7 +570,7 @@ function commitImport() {
 .raci-pop { position: fixed; z-index: 41; background: var(--bg-2); border: 1px solid var(--accent);
   border-radius: 8px; padding: 6px; min-width: 190px; display: flex; flex-direction: column;
   gap: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
-.rp-head { font-size: 11px; color: var(--dim); padding: 2px 6px 4px; }
+.rp-head { font-size: 11px; color: var(--text-dim); padding: 2px 6px 4px; }
 .rp-opt { display: flex; align-items: center; gap: 8px; background: none; border: 0;
   border-radius: 5px; padding: 4px 6px; cursor: pointer; font: inherit; color: inherit;
   text-align: left; }
@@ -568,9 +590,9 @@ function commitImport() {
   color: inherit; cursor: pointer; font: inherit; }
 .xl-opt:hover { border-color: var(--accent); }
 .xl-name { font-weight: 600; font-size: 13px; }
-.xl-desc { font-size: 12px; color: var(--dim); }
+.xl-desc { font-size: 12px; color: var(--text-dim); }
 .xl-close { align-self: flex-end; margin-top: 4px; }
-.xl-stat { margin: 0; font-size: 12px; color: var(--dim); }
+.xl-stat { margin: 0; font-size: 12px; color: var(--text-dim); }
 .xl-warn { margin: 4px 0; padding-left: 18px; font-size: 12px; color: #ffd43b; }
 .xl-warn li { margin-bottom: 4px; }
 .xl-acts { display: flex; gap: 8px; margin-top: 8px; }

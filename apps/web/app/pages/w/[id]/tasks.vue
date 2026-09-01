@@ -213,42 +213,42 @@ const letterTitle = (letter: string) =>
 <style scoped>
 .wk-head { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
 .wk-head h2 { margin: 0 0 4px; font-size: 16px; }
-.wk-head .meta { margin: 0; max-width: 62ch; font-size: 12px; color: var(--dim); }
+.wk-head .meta { margin: 0; max-width: 62ch; font-size: 12px; color: var(--text-dim); }
 .wk-picker { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
 .wk-picker select { font: inherit; font-size: 12px; background: var(--bg-2); color: inherit;
   border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; max-width: 190px; }
 .wk-picker select:disabled { opacity: .45; }
 
-.wk-choose, .wk-empty { color: var(--dim); font-size: 13px; }
+.wk-choose, .wk-empty { color: var(--text-dim); font-size: 13px; }
 .wk-scope { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px;
   background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
   padding: 8px 12px; margin-bottom: 18px; }
-.wk-tally { color: var(--dim); }
-.wk-letter { color: var(--dim); border: 1px solid var(--border); border-radius: 10px;
+.wk-tally { color: var(--text-dim); }
+.wk-letter { color: var(--text-dim); border: 1px solid var(--border); border-radius: 10px;
   padding: 1px 8px; font-size: 11px; }
 .wk-letter b { color: var(--text); font-weight: 600; }
 
 .wk-group { margin-bottom: 26px; }
 .wk-group h3 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
-.wk-count { font-size: 11px; font-weight: 600; color: var(--dim);
+.wk-count { font-size: 11px; font-weight: 600; color: var(--text-dim);
   border: 1px solid var(--border); border-radius: 9px; padding: 0 7px; }
-.wk-hint { margin: 0 0 10px; font-size: 11px; color: var(--dim); max-width: 70ch; }
+.wk-hint { margin: 0 0 10px; font-size: 11px; color: var(--text-dim); max-width: 70ch; }
 .wk-cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 
 .wk-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
   padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
 .wk-card-head { display: flex; align-items: baseline; gap: 8px; }
 .wk-name { font-weight: 600; }
-.wk-unit { margin-left: auto; font-size: 11px; color: var(--dim);
+.wk-unit { margin-left: auto; font-size: 11px; color: var(--text-dim);
   border: 1px solid var(--border); border-radius: 9px; padding: 0 7px; white-space: nowrap; }
-.wk-meta { font-size: 11px; color: var(--dim); }
+.wk-meta { font-size: 11px; color: var(--text-dim); }
 .wk-roles { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
 .wk-role { font-size: 11px; font-weight: 600; letter-spacing: .5px;
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; }
-.wk-role.inh { border-style: dashed; color: var(--dim); }
-.wk-role-col { font-weight: 400; color: var(--dim); margin-right: 5px; letter-spacing: 0; }
-.wk-desc { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
-.wk-crit { margin: 0; font-size: 11px; color: var(--dim); display: flex; gap: 6px; }
+.wk-role.inh { border-style: dashed; color: var(--text-dim); }
+.wk-role-col { font-weight: 400; color: var(--text-dim); margin-right: 5px; letter-spacing: 0; }
+.wk-desc { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); }
+.wk-crit { margin: 0; font-size: 11px; color: var(--text-dim); display: flex; gap: 6px; }
 .wk-crit-lbl { text-transform: uppercase; letter-spacing: .04em; font-size: 9px;
   border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; align-self: flex-start;
   margin-top: 2px; }
@@ -257,6 +257,6 @@ const letterTitle = (letter: string) =>
 .wk-io-block { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 6px;
   display: flex; flex-direction: column; gap: 3px; }
 .wk-io { font-size: 11px; }
-.wk-io-src { color: var(--dim); margin-left: 4px; }
+.wk-io-src { color: var(--text-dim); margin-left: 4px; }
 .wk-io-src.none { font-style: italic; opacity: .8; }
 </style>

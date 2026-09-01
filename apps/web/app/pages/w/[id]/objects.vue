@@ -359,14 +359,14 @@ function remove() {
 .objv-head { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap;
   margin-bottom: 18px; }
 .objv-title h2 { margin: 0 0 4px; font-size: 16px; }
-.objv-title .meta { margin: 0; max-width: 62ch; font-size: 12px; color: var(--dim); }
+.objv-title .meta { margin: 0; max-width: 62ch; font-size: 12px; color: var(--text-dim); }
 .objv-tools { margin-left: auto; display: flex; flex-direction: column; gap: 8px;
   align-items: flex-end; }
 .objv-filter { font: inherit; background: var(--bg-2); color: inherit; min-width: 260px;
   border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
 .objv-filter:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
 .objv-facets, .objv-new { display: flex; gap: 6px; }
-.objv-facet { font: inherit; font-size: 12px; background: var(--bg-2); color: var(--dim);
+.objv-facet { font: inherit; font-size: 12px; background: var(--bg-2); color: var(--text-dim);
   border: 1px solid var(--border); border-radius: 14px; padding: 3px 12px; cursor: pointer; }
 .objv-facet:hover { color: var(--text); }
 .objv-facet.active { color: var(--text); border-color: var(--accent); }
@@ -378,7 +378,7 @@ function remove() {
 
 .objv-grid { display: grid; gap: 10px;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
-.objv-none { grid-column: 1 / -1; color: var(--dim); font-size: 13px; }
+.objv-none { grid-column: 1 / -1; color: var(--text-dim); font-size: 13px; }
 
 .obj-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
   padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
@@ -388,20 +388,20 @@ function remove() {
 .obj-card.is-sel { border-color: var(--accent); background: #1f2530; }
 .obj-card.k-deliverable { border-left-color: #4dabf7; }
 .obj-card.k-entity { border-left-color: #b197fc; }
-.obj-card-top { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+.obj-card-top { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
 .obj-ico { font-size: 14px; }
 .obj-ico.lg { font-size: 20px; }
 .obj-type { text-transform: uppercase; letter-spacing: .04em; }
 .obj-uses { margin-left: auto; }
 .obj-uses.none { opacity: .55; font-style: italic; }
 .obj-name { font-weight: 600; }
-.obj-sub { font-size: 12px; color: var(--dim); }
-.obj-desc { font-size: 12px; color: var(--dim); display: -webkit-box; -webkit-line-clamp: 2;
+.obj-sub { font-size: 12px; color: var(--text-dim); }
+.obj-desc { font-size: 12px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden; }
 
 .objv-detail { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
   padding: 14px; position: sticky; top: 14px; }
-.obj-detail-empty { margin: 0; color: var(--dim); font-size: 13px; }
+.obj-detail-empty { margin: 0; color: var(--text-dim); font-size: 13px; }
 .obj-detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .obj-detail-name { font: inherit; font-size: 15px; font-weight: 600; flex: 1; min-width: 0;
   background: transparent; color: inherit; border: 0; border-bottom: 1px solid transparent;
@@ -411,28 +411,28 @@ function remove() {
 
 .obj-field { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
 .obj-field.col { flex-direction: column; align-items: stretch; gap: 4px; }
-.obj-field > span { color: var(--dim); min-width: 74px; }
+.obj-field > span { color: var(--text-dim); min-width: 74px; }
 .obj-field select, .obj-field input, .obj-field textarea { font: inherit; font-size: 13px;
   flex: 1; min-width: 0; background: var(--bg); color: inherit; resize: vertical;
   border: 1px solid var(--border); border-radius: 5px; padding: 4px 7px; }
 .obj-field :focus { outline: 1px solid var(--accent); outline-offset: -1px; }
-.obj-blurb { margin: -2px 0 12px; font-size: 11px; color: var(--dim); }
+.obj-blurb { margin: -2px 0 12px; font-size: 11px; color: var(--text-dim); }
 
 .obj-uses-h { margin: 16px 0 6px; font-size: 11px; text-transform: uppercase;
-  letter-spacing: .05em; color: var(--dim); border-top: 1px solid var(--border); padding-top: 12px; }
+  letter-spacing: .05em; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 12px; }
 .obj-uses-h b { font-weight: 600; }
 .obj-use-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;
   gap: 6px; }
 .obj-use-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
   font-size: 12px; }
-.ou-verb { color: var(--dim); font-size: 10px; text-transform: uppercase;
+.ou-verb { color: var(--text-dim); font-size: 10px; text-transform: uppercase;
   letter-spacing: .04em; min-width: 82px; }
 .ou-target { color: var(--text); }
-.ou-where { color: var(--dim); font-size: 11px; }
-.obj-unused { margin: 0; font-size: 12px; color: var(--dim); }
+.ou-where { color: var(--text-dim); font-size: 11px; }
+.obj-unused { margin: 0; font-size: 12px; color: var(--text-dim); }
 
 .obj-detail-acts { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;
   display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .obj-del:hover:not(:disabled) { border-color: #ff6b6b; color: #ff6b6b; }
-.obj-del-note { font-size: 11px; color: var(--dim); }
+.obj-del-note { font-size: 11px; color: var(--text-dim); }
 </style>

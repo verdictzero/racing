@@ -1,0 +1,497 @@
+/*
+ * The five palettes, lifted verbatim from index.html (its <style> block, lines 7-490).
+ *
+ * Copied rather than reinterpreted on purpose. These are the colours people already read this tool
+ * in — a re-pick would make the rebuild look like a different product, and the high-contrast ramps
+ * in particular are accessibility commitments, not taste. The structural CSS that consumes them is
+ * ours; only the tokens are shared.
+ *
+ * The theme is a DEVICE preference. It is never written to the collaborative document: two people
+ * editing the same chart may read it in different palettes, and one person's contrast choice must
+ * not follow their colleague's screen.
+ */
+
+/* ============================================================================
+   ===== THEME TOKENS =========================================================
+   Five application-wide themes, chosen by data-theme on <html>:
+
+     (unset) | "dark"  the default — the palette this tool shipped with
+     "light"           light surfaces, hues re-picked for contrast on paper
+     "hc-dark"         high contrast — black ground, white rules, max-chroma hues
+     "hc-light"        high contrast — white ground, black rules, deep hues
+     "hc-neon"         high contrast — near-black ground, full-voltage neon hues
+
+   The three "hc-" themes are one FAMILY: they differ only in their palette, and
+   share every structural rule further down through the `[data-theme^="hc-"]`
+   prefix selector — flat backdrops, no texture, no faded states, full-weight
+   rules, always-visible focus. Adding a fourth variant means adding a token
+   block and nothing else. (Pre-0.34 the family was one theme named "contrast";
+   that stored value migrates to "hc-dark", which is the palette it had.)
+
+   Every colour in the app resolves through the tokens below, so switching theme
+   is a token swap: no component needs to know which theme is up, and a new rule
+   inherits all three themes for free as long as it uses tokens rather than
+   literals. The ONLY intentional exceptions are the two `@media print` blocks,
+   which force a light document regardless of the on-screen theme.
+
+   Hues are stored as bare "r,g,b" triplets so one definition serves both the
+   solid colour — var(--accent) — and any tint of it — rgba(var(--accent-rgb),.2).
+   Four primitives carry the effects, and they are NOT interchangeable:
+
+     --shadow-rgb  the ink shadows are cast in (dark everywhere; light themes
+                   use a cool near-black rather than pure black)
+     --hi-rgb      specular highlight along a lit edge. Stays WHITE in every
+                   theme — a lit edge is white whatever the ground is.
+     --lift-rgb    a subtle wash that lifts a surface off its parent. INVERTS
+                   between themes: white on dark grounds, ink on light ones.
+     --mix-fg      what color-mix() pushes a hue toward so it stays legible —
+                   white on dark grounds, near-black on light ones.
+
+   "--on-*" tokens are the foreground for text sitting ON that filled colour.
+   Keeping them per-hue (rather than a single black/white) is what lets each
+   theme re-pick a hue's lightness without stranding the label on top of it.
+   ============================================================================ */
+:root {
+  color-scheme: dark;
+
+  /* -- hues: RACI/RASCI letters, then status roles -- */
+  --r-rgb: 77,171,247;
+  --a-rgb: 250,82,82;
+  --c-rgb: 252,196,25;
+  --i-rgb: 134,142,150;
+  --s-rgb: 81,207,102;
+  --d-rgb: 151,117,250;
+  --p-rgb: 34,184,207;
+  --accent-rgb: 81,207,102;
+  --err-rgb: 250,82,82;
+  --warn-rgb: 252,196,25;
+
+  --r: rgb(var(--r-rgb));
+  --a: rgb(var(--a-rgb));
+  --c: rgb(var(--c-rgb));
+  --i: rgb(var(--i-rgb));
+  --s: rgb(var(--s-rgb));
+  --d: rgb(var(--d-rgb));
+  --p: rgb(var(--p-rgb));
+  --accent: rgb(var(--accent-rgb));
+  --err: rgb(var(--err-rgb));
+  --warn: rgb(var(--warn-rgb));
+
+  /* -- surfaces, ordered page -> raised -- */
+  --bg: #0d0e12;
+  --bg-cell: #1c1d22;
+  --bg-2: #25262b;
+  --bg-3: #2c2e33;
+  --bg-4: #373a40;
+  --border: #373a40;
+  --bg-deep: #16171c;    /* the far end of the chrome gradients (tab bar, crumb band) */
+  --sunk-1: #14151a;     /* lead-card gradient top    */
+  --sunk-2: #0f1015;     /* lead-card gradient bottom */
+  --edge-1: #07080b;     /* extruded card's near edge */
+  --edge-2: #05060a;     /* extruded card's far edge  */
+
+  /* -- type -- */
+  --text: #c1c2c5;
+  --text-dim: #909296;
+  --text-strong: #ffffff;   /* emphasis above --text: hovered/active labels */
+  --on-fill: #07140b;       /* text on a saturated tier / role fill */
+
+  /* -- foregrounds for text on a filled hue -- */
+  --on-r: #000;
+  --on-a: #fff;
+  --on-c: #000;
+  --on-i: #fff;
+  --on-s: #000;
+  --on-d: #fff;
+  --on-p: #000;
+  --on-accent: #04210f;
+  --on-err: #fff;
+  --on-warn: #000;
+
+  /* -- a hue rendered as TEXT on the current ground (vs. as a fill) -- */
+  --accent-ink: #d3f9d8;
+  --err-ink: #ffa8a8;
+  --warn-ink: #ffe066;
+  --accent-hover: #69db7c;
+  --accent-edge: #2b8a3e;
+
+  /* -- effects (see the header note: these four are not interchangeable) -- */
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 255,255,255;
+  --scrim: rgba(0,0,0,0.55);
+  --mix-fg: #ffffff;
+
+  /* -- chart-view backdrop (complementary ASIC blue + crimson wash) -- */
+  --view-tint-a: rgba(45,95,165,0.20);
+  --view-tint-b: rgba(165,42,62,0.16);
+  --view-grad-a: #0e1422;
+  --view-grad-b: #150e16;
+
+  /* -- drill-breadcrumb tiers: saturated fills, so --on-fill labels them -- */
+  --tier-0: #5c7cfa;
+  --tier-1: #4dabf7;
+  --tier-2: #f0a23a;
+  --tier-3: #51cf66;
+  --tier-0-ink: #b9c6ff;
+  --tier-1-ink: #9ad9ff;
+  --tier-2-ink: #ffd59a;
+  --tier-3-ink: #c4f59a;
+
+  /* -- leadership card hues (AD gold, DC blue, BC purple, TL green) -- */
+  --lc-base: #c9a635;
+  --lc-ad: #e0b53a;
+  --lc-dc: #4dabf7;
+  --lc-bc: #b07cff;
+  --lc-tl: #51cf66;
+
+  /* -- background ASIC watermark -- */
+  /* Tuned for painting OVER the chart (z-index 2), not behind it: the same number reads far
+     stronger on top of an opaque table than it did through a gap in one. */
+  --wm-opacity: 0.09;
+  --wm-filter: grayscale(1) brightness(1.15);
+}
+
+/* ===== LIGHT =====
+   Not an inversion of the dark ramp but a re-pick: --bg is the page ground and
+   --bg-cell the paper raised above it, which is the same relationship the dark
+   theme has (cells sit lighter than the page) read on a light ground. The letter
+   hues are deepened so a filled chip separates from white paper AND still carries
+   its --on-* label. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --r-rgb: 25,113,194;
+  --a-rgb: 201,42,42;
+  --c-rgb: 224,150,0;
+  --i-rgb: 92,103,115;
+  --s-rgb: 43,138,62;
+  --d-rgb: 103,65,217;
+  --p-rgb: 11,114,133;
+  --accent-rgb: 43,138,62;
+  --err-rgb: 201,42,42;
+  --warn-rgb: 224,150,0;
+
+  --bg: #eef1f6;
+  --bg-cell: #ffffff;
+  --bg-2: #e3e8f0;
+  --bg-3: #dbe1ea;
+  --bg-4: #c6cfdc;
+  --border: #bcc6d4;
+  --bg-deep: #d7dde7;
+  --sunk-1: #ffffff;
+  --sunk-2: #eef1f6;
+  --edge-1: #aab4c4;
+  --edge-2: #c2cad6;
+
+  --text: #1b2331;
+  --text-dim: #5a6577;
+  --text-strong: #0b1017;
+  --on-fill: #07140b;
+
+  --on-r: #fff;
+  --on-a: #fff;
+  --on-c: #241a02;
+  --on-i: #fff;
+  --on-s: #fff;
+  --on-d: #fff;
+  --on-p: #fff;
+  --on-accent: #ffffff;
+  --on-err: #fff;
+  --on-warn: #241a02;
+
+  --accent-ink: #1e6b30;
+  --err-ink: #a52020;
+  --warn-ink: #7d5210;
+  --accent-hover: #237634;
+  --accent-edge: #1a5c26;
+
+  --shadow-rgb: 24,34,52;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 20,28,42;
+  --scrim: rgba(22,28,40,0.45);
+  --mix-fg: #10151f;
+
+  --view-tint-a: rgba(45,95,165,0.10);
+  --view-tint-b: rgba(165,42,62,0.08);
+  --view-grad-a: #e8edf6;
+  --view-grad-b: #f7eef1;
+
+  /* Tier and leadership fills stay saturated: they are chips carrying --on-fill
+     text, so they read on either ground. Only their TEXT variants deepen. */
+  --tier-0-ink: #3b4fbf;
+  --tier-1-ink: #12639f;
+  --tier-2-ink: #8a5a10;
+  --tier-3-ink: #2b7a3c;
+
+  /* The emblem is light-on-transparent, so it has to be darkened rather than
+     brightened to stay visible behind a light page. */
+  --wm-opacity: 0.075;
+  --wm-filter: grayscale(1) brightness(0.45) contrast(1.15);
+}
+
+/* ===== HIGH CONTRAST (DARK) =====
+   Black ground, white rules, maximum-chroma hues, and every label dropped to
+   pure black on its fill. --border going white is deliberate: in high contrast
+   structure is carried by rules rather than by fill differences, so the surface
+   ramp stays nearly flat and the borders do the separating. Structural rules
+   (flat backdrops, no texture, always-visible focus) follow further down and
+   are shared by all three hc- themes. */
+:root[data-theme="hc-dark"] {
+  color-scheme: dark;
+
+  --r-rgb: 96,190,255;
+  --a-rgb: 255,123,123;
+  --c-rgb: 255,214,10;
+  --i-rgb: 208,213,221;
+  --s-rgb: 87,240,133;
+  --d-rgb: 199,168,255;
+  --p-rgb: 64,231,255;
+  --accent-rgb: 87,240,133;
+  --err-rgb: 255,123,123;
+  --warn-rgb: 255,214,10;
+
+  --bg: #000000;
+  --bg-cell: #000000;
+  --bg-2: #0b0b0d;
+  --bg-3: #16171a;
+  --bg-4: #2c2e33;
+  --border: #ffffff;
+  --bg-deep: #000000;
+  --sunk-1: #101114;
+  --sunk-2: #000000;
+  --edge-1: #000000;
+  --edge-2: #000000;
+
+  --text: #ffffff;
+  --text-dim: #e4e6ea;      /* still high contrast — dimming to grey is the thing HC exists to undo */
+  --text-strong: #ffffff;
+  --on-fill: #000000;
+
+  --on-r: #000;
+  --on-a: #000;
+  --on-c: #000;
+  --on-i: #000;
+  --on-s: #000;
+  --on-d: #000;
+  --on-p: #000;
+  --on-accent: #000;
+  --on-err: #000;
+  --on-warn: #000;
+
+  --accent-ink: #9dffbe;
+  --err-ink: #ffb3b3;
+  --warn-ink: #ffe680;
+  --accent-hover: #8affae;
+  --accent-edge: #ffffff;
+
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 255,255,255;
+  --scrim: rgba(0,0,0,0.82);
+  --mix-fg: #ffffff;
+
+  --view-tint-a: transparent;
+  --view-tint-b: transparent;
+  --view-grad-a: #000000;
+  --view-grad-b: #000000;
+
+  --tier-0: #93a6ff;
+  --tier-1: #60beff;
+  --tier-2: #ffb454;
+  --tier-3: #57f085;
+  --tier-0-ink: #c3ccff;
+  --tier-1-ink: #a8dcff;
+  --tier-2-ink: #ffd9a8;
+  --tier-3-ink: #b6ffcc;
+
+  --lc-base: #ffd60a;
+  --lc-ad: #ffd60a;
+  --lc-dc: #60beff;
+  --lc-bc: #c7a8ff;
+  --lc-tl: #57f085;
+
+  /* The emblem stays in high contrast, but as a MARK rather than a wash: pushed to
+     white and dropped to 7% so it reads as a corner emblem against the black ground
+     without ever competing with text set over it. (It was suppressed entirely before
+     v0.39; the brief is now that the ASIC mark holds in every theme.) */
+  --wm-opacity: 0.05;
+  --wm-filter: grayscale(1) brightness(2.2);
+}
+
+/* ===== HIGH CONTRAST (LIGHT) =====
+   The same contract as hc-dark with the ground inverted: white paper, black
+   rules, and hues DEEPENED rather than brightened — on white, contrast is won
+   by going dark, so every role fill takes white text (--on-* all white, and
+   --on-fill with it, since the tier and leadership fills darken to match).
+   This is the variant for printing, projectors and bright rooms; hc-dark is
+   the one for a dark room. Everything structural is shared. */
+:root[data-theme="hc-light"] {
+  color-scheme: light;
+
+  --r-rgb: 0,68,204;
+  --a-rgb: 190,0,0;
+  --c-rgb: 140,80,0;
+  --i-rgb: 45,45,45;
+  --s-rgb: 0,110,40;
+  --d-rgb: 88,0,180;
+  --p-rgb: 0,100,120;
+  --accent-rgb: 0,110,40;
+  --err-rgb: 190,0,0;
+  --warn-rgb: 140,80,0;
+
+  --bg: #ffffff;
+  --bg-cell: #ffffff;
+  --bg-2: #f4f4f4;
+  --bg-3: #e9e9e9;
+  --bg-4: #d4d4d4;
+  --border: #000000;
+  --bg-deep: #ffffff;
+  --sunk-1: #ffffff;
+  --sunk-2: #f4f4f4;
+  --edge-1: #ffffff;
+  --edge-2: #ffffff;
+
+  --text: #000000;
+  --text-dim: #1c1c1c;      /* still near-black — dimming to grey is what HC exists to undo */
+  --text-strong: #000000;
+  --on-fill: #ffffff;
+
+  --on-r: #fff;
+  --on-a: #fff;
+  --on-c: #fff;
+  --on-i: #fff;
+  --on-s: #fff;
+  --on-d: #fff;
+  --on-p: #fff;
+  --on-accent: #fff;
+  --on-err: #fff;
+  --on-warn: #fff;
+
+  --accent-ink: #00591f;
+  --err-ink: #9b0000;
+  --warn-ink: #6b3d00;
+  --accent-hover: #00471a;
+  --accent-edge: #000000;
+
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 0,0,0;
+  --scrim: rgba(0,0,0,0.72);   /* a white scrim over white paper would dim nothing */
+  --mix-fg: #000000;
+
+  --view-tint-a: transparent;
+  --view-tint-b: transparent;
+  --view-grad-a: #ffffff;
+  --view-grad-b: #ffffff;
+
+  --tier-0: #1f2fa8;
+  --tier-1: #00478f;
+  --tier-2: #7a4300;
+  --tier-3: #006427;
+  --tier-0-ink: #1f2fa8;
+  --tier-1-ink: #00478f;
+  --tier-2-ink: #7a4300;
+  --tier-3-ink: #006427;
+
+  --lc-base: #6b4a00;
+  --lc-ad: #6b4a00;
+  --lc-dc: #00478f;
+  --lc-bc: #4b0f9c;
+  --lc-tl: #006427;
+
+  /* White paper: the emblem has to DARKEN to be seen at all, the same inversion the
+     plain Light theme makes. Held at 7% for the same reason as hc-dark. */
+  /* White ground swallows a dark ghost faster than black ground swallows a light one, so this
+     one sits a touch higher than hc-dark to land at the same perceived weight. */
+  --wm-opacity: 0.065;
+  --wm-filter: grayscale(1) brightness(0.25) contrast(1.2);
+}
+
+/* ===== HIGH CONTRAST (NEON) =====
+   hc-dark's contract at full voltage: an almost-black violet ground and role
+   hues pushed to the brightest thing a screen can put on it — cyan, hot pink,
+   electric yellow, lime. The rules go neon violet rather than white, which is
+   the one real departure: at these chroma levels a white grid competes with the
+   data, and a violet rule reads as structure precisely because no ROLE owns
+   violet. Every fill is bright enough to take black text, exactly as in
+   hc-dark. Same structural rules; only the palette is turned up. */
+:root[data-theme="hc-neon"] {
+  color-scheme: dark;
+
+  --r-rgb: 0,240,255;       /* cyan       */
+  --a-rgb: 255,42,109;      /* hot pink   */
+  --c-rgb: 255,241,0;       /* electric yellow */
+  --i-rgb: 167,180,204;     /* the one calm hue — Informed is meant to recede */
+  --s-rgb: 57,255,20;       /* lime       */
+  --d-rgb: 189,107,255;     /* violet     */
+  --p-rgb: 255,145,0;       /* orange     */
+  --accent-rgb: 57,255,20;
+  --err-rgb: 255,42,109;
+  --warn-rgb: 255,241,0;
+
+  --bg: #07020e;
+  --bg-cell: #0d0418;
+  --bg-2: #120826;
+  --bg-3: #1b0f33;
+  --bg-4: #2b1a4d;
+  --border: #cc44ff;
+  --bg-deep: #07020e;
+  --sunk-1: #120826;
+  --sunk-2: #07020e;
+  --edge-1: #07020e;
+  --edge-2: #07020e;
+
+  --text: #f4f7ff;
+  --text-dim: #d9e4ff;
+  --text-strong: #ffffff;
+  --on-fill: #000000;
+
+  --on-r: #000;
+  --on-a: #000;
+  --on-c: #000;
+  --on-i: #000;
+  --on-s: #000;
+  --on-d: #000;
+  --on-p: #000;
+  --on-accent: #000;
+  --on-err: #000;
+  --on-warn: #000;
+
+  --accent-ink: #9dff7a;
+  --err-ink: #ff8fb4;
+  --warn-ink: #fff86b;
+  --accent-hover: #7dff5c;
+  --accent-edge: #cc44ff;
+
+  --shadow-rgb: 0,0,0;
+  --hi-rgb: 255,255,255;
+  --lift-rgb: 255,255,255;
+  --scrim: rgba(3,0,10,0.86);
+  --mix-fg: #ffffff;
+
+  --view-tint-a: transparent;
+  --view-tint-b: transparent;
+  --view-grad-a: #07020e;
+  --view-grad-b: #07020e;
+
+  --tier-0: #7c4dff;
+  --tier-1: #00f0ff;
+  --tier-2: #ff9100;
+  --tier-3: #39ff14;
+  --tier-0-ink: #c0a6ff;
+  --tier-1-ink: #7df6ff;
+  --tier-2-ink: #ffc47a;
+  --tier-3-ink: #a8ff96;
+
+  --lc-base: #fff100;
+  --lc-ad: #fff100;
+  --lc-dc: #00f0ff;
+  --lc-bc: #bd6bff;
+  --lc-tl: #39ff14;
+
+  /* Near-black violet ground. The emblem goes white rather than neon — no ROLE owns
+     white here, so the mark stays structure and never reads as data. */
+  --wm-opacity: 0.045;
+  --wm-filter: grayscale(1) brightness(2.4);
+}

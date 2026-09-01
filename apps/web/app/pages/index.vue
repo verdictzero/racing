@@ -1,6 +1,25 @@
 <template>
-  <section>
-    <h1>Workspaces</h1>
+  <div class="landing">
+    <header class="landing-head">
+      <div id="brand-zone">
+        <img id="app-logo" src="/asic-emblem.png" alt="ASIC — Army Software &amp; Innovation Center">
+        <div id="app-brand">
+          <span class="brand-name">ASIC RACI Tool</span>
+          <span class="brand-ver">ver 0.39 alpha</span>
+        </div>
+      </div>
+      <span class="spacer" />
+      <div id="theme-switch" class="theme-switch" role="radiogroup" aria-label="Appearance theme">
+        <span class="ts-label" aria-hidden="true">Theme</span>
+        <button v-for="opt in THEME_OPTIONS" :key="opt.id" type="button" class="ts-opt" role="radio"
+          :aria-checked="theme === opt.id" :aria-label="opt.aria" :title="opt.title" @click="setTheme(opt.id)">
+          <span class="ts-ico" aria-hidden="true">{{ opt.icon }}</span>{{ opt.label }}
+        </button>
+      </div>
+    </header>
+
+    <section>
+      <h1>Workspaces</h1>
     <p v-if="!me?.user" class="note">
       <a href="/api/auth/login">Sign in</a> to see your workspaces.
     </p>
@@ -31,11 +50,22 @@
         </p>
       </form>
     </template>
-  </section>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
 import type { ImportReport } from '@raci/core';
+import type { ThemeName } from '~/composables/useTheme';
+
+const { theme, set: setTheme } = useTheme();
+const THEME_OPTIONS: { id: ThemeName; label: string; icon: string; title: string; aria?: string }[] = [
+  { id: 'dark', label: 'Dark', icon: '◐', title: 'Dark — the default palette' },
+  { id: 'light', label: 'Light', icon: '☀', title: 'Light — light surfaces, hues re-picked for contrast on paper' },
+  { id: 'hc-light', label: 'HC Light', icon: '◑', aria: 'High contrast (light)', title: 'High contrast (light)' },
+  { id: 'hc-dark', label: 'HC Dark', icon: '◐', aria: 'High contrast (dark)', title: 'High contrast (dark)' },
+  { id: 'hc-neon', label: 'HC Neon', icon: '⚡', aria: 'High contrast (neon)', title: 'High contrast (neon)' },
+];
 
 const { data: me } = await useFetch('/api/auth/me');
 const { data: workspaces, refresh } = await useFetch('/api/workspaces', {
@@ -82,16 +112,21 @@ async function create() {
 </script>
 
 <style scoped>
+.landing { min-height: 100vh; display: flex; flex-direction: column; }
+.landing-head { display: flex; align-items: center; gap: 14px; padding: 10px 18px;
+  background: var(--bg-2); border-bottom: 1px solid var(--border); }
+.landing-head .spacer { flex: 1; }
+.landing > section { padding: 22px; }
 h1 { font-size: 20px; margin: 0 0 12px; }
 h2 { font-size: 14px; margin: 0 0 8px; }
 .list { list-style: none; padding: 0; margin: 0 0 20px; }
 .list li { display: flex; gap: 12px; align-items: baseline; padding: 8px 0;
   border-bottom: 1px solid var(--border); }
 .list a { color: var(--accent); text-decoration: none; }
-.dim, .note { color: var(--dim); font-size: 12px; }
+.dim, .note { color: var(--text-dim); font-size: 12px; }
 .import { border: 1px solid var(--border); border-radius: 8px; padding: 14px;
   max-width: 460px; display: flex; flex-direction: column; gap: 10px; }
 .import input[type="text"], .import input:not([type]) { font: inherit; padding: 6px 9px;
   background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
-.import label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--dim); }
+.import label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
 </style>

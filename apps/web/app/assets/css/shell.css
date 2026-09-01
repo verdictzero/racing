@@ -1,0 +1,758 @@
+/*
+ * The shell's structural CSS, ported from index.html.
+ *
+ * Taken from the legacy stylesheet rather than rewritten, because "looks like a different product"
+ * is exactly the failure mode a rebuild has to avoid: people have to recognise the tool. The rules
+ * below are the ones that build the frame — the two rails, the header, the crumb capsules, the
+ * watermark, the theme control — and the DOM in our components is shaped to match the selectors
+ * rather than the other way round.
+ *
+ * Everything resolves through the tokens in themes.css, so none of this knows which palette is up.
+ *
+ * Line references are to index.html at v0.39.
+ */
+
+/* ---- base (index.html:491-502) ---- */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+
+/* ---- header and the ASIC emblem (503-531) ---- */
+header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;      /* let the logo/brand/tabs/actions reflow onto multiple rows when narrow */
+  row-gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  gap: 14px;
+  flex-shrink: 0;
+  position: relative;
+  /* Above the chart-tabs bar (z-index 3) and all #ws-main content (capped at z-index 1 by its own
+     stacking context) so the Export dropdown — which lives inside this header's stacking context —
+     overlays the content below it. Stays well under overlays (violations 50, popovers 100+, splash
+     200, toasts 2000). Also keeps the header above the background watermark (z-index 0). */
+  z-index: 20;
+}
+/* ASIC emblem in the header corner */
+#app-logo {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(var(--shadow-rgb),0.6));
+}
+/* Desaturated, very faint ASIC watermark tucked into the bottom-right corner of the chart
+   pane. It stays position:fixed so it doesn't drift while the cascade scrolls, but the offsets
+   and size are custom properties that positionWatermark() keeps in sync with #ws-main's visible
+   box — that way the emblem never slides under the pane's scrollbars or out into the right-hand
+   rails (tools, Details, Legend). The fallbacks below only cover the first frame. */
+
+/* ---- background watermark (532-558) ---- */
+#bg-watermark {
+  position: fixed;
+  right: var(--wm-right, 20px);
+  bottom: var(--wm-bottom, 20px);
+  width: var(--wm-w, 18vw);
+  height: auto;
+  /* Above #ws-main's content, not behind it (v0.39). At z-index 0 the emblem was painted over by
+     the chart block, which carries an OPAQUE fill — so it only ever showed in whatever margin the
+     cascade left uncovered, which on a full-width chart is none of it. A watermark is meant to be
+     read through the content sitting on it, so it goes over the pane and stays under every piece
+     of chrome: chart tabs (3), drill crumbs (4), the right rails (5), the header (20), and every
+     overlay above those. pointer-events:none keeps it out of every hit test regardless. */
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--wm-opacity, 0.12);
+  filter: var(--wm-filter, grayscale(1) brightness(1.15));
+  display: none;
+}
+/* The emblem marks the RACI Chart system, not one screen inside it: Chart, Roster and Tasks are
+   three modes of the same box in the mode rail, so the corner mark holds across all three rather
+   than blinking out the moment you switch tabs within it. Task Flows and the Object Gallery are
+   separate systems and keep their own bare canvas. */
+body[data-view="chart"] #bg-watermark,
+body[data-view="roster"] #bg-watermark,
+body[data-view="work"] #bg-watermark { display: block; }
+/* Belt and braces: the right rails paint above the watermark regardless of what its measured
+   geometry says, so it can never bleed over a side panel even for a frame. */
+
+/* ---- panel stacking (559-568) ---- */
+#details, #legend, #bz-party-panel { position: relative; z-index: 5; }
+/* complementary (ASIC blue + crimson) gradient behind the RACI chart screen */
+body[data-view="chart"] {
+  background:
+    radial-gradient(1200px 820px at 16% 10%, var(--view-tint-a) 0%, transparent 60%),
+    radial-gradient(1050px 720px at 86% 90%, var(--view-tint-b) 0%, transparent 55%),
+    linear-gradient(135deg, var(--view-grad-a) 0%, var(--bg) 50%, var(--view-grad-b) 100%);
+}
+
+/* ===== Big drill breadcrumbs — own band at the top, separate from the chart pane ===== */
+
+/* ---- drill crumbs: the tier capsules (569-658) ---- */
+#drill-crumbs {
+  display: none;
+  position: relative;
+  z-index: 4; /* above the background watermark (2) */
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 22px;
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-deep) 100%);
+  border-bottom: 2px solid var(--border);
+  box-shadow: 0 4px 14px -6px rgba(var(--shadow-rgb),0.7);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+body[data-view="chart"] #drill-crumbs { display: flex; }
+.crumb {
+  --ct: var(--accent);
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  flex-shrink: 0;
+  padding: 7px 20px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 2px solid color-mix(in srgb, var(--ct) 55%, var(--border));
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  line-height: 1.15;
+  transition: transform 0.1s ease, background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 14%, transparent), 0 2px 6px -2px rgba(var(--shadow-rgb),0.6);
+}
+.crumb .crumb-tier {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ct) 72%, var(--mix-fg));
+}
+.crumb .crumb-name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: var(--text-strong);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crumb:hover {
+  transform: translateY(-1px);
+  border-color: var(--ct);
+  background: color-mix(in srgb, var(--ct) 12%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct) 30%, transparent), 0 4px 12px -3px rgba(var(--shadow-rgb),0.7);
+}
+.crumb.current {
+  cursor: default;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--ct) 92%, #fff) 0%,
+    var(--ct) 100%);
+  border-color: color-mix(in srgb, var(--ct) 60%, var(--mix-fg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ct) 50%, transparent), 0 0 16px -2px color-mix(in srgb, var(--ct) 60%, transparent);
+}
+.crumb.current:hover { transform: none; }
+/* The tier label on a FILLED chip has to be read off that fill, so it comes from --on-fill like the
+   name does — the one token that already knows whether text on a saturated colour should be light
+   or dark in this theme. It was ink at 62%, which is right only while every tier fill is bright;
+   the moment a theme deepens its tiers (hc-light does) that label goes dark-on-dark and disappears.
+   Mixing toward the fill rather than toward transparent keeps it a step quieter than the name
+   without ever dropping it below the fill's own contrast. */
+.crumb.current .crumb-tier { color: color-mix(in srgb, var(--on-fill) 76%, var(--ct)); }
+.crumb.current .crumb-name { color: var(--on-fill); }
+/* High contrast doesn't do "a step quieter" — that dimming is the thing it exists to undo. */
+:root[data-theme^="hc-"] .crumb.current .crumb-tier { color: var(--on-fill); }
+/* tier hues, cohesive with the chart tier colors */
+.crumb.t0 { --ct: var(--tier-0); }
+.crumb.t1 { --ct: var(--tier-1); }
+.crumb.t2 { --ct: var(--tier-2); }
+.crumb.t3 { --ct: var(--tier-3); }
+.crumb-sep {
+  align-self: center;
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 22px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+/* Brand block in the header — non-editable app identity + version. */
+
+/* ---- brand block (659-681) ---- */
+#app-brand {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  padding: 4px 10px 4px 4px;
+  user-select: none;
+  font-family: inherit;
+}
+#app-brand .brand-name {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  letter-spacing: 0.2px;
+}
+#app-brand .brand-ver {
+  font-size: 10px; font-weight: 700;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.10);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: 3px;
+  padding: 1px 6px;
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+
+/* ===== Chart tabs bar (between header and breadcrumbs) ===== */
+
+/* ---- framework selector (682-688) ---- */
+.chart-fw { margin-left: auto; display: flex; align-items: center; gap: 7px; padding: 0 6px; flex-shrink: 0; }
+.chart-fw .cf-label { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.chart-fw select {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 7px; font-size: 12px; cursor: pointer;
+}
+.chart-fw select:hover { border-color: var(--accent); }
+
+/* ---- chart tab strip (681-804) ---- */
+/* ===== Chart tabs bar (between header and breadcrumbs) ===== */
+.chart-fw { margin-left: auto; display: flex; align-items: center; gap: 7px; padding: 0 6px; flex-shrink: 0; }
+.chart-fw .cf-label { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.chart-fw select {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 7px; font-size: 12px; cursor: pointer;
+}
+.chart-fw select:hover { border-color: var(--accent); }
+#legend .legend-blurb { color: var(--text-dim); font-size: 11px; line-height: 1.5; margin: 0 0 12px; font-style: italic; }
+#legend .legend-map-section { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+#legend .legend-map-section h4 { margin: 0 0 4px; font-size: 12px; color: var(--text); }
+#legend .lm-note { color: var(--text-dim); font-size: 10.5px; line-height: 1.45; margin-bottom: 8px; }
+#legend .lm-row { display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 6px; margin-bottom: 5px; }
+#legend .lm-row .lm-col { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+#legend .lm-row select {
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 5px; font-size: 11px; width: 100%; cursor: pointer;
+}
+#legend .lm-row .lm-name { grid-column: 2; font-size: 10.5px; color: var(--accent); margin-top: 1px; min-height: 13px; }
+/* Deliverables registry rows (v0.20) */
+#legend .art-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+#legend .art-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; padding: 2px 4px; border-radius: 3px; cursor: text;
+}
+#legend .art-name:focus { outline: none; background: var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+#legend .art-type { background: var(--bg-3); color: var(--text-dim); border: 1px solid var(--border); border-radius: 4px; font: inherit; font-size: 10px; padding: 2px 3px; }
+#legend .art-refs { flex: 0 0 auto; font-size: 10px; color: var(--text-dim); }
+#legend .art-refs.orphan { color: var(--warn); font-style: italic; }
+#legend .art-del { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font: inherit; font-size: 13px; padding: 0 3px; }
+#legend .art-del:hover:not(:disabled) { color: var(--err); }
+#legend .art-del:disabled { opacity: 0.3; cursor: not-allowed; }
+#legend .art-new {
+  background: transparent; border: 1px dashed var(--border); color: var(--text-dim); border-radius: 4px;
+  padding: 4px 8px; font: inherit; font-size: 11px; cursor: pointer; width: 100%;
+}
+#legend .art-new:hover { color: var(--accent); border-color: var(--accent); }
+/* Details-panel "Who's responsible" rows */
+.dw-list { display: flex; flex-direction: column; gap: 7px; }
+.dw-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "col chips" "who who"; gap: 2px 8px; align-items: center;
+  background: var(--bg-cell); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; }
+.dw-row .dw-col { grid-area: col; font-size: 12px; font-weight: 600; color: var(--text); }
+.dw-row .dw-chips { grid-area: chips; }
+.dw-row .dw-chips .cell-chips { display: flex; gap: 3px; }
+.dw-row .dw-who { grid-area: who; font-size: 11px; }
+.dw-row .dw-who .dw-person { color: var(--accent); }
+.dw-row .dw-who .dw-note { color: var(--text-dim); font-style: italic; }
+.dw-row .dw-inh { color: var(--text-dim); font-weight: 400; font-size: 10px; }
+#chart-tabs {
+  display: flex; align-items: stretch;
+  gap: 2px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-2) 100%);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  position: relative; z-index: 3;
+  flex-shrink: 0;
+  min-height: 36px;
+}
+.chart-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px 6px 14px;
+  margin-top: 4px;
+  background: var(--bg-3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 240px;
+  min-width: 80px;
+  position: relative;
+  transition: background 0.12s, color 0.12s;
+}
+.chart-tab:hover { background: var(--bg-4); color: var(--text); }
+.chart-tab.active {
+  background: var(--bg);
+  color: var(--text);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 -2px 0 0 var(--accent);
+  cursor: default;
+}
+.chart-tab .tab-label {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  outline: none;
+  padding: 1px 2px; border-radius: 2px;
+}
+.chart-tab .tab-label[contenteditable="true"]:focus {
+  background: var(--bg-2); box-shadow: 0 0 0 1px var(--accent);
+  color: var(--text); white-space: nowrap;
+}
+.chart-tab .tab-close {
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: transparent; border: none;
+  color: var(--text-dim); font-size: 14px; line-height: 1; cursor: pointer;
+  visibility: hidden;
+  padding: 0;
+}
+.chart-tab:hover .tab-close,
+.chart-tab.active .tab-close { visibility: visible; }
+.chart-tab .tab-close:hover { background: var(--err); color: var(--on-err); }
+.chart-tab.is-only .tab-close { visibility: hidden !important; }
+#chart-tab-add {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: 4px 0 0 6px;
+  width: 30px; height: 28px;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  padding: 0; line-height: 1;
+}
+#chart-tab-add:hover { color: var(--accent); border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
+
+/* The actions cluster grows to fill the header's leftover width (rather than sitting
+   right-aligned with a dead gap before it); its buttons stretch to share that width. */
+
+/* ---- buttons, the action list and the export menu (805-893) ---- */
+.actions { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+button {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 5px 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+button:hover { background: var(--bg-4); }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: var(--accent-hover); }
+button.danger { color: var(--err); }
+button.danger:hover { background: rgba(var(--err-rgb), 0.18); }
+/* Save / Load: the primary save+load pair. Emphasized with a green tint so they read as
+   the canonical "your work is here" actions, separated from the destructive/secondary
+   utilities by a vertical divider. */
+#btn-export, #btn-import {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0.12) 100%);
+  border-color: rgba(var(--accent-rgb), 0.60);
+  color: var(--accent-ink);
+  font-weight: 700;
+  padding: 5px 14px;
+}
+#btn-export:hover, #btn-import:hover {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.36) 0%, rgba(var(--accent-rgb), 0.22) 100%);
+  border-color: rgba(var(--accent-rgb), 0.90);
+  color: var(--text-strong);
+}
+/* Vertical separator between the Save/Load pair and the secondary toolbar items. */
+.actions-divider {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 10px;
+  background: linear-gradient(180deg, transparent 0%, var(--border) 25%, var(--border) 75%, transparent 100%);
+}
+/* ===== Export dropdown — one toolbar button revealing every document export ===== */
+.export-menu { position: relative; display: inline-flex; }
+#btn-export-menu { display: inline-flex; align-items: center; gap: 5px; }
+.export-menu .em-caret { font-size: 10px; opacity: 0.75; transition: transform 0.12s ease; }
+.export-menu.open .em-caret { transform: rotate(180deg); opacity: 1; }
+.export-menu.open #btn-export-menu { border-color: var(--accent); color: var(--text-strong); }
+.export-menu-list {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px; box-shadow: 0 8px 24px rgba(var(--shadow-rgb),0.6);
+  z-index: 200; min-width: 210px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+/* .export-menu-list sets display:flex, which would override the plain [hidden] rule —
+   this higher-specificity selector keeps the closed menu collapsed. */
+.export-menu-list[hidden] { display: none; }
+.export-menu-list .em-item {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  padding: 7px 10px; border-radius: 4px; background: transparent; border: none;
+  color: var(--text); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.export-menu-list .em-item:hover, .export-menu-list .em-item:focus-visible {
+  background: var(--bg-3); outline: none;
+}
+.export-menu-list .em-ico { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.export-menu-list .em-label { flex: 1; }
+.export-menu-list .em-ext { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+/* Demo = load the built-in demo dataset: amber (recoverable destructive) */
+#btn-reset {
+  background: linear-gradient(180deg, rgba(var(--warn-rgb), 0.18) 0%, rgba(var(--warn-rgb), 0.10) 100%);
+  border-color: rgba(var(--warn-rgb), 0.55);
+  color: var(--warn-ink);
+  font-weight: 600;
+}
+#btn-reset:hover {
+  background: linear-gradient(180deg, rgba(var(--warn-rgb), 0.32) 0%, rgba(var(--warn-rgb), 0.18) 100%);
+  border-color: rgba(var(--warn-rgb), 0.85);
+}
+/* Clear = wipe everything to blank: red (fully destructive) */
+#btn-clear {
+  background: linear-gradient(180deg, rgba(var(--err-rgb), 0.22) 0%, rgba(var(--err-rgb), 0.12) 100%);
+  border-color: rgba(var(--err-rgb), 0.60);
+  color: var(--err-ink);
+  font-weight: 600;
+}
+#btn-clear:hover {
+  background: linear-gradient(180deg, rgba(var(--err-rgb), 0.36) 0%, rgba(var(--err-rgb), 0.20) 100%);
+  border-color: rgba(var(--err-rgb), 0.90);
+  color: var(--text-strong);
+}
+
+/* ---- view tabs, and the two-rail grid at >=1200px (2166-2406) ---- */
+
+/* ===== View tabs ===== */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;          /* tabs wrap among themselves before forcing header overflow */
+  gap: 2px;
+  background: var(--bg-3);
+  padding: 2px;
+  border-radius: 5px;
+  margin-left: 14px;
+}
+.view-tabs button {
+  background: transparent;
+  border: none;
+  padding: 4px 14px;
+  font-size: 12px;
+  border-radius: 3px;
+  color: var(--text-dim);
+  white-space: nowrap;      /* never break a tab label across lines */
+}
+.view-tabs button.active { background: var(--bg); color: var(--text); font-weight: 600; }
+/* "MODE" section label: meaningful only once the tabs stack into the vertical left rail (>=1200px);
+   hidden in the horizontal top-bar layout where a heading among inline chips would just be noise. */
+.view-tabs .vt-heading { display: none; }
+/* Responsive label for the long "Business Case Task Flow" tab — shortens before it can wrap. */
+.view-tabs .vt-sm { display: none; }
+/* Help is a reference/utility tab, set apart from the data views by a divider + a ? glyph. */
+.view-tabs .vt-sep {
+  align-self: stretch;
+  width: 1px;
+  margin: 3px 5px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+/* ---- Mode boxes ----
+   The rail holds two SYSTEMS, not one list of screens. Chart / Roster / Tasks are three cuts of the
+   same nested RACI matrix; the Business Case task flow is a parallel system with its own graph, its
+   own responsibility rules and its own two modes. Boxing them apart says so before anything is
+   clicked. Each system reads as a tinted, outlined cluster in its own hue; in the wide left rail
+   (>=1200px) each box becomes a titled panel.
+   A box is one component used twice: it carries its system's hue in --vt-hue-rgb, and the frame,
+   the tint, the panel title and the active pill's edge all resolve from that single token. The
+   chart takes R-blue — the matrix's own hue — and the flow keeps the accent green, so the two
+   still read apart at a glance. .view-tabs seeds the default hue for the un-boxed Help tab. */
+.view-tabs { --vt-hue-rgb: var(--accent-rgb); }
+.view-tabs .vt-box { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; }
+.view-tabs .vt-box-label { display: none; }
+.view-tabs .vt-box--raci { --vt-hue-rgb: var(--r-rgb); }
+/* The registry is a third thing again: not a cut of the matrix and not a graph, but the catalogue
+   of nouns both of them point at. Its own hue, and a divider above it, so it does not read as a
+   third tab of the flow system it sits under. */
+.view-tabs .vt-box--obj { --vt-hue-rgb: var(--p-rgb); }
+.view-tabs .vt-box--raci,
+.view-tabs .vt-box--flow,
+.view-tabs .vt-box--obj {
+  border: 1px solid rgba(var(--vt-hue-rgb), 0.45);
+  background: rgba(var(--vt-hue-rgb), 0.08);
+  border-radius: 5px;
+  padding: 1px;
+}
+.view-tabs .vt-box--flow { margin-left: 7px; }
+.view-tabs .vt-box--obj { margin-left: 3px; }
+.view-tabs .vt-box--raci button.active,
+.view-tabs .vt-box--flow button.active,
+.view-tabs .vt-box--obj button.active { border: 1px solid rgba(var(--vt-hue-rgb), 0.55); }
+.view-tabs button.tab-help { display: inline-flex; align-items: center; gap: 5px; }
+.view-tabs button.tab-help .vt-help-ico {
+  display: inline-grid; place-items: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  border: 1px solid currentColor; opacity: 0.85;
+}
+.view-tabs button.tab-help.active { color: var(--accent); }
+@media (max-width: 900px) {
+  .view-tabs .vt-lg { display: none; }
+  .view-tabs .vt-sm { display: inline; }
+}
+
+/* ===== Top-bar responsive reflow ===== */
+/* Every toolbar button flexes: it grows to help fill its row and shrinks so more buttons stay on a
+   row before wrapping. Combined with the growing .actions cluster this keeps the bar packed —
+   buttons change width, stack, and reflow as the header narrows, with no ragged dead-space edges.
+   The Save/Load pair is given a larger share so it stays prominent. */
+.actions button, .actions .export-menu { flex: 1 1 auto; min-width: max-content; }
+.actions #btn-export, .actions #btn-import { flex-grow: 1.6; }
+.actions .export-menu #btn-export-menu { width: 100%; justify-content: center; }
+.actions .actions-divider { flex: 0 0 auto; min-width: 0; }
+.view-tabs button.tab-help { justify-content: center; }
+
+/* Below ~820px the tabs and actions each take a full-width row of their own; their buttons stretch
+   to fill it so no width is wasted. The logo + brand keep the top row. */
+@media (max-width: 820px) {
+  .actions { flex: 1 1 100%; order: 2; }
+  .view-tabs { margin-left: 0; flex: 1 1 100%; order: 3; }
+  .view-tabs button { flex: 1 1 auto; }
+  .view-tabs .vt-box { flex: 1 1 auto; }
+}
+/* Tighter still: compact the header chrome so the buttons get more of the width, and let buttons
+   shrink past their label width (ellipsis) rather than forcing another wrap. */
+@media (max-width: 560px) {
+  header { padding: 8px 10px; gap: 10px; }
+  #app-logo { height: 28px; }
+  #app-brand { padding: 0; }
+  #app-brand .brand-name { font-size: 13px; }
+  .actions button { min-width: 0; }
+}
+
+/* ===== Ultrawide three-zone shell =====
+   Narrow (default): <header> is a normal wrapping top bar (rules above); #tool-rail and
+   #brand-zone are inert wrappers (display:contents) so brand + actions still sit inline. The
+   view tabs, brand, and actions order via flex `order` into [brand][tabs][actions].
+   Wide (>=1200px): the header dissolves (display:contents) and its pieces reflow into a CSS grid
+   — breadcrumbs across the top, view tabs as a dedicated LEFT rail, brand + actions as a RIGHT
+   rail flanking the main content. Breadcrumbs stay up top in both. */
+#app-frame { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+#brand-zone { display: flex; align-items: center; gap: 12px; order: -1; }
+#tool-rail { display: contents; }
+.view-tabs { order: 0; }
+.actions { order: 1; }
+
+@media (min-width: 1200px) {
+  :root { --tab-rail-w: 224px; --tool-rail-w: 244px; }
+  #app-frame {
+    display: grid;
+    grid-template-columns: var(--tab-rail-w) minmax(0, 1fr) var(--tool-rail-w);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "charttabs charttabs charttabs"
+      "crumbs    crumbs    crumbs"
+      "tabs      main      tools";
+  }
+  header { display: contents; }
+  #chart-tabs { grid-area: charttabs; }
+  #drill-crumbs { grid-area: crumbs; border-bottom: 1px solid var(--border); }
+  #view-tabs { grid-area: tabs; }
+  #tool-rail { grid-area: tools; }
+  main { grid-area: main; min-width: 0; min-height: 0; }
+
+  /* LEFT rail — view tabs stacked vertically.
+     --carbon-weave is the procedural carbon-fibre tile built by applyCarbonWeave(); it's a
+     translucent texture, so the rail colour underneath still comes from --bg-2. Default
+     background-attachment keeps it pinned to the rail box rather than scrolling with the tabs. */
+  #view-tabs {
+    flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+    gap: 9px; padding: 12px 10px; margin: 0; border-radius: 0;
+    background-color: var(--bg-2); border-right: 1px solid var(--border);
+    background-image: var(--carbon-weave, none);
+    background-size: var(--carbon-size, auto);
+    overflow-y: auto;
+  }
+  /* Rail tabs as pills: unselected = light raised pill, active = dark pressed pill w/ accent edge,
+     nudged right so the selection also reads by indentation. */
+  #view-tabs button {
+    text-align: left; width: 100%; padding: 9px 14px; font-size: 13px;
+    border-radius: 7px; flex: 0 0 auto; white-space: normal;
+    background: var(--bg-3); border: 1px solid var(--border); color: var(--text-dim);
+    transition: margin 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  }
+  #view-tabs button:hover { background: var(--bg-4); color: var(--text); }
+  #view-tabs button.active {
+    background: var(--bg); color: var(--text); border-color: rgb(var(--vt-hue-rgb));
+    margin-left: 14px; width: calc(100% - 14px);
+  }
+  #view-tabs button.tab-help { justify-content: flex-start; }
+  /* Each system becomes a titled panel, outlined and tinted in its own hue, so the rail reads as
+     "these three are the chart — this one is its own thing", which is the whole point of the split. */
+  #view-tabs .vt-box {
+    flex-direction: column; align-items: stretch; gap: 9px;
+    flex: 0 0 auto; width: 100%;
+  }
+  #view-tabs .vt-box-label {
+    display: block; padding: 0 4px 1px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.09em; color: rgb(var(--vt-hue-rgb));
+  }
+  #view-tabs .vt-box--raci,
+  #view-tabs .vt-box--flow,
+  #view-tabs .vt-box--obj {
+    padding: 9px 8px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(var(--vt-hue-rgb), 0.4);
+    background: rgba(var(--vt-hue-rgb), 0.07);
+  }
+  #view-tabs .vt-box--flow { margin: 14px 0 0; }
+  /* Below the flow box, and set apart from it: the rule above says "new section", the wider gap
+     says it is not a continuation of the two above. */
+  #view-tabs .vt-box--obj { margin: 0; }
+  #view-tabs .vt-sep--obj { margin: 16px 6px 13px; }
+  #view-tabs .vt-sep { width: auto; height: 1px; align-self: stretch; margin: 7px 6px; }
+  #view-tabs .vt-lg { display: inline; }   /* room for the full label in the rail */
+  #view-tabs .vt-sm { display: none; }
+  /* Rail heading: a full-bleed banded header across the top of the rail (negative margins bleed
+     over the rail's 12px/10px padding) so it clearly reads as a section title, not another tab.
+     Vertical padding is tuned so the band's bottom edge lines up with the bottom of the first
+     chart pane's header bar in the chart view (30px cascade top padding + the header height). */
+  #view-tabs .vt-heading {
+    display: flex; align-items: center; margin: -12px -10px 10px; padding: 27px 14px;
+    font-size: 15px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--text);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* RIGHT rail — brand on top, actions stacked below.
+     <header> is display:contents here, so the rail no longer inherits the header's z-index 20 —
+     it needs its own layer to stay above the background watermark (z-index 0) sitting beside it. */
+  #tool-rail {
+    display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+    padding: 12px 12px 16px; overflow-y: auto;
+    background-color: var(--bg-2); border-left: 1px solid var(--border);
+    background-image: var(--carbon-weave, none);
+    background-size: var(--carbon-size, auto);
+    position: relative; z-index: 1;
+  }
+  #brand-zone { order: 0; gap: 10px; padding: 0 2px 10px; border-bottom: 1px solid var(--border); }
+  /* The product's own name is the one string in the rail that must never break across lines — a
+     title snapped into "ASIC / RACI / Tool" reads as three words, not one product. The rail is wide
+     enough for it, and the version chip drops onto its own line beneath rather than competing for
+     the width that keeps the name whole. (Vertical room is the one thing a rail has to spare.) */
+  #tool-rail #app-brand { flex-wrap: wrap; row-gap: 3px; padding-right: 0; min-width: 0; }
+  #tool-rail #app-brand .brand-name { flex: 1 0 100%; white-space: nowrap; }
+  #tool-rail #app-brand .brand-ver { flex: 0 0 auto; }
+  #tool-rail .actions {
+    order: 1; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+    gap: 6px; margin: 0; justify-content: flex-start;
+  }
+  #tool-rail .actions button,
+  #tool-rail .actions .export-menu { flex: 0 0 auto; width: 100%; min-width: 0; }
+  #tool-rail .actions .export-menu #btn-export-menu { width: 100%; justify-content: center; }
+  #tool-rail .actions .actions-divider {
+    width: auto; height: 1px; align-self: stretch; margin: 4px 2px;
+  }
+  /* In the rail, #tool-rail is a scroll container (overflow-y:auto also clips overflow-x per spec),
+     so the absolutely-positioned Export flyout would be clipped. Fit it to the rail width and open
+     it UPWARD (Export sits near the rail's bottom) so it clears both clip edges. */
+  #tool-rail .export-menu-list {
+    left: 0; right: 0; min-width: 0;
+    top: auto; bottom: calc(100% + 4px);
+  }
+}
+
+/* ---- theme switcher, including its rail layout (4352-4404) ---- */
+/* ===== Theme switcher — the segmented control in the toolbar =====
+   Sits in .actions, so it inherits the toolbar's two layouts: an inline chip row in
+   the top bar, and a full-width stacked block once the toolbar becomes the right-hand
+   rail at >=1200px. The .actions button flex rules target `.actions button`, which
+   would stretch each segment independently — the overrides below keep the three
+   segments sharing one track instead. */
+.theme-switch {
+  display: flex; align-items: center; gap: 4px;
+  flex: 1 1 auto; min-width: 0;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px;
+}
+.theme-switch .ts-label {
+  flex: 0 0 auto;
+  padding: 0 5px 0 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.actions .theme-switch .ts-opt {
+  flex: 1 1 0; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  background: transparent; border: 1px solid transparent; border-radius: 3px;
+  padding: 3px 7px;
+  font-size: 11px; font-weight: 600; line-height: 1.3;
+  color: var(--text-dim); cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.actions .theme-switch .ts-opt:hover { background: var(--bg-4); color: var(--text); }
+.actions .theme-switch .ts-opt[aria-checked="true"] {
+  background: var(--bg);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  color: var(--text);
+}
+.theme-switch .ts-ico { font-size: 11px; line-height: 1; }
+/* The three high-contrast variants are one family, so they sit under a heading of their own
+   instead of being spelled out three times in a flat row of five near-identical names. That
+   heading is what makes "Light" and "Dark" unambiguous twice over, so unlike the "Theme"
+   label it survives every width. */
+.theme-switch .ts-label--hc { padding-left: 9px; }
+/* Below ~560px the toolbar is already tight — drop the glyphs and keep the words. */
+@media (max-width: 560px) {
+  .theme-switch .ts-label { display: none; }
+  .theme-switch .ts-label--hc { display: block; }
+  .theme-switch .ts-ico { display: none; }
+}
+@media (min-width: 1200px) {
+  /* In the rail the control gets a full row: label above, segments across. */
+  #tool-rail .actions .theme-switch { flex: 0 0 auto; width: 100%; flex-wrap: wrap; }
+  #tool-rail .actions .theme-switch .ts-label { flex: 1 0 100%; padding: 2px 4px 4px; }
+  #tool-rail .actions .theme-switch .ts-label--hc { padding-top: 8px; }
+}
+
+/* ---- the DRAFT/FINAL chip on a chart tab (3239-3245) ---- */
+.chart-tab .tab-status {
+  flex: 0 0 auto; font-size: 8px; font-weight: 800; letter-spacing: 0.07em;
+  border-radius: 3px; padding: 1px 4px; border: 1px solid transparent;
+}
+.chart-tab[data-status="draft"] .tab-status { color: var(--warn); border-color: rgba(var(--warn-rgb), 0.5); background: rgba(var(--warn-rgb), 0.12); }
+.chart-tab[data-status="final"] .tab-status { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.12); }
+.chart-tab[data-status="final"] { border-top: 2px solid rgba(var(--accent-rgb), 0.55); }
+
+/* ---- the Details button beside the tabs (1909-1915) ---- */
+.chart-meta-btn, .bzm-meta {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px;
+  font: inherit; font-size: 11px; cursor: pointer;
+  background: var(--bg-3); color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 10px; padding: 2px 9px;
+}
+.chart-meta-btn:hover, .bzm-meta:hover { border-color: var(--accent); color: var(--accent); }

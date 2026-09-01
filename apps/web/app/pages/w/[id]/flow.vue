@@ -451,9 +451,9 @@ function createFlow() {
   border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; }
 .flow-name { font-weight: 600; font-size: 13px; }
 .health { font-size: 12px; color: #51cf66; cursor: help; }
-.health .dim { color: var(--dim); }
-.zoom { font-size: 11px; color: var(--dim); min-width: 42px; text-align: right; }
-.note { color: var(--dim); font-size: 12px; }
+.health .dim { color: var(--text-dim); }
+.zoom { font-size: 11px; color: var(--text-dim); min-width: 42px; text-align: right; }
+.note { color: var(--text-dim); font-size: 12px; }
 .note.warn { color: #ffd43b; cursor: help; }
 
 .canvas { position: relative; flex: 1; overflow: hidden; cursor: grab;
@@ -464,12 +464,12 @@ function createFlow() {
 .canvas:active { cursor: grabbing; }
 .world { position: absolute; inset: 0; transform-origin: 0 0; }
 
-.wires { position: absolute; overflow: visible; pointer-events: none; color: var(--dim); }
+.wires { position: absolute; overflow: visible; pointer-events: none; color: var(--text-dim); }
 .wire-line { fill: none; stroke: var(--accent); stroke-width: 2; opacity: .75; }
 .wire.bare .wire-line { stroke: #ffa94d; stroke-dasharray: 5 4; }
 .via { fill: var(--accent); opacity: .8; }
 .wire-label { position: absolute; transform: translate(-50%, -50%); font-size: 10px;
-  background: var(--bg); color: var(--dim); border: 1px solid var(--border);
+  background: var(--bg); color: var(--text-dim); border: 1px solid var(--border);
   border-radius: 9px; padding: 1px 7px; white-space: nowrap; pointer-events: none; z-index: 1; }
 .wire-label.bare { color: #ffa94d; border-color: #7a4a12; font-style: italic; }
 
@@ -485,10 +485,10 @@ function createFlow() {
 .socket.out { right: -7px; }
 
 .node-head { display: flex; align-items: center; gap: 6px; }
-.node-kind { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--dim); }
+.node-kind { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); }
 .node-head .pin { margin-left: auto; color: #ffd43b; font-weight: 700; cursor: help; }
 .node-head .pin.err { color: #ff6b6b; }
-.node-head .del { background: none; border: 0; color: var(--dim); cursor: pointer;
+.node-head .del { background: none; border: 0; color: var(--text-dim); cursor: pointer;
   font-size: 13px; padding: 0 3px; }
 .node-head .del:hover { color: #ff6b6b; }
 .node-name { font: inherit; font-size: 13px; font-weight: 600; width: 100%;
@@ -496,13 +496,13 @@ function createFlow() {
   padding: 1px 0; cursor: text; }
 .node-name:hover:not(:disabled) { border-bottom-color: var(--border); }
 .node-name:focus { outline: none; border-bottom-color: var(--accent); }
-.node-ref { margin: 0; font-size: 11px; color: var(--dim); font-style: italic; }
+.node-ref { margin: 0; font-size: 11px; color: var(--text-dim); font-style: italic; }
 
 .node-raci { display: flex; flex-wrap: wrap; gap: 3px; }
 .rc { display: flex; align-items: center; gap: 3px; font-size: 9px; cursor: pointer;
-  border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--dim); }
+  border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--text-dim); }
 .rc:hover { border-color: var(--accent); }
 .rc.set { color: var(--text); border-color: var(--accent); }
 .rc-letters { font-weight: 700; font-size: 10px; }
-.node-io { margin: 0; font-size: 10px; color: var(--dim); }
+.node-io { margin: 0; font-size: 10px; color: var(--text-dim); }
 </style>
