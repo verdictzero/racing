@@ -7,7 +7,7 @@ export default defineNuxtConfig({
    * The palettes, then the structural rules that consume them. Both are ported from index.html so
    * the rebuild is recognisably the same tool; see the header comments in each file.
    */
-  css: ['~/assets/css/themes.css', '~/assets/css/shell.css'],
+  css: ['~/assets/css/themes.css', '~/assets/css/shell.css', '~/assets/css/chart.css'],
 
   // Nitro's WebSocket support carries the Yjs sync protocol. It is behind a flag in Nitro, so the
   // collaboration endpoint does not exist without this.

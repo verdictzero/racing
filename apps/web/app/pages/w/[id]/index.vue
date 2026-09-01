@@ -2,10 +2,7 @@
   <div class="chart-screen">
     <div class="tools">
       <button :disabled="!canEdit" @click="excelOpen = true"
-        title="Import a workbook, or download the blank one to fill in">⊞ Excel…</button>
-      <span v-if="violations.length" class="note warn" :title="violationTitle">
-        {{ violations.length }} advisory finding(s) — the rule engine is a reading list, never a blocker.
-      </span>
+        title="Import a workbook, or download the blank one to fill in">📗 Import Excel</button>
     </div>
 
     <p v-if="!chart" class="note">
@@ -14,6 +11,21 @@
     </p>
 
     <template v-else>
+      <!-- Present in BOTH states, as in index.html: a banner that only showed up for drafts would
+           teach people to read "no banner" as "approved". -->
+      <div class="art-status-strip" :class="chart.status === 'final' ? 'is-final' : 'is-draft'">
+        <span class="ast-badge">{{ chart.status === 'final' ? 'FINAL' : 'DRAFT' }}</span>
+        <span class="ast-txt">
+          {{ chart.status === 'final'
+            ? 'Signed off, and locked against edits.'
+            : 'Working copy — still being written, and free to change.' }}
+          <span v-if="chart.status === 'final' && finalizedOn" class="ast-when">{{ finalizedOn }}</span>
+        </span>
+        <button v-if="canEdit" class="ast-set" @click="toggleFinal">
+          {{ chart.status === 'final' ? '✎ Reopen as draft' : '✓ Mark final' }}
+        </button>
+      </div>
+
       <!-- The stack. The focused pane is in front; the ones behind it are desaturated rather than
            transparent, so they cover each other cleanly instead of bleeding through. -->
       <div class="cascade">
@@ -32,13 +44,18 @@
             <span class="pane-count">{{ pane.rows.length }}</span>
           </header>
 
+          <!-- The party columns carry full names now, so a wide chart is wider than its pane. It
+               scrolls inside the pane rather than pushing the page sideways. -->
+          <div class="pane-scroll">
           <table class="chart">
             <thead>
               <tr>
                 <th class="c-toggle" />
                 <th class="c-name">{{ tierName(pane.tier) }} activity</th>
+                <th class="c-def">Definition</th>
+                <th class="c-docs">Documents</th>
                 <th v-for="col in columns" :key="col" class="c-col" :title="columnLabel(col)">
-                  {{ shortLabel(col) }}
+                  {{ columnLabel(col) }}
                 </th>
                 <th class="c-act" />
               </tr>
@@ -73,10 +90,28 @@
                   </span>
                 </td>
 
+                <td class="c-def">
+                  <input
+                    :value="row.description"
+                    :disabled="!canEdit"
+                    placeholder="+ Add definition"
+                    :title="row.description || 'What this activity actually means'"
+                    @change="describe(row.id, ($event.target as HTMLInputElement).value)"
+                  >
+                </td>
+
+                <!-- Read-only: attachments are stored (document_blob) but no upload path is ported
+                     yet, so this reports what a v0.39 import brought across rather than offering a
+                     control that would do nothing. -->
+                <td class="c-docs" :title="docTitle(row)">
+                  <span v-if="row.documents.length" class="doc-count">{{ row.documents.length }} file(s)</span>
+                  <span v-else class="doc-none">—</span>
+                </td>
+
                 <td
                   v-for="col in columns"
                   :key="col"
-                  class="cell"
+                  class="cell chart-cell"
                   :class="{ editing: editing?.nodeId === row.id && editing?.column === col }"
                   :title="cellTitle(pane, row, col)"
                   @click="canEdit && openCellEditor($event, row.id, col)"
@@ -84,8 +119,8 @@
                   <span
                     v-for="letter in lettersOf(pane, row, col)"
                     :key="letter"
-                    class="chip"
-                    :class="[`l-${letter}`, sourceOf(pane, row, col)]"
+                    class="raci-chip"
+                    :class="[letter, sourceOf(pane, row, col)]"
                   >{{ letter }}</span>
                 </td>
 
@@ -102,10 +137,11 @@
               </tr>
 
               <tr v-if="!pane.rows.length" class="empty">
-                <td :colspan="columns.length + 3">No {{ tierName(pane.tier).toLowerCase() }} activities yet.</td>
+                <td :colspan="columns.length + 5">No {{ tierName(pane.tier).toLowerCase() }} activities yet.</td>
               </tr>
             </tbody>
           </table>
+          </div>
 
           <button v-if="canEdit && i === panes.length - 1" class="add" @click="addRow(pane)">
             + Add {{ tierName(pane.tier).toLowerCase() }} activity
@@ -124,7 +160,7 @@
           :class="{ on: editingLetters.includes(letter) }"
           @click="toggleLetter(letter)"
         >
-          <span class="chip" :class="`l-${letter}`">{{ letter }}</span>
+          <span class="raci-chip" :class="letter">{{ letter }}</span>
           <span class="rp-name">{{ roleLabel(letter) }}</span>
         </button>
         <button class="rp-close" @click="editing = null">Done</button>
@@ -179,7 +215,17 @@
 
     <p v-if="importError" class="note bad">{{ importError }}</p>
     <input ref="fileInput" type="file" accept=".xlsx" hidden @change="onFile">
-  </div>
+  
+    <!-- The floating count, bottom-left, exactly where index.html puts it. A div rather than a
+         button: the violations panel it opens there is not ported, and a control that looks
+         clickable and does nothing is worse than a label. -->
+    <div v-if="chart && violations.length" id="violations-toast" role="status"
+      :class="['has-issues', { 'only-warn': !violations.some((v) => v.severity === 'err') }]"
+      :title="violationTitle">
+      <span class="vt-icon" aria-hidden="true">⚠</span>
+      {{ violations.length }} warnings
+    </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -230,7 +276,9 @@ import {
   insertChart,
   insertEntities,
   renameNode,
+  setChartField,
   setColumnLabels,
+  setNodeField,
   setNodeRaci,
 } from '@raci/crdt';
 
@@ -348,6 +396,36 @@ const toggleDrill = (tier: number, nodeId: string) => {
   drill.value = drill.value[tier] === nodeId ? drill.value.slice(0, tier) : [...drill.value.slice(0, tier), nodeId];
 };
 const drillTo = (depth: number) => { drill.value = drill.value.slice(0, depth); };
+
+// ---- definitions, documents and the lifecycle ---------------------------------------------------
+const describe = (nodeId: string, text: string) => setNodeField(session.doc, nodeId, 'description', text);
+
+const docTitle = (row: { documents: { name?: string }[] }) =>
+  row.documents.length
+    ? row.documents.map((d) => d.name ?? '(unnamed)').join('\n')
+    : 'No documents attached to this activity';
+
+/**
+ * Draft <-> Final.
+ *
+ * The legacy app locks a Final chart against edits. That lock is not ported yet, so this changes
+ * the label and nothing else — which is why the button says what it does rather than implying a
+ * freeze it cannot enforce.
+ */
+function toggleFinal(): void {
+  if (!chart.value) return;
+  const next = chart.value.status === 'final' ? 'draft' : 'final';
+  setChartField(session.doc, chart.value.id, 'status', next);
+  setChartField(session.doc, chart.value.id, 'finalizedAt', next === 'final' ? new Date().toISOString() : null);
+}
+
+const finalizedOn = computed(() => {
+  const stamp = chart.value?.finalizedAt;
+  if (!stamp) return '';
+  const when = new Date(stamp);
+  // An imported file can carry anything in that field, and a bad date must not take the strip down.
+  return Number.isNaN(when.getTime()) ? '' : when.toLocaleDateString();
+});
 
 /**
  * The crumb band is rendered by the shell, because it is a full-width strip above both rails — but
@@ -508,6 +586,7 @@ function commitImport() {
 .cascade { display: flex; flex-direction: column; }
 .pane { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
   overflow: hidden; margin-top: -6px; }
+.pane-scroll { overflow-x: auto; }
 .pane:first-child { margin-top: 0; }
 .pane.focus { border-color: var(--accent); box-shadow: 0 -6px 18px rgba(0, 0, 0, .35); }
 .pane-head { display: flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12px;
@@ -547,17 +626,24 @@ function commitImport() {
 .cell { text-align: center; cursor: pointer; padding: 3px 2px; }
 .cell:hover { background: rgba(255, 255, 255, .04); }
 .cell.editing { outline: 1px solid var(--accent); outline-offset: -1px; }
-.chip { display: inline-block; min-width: 17px; font-size: 10px; font-weight: 700;
-  border-radius: 4px; padding: 1px 3px; margin: 0 1px; border: 1px solid transparent; }
-.chip.l-A { background: #7a4a12; color: #ffd8a8; }
-.chip.l-R { background: #1c5c33; color: #b2f2bb; }
-.chip.l-S { background: #1b4a5c; color: #99e9f2; }
-.chip.l-C { background: #4a3a6b; color: #d0bfff; }
-.chip.l-I { background: #2c313a; color: #adb5bd; }
-/* Inherited and defaulted cells read as ghosts: present, but not stated here. */
-.chip.inherited, .chip.default { background: transparent; color: var(--text-dim);
-  border-style: dashed; border-color: var(--border); font-weight: 600; }
-.chip.default { opacity: .55; }
+/* The chips are the ported .raci-chip rules (assets/css/chart.css) — A red, R blue, C yellow,
+   I grey, the vocabulary these charts are read in. Only the provenance shading is local: a value
+   this row states itself is solid, one it inherits from an ancestor is outlined, and the blank-cell
+   Informed default is fainter still. */
+.raci-chip { width: 20px; height: 20px; border-radius: 3px; font-size: 11px; }
+.raci-chip.inherited { box-shadow: inset 0 0 0 1px currentColor; filter: saturate(0.55) brightness(0.85); }
+.raci-chip.default { opacity: 0.42; }
+
+.c-def input {
+  width: 100%; min-width: 90px; font: inherit; font-size: 11px; background: transparent;
+  border: 1px solid transparent; border-radius: 4px; padding: 2px 5px; color: var(--text);
+}
+.c-def input::placeholder { color: var(--text-dim); font-style: italic; }
+.c-def input:hover:not(:disabled) { border-color: var(--border); }
+.c-def input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+.c-docs { font-size: 11px; white-space: nowrap; }
+.c-docs .doc-count { color: var(--accent); }
+.c-docs .doc-none { color: var(--text-dim); }
 
 .pin { color: #ffd43b; font-weight: 700; cursor: help; margin-right: 4px; }
 .pin.err { color: #ff6b6b; }
