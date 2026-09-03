@@ -35,13 +35,16 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.spec.ts', 'scripts/**'],
+    // `**/scripts/**` rather than `scripts/**`: a flat-config pattern is matched from the
+    // repository root, so the un-prefixed form silently covers only the top-level directory and
+    // leaves a package's own scripts linted as if they were browser code.
+    files: ['**/*.test.ts', '**/*.spec.ts', '**/scripts/**'],
     rules: { 'no-console': 'off', '@typescript-eslint/no-explicit-any': 'off' },
   },
   {
     // Build and maintenance scripts are plain Node ESM, so they get the Node globals the
     // browser-leaning default config does not define.
-    files: ['scripts/**', '**/*.config.{js,ts,mjs}'],
+    files: ['**/scripts/**', '**/*.config.{js,ts,mjs}'],
     languageOptions: {
       globals: { console: 'readonly', process: 'readonly', URL: 'readonly', fetch: 'readonly' },
     },

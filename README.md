@@ -17,6 +17,20 @@ the whole migration strategy, and it is enforced by a test — see
 
 ## Getting started
 
+### On Kubuntu, in one command
+
+```bash
+./scripts/setup-kubuntu.sh
+```
+
+Installs Node, pnpm, Docker and Qt, writes a `.env` with a real session secret, starts the stack,
+migrates, loads the demo workspace, and puts a **power button in the system tray** that turns the
+whole thing on and off with one click. About ten minutes, safe to run twice, `--uninstall` to undo.
+See [ops/desktop/README.md](ops/desktop/README.md) — it is written for someone who does not want to
+learn what a container is.
+
+### By hand, anywhere else
+
 ```bash
 # Prerequisites: Node 22+, pnpm 9+, Docker (for the dev stack)
 
@@ -60,6 +74,7 @@ index.html                 the legacy app — still the product
 docs/                      user-facing field guides (served from the app's Help view)
 docs/dev/                  developer documentation — start with ARCHITECTURE.md
 ops/                       dev-stack fixtures: Keycloak realm, LDAP seed, sample CSV
+ops/desktop/               the tray power button and its tests
 
 packages/
   core/                    the domain. No framework, no DOM, no I/O. Everything derives from it.

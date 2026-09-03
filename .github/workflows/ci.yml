@@ -35,6 +35,31 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  desktop:
+    name: Power button
+    runs-on: ubuntu-latest
+    # The Kubuntu setup script and the tray icon are the only way a non-developer ever starts this
+    # tool, so a syntax error in either is as broken as a failing unit test. Python and shell, so
+    # none of it is covered by `pnpm verify`.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell scripts parse
+        run: bash -n scripts/setup-kubuntu.sh ops/desktop/raci-tray
+
+      - name: Start/stop state machine
+        run: python3 ops/desktop/test_raci_service.py
+
+      # Same package Kubuntu installs, so the Qt these tests run against is the Qt the tray gets.
+      - name: Install Qt for Python
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-pyqt6 libegl1
+
+      - name: Tray icon
+        env:
+          QT_QPA_PLATFORM: offscreen
+          RACI_REQUIRE_QT: '1'
+        run: python3 ops/desktop/test_raci_tray.py
+
   legacy-app:
     name: Legacy single-file app still parses
     runs-on: ubuntu-latest

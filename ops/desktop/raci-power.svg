@@ -1,0 +1,9 @@
+<!-- The launcher icon. The tray icon is painted at runtime in raci_tray.py so it can change
+     colour with the state; this one is for the application menu, where it never changes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <g fill="none" stroke="#3fb950" stroke-width="13" stroke-linecap="round">
+    <!-- 300° of arc starting at 120°, leaving a 60° gap centred on 12 o'clock for the stroke. -->
+    <path d="M 44 29.36 A 40 40 0 1 0 84 29.36" />
+    <line x1="64" y1="16" x2="64" y2="60" />
+  </g>
+</svg>

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Starts the tray power button.
+#
+# A wrapper rather than pointing the .desktop entry straight at the .py, so the entry does not have
+# to encode which python this box has, and so `RACI_REPO` can be set in one place if the project
+# ever moves.
+set -euo pipefail
+here="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+exec python3 "$here/raci_tray.py" "$@"
