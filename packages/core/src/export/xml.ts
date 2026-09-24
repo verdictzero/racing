@@ -1,237 +1,251 @@
 /**
- * XML export.
+ * The XML export — index.html's `exportXML`, out of the DOM.
  *
- * A pure function of the workspace, which is the point of moving it here: in `index.html` this
- * reads the DOM's idea of the active chart and calls `download()` at the end, so it can only run
- * in a browser with a chart open. Here it takes a workspace and returns a string, so the app, the
- * API and a batch job all produce byte-identical output, and it can be tested without a browser.
+ * One chart, the tab in front of the person, as a `<raciTool>` document: its columns; its activity
+ * tree, each row with its roster unit and its resolved responsibility line, and under each row the
+ * flows anchored to it (steps in the order the flow runs, then the handoffs); then the chart's
+ * metadata, the deliverable and entity registries and the roster. Anyone consuming this has scripts
+ * written against what index.html writes, so this writes exactly that: the parity test holds it to
+ * the legacy app's own output, byte for byte, for the demo and two variations of it.
  *
- * THE SHAPE IS THE LEGACY SHAPE, deliberately. Anyone consuming this has scripts written against
- * what v0.39 emits; a tidier schema would break them for no benefit they asked for. Where the new
- * model differs (flat rows, sparse cells) the difference is absorbed here, exactly as `legacy.ts`
- * absorbs it for the JSON format.
+ * A pure function of the workspace, which is the point of moving it here: in index.html it reads
+ * the active chart out of global state and ends in `download()`, so it only runs in a browser with
+ * a chart open. Every word it prints comes from document-text.ts, the vocabulary the PowerPoint and
+ * workbook ports share, so the documents cannot drift apart on what a row, a step or a party is
+ * called.
  */
 
-import { framework, TIER_LABELS } from '../constants.js';
-import { displayRaci } from '../raci.js';
-import { childrenOf, rootsOf } from '../tree.js';
-import { chartColumns, type Chart, type ChartNode, type Flow, type Workspace } from '../schema.js';
-import { artifactsInOrder, entitiesInOrder } from '../registry.js';
-import { topologicalOrder } from './order.js';
-
-/** XML text escaping. Attribute values and text nodes take the same treatment. */
-function esc(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/** Element name per tier, matching the legacy exporter. Deeper free-form levels reuse "task". */
-const TIER_TAGS = ['portfolio', 'program', 'project', 'task'] as const;
-
-function tagFor(depth: number): string {
-  return TIER_TAGS[Math.min(depth, TIER_TAGS.length - 1)]!;
-}
+import { ACTORS, MAX_TIER } from '../constants.js';
+import {
+  artifactsInOrder,
+  entitiesInOrder,
+  entityDisplayName,
+  entityDisplayShort,
+} from '../registry.js';
+import { childIndex, childrenIn } from '../tree.js';
+import type { ChartNode, Flow, Workspace } from '../schema.js';
+import {
+  actorLabel,
+  anchorContext,
+  chartColumnTexts,
+  deliverableName,
+  deliverableUses,
+  documentChart,
+  documentTags,
+  entityNamings,
+  escapeHtml as esc,
+  flowEdges,
+  flowStepOrder,
+  flowsAnchoredTo,
+  freeFormShape,
+  hasDocumentMeta,
+  hasSignedStamp,
+  orgText,
+  passDown,
+  printedLine,
+  rowOrg,
+  stepDeliverables,
+  stepLinkText,
+  stepPartiesText,
+  stepRolesText,
+} from './document-text.js';
 
 export interface XmlExportOptions {
-  /** Limit to one chart. Omit to export every chart in the workspace. */
+  /** The chart tab in front of the person — index.html's `ac()`. Absent or unknown: the first tab. */
   readonly chartId?: string;
-  /** Include anchored flows nested under the row they implement. Default true. */
-  readonly includeFlows?: boolean;
-  readonly generatedBy?: string;
-  /** Injectable so a snapshot test is not a clock test. */
-  readonly now?: Date;
 }
 
-function artifactName(ws: Workspace, id: string): string {
-  return ws.artifacts[id]?.name ?? '(missing deliverable)';
-}
+/** An org chart's element per tier. A free-form chart's levels are user-named, so it uses levelN. */
+const TIER_TAGS = ['portfolio', 'program', 'project', 'task'];
 
-/** Deliverables a step consumes and produces, derived from its edges rather than stored. */
-export function stepIo(flow: Flow, stepId: string): { inputs: string[]; outputs: string[] } {
-  const inputs = new Set<string>();
-  const outputs = new Set<string>();
-  for (const edge of Object.values(flow.edges)) {
-    if (edge.to === stepId) for (const id of edge.artifactIds) inputs.add(id);
-    if (edge.from === stepId) for (const id of edge.artifactIds) outputs.add(id);
-  }
-  return { inputs: [...inputs].sort(), outputs: [...outputs].sort() };
-}
+/** The chart in front as index.html's XML writes it. */
+export function exportXml(ws: Workspace, opts: XmlExportOptions = {}): string {
+  const chart = documentChart(ws, opts.chartId);
+  const free = freeFormShape(chart) !== null;
+  const columns = chartColumnTexts(ws, chart);
+  const keys = columns.map((c) => c.key);
+  const index = childIndex(chart.nodes);
 
-/** "R: Cyber · A: HQ" — the roles a step assigns, for an attribute. */
-function stepRoles(flow: Flow, step: Flow['steps'][string]): string {
-  const fw = framework(flow.framework);
-  const byLetter = new Map<string, string[]>();
-  for (const [col, letters] of Object.entries(step.raci)) {
-    for (const letter of letters) {
-      const list = byLetter.get(letter);
-      if (list) list.push(col);
-      else byLetter.set(letter, [col]);
+  // Anchored flows nest under the row they implement — on an organization chart only.
+  const anchored = new Map<string, Flow[]>();
+  if (!free) {
+    for (const flow of flowsAnchoredTo(ws, chart.id)) {
+      const list = anchored.get(flow.anchor!.nodeId);
+      if (list) list.push(flow);
+      else anchored.set(flow.anchor!.nodeId, [flow]);
     }
   }
-  return fw.roles
-    .filter((letter) => byLetter.has(letter))
-    .map((letter) => `${letter}: ${byLetter.get(letter)!.sort().join(', ')}`)
-    .join(' · ');
-}
 
-function flowXml(ws: Workspace, flow: Flow, pad: string): string {
-  const nameOf = (id: string) => flow.steps[id]?.name || '?';
+  const flowXml = (flow: Flow, pad: string): string => {
+    const context = anchorContext(ws, flow);
+    const nameOf = (id: string) => flow.steps[id]?.name || '?';
+    const steps = flowStepOrder(flow)
+      .map((step) => {
+        const io = stepDeliverables(flow, step.id);
+        const inner =
+          io.inputs
+            .map((id) => `${pad}    <input deliverable="${esc(deliverableName(ws, id))}"/>\n`)
+            .join('') +
+          io.outputs
+            .map((id) => `${pad}    <output deliverable="${esc(deliverableName(ws, id))}"/>\n`)
+            .join('');
+        const link = stepLinkText(ws, flow, step, keys);
+        const roles = stepRolesText(ws, flow, step, keys);
+        const parties = stepPartiesText(ws, flow, context, step, keys);
+        const open =
+          `${pad}  <step name="${esc(step.name)}"` +
+          (step.description ? ` description="${esc(step.description)}"` : '') +
+          (link ? ` linkedRow="${esc(link)}"` : '') +
+          (step.entry ? ` entry="${esc(step.entry)}"` : '') +
+          (step.exit ? ` exit="${esc(step.exit)}"` : '') +
+          (roles ? ` roles="${esc(roles)}"` : '') +
+          (parties ? ` parties="${esc(parties)}"` : '');
+        return inner ? `${open}>\n${inner}${pad}  </step>\n` : `${open}/>\n`;
+      })
+      .join('');
+    const handoffs = flowEdges(flow)
+      .map(
+        (e) =>
+          `${pad}  <handoff from="${esc(nameOf(e.from))}" to="${esc(nameOf(e.to))}"` +
+          (e.label ? ` condition="${esc(e.label)}"` : '') +
+          (e.artifactIds.length
+            ? ` deliverables="${esc(e.artifactIds.map((id) => deliverableName(ws, id)).join(', '))}"`
+            : '') +
+          '/>\n',
+      )
+      .join('');
+    return (
+      `${pad}<flow name="${esc(flow.name)}" status="${esc(flow.status)}" mode="${esc(flow.mode)}"` +
+      (hasSignedStamp(flow) ? ` finalized="${esc(flow.finalizedAt)}"` : '') +
+      `>\n${steps}${handoffs}${pad}</flow>\n`
+    );
+  };
 
-  const steps = topologicalOrder(flow)
-    .map((id) => {
-      const step = flow.steps[id]!;
-      const io = stepIo(flow, id);
-      const inner =
-        io.inputs.map((a) => `${pad}    <input deliverable="${esc(artifactName(ws, a))}"/>\n`).join('') +
-        io.outputs.map((a) => `${pad}    <output deliverable="${esc(artifactName(ws, a))}"/>\n`).join('');
+  // A row, then its children, then the flows anchored to it. An org chart ends at its fourth tier,
+  // as the legacy loader cuts it.
+  const lastTier = free ? Number.POSITIVE_INFINITY : MAX_TIER;
+  const nodeXml = (
+    node: ChartNode,
+    depth: number,
+    inherited: string | null,
+    pad: string,
+  ): string => {
+    const line = printedLine(node, inherited, keys);
+    const raci = keys
+      .filter((k) => line[k])
+      .map((k) => ` ${k}="${line[k]}"`)
+      .join('');
+    const org = orgText(ws, rowOrg(chart, node));
+    const tag = free ? `level${depth + 1}` : (TIER_TAGS[depth] ?? `level${depth}`);
+    const open = `${pad}<${tag} name="${esc(node.name)}"${org ? ` org="${esc(org.full)}"` : ''}${raci}`;
+    const down = passDown(node, inherited, keys);
+    const children = depth < lastTier ? childrenIn(index, node.id) : [];
+    const inner =
+      children.map((child) => nodeXml(child, depth + 1, down, `${pad}  `)).join('') +
+      (anchored.get(node.id) ?? []).map((flow) => flowXml(flow, `${pad}  `)).join('');
+    return inner ? `${open}>\n${inner}${pad}</${tag}>\n` : `${open}/>\n`;
+  };
 
-      const roles = stepRoles(flow, step);
-      const attrs =
-        `${pad}  <step name="${esc(step.name)}"` +
-        (step.description ? ` description="${esc(step.description)}"` : '') +
-        (step.entry ? ` entry="${esc(step.entry)}"` : '') +
-        (step.exit ? ` exit="${esc(step.exit)}"` : '') +
-        (roles ? ` roles="${esc(roles)}"` : '');
-      return inner ? `${attrs}>\n${inner}${pad}  </step>\n` : `${attrs}/>\n`;
-    })
+  const cols = columns
+    .map((c) => `    <column key="${c.key}" label="${esc(c.label)}"/>`)
+    .join('\n');
+  const acts = childrenIn(index, null)
+    .map((root) => nodeXml(root, 0, null, '    '))
     .join('');
 
-  const handoffs = Object.values(flow.edges)
-    .map(
-      (e) =>
-        `${pad}  <handoff from="${esc(nameOf(e.from))}" to="${esc(nameOf(e.to))}"` +
-        (e.label ? ` condition="${esc(e.label)}"` : '') +
-        (e.artifactIds.length
-          ? ` deliverables="${esc(e.artifactIds.map((a) => artifactName(ws, a)).join(', '))}"`
-          : '') +
-        '/>\n',
-    )
-    .join('');
-
-  return (
-    `${pad}<flow name="${esc(flow.name)}" status="${esc(flow.status)}" mode="${esc(flow.mode)}"` +
-    (flow.finalizedAt ? ` finalized="${esc(flow.finalizedAt)}"` : '') +
-    `>\n${steps}${handoffs}${pad}</flow>\n`
-  );
-}
-
-function nodeXml(
-  ws: Workspace,
-  chart: Chart,
-  node: ChartNode,
-  depth: number,
-  pad: string,
-  flowsByNode: Map<string, Flow[]>,
-  includeFlows: boolean,
-): string {
-  const columns = chartColumns(chart);
-  const eff = displayRaci(chart, chart.nodes, node.id);
-  const raci = columns
-    .filter((k) => eff[k]?.letters)
-    .map((k) => ` ${k}="${esc(eff[k]!.letters)}"`)
-    .join('');
-
-  const org = node.org
-    ? ' org="' +
-      esc(
-        'entityId' in node.org
-          ? node.org.entityId
-          : [node.org.actor, node.org.divisionId, node.org.branchId, node.org.teamId]
-              .filter(Boolean)
-              .join('/'),
-      ) +
-      '"'
+  const meta = chart.meta;
+  const tags = documentTags(meta);
+  const metaSection = hasDocumentMeta(meta)
+    ? `  <meta` +
+      (meta.customer ? ` customer="${esc(meta.customer)}"` : '') +
+      (meta.priority ? ` priority="${esc(meta.priority)}"` : '') +
+      (meta.budget ? ` budget="${esc(meta.budget)}"` : '') +
+      (tags.length ? ` tags="${esc(tags.join(', '))}"` : '') +
+      `>${esc(meta.description)}</meta>\n`
     : '';
 
-  const tag = tagFor(depth);
-  const open = `${pad}<${tag} name="${esc(node.name)}"${raci}${org}`;
+  // The two registries are global, so every chart's XML carries them.
+  const uses = deliverableUses(ws);
+  const artifacts = artifactsInOrder(ws);
+  const artifactsSection = artifacts.length
+    ? `  <artifacts>\n${artifacts
+        .map((a) => {
+          const producers = uses.get(a.id)?.producers ?? [];
+          const consumers = uses.get(a.id)?.consumers ?? [];
+          return (
+            `    <artifact name="${esc(a.name || 'Untitled deliverable')}" type="${esc(a.type)}"` +
+            (producers.length ? ` producers="${esc(producers.join(', '))}"` : '') +
+            (consumers.length ? ` consumers="${esc(consumers.join(', '))}"` : '') +
+            '/>'
+          );
+        })
+        .join('\n')}\n  </artifacts>\n`
+    : '';
 
-  const inner =
-    (node.description ? `${pad}  <definition>${esc(node.description)}</definition>\n` : '') +
-    node.inputs.map((a) => `${pad}  <input deliverable="${esc(artifactName(ws, a))}"/>\n`).join('') +
-    node.outputs.map((a) => `${pad}  <output deliverable="${esc(artifactName(ws, a))}"/>\n`).join('') +
-    (includeFlows
-      ? (flowsByNode.get(node.id) ?? []).map((f) => flowXml(ws, f, `${pad}  `)).join('')
-      : '') +
-    childrenOf(chart.nodes, node.id)
-      .map((child) => nodeXml(ws, chart, child, depth + 1, `${pad}  `, flowsByNode, includeFlows))
-      .join('');
+  const entities = entitiesInOrder(ws);
+  const namings = entityNamings(ws);
+  const entitiesSection = entities.length
+    ? `  <entities>\n${entities
+        .map((e) => {
+          const named = namings.get(e.id) ?? [];
+          return (
+            `    <entity name="${esc(entityDisplayName(e))}" kind="${esc(e.kind)}" short="${esc(entityDisplayShort(e))}"` +
+            (e.lead?.name ? ` lead="${esc(e.lead.name)}"` : '') +
+            (e.description ? ` description="${esc(e.description)}"` : '') +
+            (named.length
+              ? ` namedBy="${esc(named.map((u) => `${u.where} › ${u.name}`).join('; '))}"`
+              : '') +
+            '/>'
+          );
+        })
+        .join('\n')}\n  </entities>\n`
+    : '';
 
-  return inner ? `${open}>\n${inner}${pad}</${tag}>\n` : `${open}/>\n`;
-}
-
-/** The workspace (or one chart of it) as XML. */
-export function exportXml(ws: Workspace, opts: XmlExportOptions = {}): string {
-  const includeFlows = opts.includeFlows !== false;
-  const charts = opts.chartId
-    ? [ws.charts[opts.chartId]].filter((c): c is Chart => !!c)
-    : Object.values(ws.charts);
-
-  const flowsByNode = new Map<string, Flow[]>();
-  for (const flow of Object.values(ws.flows)) {
-    if (!flow.anchor) continue;
-    const list = flowsByNode.get(flow.anchor.nodeId);
-    if (list) list.push(flow);
-    else flowsByNode.set(flow.anchor.nodeId, [flow]);
-  }
-
-  const generated = (opts.now ?? new Date()).toISOString().slice(0, 10);
-  const body = charts
-    .map((chart) => {
-      const fw = framework(chart.framework);
-      const tiers = chart.custom
-        ? chart.custom.tiers.join(', ') || 'custom'
-        : TIER_LABELS.join(', ');
-      const rows = rootsOf(chart.nodes)
-        .map((node) => nodeXml(ws, chart, node, 0, '    ', flowsByNode, includeFlows))
-        .join('');
-      return (
-        `  <chart title="${esc(chart.title)}" framework="${esc(fw.name)}" status="${esc(chart.status)}"` +
-        (chart.finalizedAt ? ` finalized="${esc(chart.finalizedAt)}"` : '') +
-        ` tiers="${esc(tiers)}">\n` +
-        (chart.meta.description || chart.meta.customer || chart.meta.tags.length
-          ? `    <meta` +
-            (chart.meta.customer ? ` customer="${esc(chart.meta.customer)}"` : '') +
-            (chart.meta.priority ? ` priority="${esc(chart.meta.priority)}"` : '') +
-            (chart.meta.budget ? ` budget="${esc(chart.meta.budget)}"` : '') +
-            (chart.meta.tags.length ? ` tags="${esc(chart.meta.tags.join(', '))}"` : '') +
-            (chart.meta.description ? `>${esc(chart.meta.description)}</meta>\n` : '/>\n')
-          : '') +
-        rows +
-        '  </chart>\n'
-      );
-    })
-    .join('');
-
-  const artifacts = artifactsInOrder(ws)
-    .map(
-      (a) =>
-        `    <deliverable name="${esc(a.name)}" type="${esc(a.type)}"` +
-        (a.description ? `>${esc(a.description)}</deliverable>\n` : '/>\n'),
-    )
-    .join('');
-
-  const entities = entitiesInOrder(ws)
-    .map(
-      (e) =>
-        `    <entity name="${esc(e.name)}" kind="${esc(e.kind)}"` +
-        (e.short ? ` short="${esc(e.short)}"` : '') +
-        '/>\n',
-    )
-    .join('');
+  // The roster is an organization chart's: a free-form chart's parties are not directorates.
+  const rosterSection = free ? '' : `  <roster>\n${rosterXml(ws)}\n  </roster>\n`;
 
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    `<raci generated="${esc(generated)}"` +
-    (opts.generatedBy ? ` generatedBy="${esc(opts.generatedBy)}"` : '') +
+    `<raciTool title="${esc(chart.title || 'RACI')}" status="${esc(chart.status)}"` +
+    (hasSignedStamp(chart) ? ` finalized="${esc(chart.finalizedAt)}"` : '') +
     '>\n' +
-    body +
-    (artifacts ? `  <deliverables>\n${artifacts}  </deliverables>\n` : '') +
-    (entities ? `  <entities>\n${entities}  </entities>\n` : '') +
-    '</raci>\n'
+    `  <columns>\n${cols}\n  </columns>\n` +
+    `  <activities>\n${acts}  </activities>\n` +
+    metaSection +
+    artifactsSection +
+    entitiesSection +
+    rosterSection +
+    '</raciTool>\n'
   );
+}
+
+/** Every directorate, down to its people — each unit's lead or chief as an attribute when named. */
+function rosterXml(ws: Workspace): string {
+  const named = (attr: string, lead: { readonly name: string } | null | undefined) =>
+    lead?.name ? ` ${attr}="${esc(lead.name)}"` : '';
+  // An element whose children go on their own lines, closed on its own line at its own indent —
+  // or, with none, closed straight after it opens.
+  const wrap = (children: string, pad: string) => (children ? `\n${children}\n${pad}` : '');
+  return ACTORS.map((actor) => {
+    const directorate = ws.roster[actor];
+    const divisions = (directorate?.divisions ?? [])
+      .map((division) => {
+        const branches = division.branches
+          .map((branch) => {
+            const teams = branch.teams
+              .map((team) => {
+                const people = team.people
+                  .map((p) => `            <person name="${esc(p.name)}" title="${esc(p.title)}"/>`)
+                  .join('\n');
+                return `          <team name="${esc(team.name)}"${named('chief', team.chief)}>${wrap(people, '          ')}</team>`;
+              })
+              .join('\n');
+            return `        <branch name="${esc(branch.name)}"${named('chief', branch.chief)}>${wrap(teams, '        ')}</branch>`;
+          })
+          .join('\n');
+        return `      <division name="${esc(division.name)}"${named('chief', division.chief)}>${wrap(branches, '      ')}</division>`;
+      })
+      .join('\n');
+    return `    <directorate key="${actor}" label="${esc(actorLabel(ws, actor))}"${named('lead', directorate?.lead)}>${wrap(divisions, '    ')}</directorate>`;
+  }).join('\n');
 }

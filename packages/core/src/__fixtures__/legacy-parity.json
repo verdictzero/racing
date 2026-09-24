@@ -1,5 +1,5 @@
 {
-  "source": "index.html v0.39 — pptxBytes(), ingestKitMarkdown() and the file Save writes, run headless (Chromium, en-US, UTC) by packages/core/scripts/capture-legacy-parity.mjs",
+  "source": "index.html v0.39 — pptxBytes(), xlsxBytes(), exportXML(), exportMermaid(), exportMermaidFlow(), ingestKitMarkdown() and the file Save writes, run headless (Chromium, en-US, UTC) by packages/core/scripts/capture-legacy-parity.mjs",
   "now": "2026-09-24T12:00:00.000Z",
   "cases": {
     "demo": {
@@ -73,6 +73,25 @@
         "ppt/slides/slide64.xml": "e4c8bfa67cd3821a"
       },
       "otherParts": "e18c40eaaf73526cc7f37fa2560ad2c86fcf0e5a1db80bcb51c357f41e411f61",
+      "xlsx": {
+        "[Content_Types].xml": "8a0dd8b70bc8cdfc",
+        "_rels/.rels": "9f96bb683e71c451",
+        "xl/workbook.xml": "fcbed856534d0cc5",
+        "xl/_rels/workbook.xml.rels": "707703a9889a5fa5",
+        "xl/worksheets/sheet1.xml": "759b955c3105106d",
+        "xl/worksheets/sheet2.xml": "c654492b8fcf787c",
+        "xl/worksheets/sheet3.xml": "a191c59207b8ba0a",
+        "xl/worksheets/sheet4.xml": "f54c904139f000b4",
+        "xl/worksheets/sheet5.xml": "a8da086c169447a2",
+        "xl/worksheets/sheet6.xml": "4a5d5693371721d5",
+        "xl/worksheets/sheet7.xml": "bc557b3985c739ea"
+      },
+      "xml": "e1f10c6754601e88f3c37dcd72309b142ed9711a61a5c6ddb3780cf478335dd1",
+      "chartMermaid": "427466f8df8fc4e8dab360ea8763975ca0b17ece63963dcab86a447ee15ed9c7",
+      "flowMermaid": {
+        "b_080aooen": "f430e5166e108720",
+        "b_1ntte2mi": "17b41ccce34fe0c6"
+      },
       "kit": "1f6ec4446f3c7be1851d12e01a7607156c075c983321056b9f88d8212df0385f",
       "save": "378e3d86a320e0f0ff38c5b8f0a9ba4c9e619cb350f4814d1fa705601f3bdec2",
       "saveSorted": "327d7c45e3b6d26e4f67d538c444c7a5e2d73aa9506a375d3aafd7caea3f5797"
@@ -148,13 +167,35 @@
         "ppt/slides/slide64.xml": "f6f9714b18d78902",
         "ppt/slides/slide65.xml": "851305a96670842e",
         "ppt/slides/slide66.xml": "3bb1b6c41a8e692c",
-        "ppt/slides/slide67.xml": "ec27fd622e347c36",
+        "ppt/slides/slide67.xml": "2723ae54aaf71751",
         "ppt/slides/slide68.xml": "1d18bec25caf81a5"
       },
       "otherParts": "2a135aa0904350b62f62f00eba351d10cf7dba70f8311a52b3b21a717c696a95",
+      "xlsx": {
+        "[Content_Types].xml": "80d6f788d34e62be",
+        "_rels/.rels": "9f96bb683e71c451",
+        "xl/workbook.xml": "7865fecdae8a3bd5",
+        "xl/_rels/workbook.xml.rels": "71e98417f29989b8",
+        "xl/worksheets/sheet1.xml": "040ef4b2b5e06a79",
+        "xl/worksheets/sheet2.xml": "95827805b9cac265",
+        "xl/worksheets/sheet3.xml": "656da9b4ec588bd0",
+        "xl/worksheets/sheet4.xml": "4e93c48e180f06e1",
+        "xl/worksheets/sheet5.xml": "40166494867a22d9",
+        "xl/worksheets/sheet6.xml": "14f61bb4154b3cd0",
+        "xl/worksheets/sheet7.xml": "f1b83aab74298688",
+        "xl/worksheets/sheet8.xml": "39b1ff2437bd65e0"
+      },
+      "xml": "e6b19541a5e53bfc908dc92c086c7fc7be805ebd5c9d06db4a613d76132a2493",
+      "chartMermaid": "37bd9c44e6349688ccacdeedded764806d92de98a957385dbc0c0aef8d080a4b",
+      "flowMermaid": {
+        "b_080aooen": "ddbcfa75e90c7781",
+        "b_1ntte2mi": "57002129799bfb95",
+        "b_par_empty": "2addb7fe102f9da8",
+        "b_par_elsewhere": "3dc6e448f28e3518"
+      },
       "kit": "a0e694ce78b01ee787e0c89340de304b4bfe3f85e11201500235651709feb69a",
-      "save": "4aa58addc98812d1716c1620ea2181d226fc352c3fd6d062f3f7350e0131cb40",
-      "saveSorted": "2ef4c79d93f2654647e648950f0adc52ca0cce280b976a6158cee09ec006c90e"
+      "save": "f04c42f506d9ea7e3c640d4f7f9377c32fab24ecb834e8848544568a9a120146",
+      "saveSorted": "3210318df9d7a9254b9c9ce3d090f5a9ed2f4eb1732b82be8beaa2cb99318542"
     },
     "freeform": {
       "chartId": "c_par_free",
@@ -171,6 +212,27 @@
         "ppt/slides/slide8.xml": "cfd7860c76feb50e"
       },
       "otherParts": "2232853e23a9882196cb780c9c62c5cd4c6d273aa035777688e00c4b99b9a62e",
+      "xlsx": {
+        "[Content_Types].xml": "c48a3da0e4154c0c",
+        "_rels/.rels": "9f96bb683e71c451",
+        "xl/workbook.xml": "19d01a1f8fc7e0e2",
+        "xl/_rels/workbook.xml.rels": "4710491388ba6c76",
+        "xl/worksheets/sheet1.xml": "7b7f6612927ff80a",
+        "xl/worksheets/sheet2.xml": "de77bb7ce402ecf5",
+        "xl/worksheets/sheet3.xml": "8c3433f3cf721ac9",
+        "xl/worksheets/sheet4.xml": "eeefbdd4ae0b8a9c",
+        "xl/worksheets/sheet5.xml": "0ac302e5b2b88f02",
+        "xl/worksheets/sheet6.xml": "37eb2681b2e51222",
+        "xl/worksheets/sheet7.xml": "2d243108487d4d86",
+        "xl/worksheets/sheet8.xml": "4a5d5693371721d5",
+        "xl/worksheets/sheet9.xml": "bc557b3985c739ea"
+      },
+      "xml": "a9f8d6e35b26a6ba690d51f42a783b6ec166af82eb937bf64575b41d170b75cd",
+      "chartMermaid": "0f17ce6888f31855223f8a7f673a078346d58c929e408767bc5f0646146e7bcb",
+      "flowMermaid": {
+        "b_080aooen": "f430e5166e108720",
+        "b_1ntte2mi": "17b41ccce34fe0c6"
+      },
       "kit": "2eaa2c071b9616d3f49c2ba05dcebf7cf4e4a62b8d1ea00df90d8080b501d0f6",
       "save": "779b7463b0c45f3f1174dd2b7ce2789d2c06057cd69c39bd7bdb9185f828835e",
       "saveSorted": "51ff8201a84b47c8902b6f6759f8a58d594bf4251089a284e97a6667ebb3fd5d"

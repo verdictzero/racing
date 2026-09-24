@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
 
   switch (query.format) {
     case 'xml':
-      body = exportXml(workspace, { chartId: query.chartId, generatedBy: session.displayName });
+      body = exportXml(workspace, { chartId: query.chartId });
       contentType = 'application/xml; charset=utf-8';
       extension = 'xml';
       break;
