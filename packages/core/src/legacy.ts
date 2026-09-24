@@ -76,6 +76,32 @@ export interface ImportReport {
 }
 
 const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback);
+/**
+ * A free-form chart's { cols, tiers } — index.html's normalizeChartCustom. A column needs a key of
+ * its own (a repeat is dropped); a blank label reads "Party"; labels and shorts are trimmed. A
+ * shape with no usable column is no free-form chart at all, and the chart loads as an org chart,
+ * so a hand-edited file can never leave a chart with zero columns.
+ */
+function parseCustom(v: unknown): { cols: Array<{ key: string; label: string; short: string }>; tiers: string[] } | null {
+  if (!v || typeof v !== 'object' || !Array.isArray((v as Record<string, unknown>).cols)) return null;
+  const x = v as Record<string, unknown>;
+  const seen = new Set<string>();
+  const cols: Array<{ key: string; label: string; short: string }> = [];
+  for (const c of x.cols as unknown[]) {
+    if (!c || typeof c !== 'object') continue;
+    const cc = c as Record<string, unknown>;
+    if (typeof cc.key !== 'string' || !cc.key || seen.has(cc.key)) continue;
+    seen.add(cc.key);
+    const label = typeof cc.label === 'string' ? cc.label.trim() : '';
+    cols.push({ key: cc.key, label: label || 'Party', short: typeof cc.short === 'string' ? cc.short.trim() : '' });
+  }
+  if (!cols.length) return null;
+  const tiers = Array.isArray(x.tiers) ? x.tiers.map((t) => (typeof t === 'string' ? t : '')).slice(0, 64) : [];
+  return { cols, tiers };
+}
+
+/** A row's or step's Kanban status, kept only when it says something: absent reads as 'todo'. */
+const taskStatusOf = (v: unknown): 'doing' | 'done' | undefined => (v === 'doing' || v === 'done' ? v : undefined);
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 const bool = (v: unknown, fallback = false): boolean => (typeof v === 'boolean' ? v : fallback);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
@@ -212,6 +238,7 @@ function flattenActivities(
         documents: parseDocs(raw.documents, attachments),
         inputs: arr(raw.inputs).filter((x): x is string => typeof x === 'string'),
         outputs: arr(raw.outputs).filter((x): x is string => typeof x === 'string'),
+        taskStatus: taskStatusOf(raw.status),
       });
       nodes[id] = node;
 
@@ -230,17 +257,7 @@ function importChart(
   attachments: Attachments,
 ): Chart {
   const id = keepOrMint('chart', raw.id);
-  const customIn = rec(raw.custom);
-  const custom =
-    raw.custom && typeof raw.custom === 'object'
-      ? {
-          cols: arr(customIn.cols)
-            .map(rec)
-            .filter((c) => typeof c.key === 'string' && c.key)
-            .map((c) => ({ key: c.key as string, label: str(c.label, 'Party'), short: str(c.short) })),
-          tiers: arr(customIn.tiers).map((t) => str(t)),
-        }
-      : null;
+  const custom = parseCustom(raw.custom);
 
   const columns = custom ? custom.cols.map((c) => c.key) : COLS;
   const framework = str(raw.framework) === 'rasci' ? 'rasci' : 'raci';
@@ -328,6 +345,7 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
         in: arr(portsIn.in).filter((p): p is string => typeof p === 'string'),
         out: arr(portsIn.out).filter((p): p is string => typeof p === 'string'),
       },
+      taskStatus: taskStatusOf(t.status),
     });
   }
 
@@ -639,6 +657,7 @@ function nestNodes(chart: Chart, dataUrls: ReadonlyMap<string, string> | undefin
           id: n.id,
           name: n.name,
           raci,
+          status: n.taskStatus ?? 'todo',
           description: n.description,
           documents: n.documents.map((d) => exportDoc(d, dataUrls)),
           inputs: [...n.inputs],
@@ -690,36 +709,42 @@ export function exportLegacy(
     return out;
   });
 
+  // Keys in the order index.html's migrateState builds them, so a file saved here reads like one
+  // saved there — a diff between the two shows what changed, not how each app happens to type.
   const bizCases = Object.values(ws.flows).map((f) => ({
     id: f.id,
     name: f.name,
     meta: { ...f.meta, tags: [...f.meta.tags] },
     framework: f.framework,
-    mode: f.mode,
-    sourceChartId: f.sourceChartId,
     status: f.status,
     finalizedAt: f.finalizedAt,
+    mode: f.mode,
+    sourceChartId: f.sourceChartId,
     anchor: f.anchor ? { ...f.anchor } : null,
     tasks: Object.values(f.steps).map((s) => {
+      const sub = s.kind === 'subflow';
+      // Every org column, blank ones as '' — the legacy loader fills them in, so it writes them out.
+      const raci: Record<string, string> = {};
+      for (const col of COLS) raci[col] = s.raci[col] ?? '';
       const out: Record<string, unknown> = {
         id: s.id,
+        kind: sub ? 'subflow' : 'task',
         name: s.name,
+        raci,
+        parties: Object.fromEntries(Object.entries(s.parties).map(([k, v]) => [k, { ...v }])),
+        // A nested-flow box has no chart row of its own, so the legacy shape gives it no bind.
+        ...(sub ? {} : { bind: s.bind ? { ...s.bind } : null, bindOverrides: [...s.bindOverrides] }),
         description: s.description,
         entry: s.entry,
         exit: s.exit,
+        status: s.taskStatus ?? 'todo',
         x: s.x,
         y: s.y,
         groupId: s.groupId,
-        raci: { ...s.raci },
-        parties: Object.fromEntries(Object.entries(s.parties).map(([k, v]) => [k, { ...v }])),
-        bind: s.bind ? { ...s.bind } : null,
       };
-      if (s.kind === 'subflow') {
-        out.kind = 'subflow';
+      if (sub) {
         out.refId = s.refId;
         out.ports = { in: [...s.ports.in], out: [...s.ports.out] };
-      } else {
-        out.bindOverrides = [...s.bindOverrides];
       }
       return out;
     }),
@@ -727,10 +752,10 @@ export function exportLegacy(
       id: e.id,
       from: e.from,
       to: e.to,
-      fromPort: e.fromPort,
-      toPort: e.toPort,
       label: e.label,
       artifactIds: [...e.artifactIds],
+      fromPort: e.fromPort,
+      toPort: e.toPort,
       via: e.via.map((v) => ({ ...v })),
     })),
     groups: Object.values(f.groups).map((g) => ({
@@ -769,11 +794,13 @@ export function exportLegacy(
     };
   }
 
+  // Top-level keys in defaultState()'s order. The view fields are the defaults a fresh index.html
+  // starts from: the view is each person's own here, and a Save made in the app writes its own over
+  // these (see the rail's Save).
   return {
     charts,
     activeChartId: chartIds[0] ?? null,
     bizCases,
-    activeBizCaseId: bizCases[0]?.id ?? null,
     artifacts: artifactsInOrder(ws).map((a) => ({
       id: a.id,
       name: a.name,
@@ -790,7 +817,8 @@ export function exportLegacy(
       description: e.description,
       lead: e.lead,
     })),
-    directorates,
+    workScope: null,
+    activeBizCaseId: bizCases[0]?.id ?? null,
     actorLabels: { ...ws.actorLabels },
     columnLabels: { ...ws.columnLabels },
     columnShort: { ...ws.columnShort },
@@ -798,8 +826,8 @@ export function exportLegacy(
     columnActor: Object.fromEntries(
       Object.entries(ws.columnActor).map(([k, v]) => [k, v === '' ? null : v]),
     ),
+    directorates,
     collapsedDirectorates: {},
-    workScope: null,
     bizGallery: true,
     rosterMode: 'explore',
     viewMode: 'chart',

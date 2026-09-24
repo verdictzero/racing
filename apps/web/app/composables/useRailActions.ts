@@ -14,12 +14,18 @@
  */
 import {
   chartsInTabOrder, clearedWorkspace, importLegacy, ingestKitMarkdown, mergeLegacy, mergeToast,
-  type EmbeddedDocument, type Workspace,
+  OrgRef as OrgRefSchema, type EmbeddedDocument, type OrgRef, type Workspace,
 } from '@raci/core';
 import { LOCAL_ORIGIN, loadWorkspace, readWorkspace, replaceWorkspace } from '@raci/crdt';
 
 /** The source's view names → this app's routes. */
 const VIEW_ROUTE: Record<string, string> = { chart: '', roster: '/roster', work: '/tasks', bizcase: '/flow', objects: '/objects', help: '/help' };
+/** …and back, for Save. */
+function viewOf(path: string, workspaceId: string): string {
+  const rest = path.replace(`/w/${workspaceId}`, '');
+  const hit = Object.entries(VIEW_ROUTE).find(([, suffix]) => suffix && rest.startsWith(suffix));
+  return hit ? hit[0] : 'chart';
+}
 /** A request's worth of embedded documents: base64 is a third bigger than the bytes it carries. */
 const BATCH_CHARS = 6 * 1024 * 1024;
 
@@ -32,8 +38,27 @@ export function useRailActions() {
   const importWorkbook = useXlsxImport();
   const activeChartId = useActiveChartId();
   const activeFlowId = useActiveFlowId();
-  const { setLegend, closeDetails } = useChartView();
-  const putCamera = useChartCameraStore(session.workspaceId);
+  const { showLegend, setLegend, closeDetails } = useChartView();
+  const cameras = useChartCameraStore(session.workspaceId);
+  const route = useRoute();
+  // The Tasks lens's chosen unit — the tasks screen's own state, which index.html saves as workScope.
+  const workScope = useState<OrgRef | null>(`raci:workScope:${session.workspaceId}`, () => null);
+  const WORK_SCOPE_KEY = `raci-work-scope-v1:${session.workspaceId}`;
+  function setWorkScope(ref: OrgRef | null): void {
+    workScope.value = ref;
+    try {
+      if (ref) localStorage.setItem(WORK_SCOPE_KEY, JSON.stringify(ref));
+      else localStorage.removeItem(WORK_SCOPE_KEY);
+    } catch { /* storage blocked: this session only */ }
+  }
+  function currentWorkScope(): OrgRef | null {
+    if (workScope.value) return workScope.value;
+    try {
+      const raw = localStorage.getItem(WORK_SCOPE_KEY);
+      const parsed = raw ? OrgRefSchema.safeParse(JSON.parse(raw)) : null;
+      return parsed?.success ? parsed.data : null;
+    } catch { return null; }
+  }
 
   /** Store a file's attachments before its rows point at them. What cannot be stored is said once. */
   async function storeAttachments(docs: readonly EmbeddedDocument[]): Promise<void> {
@@ -68,12 +93,14 @@ export function useRailActions() {
     const flowIds = Object.keys(ws.flows);
     activeFlowId.value = typeof raw.activeBizCaseId === 'string' && ws.flows[raw.activeBizCaseId] ? raw.activeBizCaseId : flowIds[0] ?? null;
     setLegend(raw.showLegend === true);
+    const scope = OrgRefSchema.safeParse(raw.workScope);
+    setWorkScope(scope.success ? scope.data : null);
     closeDetails(); // the row it showed belonged to the old document
     for (const c of Array.isArray(raw.charts) ? raw.charts : []) {
       if (!isObj(c) || typeof c.id !== 'string' || !ws.charts[c.id]) continue;
       const size = isObj(c.chartSize) && Number.isFinite(c.chartSize.w) && Number.isFinite(c.chartSize.h)
         ? { w: Number(c.chartSize.w), h: Number(c.chartSize.h) } : null;
-      putCamera(c.id, {
+      cameras.put(c.id, {
         drillPath: Array.isArray(c.drillPath) ? c.drillPath.filter((x): x is string => typeof x === 'string') : [],
         pos: isObj(c.chartPos) ? (c.chartPos as Record<string, { x: number; y: number }>) : {},
         zoom: Number.isFinite(c.chartZoom) ? Number(c.chartZoom) : 1,
@@ -129,14 +156,49 @@ export function useRailActions() {
     applyView({ viewMode: 'chart', showLegend: false }, blank);
   }
 
-  function downloadIngestKit(): void {
-    const blob = new Blob([ingestKitMarkdown(session.workspace.value)], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
+  /** index.html's download(): a Blob, an anchor, a click. */
+  function saveAs(filename: string, content: string, mime: string): void {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
     const a = document.createElement('a');
-    a.href = url; a.download = 'raci-ingest-kit.md';
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  return { openWorkspaceFile, loadDemo, clearAll, downloadIngestKit };
+  function downloadIngestKit(): void {
+    saveAs('raci-ingest-kit.md', ingestKitMarkdown(session.workspace.value), 'text/markdown');
+  }
+
+  /**
+   * Save — index.html's exportJSON: the whole workspace, every attachment's bytes included, named
+   * after the open chart. The document comes from the server, which holds the bytes; the VIEW is
+   * this browser's — the open tab and flow, the screen, the Legend, the Tasks unit, each chart's
+   * drill, panes and zoom — so it is written in here, into the keys the file already has.
+   */
+  async function save(): Promise<void> {
+    try {
+      const file = await $fetch<Raw>(`/api/workspaces/${session.workspaceId}/export?format=json`, { responseType: 'json' });
+      const ws = session.workspace.value;
+      const tabs = chartsInTabOrder(ws);
+      const open = (activeChartId.value && ws.charts[activeChartId.value]) ? ws.charts[activeChartId.value]! : tabs[0];
+      if (open) file.activeChartId = open.id;
+      if (activeFlowId.value && ws.flows[activeFlowId.value]) file.activeBizCaseId = activeFlowId.value;
+      file.workScope = currentWorkScope();
+      file.viewMode = viewOf(route.path, session.workspaceId);
+      file.showLegend = showLegend.value;
+      for (const c of Array.isArray(file.charts) ? file.charts : []) {
+        if (!isObj(c) || typeof c.id !== 'string') continue;
+        const cam = cameras.get(c.id);
+        c.drillPath = [...cam.drillPath];
+        c.chartSize = cam.size ? { w: cam.size.w, h: cam.size.h } : null;
+        c.chartZoom = cam.zoom;
+        c.chartPos = { ...cam.pos };
+      }
+      saveAs(`${(open?.title || 'raci').replace(/\s+/g, '_')}.json`, JSON.stringify(file, null, 2), 'application/json');
+    } catch (err) {
+      alert('Save failed: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  return { save, openWorkspaceFile, loadDemo, clearAll, downloadIngestKit };
 }

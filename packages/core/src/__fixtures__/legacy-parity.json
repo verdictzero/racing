@@ -1,5 +1,5 @@
 {
-  "source": "index.html v0.39 — pptxBytes() and ingestKitMarkdown(), run headless (Chromium, en-US, UTC) by packages/core/scripts/capture-legacy-parity.mjs",
+  "source": "index.html v0.39 — pptxBytes(), ingestKitMarkdown() and the file Save writes, run headless (Chromium, en-US, UTC) by packages/core/scripts/capture-legacy-parity.mjs",
   "now": "2026-09-24T12:00:00.000Z",
   "cases": {
     "demo": {
@@ -73,7 +73,9 @@
         "ppt/slides/slide64.xml": "e4c8bfa67cd3821a"
       },
       "otherParts": "e18c40eaaf73526cc7f37fa2560ad2c86fcf0e5a1db80bcb51c357f41e411f61",
-      "kit": "1f6ec4446f3c7be1851d12e01a7607156c075c983321056b9f88d8212df0385f"
+      "kit": "1f6ec4446f3c7be1851d12e01a7607156c075c983321056b9f88d8212df0385f",
+      "save": "378e3d86a320e0f0ff38c5b8f0a9ba4c9e619cb350f4814d1fa705601f3bdec2",
+      "saveSorted": "327d7c45e3b6d26e4f67d538c444c7a5e2d73aa9506a375d3aafd7caea3f5797"
     },
     "anchored": {
       "chartId": "c_53jst3no",
@@ -150,7 +152,9 @@
         "ppt/slides/slide68.xml": "1d18bec25caf81a5"
       },
       "otherParts": "2a135aa0904350b62f62f00eba351d10cf7dba70f8311a52b3b21a717c696a95",
-      "kit": "a0e694ce78b01ee787e0c89340de304b4bfe3f85e11201500235651709feb69a"
+      "kit": "a0e694ce78b01ee787e0c89340de304b4bfe3f85e11201500235651709feb69a",
+      "save": "4aa58addc98812d1716c1620ea2181d226fc352c3fd6d062f3f7350e0131cb40",
+      "saveSorted": "2ef4c79d93f2654647e648950f0adc52ca0cce280b976a6158cee09ec006c90e"
     },
     "freeform": {
       "chartId": "c_par_free",
@@ -167,7 +171,9 @@
         "ppt/slides/slide8.xml": "cfd7860c76feb50e"
       },
       "otherParts": "2232853e23a9882196cb780c9c62c5cd4c6d273aa035777688e00c4b99b9a62e",
-      "kit": "2eaa2c071b9616d3f49c2ba05dcebf7cf4e4a62b8d1ea00df90d8080b501d0f6"
+      "kit": "2eaa2c071b9616d3f49c2ba05dcebf7cf4e4a62b8d1ea00df90d8080b501d0f6",
+      "save": "779b7463b0c45f3f1174dd2b7ce2789d2c06057cd69c39bd7bdb9185f828835e",
+      "saveSorted": "51ff8201a84b47c8902b6f6759f8a58d594bf4251089a284e97a6667ebb3fd5d"
     }
   }
 }

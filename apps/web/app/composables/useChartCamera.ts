@@ -57,16 +57,25 @@ export function useChartCamera(workspaceId: string, chartId: Ref<string | null>)
 }
 
 /**
- * Write whole cameras for any chart of a workspace — what a Load or a Demo does in index.html,
+ * Read and write whole cameras for any chart of a workspace — what index.html's Save and Load do,
  * whose file carries each chart's drillPath, chartPos, chartZoom and chartSize. Call it in setup;
- * the setter it returns is safe to call later, from a handler.
+ * the functions it returns are safe to call later, from a handler.
  */
 export function useChartCameraStore(workspaceId: string) {
   const cams = useState<Record<string, ChartCameraState>>('raci:chartCameras', () => ({}));
-  return function put(chartId: string, patch: Partial<ChartCameraState>): void {
+  function get(chartId: string): ChartCameraState {
+    if (cams.value[chartId]) return cams.value[chartId]!;
+    try {
+      const raw = localStorage.getItem(PREFIX + workspaceId + ':' + chartId);
+      if (raw) return { ...blank(), ...JSON.parse(raw) as Partial<ChartCameraState> };
+    } catch { /* unreadable: a fresh camera */ }
+    return blank();
+  }
+  function put(chartId: string, patch: Partial<ChartCameraState>): void {
     const next: ChartCameraState = { ...blank(), ...patch };
     next.zoom = Number.isFinite(next.zoom) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next.zoom)) : 1;
     cams.value = { ...cams.value, [chartId]: next };
     try { localStorage.setItem(PREFIX + workspaceId + ':' + chartId, JSON.stringify(next)); } catch { /* session only */ }
-  };
+  }
+  return { get, put };
 }

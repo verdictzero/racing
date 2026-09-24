@@ -333,6 +333,16 @@ function jumpToRow(nodeId: string): void {
 }
 const jumpRequest = useState<{ kind: 'chart' | 'flow'; id: string; at: number } | null>('raci:jump', () => null);
 watch(jumpRequest, (j) => { if (j?.kind === 'chart') { jumpToRow(j.id); jumpRequest.value = null; } }, { immediate: true });
+// Another screen's "open in chart" (index.html's jumpToChartNode) arrives as ?node=, with the tab
+// already switched. The query goes once it has been honoured, so a reload does not jump again.
+const route = useRoute();
+const router = useRouter();
+watch(() => [route.query.node, chart.value?.id] as const, ([node]) => {
+  if (typeof node !== 'string' || !node || !chart.value?.nodes[node]) return;
+  jumpToRow(node);
+  const { node: _done, ...rest } = route.query;
+  void router.replace({ query: rest });
+}, { immediate: true });
 
 // ---- edits ---------------------------------------------------------------------------------------
 function countBelow(id: string): number {

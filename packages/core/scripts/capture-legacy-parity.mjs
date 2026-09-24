@@ -2,10 +2,10 @@
 /**
  * Re-capture what index.html itself writes, for the parity tests.
  *
- * The PowerPoint and Ingest Kit ports are held to the legacy app's OWN output, not to a description
- * of it: this opens index.html in headless Chromium with the demo workspace (and the variations in
- * src/__fixtures__/parity-variants.ts) in its localStorage, calls its `pptxBytes()` and
- * `ingestKitMarkdown()`, and writes what they produced to
+ * The PowerPoint, Ingest Kit and Save ports are held to the legacy app's OWN output, not to a
+ * description of it: this opens index.html in headless Chromium with the demo workspace (and the
+ * variations in src/__fixtures__/parity-variants.ts) in its localStorage, calls its `pptxBytes()`
+ * and `ingestKitMarkdown()`, reads the state its Save would write, and records what they produced in
  *
  *   src/__fixtures__/legacy-parity.json     a digest per slide, per case, plus the rest of the package
  *   src/__fixtures__/legacy-ingest-kit.md   the demo's kit, whole, so a failure shows a readable diff
@@ -24,7 +24,7 @@
  */
 
 // The page-side callbacks below run inside index.html, against its own globals — not in Node.
-/* global localStorage, zipBytes:writable, pptxBytes, ac, chartFileBase, ingestKitMarkdown */
+/* global localStorage, zipBytes:writable, pptxBytes, ac, chartFileBase, ingestKitMarkdown, state */
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -64,7 +64,7 @@ const browser = await chromium.launch(
 );
 const golden = {
   source:
-    'index.html v0.39 — pptxBytes() and ingestKitMarkdown(), run headless (Chromium, en-US, UTC) by packages/core/scripts/capture-legacy-parity.mjs',
+    'index.html v0.39 — pptxBytes(), ingestKitMarkdown() and the file Save writes, run headless (Chromium, en-US, UTC) by packages/core/scripts/capture-legacy-parity.mjs',
   now: NOW,
   cases: {},
 };
@@ -94,7 +94,17 @@ for (const [name, state] of Object.entries(cases)) {
     };
     pptxBytes();
     zipBytes = original;
-    return { chartId: ac().id, fileBase: chartFileBase(), parts, kit: ingestKitMarkdown() };
+    // What Save writes (exportJSON): the whole state, two-space indented. None of these cases has
+    // an attachment, so the IndexedDB sync that runs first changes nothing.
+    // The legacy loader keeps a record's keys in the order the FILE had them, adding what it fills in
+    // at the end, so a hand-written file comes back in its own order. The content is compared with
+    // the keys sorted too, which holds for any file; the bytes only for one index.html wrote.
+    const sorted = (v) => (Array.isArray(v) ? v.map(sorted)
+      : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted(v[k])])) : v);
+    return {
+      chartId: ac().id, fileBase: chartFileBase(), parts, kit: ingestKitMarkdown(),
+      save: JSON.stringify(state, null, 2), saveSorted: JSON.stringify(sorted(state)),
+    };
   });
   await context.close();
 
@@ -108,6 +118,8 @@ for (const [name, state] of Object.entries(cases)) {
     slides: Object.fromEntries(slides.map(([path, xml]) => [path, sha(xml).slice(0, 16)])),
     otherParts: sha(others.map(([path, xml]) => `${path}\n${xml}`).join('\n\u0000\n')),
     kit: sha(captured.kit),
+    save: sha(captured.save),
+    saveSorted: sha(captured.saveSorted),
   };
   if (name === 'demo') demoKit = captured.kit;
   console.log(`${name}: ${slides.length} slides, ${captured.parts.length} parts`);

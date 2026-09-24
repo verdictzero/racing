@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import demo from './__fixtures__/demo-workspace.json' with { type: 'json' };
+import golden from './__fixtures__/legacy-parity.json' with { type: 'json' };
+import { anchoredVariant, freeFormVariant } from './__fixtures__/parity-variants.js';
 import { importLegacy, exportLegacy } from './legacy.js';
 import { childrenOf, walkInOrder, depthOf, findCycles, findOrphans, rootsOf } from './tree.js';
 
@@ -459,5 +461,66 @@ describe('metadata that the legacy app actually writes', () => {
     const { workspace } = importLegacy(raw);
     const out = exportLegacy(workspace) as { charts: Array<{ meta: { priority: string } }> };
     expect(out.charts[0]!.meta.priority).toBe('critical');
+  });
+});
+
+describe('the file Save writes', () => {
+  // index.html's Save is JSON.stringify(state, null, 2), and state is what its loader built — so a
+  // file written here is byte for byte one written there, key order included, when the workspace
+  // came from the same file. Captured headless by scripts/capture-legacy-parity.mjs.
+  async function sha256(text: string): Promise<string> {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  it('is byte for byte what index.html saves for a file index.html wrote', async () => {
+    const text = JSON.stringify(exportLegacy(importLegacy(demo).workspace), null, 2);
+    expect(await sha256(text)).toBe(golden.cases.demo.save);
+  });
+
+  it('holds what index.html holds for the variations, whose hand-written rows order keys their own way', async () => {
+    // The legacy loader keeps each record's keys in the order the file gave them — a file it wrote
+    // itself comes back byte for byte, above, but these fixtures are typed by hand. So the content
+    // is compared with keys sorted: every value, every array order, every default filled in.
+    const sorted = (v: unknown): unknown =>
+      Array.isArray(v)
+        ? v.map(sorted)
+        : v && typeof v === 'object'
+          ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted((v as Record<string, unknown>)[k])]))
+          : v;
+    for (const [name, raw] of [
+      ['demo', demo],
+      ['anchored', anchoredVariant(demo)],
+      ['freeform', freeFormVariant(demo)],
+    ] as const) {
+      const out = exportLegacy(importLegacy(raw).workspace);
+      // Which tab is open is the saver's view, not the document's: the app's Save writes its own
+      // over the export's first tab, as index.html writes whichever tab it has open.
+      out.activeChartId = (raw as { activeChartId?: string }).activeChartId ?? out.activeChartId;
+      expect(await sha256(JSON.stringify(sorted(out))), name).toBe(golden.cases[name].saveSorted);
+    }
+  });
+
+  it('carries a row’s and a step’s Kanban status through, and says todo where there was none', () => {
+    const { workspace } = importLegacy({
+      charts: [
+        {
+          id: 'c_1',
+          title: 'C',
+          activities: [
+            { id: 'n_1', name: 'Doing', status: 'doing', raci: {} },
+            { id: 'n_2', name: 'Unset', raci: {} },
+            { id: 'n_3', name: 'Junk', status: 'someday', raci: {} },
+          ],
+        },
+      ],
+      bizCases: [{ id: 'b_1', name: 'F', tasks: [{ id: 't_1', name: 'S', status: 'done' }], edges: [] }],
+    });
+    const out = exportLegacy(workspace) as {
+      charts: Array<{ activities: Array<{ status: string }> }>;
+      bizCases: Array<{ tasks: Array<{ status: string }> }>;
+    };
+    expect(out.charts[0]!.activities.map((n) => n.status)).toEqual(['doing', 'todo', 'todo']);
+    expect(out.bizCases[0]!.tasks[0]!.status).toBe('done');
   });
 });

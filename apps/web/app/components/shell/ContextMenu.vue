@@ -6,7 +6,7 @@
         <div v-else-if="'title' in it" class="ctx-title">{{ it.title }}</div>
         <div v-else-if="'note' in it" class="ctx-note">{{ it.note }}</div>
         <button v-else class="ctx-item" :class="{ danger: it.danger, 'is-active': active === i }"
-          role="menuitem" type="button" :disabled="it.disabled" :title="it.hint" @click="run(it)">
+          role="menuitem" type="button" :data-ctx-i="i" :disabled="it.disabled" :title="it.hint || undefined" @click="run(it)">
           <span class="ctx-ico" aria-hidden="true">{{ it.ico || '' }}</span>
           <span class="ctx-label">{{ it.label }}</span>
           <span v-if="it.kbd" class="ctx-kbd">{{ it.kbd }}</span>

@@ -67,7 +67,7 @@
         </div>
         <div class="actions">
           <button id="btn-export" title="Save your work — downloads a JSON file with every tab, the roster, and attached documents"
-            @click="download('json')">💾 Save</button>
+            @click="rail.save()">💾 Save</button>
           <button id="btn-import" :disabled="!canEdit" title="Load a previously-saved JSON file (replaces current state)"
             @click="pickWorkspaceFile(false)">📂 Load</button>
           <button id="btn-merge" :disabled="!canEdit"
@@ -503,7 +503,7 @@ const statusTitle = computed(() =>
 const rail = useRailActions();
 const exportOpen = ref(false);
 const exportMenu = ref<HTMLElement | null>(null);
-function download(format: 'json' | 'xml' | 'mermaid' | 'xlsx' | 'template' | 'pptx'): void {
+function download(format: 'xml' | 'mermaid' | 'xlsx' | 'template' | 'pptx'): void {
   exportOpen.value = false;
   const chart = activeChart.value ? `&chartId=${encodeURIComponent(activeChart.value.id)}` : '';
   location.href = `/api/workspaces/${workspaceId}/export?format=${format}${chart}`;
@@ -566,24 +566,20 @@ function positionWatermark(): void {
 // ---- print: the title band the source fills just before the print layout paints ----------------
 const printHead = ref<HTMLElement | null>(null);
 const printLabels = useLabels();
-/** The Tasks screen publishes the unit it is showing, for the printed run book's subtitle. */
-const workScopeLabel = useState<string>('raci:workScopeLabel', () => '');
 function beforePrint(): void {
   const ph = printHead.value;
-  if (!ph) return;
+  // The Tasks screen fills the band itself for its run book: only it knows the unit it is showing.
+  if (!ph || view.value === 'work') return;
   const ws = session.workspace.value;
   const flow = activeFlowId.value ? ws.flows[activeFlowId.value] : undefined;
   const printed = view.value === 'bizcase' ? flow : activeChart.value;
-  const pst = view.value === 'work' ? '' : (printed?.status ?? 'draft');
+  const pst = printed?.status ?? 'draft';
   document.body.dataset.printStatus = pst;
   let title: string, sub: string;
-  if (view.value === 'work') {
-    title = 'Tasks — run book';
-    sub = workScopeLabel.value || 'No unit selected';
-  } else if (view.value === 'bizcase') {
+  if (view.value === 'bizcase') {
     const n = flow ? Object.keys(flow.steps).length : 0;
     title = flow?.name || 'Business case';
-    sub = `RACI · ${n} step${n === 1 ? '' : 's'} · tabletop exercise`;
+    sub = `${FRAMEWORKS[flow?.framework ?? 'raci']?.name ?? 'RACI'} · ${n} step${n === 1 ? '' : 's'} · tabletop exercise`;
   } else {
     const c = activeChart.value;
     title = c?.title || 'RACI chart';

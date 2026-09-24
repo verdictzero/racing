@@ -211,6 +211,15 @@ export const ChartCustom = z.object({
   tiers: z.array(z.string()).default([]),
 });
 
+/**
+ * The Kanban status (to do / in progress / done) index.html still carries on every row and flow
+ * step. The views that showed it were retired in v0.13; the field was kept "so existing data
+ * survives and a future execution view can revive it without migration". Nothing here shows it
+ * either — it is carried so a file loaded and saved again comes back with what it went in with.
+ */
+export const TaskStatus = z.enum(['todo', 'doing', 'done']);
+export type TaskStatus = z.infer<typeof TaskStatus>;
+
 export const ChartNode = z.object({
   id: z.string().min(1),
   chartId: z.string().min(1),
@@ -229,6 +238,8 @@ export const ChartNode = z.object({
   /** Deliverable ids. Chart rows store boundary IO; flow steps derive theirs from edges. */
   inputs: z.array(z.string()).default([]),
   outputs: z.array(z.string()).default([]),
+  /** index.html's per-row `status` — see TaskStatus. Absent means 'todo'. */
+  taskStatus: TaskStatus.optional(),
 });
 export type ChartNode = z.infer<typeof ChartNode>;
 
@@ -281,6 +292,8 @@ export const FlowStep = z.object({
   bindOverrides: z.array(z.string()).default([]),
   /** For a subflow box: which of the referenced flow's entry/exit points are exposed as sockets. */
   ports: z.object({ in: z.array(z.string()), out: z.array(z.string()) }).default({ in: [], out: [] }),
+  /** index.html's per-step `status` — see TaskStatus. Absent means 'todo'. */
+  taskStatus: TaskStatus.optional(),
 });
 export type FlowStep = z.infer<typeof FlowStep>;
 
