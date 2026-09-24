@@ -1,366 +1,342 @@
 <template>
-  <div class="rost">
-    <div class="rost-head">
-      <div>
-        <h2>Roster</h2>
-        <p class="meta">
-          The org structure under each directorate, shared across every chart and flow.
-          Divisions, branches, teams and people are all optional.
-        </p>
+  <div class="ws-page">
+    <div ref="headerEl" class="roster-header">
+      <h2>Roster</h2>
+      <span ref="metaEl" class="meta">Org structure under each directorate (shared across workstreams). Divisions, branches, and people are all optional.</span>
+      <!-- Ours, not the source's: the server can pull the org from the directory (AD / Entra).
+           Administrators only, and immediately left of the layout toggle so the toggle stays where
+           index.html puts it — see ours.css and fitSync below. -->
+      <button v-if="isAdmin" ref="syncEl" class="rost-sync" :class="{ compact: syncCompact }" :disabled="syncing"
+        title="Sync from directory — read the organization directory now and bring this roster in line with it"
+        @click="runSync"><span class="rs-ico" aria-hidden="true">⟳</span><span class="rs-label">{{ syncing ? ' Syncing…' : ' Sync from directory' }}</span></button>
+      <div class="rost-modes" role="tablist" aria-label="Roster layout">
+        <button data-roster-mode="explore" :class="{ active: layout === 'explore' }"
+          title="Big boxes — drill directorate → division → branch → team" @click="setLayout('explore')">▦ Explore</button>
+        <button data-roster-mode="full" :class="{ active: layout === 'full' }"
+          title="The whole org tree at once, everything editable inline" @click="setLayout('full')">☰ Full hierarchy</button>
       </div>
-      <button v-if="canEdit" class="rost-sync" :disabled="syncing" @click="runSync">
-        {{ syncing ? 'Syncing…' : '⟳ Sync from directory' }}
-      </button>
     </div>
 
-    <p v-if="syncMessage" class="rost-sync-msg" :class="{ bad: syncFailed }">{{ syncMessage }}</p>
-
-    <nav class="rost-crumbs" aria-label="Roster location">
-      <button :disabled="!path.length" @click="drill([])">All directorates</button>
-      <template v-for="(crumb, i) in crumbs" :key="crumb.id">
-        <span class="sep">▸</span>
-        <button :disabled="i === crumbs.length - 1" @click="drill(path.slice(0, i + 1))">
-          {{ crumb.name }}
-        </button>
-      </template>
-    </nav>
-
-    <!-- Top level: the six directorates. Fixed — they cannot be added or deleted. -->
-    <template v-if="!current">
-      <p class="rost-hint">Click a directorate to break it out into its divisions.</p>
-      <div class="rost-grid">
-        <div
-          v-for="d in directorates"
-          :key="d.id"
-          class="rost-box k-directorate"
-          tabindex="0"
-          role="button"
-          @click="drill([d.id])"
-          @keydown.enter.prevent="drill([d.id])"
-        >
-          <span class="rost-box-kind">Directorate</span>
-          <span class="rost-box-name">{{ d.name }}</span>
-          <span class="rost-box-stat">{{ d.stat }}</span>
-          <span class="rost-box-lead" :class="{ vacant: !d.lead }">
-            {{ d.lead ? `AD: ${d.lead}` : 'AD — vacant' }}
-          </span>
-          <span class="rost-box-go">open ▸</span>
-        </div>
+    <template v-if="synced">
+      <!-- FULL HIERARCHY: every directorate expanded at once, everything editable in place. -->
+      <div v-if="layout === 'full'" class="roster-body">
+        <!-- Memoised on each directorate's content (see DirectoratePanel): an edit re-renders only
+             the directorate it touched. -->
+        <RosterDirectoratePanel v-for="a in ACTORS" :key="a" v-memo="[dirSig[a], label(a), !!collapsed[a], canEdit]"
+          :actor="a" :directorate="dir(a)" :label="label(a)" :stat="stat({ actor: a })" :collapsed="!!collapsed[a]"
+          @toggle="toggleDirectorate(a)" @expand="expandDirectorate(a)" />
       </div>
-    </template>
 
-    <!-- A drilled-in unit: its own header, then its children as boxes. -->
-    <template v-else>
-      <div class="rost-unit-head">
-        <div class="rost-uh-top">
-          <span class="rost-uh-kind">{{ kindLabel(current.kind) }}</span>
-          <input
-            v-if="current.kind !== 'directorate'"
-            class="rost-uh-name"
-            :value="current.name"
-            :disabled="!canEdit"
-            :placeholder="`Untitled ${current.kind}`"
-            @change="rename(current!.id, ($event.target as HTMLInputElement).value)"
-          >
-          <h3 v-else class="rost-uh-name static">{{ currentLabel }}</h3>
-          <span class="rost-uh-stat">{{ currentStat }}</span>
-        </div>
+      <!-- EXPLORE: one tier at a time, as big boxes, under a breadcrumb. -->
+      <div v-else class="roster-explore">
+        <div class="rost-inner">
+          <div class="rost-crumbs">
+            <template v-for="(c, i) in crumbs" :key="i">
+              <span v-if="i" class="rost-crumb-sep">▸</span>
+              <button class="rost-crumb" :class="{ current: c.current }" :disabled="c.current"
+                :data-roster-goto="c.current ? undefined : c.goto" @click="goto(c.goto)">{{ c.text }}</button>
+            </template>
+          </div>
 
-        <div class="rost-uh-lead">
-          <template v-if="current.leadId">
-            <span class="lead-badge">{{ leadRole(current.kind) }}</span>
-            <input
-              class="lead-name"
-              :value="current.leadName"
-              :disabled="!canEdit"
-              placeholder="Name"
-              @change="setLeadName(($event.target as HTMLInputElement).value)"
-            >
-            <button v-if="canEdit" class="del-icon" title="Remove" @click="clearLead">×</button>
+          <!-- Top: the six directorates. A fixed set — nothing to add or delete. -->
+          <template v-if="view.level === 'top'">
+            <div class="rost-hint">Click a directorate to break it out into its divisions.</div>
+            <div class="rost-grid">
+              <div v-for="a in ACTORS" :key="a" class="rost-box k-dir" :data-roster-drill="a" tabindex="0" role="button"
+                :title="`Open ${label(a)}`" @click="onBoxClick($event, a)" @keydown.enter.self.prevent="goto(a)">
+                <span class="rost-box-kind">Directorate</span>
+                <span class="rost-box-name">{{ label(a) }}</span>
+                <span class="rost-box-stat">{{ stat({ actor: a }) }}</span>
+                <span v-if="dir(a).lead?.name" class="rost-box-lead">{{ `AD: ${dir(a).lead?.name}` }}</span>
+                <span v-else class="rost-box-lead vacant">AD — vacant</span>
+                <span class="rost-box-go">open ▸</span>
+              </div>
+            </div>
           </template>
-          <button v-else-if="canEdit" class="add-lead" @click="addLead">
-            + Add {{ leadRole(current.kind) }}
-          </button>
+
+          <!-- A directorate: its divisions. -->
+          <template v-else-if="view.level === 'dir'">
+            <RosterUnitHead level="dir" :actor="view.a" :div-id="null" :br-id="null" :team-id="null" :name="label(view.a)"
+              :stat="stat({ actor: view.a })" :lead="view.d.lead" />
+            <div class="rost-grid">
+              <RosterBox v-for="div in view.d.divisions" :key="div.id" kind="div" :drill="`${view.a}|${div.id}`"
+                :name="div.name || 'Untitled division'" :stat="stat({ actor: view.a, divisionId: div.id })"
+                :lead="div.chief?.name || ''" del-attr="data-del-division" :del-value="`${view.a}|${div.id}`"
+                @open="goto(`${view.a}|${div.id}`)" @delete="edits.deleteDivision(div.id)" />
+              <button v-if="canEdit" class="rost-add" :data-add-division="view.a" @click="edits.addDivision(view.a)">+ Add division</button>
+            </div>
+          </template>
+
+          <!-- A division: its branches. -->
+          <template v-else-if="view.level === 'div'">
+            <RosterUnitHead level="div" :actor="view.a" :div-id="view.div.id" :br-id="null" :team-id="null"
+              :name="view.div.name" :stat="stat({ actor: view.a, divisionId: view.div.id })" :lead="view.div.chief"
+              :from-directory="!!view.div.externalId" />
+            <div class="rost-grid">
+              <RosterBox v-for="br in view.div.branches" :key="br.id" kind="br" :drill="`${view.a}|${view.div.id}|${br.id}`"
+                :name="br.name || 'Untitled branch'" :stat="stat({ actor: view.a, divisionId: view.div.id, branchId: br.id })"
+                :lead="br.chief?.name || ''" del-attr="data-del-branch" :del-value="`${view.a}|${view.div.id}|${br.id}`"
+                @open="goto(`${view.a}|${view.div.id}|${br.id}`)" @delete="edits.deleteBranch(br.id)" />
+              <button v-if="canEdit" class="rost-add" :data-add-branch="`${view.a}|${view.div.id}`"
+                @click="edits.addBranch(view.a, view.div.id)">+ Add branch</button>
+            </div>
+          </template>
+
+          <!-- A branch: its teams. -->
+          <template v-else-if="view.level === 'br'">
+            <RosterUnitHead level="br" :actor="view.a" :div-id="view.div.id" :br-id="view.br.id" :team-id="null"
+              :name="view.br.name" :stat="stat({ actor: view.a, divisionId: view.div.id, branchId: view.br.id })"
+              :lead="view.br.chief" :from-directory="!!view.br.externalId" />
+            <div class="rost-grid">
+              <RosterBox v-for="tm in view.br.teams" :key="tm.id" kind="team"
+                :drill="`${view.a}|${view.div.id}|${view.br.id}|${tm.id}`" :name="tm.name || 'Unnamed team'"
+                :stat="stat({ actor: view.a, divisionId: view.div.id, branchId: view.br.id, teamId: tm.id })"
+                :lead="tm.chief?.name || ''" del-attr="data-del-team" :del-value="`${view.a}|${view.div.id}|${view.br.id}|${tm.id}`"
+                @open="goto(`${view.a}|${view.div.id}|${view.br.id}|${tm.id}`)" @delete="edits.deleteTeam(tm.id)" />
+              <button v-if="canEdit" class="rost-add" :data-add-team="`${view.a}|${view.div.id}|${view.br.id}`"
+                @click="edits.addTeam(view.a, view.div.id, view.br.id)">+ Add team</button>
+            </div>
+          </template>
+
+          <!-- A team: its people — the leaf, so rows rather than boxes. -->
+          <template v-else-if="view.level === 'team'">
+            <RosterUnitHead level="team" :actor="view.a" :div-id="view.div.id" :br-id="view.br.id" :team-id="view.tm.id"
+              :name="view.tm.name" :stat="stat({ actor: view.a, divisionId: view.div.id, branchId: view.br.id, teamId: view.tm.id })"
+              :lead="view.tm.chief" :from-directory="!!view.tm.externalId" />
+            <div class="rost-people-box">
+              <RosterPersonRow v-for="p in view.tm.people" :key="p.id" :actor="view.a" :div-id="view.div.id"
+                :br-id="view.br.id" :team-id="view.tm.id" :person="p" />
+              <button v-if="canEdit" class="add-person" :data-add-person="`${view.a}|${view.div.id}|${view.br.id}|${view.tm.id}`"
+                @click="edits.addPerson(view.tm.id)">+ Add person</button>
+            </div>
+          </template>
         </div>
       </div>
 
-      <!-- A team's people are rows, not boxes: they carry a title and there is nothing to drill into. -->
-      <div v-if="current.kind === 'team'" class="rost-people">
-        <div v-for="person in children" :key="person.id" class="rost-person">
-          <input
-            class="p-name"
-            :value="person.name"
-            :disabled="!canEdit"
-            placeholder="Name"
-            @change="rename(person.id, ($event.target as HTMLInputElement).value)"
-          >
-          <input
-            class="p-title"
-            :value="person.title"
-            :disabled="!canEdit"
-            placeholder="Title"
-            @change="setField(person.id, 'title', ($event.target as HTMLInputElement).value)"
-          >
-          <span v-if="person.externalId" class="p-src" title="Comes from the directory — a sync will re-assert it">
-            directory
-          </span>
-          <button v-if="canEdit" class="del-icon" title="Remove" @click="remove(person.id)">×</button>
+      <!-- Entities hang off the top level only: inside a drilled-in division they would read as
+           though they belonged to it, which is the one thing an entity explicitly does not do. -->
+      <section v-if="layout === 'full' || !pick" class="ent-section">
+        <div class="ent-sec-head">
+          <h3>Entities</h3>
+          <span class="ent-sec-note">Parties that are not people and not directorates — boards, committees, vendors, standing teams. Assignable anywhere a directorate is.</span>
         </div>
-        <button v-if="canEdit" class="rost-add" @click="add()">+ Add person</button>
-        <p v-if="!children.length && !canEdit" class="rost-empty">No people recorded.</p>
-      </div>
-
-      <div v-else class="rost-grid">
-        <div
-          v-for="child in children"
-          :key="child.id"
-          class="rost-box"
-          :class="`k-${child.kind}`"
-          tabindex="0"
-          role="button"
-          @click="drill([...path, child.id])"
-          @keydown.enter.prevent="drill([...path, child.id])"
-        >
-          <button
-            v-if="canEdit"
-            class="rost-box-del del-icon"
-            :title="`Delete ${child.kind}`"
-            @click.stop="remove(child.id)"
-          >×</button>
-          <span class="rost-box-kind">{{ kindLabel(child.kind) }}</span>
-          <span class="rost-box-name">{{ child.name || `Untitled ${child.kind}` }}</span>
-          <span class="rost-box-stat">{{ statFor(child) }}</span>
-          <span v-if="child.leadName" class="rost-box-lead">
-            {{ leadRole(child.kind) }}: {{ child.leadName }}
-          </span>
-          <span class="rost-box-go">{{ child.kind === 'team' ? 'open people ▸' : 'open ▸' }}</span>
+        <div class="ent-grid">
+          <RosterEntityCard v-for="e in entities" :key="e.id" :entity="e" :uses="entityUsesInOrder(ws, e.id)" />
+          <button v-if="canEdit" class="rost-add ent-add" data-add-entity="1" @click="edits.addEntity()">+ Add entity</button>
         </div>
-        <button v-if="canEdit" class="rost-add" @click="add()">
-          + Add {{ childKindOf(current.kind) }}
-        </button>
-      </div>
+      </section>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * The Roster — PORTING.md slice 2.
+ * The Roster — index.html's renderRoster, rosterExploreHtml and the org panels, markup for markup.
  *
- * Explore mode: one tier at a time, as big boxes, with a breadcrumb. The legacy app also has a
- * "Full hierarchy" mode that prints all six directorates expanded at once; that is a printing
- * affordance more than a browsing one and has not come across yet.
+ * Two layouts, as in the source: EXPLORE drills directorate → division → branch → team one tier at a
+ * time as big boxes under a breadcrumb; FULL HIERARCHY prints all six directorates expanded, with
+ * everything editable in place. Both carry the Entities section — the non-person parties (boards,
+ * vendors, standing teams) that are peers of a directorate rather than things inside one.
  *
- * TWO WRITERS, ONE ROSTER. A person editing here and the nightly directory sync write the same
- * data, which is why the roster lives in the collaborative document rather than in a table of its
- * own. Two things follow, and neither is incidental:
+ * WHAT IS THE VIEWER'S AND WHAT IS THE DOCUMENT'S. The roster, the directorate names and the
+ * entities are shared content: every edit is a per-unit CRDT write (useRosterEdits) that a colleague
+ * sees at once and Undo takes back. Where you are drilled to, which layout you use and which
+ * directorates you collapsed are yours alone — the drill path lives for the session (index.html's
+ * `_rosterPick`), the layout and the collapsed set persist in this browser as the source's
+ * `rosterMode` and `collapsedDirectorates` do.
  *
- *   - a unit with an `externalId` came from the directory and a sync will re-assert it, so the
- *     screen says so rather than letting someone quietly rename something that will snap back;
- *   - a unit created here has `externalId: null` on purpose — that is how "ours, not the
- *     directory's" is recorded, and `reconcile` preserves it deliberately.
- *
- * The drill path is client-side state. Which unit YOU are looking at is not a fact about the org.
+ * TWO WRITERS, ONE ROSTER. A person editing here and the directory sync write the same data. A
+ * unit with an `externalId` came from the directory and a sync will re-assert it, so its name says
+ * so on hover; a unit created here has `externalId: null` on purpose, and `reconcile` preserves it.
  */
-import {
-  ACTOR_LABELS_DEFAULT,
-  ACTORS,
-  orgLabel,
-  unitStat,
-  type Actor,
-  type OrgRef,
-} from '@raci/core';
-import {
-  addRosterUnit,
-  childKindOf as childKind,
-  deleteRosterUnit,
-  rosterChildren,
-  setRosterLead,
-  setRosterUnitField,
-  type RosterUnitKind,
-  type RosterUnitRecord,
-} from '@raci/crdt';
+import { ACTOR_LABELS_DEFAULT, ACTORS, entityUsesInOrder, unitStat, type Actor, type Directorate, type OrgRef } from '@raci/core';
+import { useRosterEdits } from '~/composables/roster/edits';
 
 const session = useWorkspaceSession();
-const canEdit = inject<Ref<boolean>>('raci:canEdit', ref(false));
+const shell = useShell();
+const edits = useRosterEdits();
+const canEdit = edits.canEdit;
 
-/** Ids from the directorate down. Client-side: your location is not document data. */
-const path = ref<string[]>([]);
+const ws = computed(() => session.workspace.value);
+/**
+ * Whether the document has arrived. Until it has, the roster would read as six empty, leaderless
+ * directorates — a claim about the org rather than a loading state — so nothing below the header
+ * renders. A socket that has connected counts, because a brand-new workspace never sends content.
+ */
+const synced = computed(() => session.ready.value || session.status.value === 'connected');
 
-// Re-read on every document change, because rosterChildren reads the Y.Doc directly rather than
-// the plain snapshot — the flat units are the storage, and this screen edits them as such.
-const version = computed(() => session.workspace.value);
+const EMPTY: Directorate = { lead: null, externalId: null, divisions: [] };
+/** index.html always holds all six directorates; a workspace started empty here may hold none yet. */
+const dir = (a: Actor): Directorate => ws.value.roster[a] ?? EMPTY;
+const label = (a: Actor) => ws.value.actorLabels[a] || ACTOR_LABELS_DEFAULT[a];
+const stat = (ref: OrgRef) => unitStat(ws.value, ref);
+const entities = computed(() => Object.values(ws.value.entities));
+/** Each directorate's content as one string — what the Full hierarchy memoises its panels on. */
+const dirSig = computed(() => Object.fromEntries(ACTORS.map((a) => [a, JSON.stringify(dir(a))])) as Record<Actor, string>);
 
-const current = computed<RosterUnitRecord | null>(() => {
-  void version.value;
-  const id = path.value[path.value.length - 1];
-  if (!id) return null;
-  const parentId = path.value.length > 1 ? path.value[path.value.length - 2]! : null;
-  return rosterChildren(session.doc, parentId).find((u) => u.id === id) ?? null;
-});
+// ---- layout: the viewer's, remembered in this browser -----------------------------------------------
+const COOKIE = { maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' as const, path: '/' };
+const mode = useCookie<string>('raci-roster-mode', { ...COOKIE, default: () => 'explore' });
+const layout = computed<'explore' | 'full'>(() => (mode.value === 'full' ? 'full' : 'explore'));
+const setLayout = (next: 'explore' | 'full') => {
+  mode.value = next;
+};
 
-const children = computed<RosterUnitRecord[]>(() => {
-  void version.value;
-  return current.value ? rosterChildren(session.doc, current.value.id) : [];
-});
+const collapsed = useCookie<Record<string, boolean>>('raci-roster-collapsed', { ...COOKIE, default: () => ({}) });
+function toggleDirectorate(a: Actor) {
+  collapsed.value = { ...collapsed.value, [a]: !collapsed.value?.[a] };
+}
+function expandDirectorate(a: Actor) {
+  if (collapsed.value?.[a]) collapsed.value = { ...collapsed.value, [a]: false };
+}
 
-const crumbs = computed(() =>
-  path.value.map((id, i) => {
-    const parentId = i > 0 ? path.value[i - 1]! : null;
-    const unit = rosterChildren(session.doc, parentId).find((u) => u.id === id);
-    if (i === 0) {
-      return { id, name: session.workspace.value.actorLabels[id] || ACTOR_LABELS_DEFAULT[id as Actor] || id };
+// ---- where Explore is drilled: the viewer's, for this session ---------------------------------------
+interface RosterPick {
+  actor: Actor;
+  divisionId?: string;
+  branchId?: string;
+  teamId?: string;
+}
+
+function pickFromStr(s: string): RosterPick | null {
+  const [actor, divisionId, branchId, teamId] = s.split('|');
+  if (!actor || !(ACTORS as readonly string[]).includes(actor)) return null;
+  const p: RosterPick = { actor: actor as Actor };
+  if (divisionId) p.divisionId = divisionId;
+  if (branchId) p.branchId = branchId;
+  if (teamId) p.teamId = teamId;
+  return p;
+}
+
+/** Trim a pick to its deepest unit that still exists — a delete, here or by a colleague, backs out. */
+function normalizePick(p: RosterPick | null): RosterPick | null {
+  if (!p || !ACTORS.includes(p.actor)) return null;
+  const out: RosterPick = { actor: p.actor };
+  const division = p.divisionId ? dir(p.actor).divisions.find((d) => d.id === p.divisionId) : undefined;
+  if (division) {
+    out.divisionId = division.id;
+    const branch = p.branchId ? division.branches.find((b) => b.id === p.branchId) : undefined;
+    if (branch) {
+      out.branchId = branch.id;
+      const team = p.teamId ? branch.teams.find((t) => t.id === p.teamId) : undefined;
+      if (team) out.teamId = team.id;
     }
-    return { id, name: unit?.name || `Untitled ${unit?.kind ?? 'unit'}` };
-  }),
-);
+  }
+  return out;
+}
 
-/** The OrgRef for a unit at `path`, which is what the stat selector takes. */
-const refFor = (ids: readonly string[]): OrgRef | null => {
-  const [actor, divisionId, branchId, teamId] = ids;
-  if (!actor || !ACTORS.includes(actor as Actor)) return null;
-  if (!divisionId) return { actor: actor as Actor };
-  if (!branchId) return { actor: actor as Actor, divisionId };
-  if (!teamId) return { actor: actor as Actor, divisionId, branchId };
-  return { actor: actor as Actor, divisionId, branchId, teamId };
+const rawPick = useState<RosterPick | null>(`raci:rosterPick:${session.workspaceId}`, () => null);
+const pick = computed(() => (synced.value ? normalizePick(rawPick.value) : null));
+// The trim sticks, as the source's does: a unit that comes back (an undo) does not drag you back in.
+watch(pick, (p) => {
+  if (synced.value && JSON.stringify(p) !== JSON.stringify(rawPick.value)) rawPick.value = p;
+});
+
+const goto = (v: string) => {
+  rawPick.value = v ? pickFromStr(v) : null;
 };
-
-const directorates = computed(() =>
-  ACTORS.filter((actor) => session.workspace.value.roster[actor]).map((actor) => {
-    void version.value;
-    const unit = rosterChildren(session.doc, null).find((u) => u.id === actor);
-    return {
-      id: actor,
-      name: session.workspace.value.actorLabels[actor] || ACTOR_LABELS_DEFAULT[actor],
-      stat: unitStat(session.workspace.value, { actor }),
-      lead: unit?.leadName || '',
-    };
-  }),
-);
-
-const currentLabel = computed(() =>
-  current.value ? orgLabel(session.workspace.value, refFor(path.value))?.short ?? '' : '',
-);
-const currentStat = computed(() => unitStat(session.workspace.value, refFor(path.value)));
-const statFor = (child: RosterUnitRecord) => unitStat(session.workspace.value, refFor([...path.value, child.id]));
-
-const KIND_LABELS: Record<RosterUnitKind, string> = {
-  directorate: 'Directorate', division: 'Division', branch: 'Branch', team: 'Team', person: 'Person',
-};
-const LEAD_ROLES: Record<RosterUnitKind, string> = {
-  directorate: 'AD', division: 'DC', branch: 'BC', team: 'TL', person: '',
-};
-const kindLabel = (kind: RosterUnitKind) => KIND_LABELS[kind];
-const leadRole = (kind: RosterUnitKind) => LEAD_ROLES[kind];
-const childKindOf = (kind: RosterUnitKind) => childKind(kind) ?? '';
-
-const drill = (next: string[]) => { path.value = next; };
-
-const rename = (id: string, name: string) => setRosterUnitField(session.doc, id, 'name', name);
-const setField = (id: string, field: 'title' | 'email', value: string) =>
-  setRosterUnitField(session.doc, id, field, value);
-const add = () => { if (current.value) addRosterUnit(session.doc, current.value.id, ''); };
-
-function remove(id: string) {
-  deleteRosterUnit(session.doc, id);
-  // Drilling into something that no longer exists would leave an empty pane with a live breadcrumb.
-  const at = path.value.indexOf(id);
-  if (at >= 0) path.value = path.value.slice(0, at);
+function onBoxClick(e: MouseEvent, v: string) {
+  const t = e.target as Element;
+  if (t.closest('button') || t.closest('[contenteditable="true"]')) return;
+  goto(v);
 }
 
-function addLead() {
-  if (current.value) setRosterLead(session.doc, current.value.id, { id: `p_${Date.now()}`, name: '' });
-}
-function setLeadName(name: string) {
-  if (current.value) setRosterUnitField(session.doc, current.value.id, 'leadName', name);
-}
-function clearLead() {
-  if (current.value) setRosterLead(session.doc, current.value.id, null);
-}
+/** The drilled-in unit, resolved once for the template. */
+const view = computed(() => {
+  const p = pick.value;
+  if (!p) return { level: 'top' as const };
+  const a = p.actor;
+  const d = dir(a);
+  const div = p.divisionId ? d.divisions.find((x) => x.id === p.divisionId) : undefined;
+  if (!div) return { level: 'dir' as const, a, d };
+  const br = p.branchId ? div.branches.find((x) => x.id === p.branchId) : undefined;
+  if (!br) return { level: 'div' as const, a, div };
+  const tm = p.teamId ? br.teams.find((x) => x.id === p.teamId) : undefined;
+  if (!tm) return { level: 'br' as const, a, div, br };
+  return { level: 'team' as const, a, div, br, tm };
+});
 
-// ---- directory sync -------------------------------------------------------------------------
+const crumbs = computed(() => {
+  const p = pick.value;
+  const out = [{ text: 'All directorates', goto: '', current: !p }];
+  if (!p) return out;
+  out.push({ text: label(p.actor), goto: p.actor, current: !p.divisionId });
+  if (!p.divisionId) return out;
+  const div = dir(p.actor).divisions.find((d) => d.id === p.divisionId);
+  out.push({ text: div?.name || 'Untitled division', goto: `${p.actor}|${p.divisionId}`, current: !p.branchId });
+  if (!p.branchId) return out;
+  const br = div?.branches.find((b) => b.id === p.branchId);
+  out.push({ text: br?.name || 'Untitled branch', goto: `${p.actor}|${p.divisionId}|${p.branchId}`, current: !p.teamId });
+  if (!p.teamId) return out;
+  const tm = br?.teams.find((t) => t.id === p.teamId);
+  out.push({ text: tm?.name || 'Unnamed team', goto: '', current: true });
+  return out;
+});
+
+// ---- directory sync (ours: the source has no directory) ---------------------------------------------
+// The same call the shell makes, so it is the shell's answer (Nuxt shares it) rather than a second one.
+const { data: me } = useFetch('/api/auth/me');
+const isAdmin = computed(() => me.value?.user?.role === 'admin');
 const syncing = ref(false);
-const syncMessage = ref('');
-const syncFailed = ref(false);
+
+/**
+ * The header is index.html's, and the sync button must not rearrange it. With its label the button
+ * fits beside the note at wide widths; where it would not, taking the room would wrap the note onto
+ * a second line and squeeze the toggle's labels. So it drops to its ⟳ alone whenever the full label
+ * would take space the source's own layout is using, and comes back once there is room again.
+ *
+ * The room is read off the layout itself: the note ends, then the flex gap, then the button's auto
+ * margin — which is exactly the free space, and collapses to nothing the moment anything is squeezed.
+ */
+const headerEl = ref<HTMLElement | null>(null);
+const metaEl = ref<HTMLElement | null>(null);
+const syncEl = ref<HTMLElement | null>(null);
+const syncCompact = ref(false);
+function fitSync() {
+  const header = headerEl.value;
+  const meta = metaEl.value;
+  const btn = syncEl.value;
+  if (!header || !meta || !btn) return;
+  const gap = parseFloat(getComputedStyle(header).columnGap) || 0;
+  const free = btn.getBoundingClientRect().left - meta.getBoundingClientRect().right - gap;
+  if (!syncCompact.value) {
+    if (free < 0.5) syncCompact.value = true;
+    return;
+  }
+  // Compact, the label is laid out but takes no room (see ours.css), so it can still be measured.
+  const extra = btn.querySelector<HTMLElement>('.rs-label')?.getBoundingClientRect().width ?? 0;
+  if (free >= extra + 1) syncCompact.value = false;
+}
+// Re-measured whenever the header, the note or the button changes size — a resize, a rail folding
+// away, fonts arriving — and whenever the button itself comes or goes.
+let fitObserver: ResizeObserver | null = null;
+watch(
+  [headerEl, metaEl, syncEl],
+  (els) => {
+    fitObserver ??= new ResizeObserver(() => fitSync());
+    fitObserver.disconnect();
+    for (const el of els) if (el) fitObserver.observe(el);
+    fitSync();
+  },
+  { flush: 'post' },
+);
+onBeforeUnmount(() => fitObserver?.disconnect());
+// "Syncing…" is shorter than "Sync from directory"; either way, re-check once it has rendered.
+watch([syncing, syncCompact], () => void nextTick(fitSync));
 
 async function runSync() {
+  if (syncing.value) return;
   syncing.value = true;
-  syncMessage.value = '';
   try {
     const result = await $fetch<{ status: string; message: string }>('/api/directory/sync', {
       method: 'POST',
       body: { workspaceId: session.workspaceId },
     });
-    syncFailed.value = result.status === 'failed' || result.status === 'refused';
-    syncMessage.value = result.message;
+    shell.toast(result.message, result.status === 'failed' || result.status === 'refused' ? 'error' : 'suggest');
   } catch (err) {
-    syncFailed.value = true;
-    syncMessage.value = err instanceof Error ? err.message : 'The sync could not be started.';
+    shell.toast(err instanceof Error ? err.message : 'The sync could not be started.', 'error');
   } finally {
     syncing.value = false;
   }
 }
 </script>
-
-<style scoped>
-.rost-head { display: flex; align-items: flex-start; gap: 24px; margin-bottom: 14px; }
-.rost-head h2 { margin: 0 0 4px; font-size: 16px; }
-.rost-head .meta { margin: 0; max-width: 64ch; font-size: 12px; color: var(--text-dim); }
-.rost-sync { margin-left: auto; white-space: nowrap; }
-.rost-sync-msg { font-size: 12px; color: var(--text-dim); margin: 0 0 12px; }
-.rost-sync-msg.bad { color: #ff8787; }
-
-.rost-crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.rost-crumbs button { font-size: 12px; background: none; border: 0; padding: 2px 4px;
-  color: var(--accent); cursor: pointer; }
-.rost-crumbs button:disabled { color: var(--text); cursor: default; font-weight: 600; }
-.rost-crumbs .sep { color: var(--text-dim); font-size: 10px; }
-.rost-hint, .rost-empty { font-size: 12px; color: var(--text-dim); margin: 0 0 12px; }
-
-.rost-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.rost-box { position: relative; background: var(--bg-2); border: 1px solid var(--border);
-  border-left-width: 3px; border-radius: 8px; padding: 12px 14px; cursor: pointer;
-  display: flex; flex-direction: column; gap: 4px; }
-.rost-box:hover { border-color: var(--accent); }
-.rost-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.rost-box.k-directorate { border-left-color: #4dabf7; }
-.rost-box.k-division { border-left-color: #b197fc; }
-.rost-box.k-branch { border-left-color: #63e6be; }
-.rost-box.k-team { border-left-color: #ffd43b; }
-.rost-box-kind { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); }
-.rost-box-name { font-weight: 600; }
-.rost-box-stat { font-size: 11px; color: var(--text-dim); }
-.rost-box-lead { font-size: 11px; color: var(--text-dim); }
-.rost-box-lead.vacant { font-style: italic; opacity: .7; }
-.rost-box-go { font-size: 11px; color: var(--accent); margin-top: 2px; }
-.rost-box-del { position: absolute; top: 6px; right: 6px; }
-.rost-add { border-style: dashed; min-height: 92px; color: var(--text-dim); }
-
-.rost-unit-head { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
-  padding: 12px 14px; margin-bottom: 16px; }
-.rost-uh-top { display: flex; align-items: center; gap: 10px; }
-.rost-uh-kind { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); }
-.rost-uh-name { font: inherit; font-size: 15px; font-weight: 600; flex: 1; min-width: 0; margin: 0;
-  background: transparent; color: inherit; border: 0; border-bottom: 1px solid transparent;
-  padding: 2px 0; }
-.rost-uh-name.static { border: 0; }
-.rost-uh-name:hover:not(:disabled):not(.static) { border-bottom-color: var(--border); }
-.rost-uh-name:focus { outline: none; border-bottom-color: var(--accent); }
-.rost-uh-stat { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
-.rost-uh-lead { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.lead-badge { font-size: 10px; font-weight: 600; color: var(--text-dim);
-  border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
-.lead-name, .p-name, .p-title { font: inherit; font-size: 13px; background: var(--bg);
-  color: inherit; border: 1px solid var(--border); border-radius: 5px; padding: 3px 7px; }
-.lead-name:focus, .p-name:focus, .p-title:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
-.add-lead { font-size: 12px; border-style: dashed; }
-.del-icon { font-size: 14px; line-height: 1; padding: 1px 6px; color: var(--text-dim); }
-.del-icon:hover { color: #ff6b6b; border-color: #ff6b6b; }
-
-.rost-people { display: flex; flex-direction: column; gap: 6px; max-width: 720px; }
-.rost-person { display: flex; align-items: center; gap: 8px; }
-.rost-person .p-name { flex: 0 0 240px; }
-.rost-person .p-title { flex: 1; min-width: 0; }
-.p-src { font-size: 10px; color: var(--text-dim); border: 1px solid var(--border);
-  border-radius: 9px; padding: 0 7px; white-space: nowrap; }
-</style>

@@ -31,3 +31,4 @@ export * from './export/xlsx.js';
 export * from './import/xml.js';
 export * from './import/unzip.js';
 export * from './import/xlsx.js';
+export * from './entity-uses.js';

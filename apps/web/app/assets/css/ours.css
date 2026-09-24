@@ -59,3 +59,15 @@
  * children again — exactly as in the source.
  */
 .ws-page { display: contents; }
+
+/*
+ * Roster: "Sync from directory" (administrators only). The source has no directory to sync from.
+ * It sits immediately left of the Explore / Full hierarchy toggle and takes over the toggle's auto
+ * margin, so the toggle stays pinned right where index.html puts it. Where the full label would take
+ * room the source's own header is using, the page marks it .compact and it shows just its ⟳: the
+ * label stays laid out (so the page can measure when it would fit again) but takes no room.
+ */
+.roster-header .rost-sync { margin-left: auto; flex: none; white-space: nowrap; }
+.roster-header .rost-sync.compact { position: relative; }
+.roster-header .rost-sync.compact .rs-label { position: absolute; left: 0; top: 0; visibility: hidden; }
+.roster-header .rost-sync + .rost-modes { margin-left: 0; }
