@@ -523,8 +523,9 @@ function download(format: 'xml' | 'mermaid' | 'xlsx' | 'template' | 'pptx'): voi
   if (activeChart.value) q.set('chartId', activeChart.value.id);
   // From the flow view the Mermaid button draws the open flow, as index.html's exportMermaid does.
   if (format === 'mermaid' && view.value === 'bizcase' && activeFlowId.value) q.set('flowId', activeFlowId.value);
-  if (format === 'pptx') {
-    // A Final chart's "signed" date prints in the reader's locale and zone, as the source prints it.
+  if (format === 'pptx' || format === 'xlsx' || format === 'mermaid') {
+    // A Final chart's or flow's "signed" date prints in the reader's locale and zone, as the source
+    // prints it.
     q.set('locale', navigator.language);
     q.set('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
   }

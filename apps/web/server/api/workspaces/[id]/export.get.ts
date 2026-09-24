@@ -1,14 +1,17 @@
 /**
  * Download a workspace in one of the document formats.
  *
- *   /api/workspaces/:id/export?format=xml
+ *   /api/workspaces/:id/export?format=xml&chartId=c_…
  *   /api/workspaces/:id/export?format=mermaid&chartId=c_…
- *   /api/workspaces/:id/export?format=mermaid&flowId=b_…
+ *   /api/workspaces/:id/export?format=mermaid&flowId=b_…&chartId=c_…
  *   /api/workspaces/:id/export?format=json          the v0.39 file index.html reads
- *   /api/workspaces/:id/export?format=xlsx          a workbook, one sheet per tier
+ *   /api/workspaces/:id/export?format=xlsx&chartId=c_…   a workbook, one sheet per tier
  *   /api/workspaces/:id/export?format=template      the blank workbook the importer reads back
- *   /api/workspaces/:id/export?format=pptx&chartId=c_…&locale=en-US&tz=America/New_York
- *                                                   one chart as a PowerPoint deck
+ *   /api/workspaces/:id/export?format=pptx&chartId=c_…   one chart as a PowerPoint deck
+ *
+ * `chartId` is the chart tab in front of the person (index.html's ac()); without it, the first tab.
+ * The xlsx, mermaid and pptx formats also take `locale` and `tz` (e.g. en-US, America/New_York):
+ * a Final chart's or flow's signed date is printed in the reader's, as index.html prints it.
  *
  * The JSON format is the interoperability one and matters most: it is what lets someone take
  * their work back to the single-file app, or email it to a colleague who has no account. As long
@@ -36,9 +39,10 @@ const Query = z.object({
   chartId: z.string().optional(),
   flowId: z.string().optional(),
   /**
-   * How the deck's "signed" date is written. index.html prints it in the reader's own locale and
-   * timezone, so the page passes the browser's; without them it is the server's, which on a UTC
-   * host moves an evening signature in the Americas onto the next day.
+   * How a Final chart's or flow's "signed" date is written — in the deck, the workbook and the
+   * Mermaid header. index.html prints it in the reader's own locale and timezone, so the page passes
+   * the browser's; without them it is the server's, which on a UTC host moves an evening signature
+   * in the Americas onto the next day.
    */
   locale: z.string().max(64).optional(),
   tz: z.string().max(64).optional(),
@@ -114,13 +118,13 @@ export default defineEventHandler(async (event) => {
         if (!workspace.flows[query.flowId]) {
           throw createError({ statusCode: 404, statusMessage: 'No such flow in this workspace' });
         }
-        body = exportFlowMermaid(workspace, query.flowId);
+        body = exportFlowMermaid(workspace, query.flowId, { chartId: query.chartId, ...dateStyle(query.locale, query.tz) });
         filename = fileBase(workspace.flows[query.flowId]!.name, 'business_case');
       } else {
         if (query.chartId && !workspace.charts[query.chartId]) {
           throw createError({ statusCode: 404, statusMessage: 'No such chart in this workspace' });
         }
-        body = exportChartMermaid(workspace, { chartId: query.chartId });
+        body = exportChartMermaid(workspace, { chartId: query.chartId, ...dateStyle(query.locale, query.tz) });
       }
       contentType = 'text/vnd.mermaid; charset=utf-8';
       extension = 'mmd';
@@ -143,7 +147,7 @@ export default defineEventHandler(async (event) => {
       if (query.chartId && !workspace.charts[query.chartId]) {
         throw createError({ statusCode: 404, statusMessage: 'No such chart in this workspace' });
       }
-      body = exportXlsx(workspace, { chartId: query.chartId });
+      body = exportXlsx(workspace, { chartId: query.chartId, ...dateStyle(query.locale, query.tz) });
       contentType = SPREADSHEET;
       extension = 'xlsx';
       break;

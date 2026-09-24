@@ -34,9 +34,10 @@ old screen is the fallback, and it costs nothing to keep.
 Ordered by dependency, not by importance. Anything marked **parallel** can be picked up at once by
 different people.
 
-### 1 · The chart cascade — `renderChart` (index.html:10574)
+### 1 · ~~The chart cascade~~ — `renderChart` (index.html:10574)
 
-**Mostly done.** `apps/web/app/pages/w/[id]/index.vue`, on `packages/core/src/cascade.ts`.
+**Done.** `apps/web/app/pages/w/[id]/index.vue` and `components/chart/`, on
+`packages/core/src/cascade.ts`.
 
 `resolveCascade(chart, drillPath)` turns a drill path into the pane stack, and it is pure: it takes
 a path and returns the panes plus **the path it could actually honour**, so a caller decides what to
@@ -54,10 +55,14 @@ chart's `drillPath` as a side effect of drawing.
   the chart must tell apart — stated here, cascaded from above, and the Informed a blank cell means
   by convention — and each gets its own class so the difference is visible rather than implied.
 
-**Still to do here:** zoom, dragging a pane to reposition it, auto-arrange, and the drill from a
-Task row into its anchored flow. All chrome and camera; the cascade itself is done. The chart-tab
-strip, the crumb capsules, the Definition and Documents columns, the draft/final strip and the
-colour-coded chips came across with the UI-parity work.
+Zoom, pane dragging, the resize grip, Auto Arrange, the popovers (cell, column, row, org, flow),
+the drill from a Task row into its anchored flow, copy/paste, the right-click menus and the Final
+lock came across with the parity work (§10). **One layout quirk is kept on purpose:** index.html
+re-renders the cascade for an edit or a drill but only re-lays it out for a zoom, a drag, a snap
+back or a window resize, and those passes measure against the width the last one wrote — so each
+widens the focused pane by one cascade indent until it reaches its natural width. The chart runs
+the two kinds of pass where the source does (`layoutCascade(fresh)`), because that is what the
+source looks like after you zoom.
 
 **Note for whoever tests this:** all 810 rows of the demo state an owner of their own, so **nothing
 in the demo ever exercises the inherited-owner path.** It has to be constructed; `cascade.test.ts`
@@ -164,31 +169,29 @@ never mis-reports. The RESOLUTION itself now exists, because the flow rules need
 `createLintContext(ws).stepRaci(flow, step)` is index.html's `bizStepRaci`, and `FlowStep` carries
 `bindOverrides`. Use it rather than writing a second one.
 
-### 6 · Exports — **parallel, one person each**
+### 6 · ~~Exports~~
 
-| Export | Where | Notes |
+**Done, and byte for byte.** Every download the rail and the Export menu offer is what index.html
+writes for the same workspace:
+
+| Export | Where | Parity |
 |---|---|---|
-| ~~XML~~ | — | **Done.** `packages/core/src/export/xml.ts`, 25 tests. |
-| ~~Mermaid~~ | — | **Done.** `packages/core/src/export/mermaid.ts`, chart and flow. |
-| ~~Excel~~ | — | **Done.** `packages/core/src/export/xlsx.ts` + `zip.ts`, 34 tests. |
-| ~~Excel template~~ | — | **Done.** Same file — `exportTemplate`, shares the writer. |
-| PowerPoint | `exportPPTX` :16297 | Largest. |
-| Print / PDF | `beforeprint` handler | CSS-only in the legacy app; may stay client-side. |
+| Save (`.json`) | `legacy.ts` `exportLegacy`, the view written in by the page | byte-identical |
+| XML | `export/xml.ts` | byte-identical |
+| Mermaid, chart and flow | `export/mermaid.ts` | byte-identical |
+| Excel, and the blank template | `export/xlsx.ts` + `zip.ts` | every part identical |
+| PowerPoint | `export/pptx.ts` + `document-text.ts` | every part identical |
+| Ingest Kit (`.md`) | `ingest-kit.ts` | byte-identical |
+| Print / PDF | index.html's print CSS, `#print-head` filled on `beforeprint` | pixel-identical |
 
-All of these are pure functions of the workspace, so **they belong in `packages/core`**, not in the
-app. That also means they can be tested without a browser — which the legacy ones cannot.
+"Every part" because the one byte that differs in a ZIP is each entry's date field: the legacy
+writes 0, `zip.ts` writes 1980-01-01. `scripts/capture-legacy-parity.mjs` runs index.html headless
+and records what it wrote; the tests hold the ports to it, so a change on either side fails with the
+name of the part that moved. Rerun the capture when index.html changes an export.
 
-The ones that are done set the pattern: take a `Workspace`, return a string or bytes, inject
-anything non-deterministic (`now`). **Nothing may read the clock on its own** — the XLSX writer
-stamps every ZIP entry 1980-01-01 for exactly this reason, so two exports of an unchanged workspace
-are byte-identical and can be asserted on.
-
-`export/zip.ts` is a store-only ZIP writer with no dependency, shared by any format that is a ZIP of
-XML parts — which is both remaining Office formats. **PowerPoint should use it**; it does not need a
-library either. `packages/core/src/export/order.ts` already gives you flow steps in
-dependency order, and `stepIo()` derives a step's inputs and outputs from its handoffs. Reuse both
-rather than writing them again. The download route (`apps/web/server/api/workspaces/[id]/export.get.ts`)
-is where a new format gets hooked up — one case in a switch.
+All of these are pure functions of the workspace in `packages/core`, and **nothing may read the
+clock on its own**: a Final chart's signed date is printed in the locale and zone the page passes
+(`locale`, `tz` on the export route), and the Ingest Kit takes `now`.
 
 ### 7 · ~~Excel import~~ — `importXlsx` (index.html, v0.37 section)
 
@@ -220,49 +223,57 @@ that list corrupts every re-import**, in both apps.
 
 ### ~~8 · Themes — five palettes (index.html:141–500)~~
 
-**Done.** The palettes are copied verbatim into `apps/web/app/assets/css/themes.css`, and the
-structural rules that consume them into `shell.css`, `chart.css` and `flow.css`, each block
-carrying the line range it came from. Same storage key as the legacy app, so a browser that has
-used `index.html` keeps the theme it was already set to; same `contrast` → `hc-dark` migration;
-applied by a script in the document head before first paint. It stays a device preference and is
-never written to the shared document.
+**Done**, and now simply part of §10: the palettes arrive with the rest of index.html's stylesheet
+in `legacy.css`. Same storage key as the legacy app, so a browser that has used `index.html` keeps
+the theme it was already set to; same `contrast` → `hc-dark` migration; applied by a script in the
+document head before first paint. It stays a device preference and is never written to the shared
+document.
+
+### ~~9 · Field guides~~
+
+**Done.** The Help view shows the three guides in iframes, as index.html does. They are served from
+the copies embedded in index.html (`help-doc-src*`, extracted verbatim into
+`apps/web/server/assets/guides/`), not from `docs/*.html`, which have drifted from what the
+product actually shows.
 
 ### 10 · The interface itself
 
-**Mostly done, and the reason this section exists at all.** Every slice above tracks a FEATURE. None
-of them tracked what the application looks like, so the port reached five working screens while
-still reading as a different product: one flat top bar where `index.html` has two rails, invented
-chip colours, missing columns, no themes. Rendering both apps side by side against the same demo
-data is the check that catches this, and it is worth doing at the end of every slice from here on.
+Every slice above tracked a FEATURE, and the port reached five working screens that still read as a
+different product. The fix was a change of method, not more styling:
 
-Ported: the five palettes, both rails, the chart tab strip, the crumb band, the draft/final strip,
-the ASIC watermark, the colour-coded RACI chips, the Definition and Documents columns, the flow
-toolbar with its affordance line, and the step card's description and entry/exit criteria — all of
-which the model already carried and none of which was drawn.
+1. **The stylesheet is the source's, whole and untouched.** `apps/web/app/assets/css/legacy.css`
+   is index.html lines 7–4543, verbatim. Nothing in it is edited, and no component restyles a class
+   the source styles. If something looks wrong, the DOM is wrong.
+2. **Each screen emits the source's DOM.** A Vue page reproduces its `render*` function's markup —
+   the same elements, ids, classes, nesting and `data-*` attributes — so the source's selectors
+   match. Each page's root is `<div class="ws-page">`, which is `display: contents`, so the screen's
+   markup behaves as `#ws-main`'s own children, as it is in the source.
+3. **Behaviour is delegated on the same attributes, in the source's order.** Click, double-click,
+   mousedown, context-menu and keyboard handlers key on the `data-*` attributes the source's
+   handlers key on, and are checked in the order the source checks them.
+4. **What the rebuild needs and the source has no equivalent for** goes in `ours.css`, commented,
+   and is kept to a minimum: the sign-in line and Sign out under the rail, the brand as a link back
+   to the workspace list.
 
-**Still off the source:**
+**How it is checked.** Both apps are driven through the same script in headless Chromium — the
+source over `file://` with the demo in its localStorage, the rebuild against a copy of the demo —
+and screenshotted after every step; a pixel diff flags any region that differs. Every screen, the
+panels, the overlays, the menus, the Final lock, zoom and pane dragging, print layout, and the five
+themes at 1600 and 1000 px wide were compared this way. Where the output is a file rather than a
+screen, the file is compared: Save, the Ingest Kit, PowerPoint, Mermaid and the Excel template are
+byte-identical to index.html's, and `scripts/capture-legacy-parity.mjs` pins them in the tests.
 
-| Gap | Where |
+**Where the rebuild differs on purpose.**
+
+| What | Why |
 |---|---|
-| Flow Gallery — thumbnails, filter, Open/Nest | flow screen, left panel |
-| Rename / Delete / Group / Table buttons | flow toolbar |
-| Step version badges, duplicate button, party rows | flow step card |
-| Minimap | flow canvas, bottom right |
-| Zoom control, pane dragging, auto-arrange | chart screen |
-| Details and Legend panels | right rail |
-| Ingest Kit | right rail |
-
-Deliberately NOT ported, rather than pending: Load, Merge, Demo and Clear. They are artefacts of a
-localStorage app — here the document is durable, shared and reached by URL, so "replace everything
-in this browser" has no meaning. Save keeps its meaning rather than its mechanism: it downloads the
-same v0.39 file.
-
-### 9 · Field guides — `docs/*.html`
-
-Three guides, currently inlined into `index.html` and rendered in iframes. In Nuxt they can be real
-routes. Low priority, easy, and a good way to learn the codebase.
-
----
+| No startup splash, no "save your work" nag | Both say work lives only in this browser and is lost without Save. Here every edit is already on the server. |
+| Sign-in line and Sign out under the rail; the brand links to the workspace list | The single file had no accounts and no list. |
+| Drill path, pane positions, zoom, pane size, Legend, the Tasks unit are per person, in localStorage | In a shared document they would move everyone's screen. Save writes them into the file and Load reads them back, as the source's state does. |
+| Load, Demo and Clear replace the document for everyone in the workspace | The source replaced one browser's state. They keep its prompts word for word (Demo and Clear ask, Load does not) and are one undoable step for the person who did it. |
+| Clear keeps the workspace's own flows and deliverables | The source's comment says Clear keeps the flows; its code rebuilds from `defaultState()`, which swaps them for the demo's. |
+| The Details panel's storage note | The source's says documents live in this browser's IndexedDB. |
+| Attachments are stored on the server | See `packages/db/src/documents.ts`. Save embeds their bytes, as the source's does. |
 
 ## Not a slice: things that should NOT come across
 
@@ -306,7 +317,8 @@ packages/core/src/legacy.ts      importLegacy (+ the file's attachment bytes), e
 packages/core/src/documents.ts   MAX_DOC_BYTES, formatBytes, encodeDataUrl, decodeDataUrl,
                                  prepareEmbeddedDocument, workspaceDocumentIds — attachment bytes
 packages/core/src/export/       exportXml, exportChartMermaid, exportFlowMermaid, exportXlsx,
-                                 exportTemplate, writeWorkbook, zipBytes, topologicalOrder, stepIo
+                                 exportTemplate, writeWorkbook, zipBytes, chartToPptx, and in
+                                 document-text.ts the legacy's printed vocabulary they share
 packages/core/src/import/       importXlsx, readWorkbook, importWorkbook, findHeaderRow, unzip
 packages/crdt/src/roster.ts      flattenRoster, nestRoster — the roster's flat storage
 packages/crdt/src/mutations.ts   every write that currently exists
