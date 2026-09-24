@@ -505,8 +505,17 @@ const exportOpen = ref(false);
 const exportMenu = ref<HTMLElement | null>(null);
 function download(format: 'xml' | 'mermaid' | 'xlsx' | 'template' | 'pptx'): void {
   exportOpen.value = false;
-  const chart = activeChart.value ? `&chartId=${encodeURIComponent(activeChart.value.id)}` : '';
-  location.href = `/api/workspaces/${workspaceId}/export?format=${format}${chart}`;
+  const q = new URLSearchParams({ format });
+  if (activeChart.value) q.set('chartId', activeChart.value.id);
+  // From the flow view the Mermaid button draws the open flow, as index.html's exportMermaid does.
+  if (format === 'mermaid' && view.value === 'bizcase' && activeFlowId.value) q.set('flowId', activeFlowId.value);
+  if (format === 'pptx') {
+    // A Final chart's "signed" date prints in the reader's locale and zone, as the source prints it.
+    q.set('locale', navigator.language);
+    q.set('tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }
+  location.href = `/api/workspaces/${workspaceId}/export?${q}`;
+  if (format === 'template') toast('Template downloaded — fill in the RACI sheet, then Load it back.', 'suggest');
 }
 function print(): void { exportOpen.value = false; window.print(); }
 

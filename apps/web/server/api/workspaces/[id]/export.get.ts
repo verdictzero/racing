@@ -63,11 +63,8 @@ function dateStyle(locale: string | undefined, timeZone: string | undefined) {
   };
 }
 
-/** A filename that survives a download on every OS. */
-function safeFilename(name: string, extension: string): string {
-  const base = name.replace(/[^\w.\- ]+/g, '').trim().replace(/\s+/g, '_') || 'workspace';
-  return `${base.slice(0, 80)}.${extension}`;
-}
+/** index.html's fileBase: a name with its whitespace as underscores, or the fallback it gives. */
+const fileBase = (name: string, fallback: string) => (name || fallback).replace(/\s+/g, '_');
 
 export default defineEventHandler(async (event) => {
   const session = await requireSession(event);
@@ -96,7 +93,11 @@ export default defineEventHandler(async (event) => {
   let body: string | Uint8Array;
   let contentType: string;
   let extension: string;
-  let filename = query.format === 'template' ? 'raci-template' : record.name;
+  // Named as index.html names each download: after the chart in front of the person (the chart
+  // exports), after the flow (a flow's Mermaid), 'raci-template' for the template — never after
+  // the workspace, which the single file did not have.
+  const chart = query.chartId ? workspace.charts[query.chartId] : chartsInTabOrder(workspace)[0];
+  let filename = query.format === 'template' ? 'raci-template' : chartFileBase(chart ?? { title: '' });
 
   const SPREADSHEET =
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -114,6 +115,7 @@ export default defineEventHandler(async (event) => {
           throw createError({ statusCode: 404, statusMessage: 'No such flow in this workspace' });
         }
         body = exportFlowMermaid(workspace, query.flowId);
+        filename = fileBase(workspace.flows[query.flowId]!.name, 'business_case');
       } else {
         if (query.chartId && !workspace.charts[query.chartId]) {
           throw createError({ statusCode: 404, statusMessage: 'No such chart in this workspace' });
@@ -157,20 +159,18 @@ export default defineEventHandler(async (event) => {
     // One chart — the tab in front of the person who asked, or the first tab when they did not
     // say. Named after the chart as index.html names it, since a deck is about one chart.
     case 'pptx': {
-      const chart = query.chartId ? workspace.charts[query.chartId] : chartsInTabOrder(workspace)[0];
       if (!chart) {
         throw createError({ statusCode: 404, statusMessage: 'No such chart in this workspace' });
       }
       body = chartToPptx(workspace, chart.id, dateStyle(query.locale, query.tz));
       contentType = PPTX_CONTENT_TYPE;
       extension = 'pptx';
-      filename = chartFileBase(chart);
       break;
     }
   }
 
   setHeader(event, 'content-type', contentType);
-  setHeader(event, 'content-disposition', `attachment; filename="${safeFilename(filename, extension)}"`);
+  setHeader(event, 'content-disposition', documentContentDisposition('attachment', `${filename}.${extension}`));
   // Exports reflect a document that changes continuously; a cached one would be wrong the moment
   // anybody edits.
   setHeader(event, 'cache-control', 'no-store');
