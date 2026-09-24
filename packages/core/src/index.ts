@@ -31,6 +31,20 @@ export * from './org.js';
 export * from './work.js';
 export * from './export/zip.js';
 export * from './export/xlsx.js';
+export * from './export/pptx.js';
+// Only the general-purpose part of the document vocabulary. The rest of document-text.ts restates
+// the chart cascade and the flow resolution the way the legacy exporter prints them, and exported
+// beside raci.ts it would be a second, subtly different answer to questions raci.ts owns.
+export {
+  chartsInTabOrder,
+  signedOn,
+  STATUS_TEXT,
+  FLOW_MODE_NAMES,
+  type DateStyle,
+} from './export/document-text.js';
+export * from './ingest-kit.js';
+export * from './clear.js';
+export * from './merge.js';
 export * from './import/xml.js';
 export * from './import/unzip.js';
 export * from './import/xlsx.js';

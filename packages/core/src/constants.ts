@@ -8,6 +8,14 @@
  * and the override is what a source spreadsheet's own vocabulary lands in.
  */
 
+// ---- The legacy app's identity -----------------------------------------------------------------
+// index.html names itself in what it writes for other readers — the Ingest Kit's header is the one
+// that has to match word for word, because a model is told which build produced the schema it is
+// reading. The version is the FILE FORMAT both apps read and write, not this package's version.
+export const APP_NAME = 'ASIC RACI Tool';
+export const APP_VERSION = '0.39';
+export const APP_STAGE = 'alpha';
+
 // ---- Directorates (the roster's six top-level org units) --------------------------------------
 // Keys are stable and meaningless to the user; the labels are what they see, and are overridable
 // per workspace. Renaming a label must never touch a key.
@@ -213,3 +221,6 @@ export const META_PRIORITY_LABELS: Readonly<Record<MetaPriority, string>> = {
 /** `linked` — every step names the chart row it implements. `free` — RACI authored on the step. */
 export const FLOW_MODES = ['free', 'linked'] as const;
 export type FlowMode = (typeof FLOW_MODES)[number];
+
+/** The palette a flow's group frame picks from — index.html's `BZ_GROUP_COLORS`, in its order. */
+export const FLOW_GROUP_COLORS = ['accent', 'p', 'c', 'a', 'd', 's', 'i'] as const;

@@ -1,4 +1,5 @@
 {
+  "//": "The demo JSON is listed because src/demo.ts ships it as the @raci/core/demo entry, and a composite project must name every file it emits. Code under __fixtures__ is test scaffolding and is kept out of dist.",
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
@@ -7,9 +8,11 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/__fixtures__/demo-workspace.json"
   ],
   "exclude": [
-    "src/**/*.test.ts"
+    "src/**/*.test.ts",
+    "src/__fixtures__/**/*.ts"
   ]
 }
