@@ -10,7 +10,7 @@
         <div v-if="!who.length" class="det-doc-empty">No roles assigned yet.</div>
         <div v-else class="dw-list">
           <div v-for="w in who" :key="w.col" class="dw-row">
-            <div class="dw-col">{{ w.label }}<template v-if="w.inherited"> <span class="dw-inh"
+            <div class="dw-col">{{ w.label }}<template v-if="w.inherited">{{ ' ' }}<span class="dw-inh"
               :title="`Inherited ${fw.meta[fw.owner]?.label} from the cascade`">(inherited)</span></template></div>
             <div class="dw-chips">
               <div v-if="!w.letters" class="cell-chips empty">·</div>

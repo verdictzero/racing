@@ -277,18 +277,22 @@ const go = (suffix: string) => navigateTo(`/w/${workspaceId}${suffix}`);
 const { showDetails, showLegend, panesMoved, activeNodeId, setLegend, restoreLegend, openDetails: open, closeDetails, arrange } = useChartView();
 const sidebarArrow = ref<HTMLElement | null>(null);
 let arrowTimer: ReturnType<typeof setTimeout> | undefined;
-/** index.html's openDetailsPanel: the arrow flashes only on a closed → open transition. */
-function openDetails(): void {
-  const was = showDetails.value;
-  open();
-  if (was || !sidebarArrow.value) return;
+/**
+ * index.html's flashSidebarArrow, on every closed → open transition of the Details panel — whoever
+ * opened it. Watching the state rather than wrapping one opener is what makes the chart screen's
+ * row click flash it too.
+ */
+function flashSidebarArrow(): void {
   const el = sidebarArrow.value;
+  if (!el) return;
   el.classList.remove('show');
   void el.offsetWidth; // restart the animation
   el.classList.add('show');
   clearTimeout(arrowTimer);
   arrowTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
+watch(showDetails, (on, was) => { if (on && !was) flashSidebarArrow(); });
+const openDetails = open;
 watch(activeNodeId, (id) => { if (id) openDetails(); });
 
 

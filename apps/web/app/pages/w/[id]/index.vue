@@ -1,686 +1,747 @@
 <template>
-  <div class="chart-screen">
-    <div class="tools">
-      <button :disabled="!canEdit" @click="excelOpen = true"
-        title="Import a workbook, or download the blank one to fill in">📗 Import Excel</button>
-    </div>
-
-    <p v-if="!chart" class="note">
-      This workspace has no charts yet.
-      <button v-if="canEdit" @click="createChart">Create one</button>
-    </p>
-
-    <template v-else>
-      <!-- Present in BOTH states, as in index.html: a banner that only showed up for drafts would
-           teach people to read "no banner" as "approved". -->
-      <div class="art-status-strip" :class="chart.status === 'final' ? 'is-final' : 'is-draft'">
-        <span class="ast-badge">{{ chart.status === 'final' ? 'FINAL' : 'DRAFT' }}</span>
-        <span class="ast-txt">
-          {{ chart.status === 'final'
-            ? 'Signed off, and locked against edits.'
-            : 'Working copy — still being written, and free to change.' }}
-          <span v-if="chart.status === 'final' && finalizedOn" class="ast-when">{{ finalizedOn }}</span>
-        </span>
-        <button v-if="canEdit" class="ast-set" @click="toggleFinal">
-          {{ chart.status === 'final' ? '✎ Reopen as draft' : '✓ Mark final' }}
-        </button>
+  <!-- index.html's renderChart. Handlers are delegated on the source's data-* attributes, in the
+       source's order, from this root — as the source delegates them from document. -->
+  <div class="ws-page" @click="onClick" @dblclick="onDblClick" @mousedown="onMouseDown" @contextmenu="onContext" @focusout="onBlur">
+    <template v-if="chart">
+      <div class="art-status-strip" :class="`is-${status}`" data-art-kind="chart">
+        <span class="ast-badge">{{ status === 'final' ? '✓' : '✎' }} {{ status === 'final' ? 'FINAL' : 'DRAFT' }}</span>
+        <span class="ast-txt">{{ status === 'final' ? 'Signed off, and locked against edits.' : 'Working copy — still being written, and free to change.' }}<template
+          v-if="signedOn"> <span class="ast-when">Signed {{ signedOn }}.</span></template></span>
+        <button type="button" class="ast-set" data-status-set="chart" :data-status-id="chart.id" :data-status="status === 'final' ? 'draft' : 'final'"
+          :title="status === 'final'
+            ? `Reopen “${chart.title || 'Untitled chart'}” for editing. Nothing is lost — the status is just a field, and you can mark it Final again whenever you like.`
+            : `Mark “${chart.title || 'Untitled chart'}” Final. It keeps working everywhere; its cells, names and layout simply lock against accidental edits until you reopen it.`">
+          {{ status === 'final' ? '↺ Reopen as draft' : '✓ Mark final' }}</button>
       </div>
-
-      <!-- The stack. The focused pane is in front; the ones behind it are desaturated rather than
-           transparent, so they cover each other cleanly instead of bleeding through. -->
-      <div class="cascade">
-        <section
-          v-for="(pane, i) in panes"
-          :key="pane.tier"
-          class="pane"
-          :class="{ focus: i === panes.length - 1 }"
-          :style="paneStyle(i)"
-        >
-          <header class="pane-head">
-            <span v-if="pane.parent" class="inbound">⤷</span>
-            <span v-if="pane.parent" class="pane-parent">{{ pane.parent.name || '(untitled)' }}</span>
-            <span v-if="pane.parent" class="sep">›</span>
-            <span>{{ tierName(pane.tier) }} activities</span>
-            <span class="pane-count">{{ pane.rows.length }}</span>
-          </header>
-
-          <!-- The party columns carry full names now, so a wide chart is wider than its pane. It
-               scrolls inside the pane rather than pushing the page sideways. -->
-          <div class="pane-scroll">
-          <table class="chart">
-            <thead>
-              <tr>
-                <th class="c-toggle" />
-                <th class="c-name">{{ tierName(pane.tier) }} activity</th>
-                <th class="c-def">Definition</th>
-                <th class="c-docs">Documents</th>
-                <th v-for="col in columns" :key="col" class="c-col" :title="columnLabel(col)">
-                  {{ columnLabel(col) }}
-                </th>
-                <th class="c-act" />
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in pane.rows"
-                :key="row.id"
-                class="row"
-                :class="{ open: pane.openId === row.id, err: severityOf(row.id) === 'err' }"
-              >
-                <td class="c-toggle">
-                  <button
-                    v-if="!pane.isLeafTier"
-                    class="caret"
-                    :class="{ open: pane.openId === row.id }"
-                    :title="pane.openId === row.id ? 'Collapse' : 'Drill into breakdown'"
-                    @click="toggleDrill(pane.tier, row.id)"
-                  >{{ pane.openId === row.id ? '▾' : '▸' }}</button>
-                  <span v-else class="caret leaf" title="The bottom tier — a task flow continues the drill (not yet ported)">·</span>
-                </td>
-
-                <td class="c-name">
-                  <input
-                    :value="row.name"
-                    :disabled="!canEdit"
-                    :placeholder="tierName(pane.tier)"
-                    @change="rename(row.id, ($event.target as HTMLInputElement).value)"
-                  >
-                  <span v-if="orgBadge(pane, row)" class="org" :title="orgBadge(pane, row)!.full">
-                    {{ orgBadge(pane, row)!.short }}
-                  </span>
-                </td>
-
-                <td class="c-def">
-                  <input
-                    :value="row.description"
-                    :disabled="!canEdit"
-                    placeholder="+ Add definition"
-                    :title="row.description || 'What this activity actually means'"
-                    @change="describe(row.id, ($event.target as HTMLInputElement).value)"
-                  >
-                </td>
-
-                <!-- Read-only: attachments are stored (document_blob) but no upload path is ported
-                     yet, so this reports what a v0.39 import brought across rather than offering a
-                     control that would do nothing. -->
-                <td class="c-docs" :title="docTitle(row)">
-                  <span v-if="row.documents.length" class="doc-count">{{ row.documents.length }} file(s)</span>
-                  <span v-else class="doc-none">—</span>
-                </td>
-
-                <td
-                  v-for="col in columns"
-                  :key="col"
-                  class="cell chart-cell"
-                  :class="{ editing: editing?.nodeId === row.id && editing?.column === col }"
-                  :title="cellTitle(pane, row, col)"
-                  @click="canEdit && openCellEditor($event, row.id, col)"
-                >
-                  <span
-                    v-for="letter in lettersOf(pane, row, col)"
-                    :key="letter"
-                    class="raci-chip"
-                    :class="[letter, sourceOf(pane, row, col)]"
-                  >{{ letter }}</span>
-                </td>
-
-                <td class="c-act">
-                  <span
-                    v-if="severityOf(row.id)"
-                    class="pin"
-                    :class="severityOf(row.id)"
-                    :title="pinTitle(row.id)"
-                  >!</span>
-                  <button v-if="canEdit" class="del" title="Delete this row and everything under it"
-                    @click="remove(row.id)">×</button>
-                </td>
-              </tr>
-
-              <tr v-if="!pane.rows.length" class="empty">
-                <td :colspan="columns.length + 5">No {{ tierName(pane.tier).toLowerCase() }} activities yet.</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-
-          <button v-if="canEdit && i === panes.length - 1" class="add" @click="addRow(pane)">
-            + Add {{ tierName(pane.tier).toLowerCase() }} activity
-          </button>
-        </section>
-      </div>
-
-      <!-- The cell editor. Toggles rather than a text field: the letters are a fixed set, and
-           typing "AR" when you meant "A R" is a mistake a picker cannot make. -->
-      <div v-if="editing" class="raci-pop" :style="popStyle" @click.stop>
-        <div class="rp-head">{{ columnLabel(editing.column) }}</div>
-        <button
-          v-for="letter in frameworkRoles"
-          :key="letter"
-          class="rp-opt"
-          :class="{ on: editingLetters.includes(letter) }"
-          @click="toggleLetter(letter)"
-        >
-          <span class="raci-chip" :class="letter">{{ letter }}</span>
-          <span class="rp-name">{{ roleLabel(letter) }}</span>
-        </button>
-        <button class="rp-close" @click="editing = null">Done</button>
-      </div>
-      <div v-if="editing" class="raci-scrim" @click="editing = null" />
-    </template>
-
-    <div v-if="excelOpen" class="xl-overlay" role="dialog" aria-modal="true"
-      @click.self="closeExcel" @keydown.esc="closeExcel">
-      <div class="xl-card">
-        <h3>Excel</h3>
-        <button class="xl-opt" @click="pickFile">
-          <span class="xl-name">Import a workbook</span>
-          <span class="xl-desc">Read a filled-in .xlsx and add it as a new chart. Nothing already
-            here is changed.</span>
-        </button>
-        <a class="xl-opt" :href="`/api/workspaces/${session.workspaceId}/export?format=template`"
-          @click="closeExcel">
-          <span class="xl-name">Download the input template</span>
-          <span class="xl-desc">A blank workbook in the shape this reads back, with the rules
-            written on the first sheet.</span>
-        </a>
-        <a class="xl-opt" :href="`/api/workspaces/${session.workspaceId}/export?format=xlsx`"
-          @click="closeExcel">
-          <span class="xl-name">Export this workspace</span>
-          <span class="xl-desc">One sheet per tier, plus the deliverables and entities.</span>
-        </a>
-        <button class="xl-close" @click="closeExcel">Cancel</button>
-      </div>
-    </div>
-
-    <div v-if="preview" class="xl-overlay" role="dialog" aria-modal="true" @click.self="preview = null">
-      <div class="xl-card wide">
-        <h3>Import &ldquo;{{ preview.chart.title }}&rdquo;?</h3>
-        <p class="xl-stat">
-          {{ preview.stats.nodes }} activit{{ preview.stats.nodes === 1 ? 'y' : 'ies' }}
-          from {{ preview.stats.rows }} row{{ preview.stats.rows === 1 ? '' : 's' }}
-          across {{ preview.stats.sheets.join(', ') }},
-          {{ preview.stats.columns }} party column{{ preview.stats.columns === 1 ? '' : 's' }}<template
-            v-if="preview.stats.entities">, {{ preview.stats.entities }} entit{{ preview.stats.entities === 1 ? 'y' : 'ies' }}</template>.
-        </p>
-        <ul v-if="importNotes.length" class="xl-warn">
-          <li v-for="(note, i) in importNotes" :key="i">{{ note }}</li>
-        </ul>
-        <p class="xl-stat">Added as a new chart. Nothing already in the workspace is changed.</p>
-        <div class="xl-acts">
-          <button class="primary" @click="commitImport">Import</button>
-          <button @click="preview = null">Cancel</button>
+      <div id="cascade-zoom" ref="zoomWrap" class="cascade-zoom">
+        <div id="cascade" ref="cascadeEl" class="cascade" :class="{ arranging }">
+          <ChartBlock v-for="(pane, i) in panes" :key="pane.tier" :chart="chart" :pane="pane" :idx="i" :total="panes.length"
+            :cols="cols" :size="cam.size" :records="records" :flows="flowsByNode" :health="health"
+            :active-node-id="activeNodeId" :can-edit="canEdit" :class="{ moved: !!cam.pos[pane.tier] }" />
+          <svg id="cascade-svg" ref="svg" class="cascade-svg" aria-hidden="true" />
+          <div id="chart-resize" ref="grip" class="chart-resize" title="Drag to resize the charts" />
         </div>
       </div>
-    </div>
-
-    <p v-if="importError" class="note bad">{{ importError }}</p>
-    <input ref="fileInput" type="file" accept=".xlsx" hidden @change="onFile">
-  
-    <!-- The floating count, bottom-left, exactly where index.html puts it. A div rather than a
-         button: the violations panel it opens there is not ported, and a control that looks
-         clickable and does nothing is worse than a label. -->
-    <div v-if="chart && violations.length" id="violations-toast" role="status"
-      :class="['has-issues', { 'only-warn': !violations.some((v) => v.severity === 'err') }]"
-      :title="violationTitle">
-      <span class="vt-icon" aria-hidden="true">⚠</span>
-      {{ violations.length }} warnings
-    </div>
-</div>
+      <div id="zoom-ctl" class="zoom-ctl">
+        <button id="zoom-out" title="Zoom out" @click.stop="zoomBy(-0.1)">−</button>
+        <span id="zoom-level" class="zoom-level" title="Reset zoom" @click.stop="setZoom(1)">{{ Math.round(cam.zoom * 100) }}%</span>
+        <button id="zoom-in" title="Zoom in" @click.stop="zoomBy(0.1)">+</button>
+      </div>
+      <ChartPopover :pop="pop" :chart="chart" :cols="cols" :can-edit="canEdit" @close="pop = null"
+        @jump="(id) => { pop = null; jumpToRow(id); }" @colview="pivotToCol" @open-flow="openFlow"
+        @create-flow="createFlowFromNode" @attach-flow="attachFlow" />
+    </template>
+  </div>
 </template>
 
 <script setup lang="ts">
 /**
- * The chart cascade — PORTING.md slice 1, the screen the whole tool is about.
+ * The chart cascade — index.html's renderChart and everything the chart view wires: the stacked
+ * panes (layoutCascade), the connectors between them (drawConnectors), dragging a pane out of the
+ * stack and double-clicking it home, the resize grip, zoom, the drill, inline renames, the cell,
+ * org, node-view and flow popovers, and the right-click menus.
  *
- * A nested RACI is read by drilling. The top pane shows the Portfolio rows; open one and a Program
- * pane appears in front of it holding that row's breakdown, with the panes behind desaturated so
- * the stack reads as depth. All of the thinking is `resolveCascade` in core; this arranges it.
- *
- * THE DRILL PATH IS NOT DOCUMENT DATA, and that is the single most important thing about this file.
- * Which row YOU have open is a fact about your screen. Putting it in the shared document would mean
- * one person drilling yanks everyone else's view mid-sentence. It lives in component state, and
- * `resolveCascade` hands back the path it could honour so a row deleted by someone else while you
- * had it open collapses the stack instead of leaving an empty pane under a live breadcrumb.
- *
- * CELLS ARE READ THROUGH `displayRaci`, never recomputed here. It resolves three cases the chart
- * has to tell apart and a renderer must not re-derive: a letter the row states, one that cascaded
- * down from an ancestor, and the Informed a blank cell means by convention. Each gets its own
- * class, so the difference is visible rather than implied.
- *
- * NOT PORTED YET, and worth saying rather than leaving to be discovered: zoom, dragging a pane to
- * reposition it, auto-arrange, and the drill from a Task row into its anchored flow (that one waits
- * on the flow canvas, slice 3). All of those are camera and chrome; the cascade itself is here.
+ * Where you are in a chart — the drill path, pane positions, zoom, size — is YOUR camera, not the
+ * document's: see useChartCamera. The chart itself is shared and every edit is a CRDT mutation.
  */
 import {
-  COL_LABELS_DEFAULT,
-  COL_SHORT_DEFAULT,
-  cascadeCrumbs,
+  MAX_TIER,
+  ancestorsOf,
   chartColumns,
-  displayRaci,
-  framework,
-  importXlsx,
-  normalizeRaci,
-  orgLabel,
+  depthOf,
+  flowHealth,
+  keyBetween,
+  pathToOpen,
   resolveCascade,
   tierLabel,
-  workspaceViolations,
-  type CascadePane,
+  type Chart,
   type ChartNode,
-  type ImportedWorkbook,
-  type Violation,
 } from '@raci/core';
 import {
-  addChart,
+  LOCAL_ORIGIN,
   addNode,
-  deleteNode,
+  addStep,
+  deleteNode as deleteNodeTree,
+  duplicateNode,
   insertChart,
-  insertEntities,
+  maps,
   renameNode,
   setChartField,
-  setColumnLabels,
-  setNodeField,
-  setNodeRaci,
+  setField,
+  toYMap,
 } from '@raci/crdt';
+import type { ChartPop } from '~/components/chart/ChartPopover.vue';
+import type { CtxEntry } from '~/composables/useContextMenu';
+import { violationRecords, type ViolationRecord } from '~/composables/useViolationRecords';
 
 const session = useWorkspaceSession();
+const shell = useShell();
+const menu = useContextMenu();
+const docs = useDocuments();
+const { guardEdit, refuseLockedEdit } = useLock();
 const canEdit = inject<Ref<boolean>>('raci:canEdit', ref(false));
+const attachDocuments = inject<(nodeId: string) => void>('raci:attachDocuments', () => {});
+const { activeNodeId, panesMoved, arrangeTick, openDetails, selectNode } = useChartView();
+const activeChartId = useActiveChartId();
+const activeFlowId = useActiveFlowId();
 
-/** Camera state. Per-person, never in the shared document — see the header. */
-const drill = ref<string[]>([]);
-
-// Which chart is open is the shell's business — it draws the tab strip — so this screen follows
-// rather than picking one of its own.
-const activeChartId = inject<Ref<string | null>>('raci:activeChartId', ref(null));
-const chart = computed(() => {
+const chart = computed<Chart | null>(() => {
   const charts = session.workspace.value.charts;
   return (activeChartId.value ? charts[activeChartId.value] : null) ?? Object.values(charts)[0] ?? null;
 });
-const columns = computed(() => (chart.value ? chartColumns(chart.value) : []));
-const fw = computed(() => framework(chart.value?.framework));
-const frameworkRoles = computed(() => fw.value.roles);
-
-const cascade = computed(() =>
-  chart.value ? resolveCascade(chart.value, drill.value) : null,
-);
-const panes = computed(() => cascade.value?.panes ?? []);
-const crumbs = computed(() => (cascade.value ? cascadeCrumbs(cascade.value) : []));
-
-/**
- * A row someone else deleted leaves a path pointing at nothing.
- *
- * `resolveCascade` never throws on one — it returns the path it could honour — but the local state
- * has to follow, or the next drill would rebuild the same broken stack.
- */
-watch(cascade, (next) => {
-  if (next?.trimmed && next.path.length !== drill.value.length) drill.value = [...next.path];
+const chartIdRef = computed(() => chart.value?.id ?? null);
+const cols = computed(() => (chart.value ? chartColumns(chart.value) : []));
+const status = computed(() => chart.value?.status ?? 'draft');
+const signedOn = computed(() => {
+  const at = chart.value?.finalizedAt;
+  if (!at) return '';
+  const d = new Date(at);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 });
+const locked = computed(() => status.value === 'final');
+const edit = () => canEdit.value && guardEdit('chart', chart.value);
 
-// ---- violations ---------------------------------------------------------------------------------
-// Through the workspace wrapper, not chartViolations directly: the supply check needs the
-// workspace-wide producer index, and the chart-scoped form would silently skip it.
-const violations = computed(() =>
-  chart.value ? (workspaceViolations(session.workspace.value).charts.get(chart.value.id) ?? []) : [],
-);
-const byNode = computed(() => {
-  const map = new Map<string, Violation[]>();
-  for (const v of violations.value) {
-    const list = map.get(v.nodeId);
-    if (list) list.push(v);
-    else map.set(v.nodeId, [v]);
+// ---- the camera --------------------------------------------------------------------------------
+const { cam, update, setZoom } = useChartCamera(session.workspaceId, chartIdRef);
+const zoomBy = (d: number) => setZoom(cam.value.zoom + d);
+const cascade = computed(() => (chart.value ? resolveCascade(chart.value, cam.value.drillPath) : null));
+const panes = computed(() => cascade.value?.panes ?? []);
+// A row someone else deleted leaves a path pointing at nothing: follow what could be honoured.
+watch(cascade, (c) => { if (c?.trimmed) update({ drillPath: [...c.path] }); });
+watch(() => cam.value.pos, (pos) => { panesMoved.value = Object.keys(pos).length > 0; }, { immediate: true });
+
+// ---- what the panes show -------------------------------------------------------------------------
+const records = computed(() => {
+  const map = new Map<string, ViolationRecord>();
+  for (const r of violationRecords(session.workspace.value, 'chart', chart.value?.id ?? null, null)) {
+    if (r.kind === 'chart') map.set(r.id, r);
   }
   return map;
 });
-const severityOf = (nodeId: string): 'err' | 'warn' | null => {
-  const found = byNode.value.get(nodeId);
-  if (!found?.length) return null;
-  return found.some((v) => v.severity === 'err') ? 'err' : 'warn';
-};
-const pinTitle = (nodeId: string) =>
-  (byNode.value.get(nodeId) ?? []).map((v) => v.message).join('\n');
-const violationTitle = computed(() =>
-  violations.value.slice(0, 8).map((v) => v.message).join('\n'),
-);
-
-// ---- labels -------------------------------------------------------------------------------------
-const tierName = (tier: number) => (chart.value ? tierLabel(chart.value, tier) : 'Row');
-const columnLabel = (col: string) =>
-  chart.value?.custom?.cols.find((c) => c.key === col)?.label ??
-  session.workspace.value.columnLabels[col] ??
-  COL_LABELS_DEFAULT[col as keyof typeof COL_LABELS_DEFAULT] ??
-  col;
-const shortLabel = (col: string) =>
-  chart.value?.custom?.cols.find((c) => c.key === col)?.short ??
-  session.workspace.value.columnShort[col] ??
-  COL_SHORT_DEFAULT[col as keyof typeof COL_SHORT_DEFAULT] ??
-  col;
-const roleLabel = (letter: string) => fw.value.meta[letter]?.label ?? letter;
-
-// ---- cells --------------------------------------------------------------------------------------
-const rowCells = (row: ChartNode) =>
-  chart.value ? displayRaci(chart.value, chart.value.nodes, row.id) : {};
-
-const lettersOf = (_pane: CascadePane, row: ChartNode, col: string) =>
-  (rowCells(row)[col]?.letters ?? '').split('').filter(Boolean);
-
-const sourceOf = (_pane: CascadePane, row: ChartNode, col: string) =>
-  rowCells(row)[col]?.source ?? 'none';
-
-function cellTitle(_pane: CascadePane, row: ChartNode, col: string): string {
-  const cell = rowCells(row)[col];
-  const name = columnLabel(col);
-  if (!cell) return name;
-  if (cell.source === 'inherited') {
-    return `${name}: ${cell.letters} — cascaded from the row above. Set a letter here to override it.`;
+const flowsByNode = computed(() => {
+  const map = new Map<string, Array<{ id: string; name: string }>>();
+  for (const f of Object.values(session.workspace.value.flows)) {
+    if (!f.anchor || f.anchor.chartId !== chart.value?.id) continue;
+    const list = map.get(f.anchor.nodeId) ?? [];
+    list.push({ id: f.id, name: f.name });
+    map.set(f.anchor.nodeId, list);
   }
-  if (cell.source === 'default') {
-    return `${name}: Informed — the default for a cell nobody has set.`;
-  }
-  return `${name}: ${cell.letters}`;
-}
-
-/** The org unit a row belongs to: its own if it states one, otherwise the pane's inherited context. */
-function orgBadge(pane: CascadePane, row: ChartNode) {
-  const ref = row.org ?? pane.inheritedOrg.branch ?? pane.inheritedOrg.division;
-  return ref ? orgLabel(session.workspace.value, ref) : null;
-}
-
-/** Behind panes are desaturated and dimmed rather than made transparent, so they do not bleed. */
-function paneStyle(i: number) {
-  const depth = panes.value.length - 1 - i;
-  if (depth === 0) return {};
-  return { filter: `saturate(0.16) brightness(${Math.max(0.6, 0.92 - depth * 0.08).toFixed(3)})` };
-}
-
-// ---- drilling -----------------------------------------------------------------------------------
-const toggleDrill = (tier: number, nodeId: string) => {
-  drill.value = drill.value[tier] === nodeId ? drill.value.slice(0, tier) : [...drill.value.slice(0, tier), nodeId];
-};
-const drillTo = (depth: number) => { drill.value = drill.value.slice(0, depth); };
-
-// ---- definitions, documents and the lifecycle ---------------------------------------------------
-const describe = (nodeId: string, text: string) => setNodeField(session.doc, nodeId, 'description', text);
-
-const docTitle = (row: { documents: { name?: string }[] }) =>
-  row.documents.length
-    ? row.documents.map((d) => d.name ?? '(unnamed)').join('\n')
-    : 'No documents attached to this activity';
-
-/**
- * Draft <-> Final.
- *
- * The legacy app locks a Final chart against edits. That lock is not ported yet, so this changes
- * the label and nothing else — which is why the button says what it does rather than implying a
- * freeze it cannot enforce.
- */
-function toggleFinal(): void {
-  if (!chart.value) return;
-  const next = chart.value.status === 'final' ? 'draft' : 'final';
-  setChartField(session.doc, chart.value.id, 'status', next);
-  setChartField(session.doc, chart.value.id, 'finalizedAt', next === 'final' ? new Date().toISOString() : null);
-}
-
-const finalizedOn = computed(() => {
-  const stamp = chart.value?.finalizedAt;
-  if (!stamp) return '';
-  const when = new Date(stamp);
-  // An imported file can carry anything in that field, and a bad date must not take the strip down.
-  return Number.isNaN(when.getTime()) ? '' : when.toLocaleDateString();
+  return map;
 });
+/** index.html's flowHealth roll-up over every flow anchored to the row. */
+function health(nodeId: string): { pct: number; cls: string } | null {
+  const flows = flowsByNode.value.get(nodeId);
+  if (!flows?.length) return null;
+  let passed = 0, total = 0;
+  for (const f of flows) {
+    const h = flowHealth(session.workspace.value, f.id);
+    if (h) { passed += h.passed; total += h.total; }
+  }
+  const pct = total ? Math.round((passed / total) * 100) : 100;
+  return { pct, cls: pct >= 80 ? 'green' : pct >= 40 ? 'amber' : 'red' };
+}
 
-/**
- * The crumb band is rendered by the shell, because it is a full-width strip above both rails — but
- * only this screen knows the drill path, so it publishes one and takes the clicks back.
- *
- * The root capsule is always present: it is how you get back out of a drill, and a band that only
- * appears once you are two levels deep is a band nobody finds.
- */
+// ---- layout: index.html's layoutCascade + drawConnectors -------------------------------------
+const CASCADE_DX = 48, CASCADE_DY = 38, CASCADE_BASE_X = 44, CASCADE_BASE_Y = 30;
+const ACCENT = '#51cf66';
+const zoomWrap = ref<HTMLElement | null>(null);
+const cascadeEl = ref<HTMLElement | null>(null);
+const svg = ref<SVGSVGElement | null>(null);
+const grip = ref<HTMLElement | null>(null);
+const arranging = ref(false);
+
+function layoutCascade(): void {
+  const wrap = cascadeEl.value;
+  if (!wrap) return;
+  const blocks = Array.from(wrap.querySelectorAll<HTMLElement>('.chart-block'));
+  if (!blocks.length) return;
+  // index.html rebuilds #cascade on every render, so it always measures against the cascade's
+  // NATURAL width. This element persists between renders, so the sizes the last layout wrote have
+  // to go first — otherwise every layout measures against the previous one and the cascade creeps
+  // wider, and the extra width leaks into the party columns (a pane's max-width is a percentage of
+  // the cascade).
+  wrap.style.width = '';
+  wrap.style.height = '';
+  wrap.style.transform = '';
+  if (zoomWrap.value) { zoomWrap.value.style.width = ''; zoomWrap.value.style.height = ''; }
+  const n = blocks.length;
+  const pos = cam.value.pos;
+  const focused = blocks[n - 1]!;
+  focused.style.maxHeight = '';
+  const H = focused.offsetHeight;
+  const focusBottom = CASCADE_BASE_Y + (n - 1) * CASCADE_DY + H;
+  blocks.forEach((b, i) => {
+    const moved = pos[b.dataset.tier ?? ''];
+    b.style.top = `${moved ? moved.y : CASCADE_BASE_Y + i * CASCADE_DY}px`;
+    b.style.left = `${moved ? moved.x : CASCADE_BASE_X + i * CASCADE_DX}px`;
+    // Background layers are clipped to their peeking strip while nested; a pane pulled out of the
+    // stack shows in full so it can be read.
+    b.style.maxHeight = i < n - 1 && !moved
+      ? `${Math.max(CASCADE_DY + 8, focusBottom - (CASCADE_BASE_Y + i * CASCADE_DY))}px` : '';
+  });
+  let maxRight = 0, maxBottom = 0;
+  for (const b of blocks) {
+    maxRight = Math.max(maxRight, b.offsetLeft + b.offsetWidth);
+    maxBottom = Math.max(maxBottom, b.offsetTop + b.offsetHeight);
+  }
+  const logicalW = maxRight + CASCADE_BASE_X;
+  const logicalH = Math.max(focusBottom, maxBottom) + 60;
+  const z = cam.value.zoom || 1;
+  wrap.style.width = `${logicalW}px`;
+  wrap.style.height = `${logicalH}px`;
+  wrap.style.transformOrigin = 'top left';
+  wrap.style.transform = z === 1 ? '' : `scale(${z})`;
+  if (zoomWrap.value) { zoomWrap.value.style.width = `${logicalW * z}px`; zoomWrap.value.style.height = `${logicalH * z}px`; }
+  // The grip floats just outside the focused pane's corner when a scrollbar is present, so the
+  // tracks stay unobstructed; otherwise it tucks into the inside corner.
+  const g = grip.value;
+  if (g) {
+    const sbV = Math.max(0, focused.offsetWidth - focused.clientWidth);
+    const sbH = Math.max(0, focused.offsetHeight - focused.clientHeight);
+    if (sbV > 2 || sbH > 2) {
+      g.style.left = `${focused.offsetLeft + focused.offsetWidth + 4}px`;
+      g.style.top = `${focused.offsetTop + focused.offsetHeight + 4}px`;
+      g.classList.add('floated');
+    } else {
+      g.style.left = `${focused.offsetLeft + focused.offsetWidth - 20}px`;
+      g.style.top = `${focused.offsetTop + focused.offsetHeight - 20}px`;
+      g.classList.remove('floated');
+    }
+  }
+}
+function drawConnectors(): void {
+  const s = svg.value, wrap = cascadeEl.value;
+  if (!s || !wrap) return;
+  const w = wrap.scrollWidth, h = wrap.scrollHeight;
+  s.setAttribute('width', String(w)); s.setAttribute('height', String(h));
+  s.style.width = `${w}px`; s.style.height = `${h}px`;
+  const blocks = Array.from(wrap.querySelectorAll<HTMLElement>('.chart-block'));
+  let out = `<defs><marker id="cc-arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L6,3 L0,6 Z" fill="${ACCENT}"/></marker></defs>`;
+  const dot = (x: number, y: number, r: number) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${ACCENT}" stroke="#0d0e12" stroke-width="1.5"/>`;
+  let dots = '';
+  for (let i = 0; i < blocks.length - 1; i++) {
+    const head = blocks[i]!.querySelector<HTMLElement>('.chart-head');
+    const childHead = blocks[i + 1]!.querySelector<HTMLElement>('.chart-head');
+    if (!head || !childHead) continue;
+    const x1 = blocks[i]!.offsetLeft + head.offsetLeft + 18;
+    const y1 = blocks[i]!.offsetTop + head.offsetTop + head.offsetHeight;
+    const x2 = blocks[i + 1]!.offsetLeft + childHead.offsetLeft - 7;
+    const y2 = blocks[i + 1]!.offsetTop + childHead.offsetTop + childHead.offsetHeight / 2;
+    const toFocus = i === blocks.length - 2;
+    out += `<path${toFocus ? ' class="cc-pulse"' : ''} d="M ${x1} ${y1} V ${y2} H ${x2}" fill="none" stroke="${ACCENT}" stroke-width="${toFocus ? 2.5 : 2}" stroke-dasharray="5 3" marker-end="url(#cc-arrow)" opacity="0.95"/>`;
+    dots += dot(x1, y1, 5) + dot(x2, y2, toFocus ? 6 : 5);
+  }
+  s.innerHTML = out + dots;
+}
+function relayout(): void { layoutCascade(); drawConnectors(); }
+watch([() => session.workspace.value, cam, panes], () => nextTick(relayout), { flush: 'post', deep: false });
+onMounted(() => { nextTick(relayout); window.addEventListener('resize', relayout); });
+onBeforeUnmount(() => window.removeEventListener('resize', relayout));
+
+// ---- auto arrange (index.html autoArrange): drop every manual offset and glide home ------------
+function autoArrange(): void {
+  const had = Object.keys(cam.value.pos).length > 0;
+  update({ pos: {} });
+  if (!had) { nextTick(relayout); return; }
+  arranging.value = true;
+  nextTick(() => {
+    layoutCascade();
+    let start: number | null = null;
+    const frame = (ts: number) => {
+      if (start === null) start = ts;
+      drawConnectors();
+      if (ts - start < 480) requestAnimationFrame(frame);
+      else { arranging.value = false; drawConnectors(); }
+    };
+    requestAnimationFrame(frame);
+  });
+}
+watch(arrangeTick, autoArrange);
+
+// ---- the crumb band ----------------------------------------------------------------------------
 const band = useCrumbChannel();
+watchEffect(() => {
+  if (!band) return;
+  const c = chart.value;
+  if (!c) { band.crumbs.value = []; return; }
+  const free = !!c.custom;
+  band.crumbs.value = panes.value.map((p, i) => ({
+    id: i === 0 ? '\u0000root' : p.parent!.id,
+    tier: i,
+    tierName: i === 0 ? (free ? tierLabel(c, 0) : 'Portfolios') : tierLabel(c, i - 1),
+    name: i === 0 ? (free ? 'All activities' : 'All Portfolios') : (p.parent!.name || `Untitled ${tierLabel(c, i - 1)}`),
+  }));
+});
 if (band) {
-  watchEffect(() => {
-    band.crumbs.value = [
-      { id: '\u0000root', tier: 0, tierName: tierName(0), name: chart.value?.title || 'All' },
-      ...crumbs.value.map((crumb, i) => ({
-        id: crumb.id,
-        tier: i + 1,
-        tierName: tierName(i + 1),
-        name: crumb.name || '(untitled)',
-      })),
-    ];
-  });
-  band.crumbNav.value = (index: number) => drillTo(index);
-  onBeforeUnmount(() => {
-    band.crumbs.value = [];
-    band.crumbNav.value = () => {};
-  });
+  band.crumbNav.value = (i: number) => focusChartTier(i);
+  onBeforeUnmount(() => { band.crumbs.value = []; band.crumbNav.value = () => {}; });
 }
 
+// ---- drill -------------------------------------------------------------------------------------
+function drillToggle(id: string, tier: number): void {
+  if (tier >= MAX_TIER && !chart.value?.custom) return;
+  const path = cam.value.drillPath;
+  const next = path[tier] === id
+    ? (path.length > tier + 1 ? path.slice(0, tier + 1) : path.slice(0, tier))
+    : [...path.slice(0, tier), id];
+  update({ drillPath: next });
+}
+function focusChartTier(t: number): void {
+  if (cam.value.drillPath.length <= t) return;
+  update({ drillPath: cam.value.drillPath.slice(0, t) });
+}
+/** index.html's jumpToViolation: drill so the row is in the focused pane, scroll to it, flash it. */
+function jumpToRow(nodeId: string): void {
+  const c = chart.value;
+  if (!c?.nodes[nodeId]) return;
+  const maxT = c.custom ? Infinity : MAX_TIER;
+  update({ drillPath: pathToOpen(c, nodeId).slice(0, maxT) });
+  nextTick(() => requestAnimationFrame(() => {
+    const tr = document.querySelector<HTMLElement>(`tr.chart-row[data-id="${nodeId}"]`);
+    if (!tr) return;
+    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    tr.classList.remove('violation-flash');
+    void tr.offsetWidth;
+    tr.classList.add('violation-flash');
+    setTimeout(() => tr.classList.remove('violation-flash'), 3500);
+  }));
+}
+const jumpRequest = useState<{ kind: 'chart' | 'flow'; id: string; at: number } | null>('raci:jump', () => null);
+watch(jumpRequest, (j) => { if (j?.kind === 'chart') { jumpToRow(j.id); jumpRequest.value = null; } }, { immediate: true });
 
-// ---- editing ------------------------------------------------------------------------------------
-const editing = ref<{ nodeId: string; column: string; x: number; y: number } | null>(null);
-const popStyle = computed(() =>
-  editing.value ? { left: `${editing.value.x}px`, top: `${editing.value.y}px` } : {},
-);
-const editingLetters = computed(() => {
-  if (!editing.value || !chart.value) return '';
-  return chart.value.nodes[editing.value.nodeId]?.raci[editing.value.column] ?? '';
+// ---- edits ---------------------------------------------------------------------------------------
+function countBelow(id: string): number {
+  const c = chart.value!;
+  let n = 0;
+  const walk = (pid: string) => { for (const x of Object.values(c.nodes)) if (x.parentId === pid) { n++; walk(x.id); } };
+  walk(id);
+  return n;
+}
+function focusNodeName(id: string): void {
+  nextTick(() => requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(`.ch-name-edit[data-node-id="${id}"]`);
+    if (!el) return;
+    el.focus();
+    document.getSelection()?.selectAllChildren(el);
+  }));
+}
+function addRoot(): void { if (edit()) addNode(session.doc, { chartId: chart.value!.id, parentId: null, name: '' }); }
+function addChild(parentId: string): void {
+  const c = chart.value!;
+  if (!edit() || (!c.custom && depthOf(c.nodes, parentId) >= MAX_TIER)) return;
+  addNode(session.doc, { chartId: c.id, parentId, name: '' });
+}
+function addSibling(id: string): void {
+  const c = chart.value!;
+  if (!edit()) return;
+  const fresh = addNode(session.doc, { chartId: c.id, parentId: c.nodes[id]?.parentId ?? null, afterId: id, name: '' });
+  focusNodeName(fresh);
+}
+function deleteRow(id: string): void {
+  const c = chart.value!;
+  const n = c.nodes[id];
+  if (!n || !edit()) return;
+  const kids = countBelow(id);
+  const label = n.name || `this ${tierLabel(c, depthOf(c.nodes, id)).toLowerCase()}`;
+  if (!confirm(`Delete "${label}"${kids ? ` and its ${kids} sub-item${kids === 1 ? '' : 's'}` : ''}?`)) return;
+  const at = cam.value.drillPath.indexOf(id);
+  if (at >= 0) update({ drillPath: cam.value.drillPath.slice(0, at) });
+  deleteNodeTree(session.doc, c.id, id);
+  if (activeNodeId.value === id) selectNode(null);
+}
+function setChartStatus(next: 'draft' | 'final'): void {
+  const c = chart.value;
+  if (!c || !canEdit.value || c.status === next) return;
+  session.doc.transact(() => {
+    setChartField(session.doc, c.id, 'status', next);
+    setChartField(session.doc, c.id, 'finalizedAt', next === 'final' ? new Date().toISOString() : null);
+  }, LOCAL_ORIGIN);
+  shell.toast(next === 'final'
+    ? `“${c.title || 'Untitled chart'}” is Final — locked against edits.`
+    : `“${c.title || 'Untitled chart'}” reopened as a Draft.`, 'suggest');
+}
+
+// free-form chart columns and level names
+function setCustom(next: NonNullable<Chart['custom']>): void { setChartField(session.doc, chart.value!.id, 'custom', next); }
+function addChartCol(): void {
+  const c = chart.value!;
+  if (!c.custom || !edit()) return;
+  const key = `p_${Math.random().toString(36).slice(2, 10)}`;
+  setCustom({ ...c.custom, cols: [...c.custom.cols, { key, label: 'New party', short: '' }] });
+  nextTick(() => requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(`.chart-block.focus .col-edit[data-col-edit="${key}"]`);
+    if (el) { el.focus(); document.getSelection()?.selectAllChildren(el); }
+  }));
+}
+function deleteChartCol(key: string): void {
+  const c = chart.value!;
+  if (!c.custom || c.custom.cols.length <= 1 || !edit()) return;
+  const col = c.custom.cols.find((x) => x.key === key);
+  if (!col || !confirm(`Remove the "${col.label}" column? Its role letters on every row of this chart are discarded.`)) return;
+  session.doc.transact(() => {
+    setCustom({ ...c.custom!, cols: c.custom!.cols.filter((x) => x.key !== key) });
+    const m = maps(session.doc);
+    for (const n of Object.values(c.nodes)) {
+      if (key in n.raci) { const raci = { ...n.raci }; delete raci[key]; setField(m.nodes, n.id, 'raci', raci); }
+      if (n.primaryR === key) setField(m.nodes, n.id, 'primaryR', null);
+    }
+  }, LOCAL_ORIGIN);
+}
+
+// ---- clipboard (copy / paste a subtree) -------------------------------------------------------
+let nodeClip: { nodes: ChartNode[]; rootId: string; title: string } | null = null;
+function copyNodeTree(id: string): void {
+  const c = chart.value!;
+  const root = c.nodes[id];
+  if (!root) return;
+  const out: ChartNode[] = [];
+  const walk = (nid: string) => { const n = c.nodes[nid]; if (!n) return; out.push(structuredClone(toRaw(n))); for (const x of Object.values(c.nodes)) if (x.parentId === nid) walk(x.id); };
+  walk(id);
+  nodeClip = { nodes: out, rootId: id, title: root.name || 'Untitled' };
+  shell.toast(`Copied "${nodeClip.title}"${out.length > 1 ? ' and everything under it' : ''}.`, 'suggest');
+}
+function copyName(base: string, taken: string[]): string {
+  const want = /^Copy of /.test(base) ? base : `Copy of ${base || 'Untitled'}`;
+  if (!taken.includes(want)) return want;
+  for (let i = 2; ; i++) if (!taken.includes(`${want} (${i})`)) return `${want} (${i})`;
+}
+function pasteNodeInto(parentId: string | null): void {
+  const c = chart.value!;
+  if (!edit()) return;
+  if (!nodeClip) { shell.toast('Nothing to paste — copy a row first.', 'suggest'); return; }
+  const clip = nodeClip;
+  const height = (() => { let d = 0; const byParent = (p: string, k: number) => { d = Math.max(d, k); for (const n of clip.nodes) if (n.parentId === p) byParent(n.id, k + 1); }; byParent(clip.rootId, 0); return d; })();
+  if (parentId && !c.custom && depthOf(c.nodes, parentId) + 1 + height > MAX_TIER) {
+    shell.toast(`"${clip.title}" is too deep to sit under this row — an org chart stops at ${tierLabel(c, MAX_TIER)}.`, 'error');
+    return;
+  }
+  const siblings = Object.values(c.nodes).filter((n) => n.parentId === parentId).sort((a, b) => (a.order < b.order ? -1 : 1));
+  const idMap = new Map<string, string>(clip.nodes.map((n) => [n.id, `node_${Math.random().toString(36).slice(2, 12)}`]));
+  const rootName = copyName(clip.nodes[0]!.name, siblings.map((s) => s.name));
+  session.doc.transact(() => {
+    const m = maps(session.doc);
+    for (const n of clip.nodes) {
+      const isRoot = n.id === clip.rootId;
+      m.nodes.set(idMap.get(n.id)!, toYMap({
+        ...n,
+        id: idMap.get(n.id)!,
+        chartId: c.id,
+        parentId: isRoot ? parentId : idMap.get(n.parentId ?? '') ?? parentId,
+        order: isRoot ? keyBetween(siblings.at(-1)?.order ?? null, null) : n.order,
+        name: isRoot ? rootName : n.name,
+      }));
+    }
+  }, LOCAL_ORIGIN);
+  shell.toast(`Pasted "${rootName}".`, 'suggest');
+}
+
+// ---- flows from a Task row ---------------------------------------------------------------------
+async function openFlow(flowId: string): Promise<void> {
+  pop.value = null;
+  activeFlowId.value = flowId;
+  await navigateTo(`/w/${session.workspaceId}/flow`);
+}
+/** index.html's createFlowFromNode: Chart-Linked on an org chart, first step bound to the row. */
+async function createFlowFromNode(nodeId: string): Promise<void> {
+  pop.value = null;
+  const c = chart.value!;
+  const n = c.nodes[nodeId];
+  if (!n || !canEdit.value) return;
+  const flowId = `flow_${Math.random().toString(36).slice(2, 12)}`;
+  const flows = maps(session.doc).flows;
+  session.doc.transact(() => {
+    flows.set(flowId, toYMap({
+      id: flowId, name: `${n.name || 'Untitled task'} — flow`,
+      meta: { description: '', customer: '', priority: '', budget: '', tags: [] },
+      framework: 'raci', mode: c.custom ? 'free' : 'linked', sourceChartId: c.custom ? null : c.id,
+      status: 'draft', finalizedAt: null, anchor: { chartId: c.id, nodeId },
+    }));
+    addStep(session.doc, flowId, c.custom
+      ? { name: n.name || '', x: 60, y: 80, raci: Object.fromEntries(cols.value.map((k) => [k, n.raci[k] ?? ''])) }
+      : { name: n.name || '', x: 60, y: 80, bind: { chartId: c.id, nodeId } });
+  }, LOCAL_ORIGIN);
+  shell.toast(c.custom
+    ? 'Flow created (Free-Form) — first step seeded from the task\'s RACI.'
+    : 'Flow created (Chart-Linked) — its first step is linked to this row and follows its RACI. Add steps and link each to the row it implements.');
+  await openFlow(flowId);
+}
+async function attachFlow(flowId: string, nodeId: string): Promise<void> {
+  pop.value = null;
+  const f = session.workspace.value.flows[flowId];
+  const n = chart.value?.nodes[nodeId];
+  if (!f || !n || !canEdit.value) return;
+  session.doc.transact(() => setField(maps(session.doc).flows, flowId, 'anchor', { chartId: chart.value!.id, nodeId }), LOCAL_ORIGIN);
+  shell.toast(`"${f.name || 'Untitled'}" attached to "${n.name || 'this task'}".`);
+  await openFlow(flowId);
+}
+// The Details rail's "⤵ Create / attach flow" asks for this row's flow popover.
+const flowRequest = useState<string | null>('raci:flowPopoverFor', () => null);
+watch(flowRequest, (id) => {
+  if (!id) return;
+  flowRequest.value = null;
+  nextTick(() => {
+    const el = document.querySelector<HTMLElement>(`.chart-row [data-flow-btn="${id}"]`) ?? document.querySelector<HTMLElement>(`[data-flow-btn="${id}"]`);
+    if (el) pop.value = { kind: 'flow', id, anchor: el.getBoundingClientRect() };
+  });
 });
 
-/** Anchored under the cell that was clicked, and kept on screen at the right-hand edge. */
-function openCellEditor(event: MouseEvent, nodeId: string, column: string) {
-  const box = (event.target as HTMLElement).closest('td')?.getBoundingClientRect();
-  editing.value = {
-    nodeId,
-    column,
-    x: Math.min(box?.left ?? 80, window.innerWidth - 220),
-    y: (box?.bottom ?? 80) + 4,
-  };
+// ---- popovers ----------------------------------------------------------------------------------
+const pop = ref<ChartPop | null>(null);
+function pivotToCol(col: string): void {
+  const th = document.querySelector<HTMLElement>(`.chart-block.focus .col-view[data-col-view="${col}"]`);
+  pop.value = { kind: 'colview', col, anchor: (th ?? document.body).getBoundingClientRect() };
+}
+function onDocDown(e: MouseEvent): void {
+  if (!pop.value) return;
+  const t = e.target as Element | null;
+  if (t?.closest?.('.raci-popover, .org-popover')) return;
+  // A click that will open another popover replaces this one in onClick.
+  if (t?.closest?.('.chart-cell, [data-org-edit], [data-col-view], [data-row-view], [data-flow-btn]')) return;
+  pop.value = null;
+}
+function onEsc(e: KeyboardEvent): void { if (e.key === 'Escape' && pop.value) pop.value = null; }
+onMounted(() => { document.addEventListener('mousedown', onDocDown, true); document.addEventListener('keydown', onEsc); });
+onBeforeUnmount(() => { document.removeEventListener('mousedown', onDocDown, true); document.removeEventListener('keydown', onEsc); });
+
+// ---- the delegated handlers, in index.html's order ---------------------------------------------
+let dragSuppressClick = false;
+function onClick(e: MouseEvent): void {
+  const t = e.target as Element;
+  if (dragSuppressClick) { dragSuppressClick = false; if (t.closest('.chart-head')) return; }
+  const status = t.closest<HTMLElement>('[data-status-set]');
+  if (status) { setChartStatus(status.dataset.status as 'draft' | 'final'); return; }
+  const docOpen = t.closest<HTMLElement>('[data-doc-open]');
+  if (docOpen) { e.preventDefault(); e.stopPropagation(); const [, docId] = (docOpen.dataset.docOpen ?? '').split('|'); if (docId) docs.open(docId); return; }
+  const attach = t.closest<HTMLElement>('[data-attach-direct]');
+  if (attach) {
+    e.preventDefault(); e.stopPropagation();
+    if (!edit()) return;
+    selectNode(attach.dataset.attachDirect!);
+    attachDocuments(attach.dataset.attachDirect!);
+    return;
+  }
+  const opener = t.closest<HTMLElement>('[data-open-details]');
+  if (opener) { e.preventDefault(); e.stopPropagation(); openDetails(); selectNode(opener.dataset.openDetails!); return; }
+  const nameEdit = t.closest<HTMLElement>('.ch-name-edit');
+  if (nameEdit) { const id = nameEdit.dataset.nodeId; if (id && id !== activeNodeId.value) { openDetails(); selectNode(id); } return; }
+  const flowBtn = t.closest<HTMLElement>('[data-flow-btn]');
+  if (flowBtn) { pop.value = { kind: 'flow', id: flowBtn.dataset.flowBtn!, anchor: flowBtn.getBoundingClientRect() }; return; }
+  // Click anywhere on a background layer: collapse the layers in front of it.
+  const bg = t.closest<HTMLElement>('.chart-block.faded');
+  if (bg) { focusChartTier(parseInt(bg.dataset.tier ?? '0', 10) || 0); return; }
+  if (t.closest('[data-add-root]')) { addRoot(); return; }
+  const addChildBtn = t.closest<HTMLElement>('[data-add-child]');
+  if (addChildBtn) { addChild(addChildBtn.dataset.addChild!); return; }
+  const del = t.closest<HTMLElement>('[data-del-node]');
+  if (del) { deleteRow(del.dataset.delNode!); return; }
+  const drill = t.closest<HTMLElement>('[data-drill]');
+  if (drill) { drillToggle(drill.dataset.drill!, parseInt(drill.dataset.tier ?? '0', 10) || 0); return; }
+  const colDel = t.closest<HTMLElement>('[data-col-del]');
+  if (colDel) { deleteChartCol(colDel.dataset.colDel!); return; }
+  if (t.closest('[data-col-add]')) { addChartCol(); return; }
+  const colView = t.closest<HTMLElement>('[data-col-view]');
+  if (colView) { pop.value = { kind: 'colview', col: colView.dataset.colView!, anchor: colView.getBoundingClientRect() }; return; }
+  const rowView = t.closest<HTMLElement>('[data-row-view]');
+  if (rowView) { pop.value = { kind: 'taskview', id: rowView.dataset.rowView!, anchor: rowView.getBoundingClientRect() }; return; }
+  const pin = t.closest<HTMLElement>('[data-violation-jump]');
+  if (pin) { jumpToRow(pin.dataset.violationJump!); return; }
+  const orgEdit = t.closest<HTMLElement>('[data-org-edit]');
+  if (orgEdit) {
+    pop.value = { kind: 'org', id: orgEdit.dataset.orgEdit!, orgKind: orgEdit.dataset.orgKind as 'division' | 'branch', anchor: orgEdit.getBoundingClientRect() };
+    return;
+  }
+  const cell = t.closest<HTMLElement>('.chart-cell');
+  if (cell) { pop.value = { kind: 'raci', id: cell.dataset.id!, col: cell.dataset.col!, anchor: cell.getBoundingClientRect() }; }
 }
 
-/**
- * Toggle one letter on the cell.
- *
- * Writes only what the row itself states. A cascaded owner is not written back when you touch a
- * different letter — doing so would freeze an inheritance that should keep following its ancestor.
- */
-function toggleLetter(letter: string) {
-  if (!editing.value) return;
-  const current = new Set(editingLetters.value.split('').filter(Boolean));
-  if (current.has(letter)) current.delete(letter);
-  else current.add(letter);
-  setNodeRaci(session.doc, editing.value.nodeId, editing.value.column, normalizeRaci([...current].join('')));
-}
-
-const rename = (nodeId: string, name: string) => renameNode(session.doc, nodeId, name);
-
-function addRow(pane: CascadePane) {
-  if (!chart.value) return;
-  addNode(session.doc, { chartId: chart.value.id, parentId: pane.parent?.id ?? null, name: '' });
-}
-
-function remove(nodeId: string) {
-  if (!chart.value) return;
-  deleteNode(session.doc, chart.value.id, nodeId);
-  // Drilling into a row that no longer exists would leave an empty pane. The watcher above catches
-  // it too, but collapsing here keeps the click and the redraw in the same frame.
-  const at = drill.value.indexOf(nodeId);
-  if (at >= 0) drill.value = drill.value.slice(0, at);
-}
-
-const createChart = () => addChart(session.doc, 'New chart');
-
-// ---- Excel --------------------------------------------------------------------------------------
-const excelOpen = ref(false);
-const fileInput = ref<HTMLInputElement | null>(null);
-const preview = shallowRef<ImportedWorkbook | null>(null);
-const importError = ref('');
-
-const closeExcel = () => { excelOpen.value = false; };
-const pickFile = () => { excelOpen.value = false; fileInput.value?.click(); };
-
-/**
- * Parsed in the browser, not on the server.
- *
- * `importXlsx` is pure and portable — the inflater is a platform API — so there is no upload
- * endpoint and no round trip before the preview. It also means the import lands through the same
- * collaborative document as every other edit: peers see it arrive, and undo can reach it.
- */
-async function onFile(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = ''; // so choosing the same file twice fires again
-  if (!file) return;
-
-  importError.value = '';
-  try {
-    preview.value = await importXlsx(new Uint8Array(await file.arrayBuffer()), { fileName: file.name });
-  } catch (err) {
-    preview.value = null;
-    importError.value = err instanceof Error ? err.message : 'Could not read that workbook.';
+/** Inline renames commit on blur, as index.html's blur listener: row names, party names, levels. */
+function onBlur(e: FocusEvent): void {
+  const el = e.target as HTMLElement;
+  if (!el.matches?.('[contenteditable="true"]')) return;
+  const c = chart.value;
+  if (!c) return;
+  const text = (el.textContent ?? '').trim();
+  if (el.dataset.nodeId && el.dataset.field === 'name') {
+    const n = c.nodes[el.dataset.nodeId];
+    if (!n || n.name === text) return;
+    if (!edit()) { el.textContent = n.name; return; }
+    renameNode(session.doc, n.id, text);
+    return;
+  }
+  if (el.dataset.colEdit && c.custom) {
+    const col = c.custom.cols.find((x) => x.key === el.dataset.colEdit);
+    if (col && text && text !== col.label && edit()) setCustom({ ...c.custom, cols: c.custom.cols.map((x) => (x.key === col.key ? { ...x, label: text } : x)) });
+    else el.textContent = col?.label ?? '';
+    return;
+  }
+  if (el.classList.contains('tier-edit') && c.custom) {
+    const tier = parseInt(el.dataset.tierEdit ?? '0', 10) || 0;
+    if (!edit()) return;
+    const tiers = [...c.custom.tiers];
+    while (tiers.length <= tier) tiers.push('');
+    tiers[tier] = text; // '' falls back to the auto "Level N" name
+    setCustom({ ...c.custom, tiers });
   }
 }
 
-/** Party columns are workspace-wide, so renaming them is worth saying out loud before it happens. */
-const renamedColumns = computed(() => {
-  const found = preview.value;
-  if (!found) return [];
-  const current = session.workspace.value.columnLabels;
-  return Object.entries(found.labels).filter(([key, label]) => {
-    const existing = current[key] ?? COL_LABELS_DEFAULT[key as keyof typeof COL_LABELS_DEFAULT] ?? key;
-    return label && label !== existing;
-  });
-});
-
-const importNotes = computed(() => {
-  const notes = [...(preview.value?.warnings ?? [])];
-  if (renamedColumns.value.length > 0) {
-    notes.push(
-      'The party column headers differ from this workspace\u2019s. Importing renames them for every ' +
-        'organization chart, not just this one.',
-    );
+// ---- drag a pane out of the cascade, snap it back, resize, wheel-zoom ----------------------------
+let chartDrag: { block: HTMLElement; tier: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null = null;
+let chartResize: { x: number; y: number; w: number; h: number; curW?: number; curH?: number } | null = null;
+function onMouseDown(e: MouseEvent): void {
+  const t = e.target as Element;
+  if (t.closest('#chart-resize')) {
+    const focused = cascadeEl.value?.querySelector<HTMLElement>('.chart-block.focus');
+    if (!focused) return;
+    e.preventDefault();
+    chartResize = { x: e.clientX, y: e.clientY, w: focused.offsetWidth, h: focused.offsetHeight };
+    document.body.classList.add('chart-resizing');
+    return;
   }
-  return notes;
+  if (t.closest('.tier-edit')) return;
+  const head = t.closest('.chart-head');
+  const block = head?.closest<HTMLElement>('.chart-block');
+  if (!head || !block) return;
+  chartDrag = { block, tier: block.dataset.tier ?? '0', sx: e.clientX, sy: e.clientY, ox: block.offsetLeft, oy: block.offsetTop, moved: false };
+}
+function onMouseMove(e: MouseEvent): void {
+  const z = cam.value.zoom || 1;
+  if (chartResize) {
+    const w = Math.max(360, Math.round(chartResize.w + (e.clientX - chartResize.x) / z));
+    const h = Math.max(120, Math.round(chartResize.h + (e.clientY - chartResize.y) / z));
+    chartResize.curW = w; chartResize.curH = h;
+    for (const b of cascadeEl.value?.querySelectorAll<HTMLElement>('.chart-block') ?? []) {
+      b.style.width = `${w}px`; b.style.minWidth = '0'; b.style.maxWidth = 'none';
+    }
+    const focused = cascadeEl.value?.querySelector<HTMLElement>('.chart-block.focus');
+    if (focused) { focused.style.height = `${h}px`; focused.style.overflow = 'auto'; }
+    relayout();
+    return;
+  }
+  if (!chartDrag) return;
+  const dx = (e.clientX - chartDrag.sx) / z, dy = (e.clientY - chartDrag.sy) / z;
+  if (!chartDrag.moved && Math.hypot(dx, dy) < 4) return; // a small move is a click
+  if (!chartDrag.moved) {
+    chartDrag.moved = true;
+    document.body.classList.add('chart-dragging');
+    chartDrag.block.classList.add('dragging-active');
+  }
+  update({ pos: { ...cam.value.pos, [chartDrag.tier]: { x: Math.max(0, Math.round(chartDrag.ox + dx)), y: Math.max(0, Math.round(chartDrag.oy + dy)) } } });
+  nextTick(relayout);
+}
+function onMouseUp(): void {
+  if (chartResize) {
+    if (chartResize.curW) update({ size: { w: chartResize.curW, h: chartResize.curH ?? chartResize.h } });
+    chartResize = null;
+    document.body.classList.remove('chart-resizing');
+    return;
+  }
+  if (!chartDrag) return;
+  if (chartDrag.moved) {
+    chartDrag.block.classList.remove('dragging-active');
+    document.body.classList.remove('chart-dragging');
+    dragSuppressClick = true;
+    // Breathe the floating Auto Arrange only when it first appears.
+    if (!document.querySelector('#arrange-fab.show')) {
+      nextTick(() => {
+        const fab = document.getElementById('arrange-fab');
+        if (!fab) return;
+        fab.classList.remove('attention'); void fab.offsetWidth; fab.classList.add('attention');
+      });
+    }
+    drawConnectors();
+  }
+  chartDrag = null;
+}
+function onDblClick(e: MouseEvent): void {
+  const t = e.target as Element;
+  if (t.closest('.tier-edit')) return;
+  const block = t.closest('.chart-head')?.closest<HTMLElement>('.chart-block');
+  if (!block) return;
+  const tier = block.dataset.tier ?? '0';
+  if (cam.value.pos[tier]) {
+    const pos = { ...cam.value.pos };
+    delete pos[tier];
+    update({ pos });
+  }
+}
+/** Scroll zooms the chart, anywhere in #ws-main — the side panels keep normal scrolling. */
+function onWheel(e: WheelEvent): void {
+  if (!(e.target as Element | null)?.closest?.('#ws-main')) return;
+  e.preventDefault();
+  zoomBy(e.deltaY < 0 ? 0.1 : -0.1);
+}
+onMounted(() => {
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('wheel', onWheel, { passive: false });
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('mouseup', onMouseUp);
+  document.removeEventListener('wheel', onWheel);
 });
 
-function commitImport() {
-  const found = preview.value;
-  if (!found) return;
-  insertChart(session.doc, found.chart);
-  insertEntities(session.doc, found.entities);
-  if (renamedColumns.value.length > 0) setColumnLabels(session.doc, found.labels, found.shorts);
-  preview.value = null;
+// ---- right-click menus (index.html ctxChartRowItems / ctxChartBlankItems) ----------------------
+const CTX_LOCK_NOTE: CtxEntry = { note: 'This chart is Final. Reopen it as a draft — the button is in the strip above — to edit it.' };
+function onContext(e: MouseEvent): void {
+  const t = e.target as Element;
+  if (t.closest('input, textarea, .raci-popover, .org-popover')) return;
+  const ce = t.closest('[contenteditable="true"]');
+  const sl = document.getSelection();
+  if (ce && sl && !sl.isCollapsed && sl.anchorNode && ce.contains(sl.anchorNode)) return;
+  const c = chart.value;
+  if (!c) return;
+  const row = t.closest<HTMLElement>('tr.chart-row[data-id]');
+  const items = row ? rowItems(c, row.dataset.id!) : blankItems(c);
+  if (items && menu.open(e.clientX, e.clientY, items)) e.preventDefault();
 }
+function rowItems(c: Chart, id: string): CtxEntry[] | null {
+  const n = c.nodes[id];
+  if (!n) return null;
+  const depth = depthOf(c.nodes, id);
+  const leaf = !c.custom && depth >= MAX_TIER;
+  const tier = tierLabel(c, depth).toLowerCase();
+  const childTier = leaf ? '' : tierLabel(c, depth + 1).toLowerCase();
+  const kids = countBelow(id);
+  const flows = leaf ? flowsByNode.value.get(id) ?? [] : [];
+  const anchorOf = (sel: string) => (document.querySelector<HTMLElement>(sel) ?? document.body).getBoundingClientRect();
+  const view: CtxEntry[] = [
+    { title: n.name || `Untitled ${tier}` },
+    { label: 'Node view', ico: '👁', hint: 'How each party lands on this row', run: () => { pop.value = { kind: 'taskview', id, anchor: anchorOf(`[data-row-view="${id}"]`) }; } },
+    !leaf && { label: cam.value.drillPath[depth] === id ? 'Collapse breakdown' : 'Drill into breakdown', ico: '▸', run: () => drillToggle(id, depth) },
+    leaf && { label: flows.length ? `Open task flow${flows.length > 1 ? ` (${flows.length})` : ''}` : 'Create a task flow…', ico: '⤵',
+      hint: 'Continue the drill into a business-case flow', run: () => { pop.value = { kind: 'flow', id, anchor: anchorOf(`[data-flow-btn="${id}"]`) }; } },
+  ];
+  if (locked.value || !canEdit.value) return [...view, { sep: true as const }, locked.value ? CTX_LOCK_NOTE : false];
+  return [
+    ...view,
+    { sep: true as const },
+    { label: 'Rename', ico: '✎', run: () => focusNodeName(id) },
+    !leaf && { label: `Add ${childTier} inside`, ico: '＋', run: () => addChild(id) },
+    { label: `Add ${tier} below`, ico: '⤵', run: () => addSibling(id) },
+    { sep: true as const },
+    { label: `Duplicate${kids ? ` (with ${kids} below)` : ''}`, ico: '⧉', run: () => { if (edit()) duplicateNode(session.doc, c.id, id); } },
+    { label: 'Copy', ico: '⎘', hint: 'Copy this row and everything under it', run: () => copyNodeTree(id) },
+    !leaf && { label: nodeClip ? `Paste "${nodeClip.title}" inside` : 'Paste inside', ico: '⎙', disabled: !nodeClip, run: () => pasteNodeInto(id) },
+    { sep: true as const },
+    { label: `Delete${kids ? ` (and ${kids} below)` : ''}`, ico: '✕', danger: true, run: () => deleteRow(id) },
+  ];
+}
+function blankItems(c: Chart): CtxEntry[] {
+  const view: CtxEntry[] = [
+    { title: c.title || 'Chart' },
+    { label: 'Auto arrange', ico: '⤧', hint: 'Snap the panes back into a tight nested cascade', run: () => autoArrange() },
+    { label: 'Chart details…', ico: '✎', run: () => shell.openMeta('chart', c.id) },
+  ];
+  if (locked.value) return [...view, { sep: true as const }, CTX_LOCK_NOTE];
+  if (!canEdit.value) return view;
+  const top = tierLabel(c, 0).toLowerCase();
+  return [
+    view[0]!,
+    { label: `Add ${top} activity`, ico: '＋', run: () => addRoot() },
+    { label: nodeClip ? `Paste "${nodeClip.title}" here` : 'Paste', ico: '⎙', disabled: !nodeClip, run: () => pasteNodeInto(null) },
+    { sep: true as const }, view[1]!, view[2]!,
+  ];
+}
+void ancestorsOf; void refuseLockedEdit; void insertChart;
 </script>
-
-<style scoped>
-.tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.note { color: var(--text-dim); font-size: 12px; }
-.note.warn { color: #ffd43b; cursor: help; }
-.note.bad { color: #ff8787; }
-
-/* The drill path now renders in the shell's full-width band (see useCrumbs.ts), styled by the
-   ported .crumb rules. Only the separator inside a pane header is still local. */
-.pane-head .sep { color: var(--text-dim); font-size: 10px; }
-
-/* The stack. Panes overlap so the ones behind peek out at the top edge, which is what makes the
-   depth legible without a legend. */
-.cascade { display: flex; flex-direction: column; }
-.pane { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
-  overflow: hidden; margin-top: -6px; }
-.pane-scroll { overflow-x: auto; }
-.pane:first-child { margin-top: 0; }
-.pane.focus { border-color: var(--accent); box-shadow: 0 -6px 18px rgba(0, 0, 0, .35); }
-.pane-head { display: flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12px;
-  background: var(--bg); border-bottom: 1px solid var(--border); }
-.pane-parent { font-weight: 600; }
-.inbound { color: var(--accent); }
-.pane-count { margin-left: auto; color: var(--text-dim); font-size: 11px;
-  border: 1px solid var(--border); border-radius: 9px; padding: 0 7px; }
-
-.chart { border-collapse: collapse; width: 100%; }
-.chart th { text-align: left; font-size: 10px; color: var(--text-dim); font-weight: 600;
-  text-transform: uppercase; letter-spacing: .04em; padding: 5px 8px;
-  border-bottom: 1px solid var(--border); }
-.chart td { border-bottom: 1px solid var(--border); padding: 0 4px; }
-.chart tr:last-child td { border-bottom: 0; }
-.row.open { background: rgba(77, 171, 247, .07); }
-.row.err .c-name input { color: #ff8787; }
-.empty td { color: var(--text-dim); font-size: 12px; padding: 10px 12px; }
-
-.c-toggle { width: 30px; text-align: center; }
-.c-name { min-width: 280px; }
-.c-name input { font: inherit; width: 100%; background: transparent; color: inherit;
-  border: 0; padding: 6px 4px; }
-.c-name input:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
-.c-col { width: 58px; text-align: center; }
-.c-act { width: 54px; text-align: right; white-space: nowrap; }
-
-.caret { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 12px;
-  padding: 2px 4px; }
-.caret:hover { color: var(--accent); }
-.caret.open { color: var(--accent); }
-.caret.leaf { cursor: default; opacity: .4; }
-
-.org { font-size: 10px; color: var(--text-dim); border: 1px solid var(--border);
-  border-radius: 9px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
-
-.cell { text-align: center; cursor: pointer; padding: 3px 2px; }
-.cell:hover { background: rgba(255, 255, 255, .04); }
-.cell.editing { outline: 1px solid var(--accent); outline-offset: -1px; }
-/* The chips are the ported .raci-chip rules (assets/css/chart.css) — A red, R blue, C yellow,
-   I grey, the vocabulary these charts are read in. Only the provenance shading is local: a value
-   this row states itself is solid, one it inherits from an ancestor is outlined, and the blank-cell
-   Informed default is fainter still. */
-.raci-chip { width: 20px; height: 20px; border-radius: 3px; font-size: 11px; }
-.raci-chip.inherited { box-shadow: inset 0 0 0 1px currentColor; filter: saturate(0.55) brightness(0.85); }
-.raci-chip.default { opacity: 0.42; }
-
-.c-def input {
-  width: 100%; min-width: 90px; font: inherit; font-size: 11px; background: transparent;
-  border: 1px solid transparent; border-radius: 4px; padding: 2px 5px; color: var(--text);
-}
-.c-def input::placeholder { color: var(--text-dim); font-style: italic; }
-.c-def input:hover:not(:disabled) { border-color: var(--border); }
-.c-def input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
-.c-docs { font-size: 11px; white-space: nowrap; }
-.c-docs .doc-count { color: var(--accent); }
-.c-docs .doc-none { color: var(--text-dim); }
-
-.pin { color: #ffd43b; font-weight: 700; cursor: help; margin-right: 4px; }
-.pin.err { color: #ff6b6b; }
-.del { background: none; border: 0; color: var(--text-dim); cursor: pointer; font-size: 14px;
-  padding: 2px 5px; }
-.del:hover { color: #ff6b6b; }
-.add { margin: 8px 12px 10px; border-style: dashed; font-size: 12px; }
-
-.raci-scrim { position: fixed; inset: 0; z-index: 40; }
-.raci-pop { position: fixed; z-index: 41; background: var(--bg-2); border: 1px solid var(--accent);
-  border-radius: 8px; padding: 6px; min-width: 190px; display: flex; flex-direction: column;
-  gap: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
-.rp-head { font-size: 11px; color: var(--text-dim); padding: 2px 6px 4px; }
-.rp-opt { display: flex; align-items: center; gap: 8px; background: none; border: 0;
-  border-radius: 5px; padding: 4px 6px; cursor: pointer; font: inherit; color: inherit;
-  text-align: left; }
-.rp-opt:hover { background: var(--bg); }
-.rp-opt.on { background: rgba(77, 171, 247, .14); }
-.rp-name { font-size: 12px; }
-.rp-close { margin-top: 4px; font-size: 12px; }
-
-.xl-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 50;
-  display: flex; align-items: center; justify-content: center; padding: 20px; }
-.xl-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
-  padding: 18px; width: min(440px, 100%); display: flex; flex-direction: column; gap: 8px; }
-.xl-card.wide { width: min(560px, 100%); }
-.xl-card h3 { margin: 0 0 6px; font-size: 15px; }
-.xl-opt { display: flex; flex-direction: column; gap: 3px; text-align: left; text-decoration: none;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
-  color: inherit; cursor: pointer; font: inherit; }
-.xl-opt:hover { border-color: var(--accent); }
-.xl-name { font-weight: 600; font-size: 13px; }
-.xl-desc { font-size: 12px; color: var(--text-dim); }
-.xl-close { align-self: flex-end; margin-top: 4px; }
-.xl-stat { margin: 0; font-size: 12px; color: var(--text-dim); }
-.xl-warn { margin: 4px 0; padding-left: 18px; font-size: 12px; color: #ffd43b; }
-.xl-warn li { margin-bottom: 4px; }
-.xl-acts { display: flex; gap: 8px; margin-top: 8px; }
-.xl-acts .primary { border-color: var(--accent); color: var(--accent); }
-</style>
