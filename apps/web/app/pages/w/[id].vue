@@ -472,11 +472,14 @@ const violationRecordsNow = computed(() =>
 /** Asks the owning screen to bring a row or step into view; the screens watch this. */
 const jumpRequest = useState<{ kind: 'chart' | 'flow'; id: string; flowId: string | null; at: number } | null>('raci:jump', () => null);
 async function jumpTo(r: ViolationRecord): Promise<void> {
-  if (r.kind === 'flow' && r.flowId) {
+  if (r.kind === 'flow') {
     activeFlowId.value = r.flowId;
     if (view.value !== 'bizcase') await go('/flow');
-  } else if (view.value !== 'chart') await go('');
-  jumpRequest.value = { kind: r.kind, id: r.id, flowId: r.flowId, at: Date.now() };
+    jumpRequest.value = { kind: 'flow', id: r.stepId, flowId: r.flowId, at: Date.now() };
+    return;
+  }
+  if (view.value !== 'chart') await go('');
+  jumpRequest.value = { kind: 'chart', id: r.nodeId, flowId: null, at: Date.now() };
 }
 
 // ---- status ------------------------------------------------------------------------------------------

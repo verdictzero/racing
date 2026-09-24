@@ -114,7 +114,7 @@ watch(() => cam.value.pos, (pos) => { panesMoved.value = Object.keys(pos).length
 const records = computed(() => {
   const map = new Map<string, ViolationRecord>();
   for (const r of violationRecords(session.workspace.value, 'chart', chart.value?.id ?? null, null)) {
-    if (r.kind === 'chart') map.set(r.id, r);
+    if (r.kind === 'chart') map.set(r.nodeId, r);
   }
   return map;
 });

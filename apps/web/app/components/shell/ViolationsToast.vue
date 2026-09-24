@@ -12,12 +12,12 @@
       <button id="vp-close" type="button" title="Close" @click="open = false">×</button>
     </div>
     <div id="vp-list" class="vp-list">
-      <div v-for="r in records" :key="`${r.kind}:${r.id}`" class="vp-item"
+      <div v-for="r in records" :key="`${r.kind}:${recordId(r)}`" class="vp-item"
         :title="r.kind === 'flow' ? 'Jump to this flow step' : 'Jump to this row'" @click="jump(r)">
         <span class="vp-sev" :class="{ warn: r.severity !== 'err' }">{{ r.kind === 'flow' ? '⤵' : '⚠' }}</span>
         <div class="vp-body">
           <div class="vp-title">{{ r.name }}</div>
-          <div class="vp-meta">{{ r.tierLabel }}{{ r.ancestors.length ? ' · ' + r.ancestors.join(' › ') : '' }}</div>
+          <div class="vp-meta">{{ r.tierLabel }}{{ r.ancestors.length ? ' · ' + r.ancestors.map((a) => a.name).join(' › ') : '' }}</div>
           <div v-for="(i, n) in r.issues" :key="n" class="vp-msg">{{ i.message }}</div>
         </div>
       </div>
@@ -31,7 +31,7 @@
  * The jump asks the owning screen to bring the row or step into view (useJumpRequest), navigating
  * there first if another screen is up.
  */
-import { violationPillText, type ViolationRecord } from '~/composables/useViolationRecords';
+import { recordId, violationPillText, type ViolationRecord } from '~/composables/useViolationRecords';
 
 const props = defineProps<{ records: ViolationRecord[] }>();
 const emit = defineEmits<{ jump: [record: ViolationRecord] }>();
