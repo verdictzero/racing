@@ -5,6 +5,8 @@
     </div>
   </div>
 
+  <ShellContextMenu />
+
   <!-- Fixed, and painted OVER the chart pane rather than behind it — see the note in shell.css.
        Outside #app-frame exactly as in index.html, so its stacking is not trapped in the grid. -->
   <img id="bg-watermark" src="/asic-emblem.png" alt="" aria-hidden="true">
