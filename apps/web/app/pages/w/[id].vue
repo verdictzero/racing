@@ -374,7 +374,9 @@ function finishRename(id: string, e: FocusEvent): void {
   const title = (el.textContent ?? '').trim() || 'Untitled chart';
   if (!chart || !canEdit.value || !guardEdit('chart', chart)) { el.textContent = chart?.title || 'Untitled chart'; return; }
   if (title !== chart.title) setChartField(session.doc, id, 'title', title);
-  else el.textContent = title;
+  // Only rewrite text that changed (trimmed, or blank → 'Untitled chart'): rewriting the same text
+  // would drop the selection that index.html leaves highlighted on the name after it loses focus.
+  else if (el.textContent !== title) el.textContent = title;
 }
 /** index.html's deleteChart: never the last one, never a Final one, confirm unless empty. */
 function closeChart(id: string): void {

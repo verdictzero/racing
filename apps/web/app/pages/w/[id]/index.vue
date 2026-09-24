@@ -540,11 +540,22 @@ onBeforeUnmount(() => { document.removeEventListener('mousedown', onDocDown, tru
 
 // ---- the delegated handlers, in index.html's order ---------------------------------------------
 let dragSuppressClick = false;
+/**
+ * index.html answers these clicks by re-rendering the chart, which throws away the button that was
+ * clicked — and the keyboard focus with it. Here the button survives the patch and would keep focus,
+ * so Space or Enter would press it again: a second row, a second delete. Dropping the focus keeps the
+ * keyboard where the source leaves it.
+ */
+function settle(): void {
+  const a = document.activeElement as HTMLElement | null;
+  if (a && a !== document.body && a.closest('#ws-main') && !a.isContentEditable) a.blur();
+}
+
 function onClick(e: MouseEvent): void {
   const t = e.target as Element;
   if (dragSuppressClick) { dragSuppressClick = false; if (t.closest('.chart-head')) return; }
   const status = t.closest<HTMLElement>('[data-status-set]');
-  if (status) { setChartStatus(status.dataset.status as 'draft' | 'final'); return; }
+  if (status) { setChartStatus(status.dataset.status as 'draft' | 'final'); settle(); return; }
   const docOpen = t.closest<HTMLElement>('[data-doc-open]');
   if (docOpen) { e.preventDefault(); e.stopPropagation(); const [, docId] = (docOpen.dataset.docOpen ?? '').split('|'); if (docId) docs.open(docId); return; }
   const attach = t.closest<HTMLElement>('[data-attach-direct]');
@@ -563,23 +574,23 @@ function onClick(e: MouseEvent): void {
   if (flowBtn) { pop.value = { kind: 'flow', id: flowBtn.dataset.flowBtn!, anchor: flowBtn.getBoundingClientRect() }; return; }
   // Click anywhere on a background layer: collapse the layers in front of it.
   const bg = t.closest<HTMLElement>('.chart-block.faded');
-  if (bg) { focusChartTier(parseInt(bg.dataset.tier ?? '0', 10) || 0); return; }
-  if (t.closest('[data-add-root]')) { addRoot(); return; }
+  if (bg) { focusChartTier(parseInt(bg.dataset.tier ?? '0', 10) || 0); settle(); return; }
+  if (t.closest('[data-add-root]')) { addRoot(); settle(); return; }
   const addChildBtn = t.closest<HTMLElement>('[data-add-child]');
-  if (addChildBtn) { addChild(addChildBtn.dataset.addChild!); return; }
+  if (addChildBtn) { addChild(addChildBtn.dataset.addChild!); settle(); return; }
   const del = t.closest<HTMLElement>('[data-del-node]');
-  if (del) { deleteRow(del.dataset.delNode!); return; }
+  if (del) { deleteRow(del.dataset.delNode!); settle(); return; }
   const drill = t.closest<HTMLElement>('[data-drill]');
-  if (drill) { drillToggle(drill.dataset.drill!, parseInt(drill.dataset.tier ?? '0', 10) || 0); return; }
+  if (drill) { drillToggle(drill.dataset.drill!, parseInt(drill.dataset.tier ?? '0', 10) || 0); settle(); return; }
   const colDel = t.closest<HTMLElement>('[data-col-del]');
-  if (colDel) { deleteChartCol(colDel.dataset.colDel!); return; }
-  if (t.closest('[data-col-add]')) { addChartCol(); return; }
+  if (colDel) { deleteChartCol(colDel.dataset.colDel!); settle(); return; }
+  if (t.closest('[data-col-add]')) { addChartCol(); settle(); return; }
   const colView = t.closest<HTMLElement>('[data-col-view]');
   if (colView) { pop.value = { kind: 'colview', col: colView.dataset.colView!, anchor: colView.getBoundingClientRect() }; return; }
   const rowView = t.closest<HTMLElement>('[data-row-view]');
   if (rowView) { pop.value = { kind: 'taskview', id: rowView.dataset.rowView!, anchor: rowView.getBoundingClientRect() }; return; }
   const pin = t.closest<HTMLElement>('[data-violation-jump]');
-  if (pin) { jumpToRow(pin.dataset.violationJump!); return; }
+  if (pin) { jumpToRow(pin.dataset.violationJump!); settle(); return; }
   const orgEdit = t.closest<HTMLElement>('[data-org-edit]');
   if (orgEdit) {
     pop.value = { kind: 'org', id: orgEdit.dataset.orgEdit!, orgKind: orgEdit.dataset.orgKind as 'division' | 'branch', anchor: orgEdit.getBoundingClientRect() };
