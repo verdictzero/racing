@@ -273,6 +273,146 @@ describe('fields the flow rules read', () => {
   });
 });
 
+describe('attachments', () => {
+  /**
+   * A file as index.html's Save writes it: every document entry carries its bytes as a dataUrl,
+   * or '' when the browser that saved it could not find them.
+   */
+  const PDF = 'data:application/pdf;base64,JVBERi0xLjQK';
+  const HI = 'data:text/plain;base64,SGk=';
+  const file = () => ({
+    artifacts: [
+      {
+        id: 'a_spec',
+        name: 'Spec',
+        type: 'document',
+        doc: { id: 'd_spec', name: 'spec.pdf', type: 'application/pdf', size: 9, dataUrl: PDF },
+      },
+    ],
+    charts: [
+      {
+        id: 'c_1',
+        title: 'Docs',
+        activities: [
+          {
+            id: 'n1',
+            name: 'Row',
+            documents: [
+              { id: 'd_sop', name: 'SOP.pdf', type: 'application/pdf', size: 9, dataUrl: PDF },
+              { id: 'd_lost', name: 'lost.txt', type: 'text/plain', size: 4, dataUrl: '' },
+            ],
+            children: [
+              {
+                id: 'n2',
+                name: 'Child',
+                documents: [{ name: 'no-id.txt', type: 'text/plain', size: 2, dataUrl: HI }],
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  it('keeps metadata in the document and sets the bytes aside under the same ids', () => {
+    const { workspace, attachments } = importLegacy(file());
+    expect(workspace.charts.c_1!.nodes.n1!.documents).toEqual([
+      { id: 'd_sop', name: 'SOP.pdf', type: 'application/pdf', size: 9 },
+      { id: 'd_lost', name: 'lost.txt', type: 'text/plain', size: 4 },
+    ]);
+    // Megabytes of base64 in a CRDT would ride along in every update; none may get in.
+    expect(JSON.stringify(workspace)).not.toContain('base64');
+    expect(attachments).toContainEqual({
+      id: 'd_sop',
+      name: 'SOP.pdf',
+      type: 'application/pdf',
+      dataUrl: PDF,
+    });
+    // A doc whose file carried no bytes has nothing to store.
+    expect(attachments.map((a) => a.id)).not.toContain('d_lost');
+  });
+
+  it("carries a deliverable's spec doc bytes as well as a row's", () => {
+    const { workspace, attachments } = importLegacy(file());
+    expect(workspace.artifacts.a_spec!.doc).toEqual({
+      id: 'd_spec',
+      name: 'spec.pdf',
+      type: 'application/pdf',
+      size: 9,
+    });
+    expect(attachments.find((a) => a.id === 'd_spec')?.dataUrl).toBe(PDF);
+  });
+
+  it('files the bytes of a doc with no id under the id the row is given for it', () => {
+    // index.html's migrateState mints an id for such a doc rather than dropping it. Minting it
+    // anywhere but here would leave the bytes filed under an id no row holds.
+    const { workspace, attachments } = importLegacy(file());
+    const doc = workspace.charts.c_1!.nodes.n2!.documents[0]!;
+    expect(doc.id).toMatch(/^doc_/);
+    expect(doc.name).toBe('no-id.txt');
+    expect(attachments.find((a) => a.id === doc.id)?.dataUrl).toBe(HI);
+  });
+
+  it('corrects a size a DocRef cannot hold instead of failing the whole import', () => {
+    const { workspace } = importLegacy({
+      charts: [
+        {
+          id: 'c_1',
+          activities: [
+            {
+              id: 'n1',
+              documents: [
+                { id: 'd1', size: -5 },
+                { id: 'd2', size: 1.5 },
+                { id: 'd3', size: 'big' },
+                'not a document',
+                null,
+              ],
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+    expect(workspace.charts.c_1!.nodes.n1!.documents).toEqual([
+      { id: 'd1', name: 'document', type: '', size: 0 },
+      { id: 'd2', name: 'document', type: '', size: 1 },
+      { id: 'd3', name: 'document', type: '', size: 0 },
+    ]);
+  });
+
+  it('writes every document back out with its bytes, in the order index.html writes them', () => {
+    const { workspace, attachments } = importLegacy(file());
+    const dataUrls = new Map(attachments.map((a) => [a.id, a.dataUrl]));
+    const out = exportLegacy(workspace, { dataUrls }) as {
+      charts: Array<{ activities: Array<{ documents: Array<Record<string, unknown>> }> }>;
+      artifacts: Array<{ doc: Record<string, unknown> }>;
+    };
+
+    const docs = out.charts[0]!.activities[0]!.documents;
+    expect(docs).toEqual([
+      { id: 'd_sop', name: 'SOP.pdf', type: 'application/pdf', size: 9, dataUrl: PDF },
+      // No stored bytes: '' is what index.html's own Save writes for such a doc.
+      { id: 'd_lost', name: 'lost.txt', type: 'text/plain', size: 4, dataUrl: '' },
+    ]);
+    expect(Object.keys(docs[0]!)).toEqual(['id', 'name', 'type', 'size', 'dataUrl']);
+    expect(out.artifacts[0]!.doc.dataUrl).toBe(PDF);
+
+    // And the saved file reads back in to the same bytes under the same ids.
+    expect(importLegacy(out).attachments).toEqual(expect.arrayContaining(attachments));
+  });
+
+  it('writes metadata only when it is not handed any bytes', () => {
+    const { workspace } = importLegacy(file());
+    expect(JSON.stringify(exportLegacy(workspace))).not.toContain('dataUrl');
+  });
+
+  it('finds nothing to store in the demo, which has no attachments', () => {
+    expect(importLegacy(demo).attachments).toEqual([]);
+  });
+});
+
 describe('walkInOrder', () => {
   it('returns every node once, parents before their children', () => {
     const { workspace } = importLegacy(demo);

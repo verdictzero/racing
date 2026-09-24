@@ -16,6 +16,7 @@
 
 import { z } from 'zod';
 import { ACTORS, ALL_ROLE_LETTERS, COLS, META_PRIORITIES, TIER_LABELS } from './constants.js';
+import type { EmbeddedDocument } from './documents.js';
 import { keysBetween } from './fractional.js';
 import { keepOrMint, newId } from './ids.js';
 import { normalizeRaci } from './raci.js';
@@ -32,6 +33,7 @@ import {
   Meta,
   OrgRef,
   Workspace,
+  type DocRef,
   type Roster,
 } from './schema.js';
 
@@ -76,8 +78,9 @@ const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : 
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 const bool = (v: unknown, fallback = false): boolean => (typeof v === 'boolean' ? v : fallback);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const rec = (v: unknown): Record<string, unknown> =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v);
+const rec = (v: unknown): Record<string, unknown> => (isRecord(v) ? v : {});
 
 function parseMeta(v: unknown): Meta {
   const m = rec(v);
@@ -113,16 +116,39 @@ function parseLead(v: unknown): { id: string; name: string } | null {
   return { id: keepOrMint('person', l.id), name: l.name };
 }
 
-function parseDocs(v: unknown): { id: string; name: string; type: string; size: number }[] {
+/** Each attachment's embedded bytes, by doc id, set aside while the import walks the file. */
+type Attachments = Map<string, EmbeddedDocument>;
+
+/**
+ * One attachment's metadata, read the way index.html's migrateState reads it. Its bytes, when the
+ * file carries them, are set aside under the same id rather than entering the document — see
+ * documents.ts for why they never belong in it.
+ */
+function parseDoc(d: Record<string, unknown>, id: string, attachments: Attachments): DocRef {
+  const doc: DocRef = {
+    id,
+    name: str(d.name, 'document'),
+    type: str(d.type),
+    // DocRef holds a whole, non-negative byte count. A hand-edited size is corrected rather than
+    // fatal: one bad number in an optional field must not cost the whole workspace.
+    size: Math.max(0, Math.floor(num(d.size))),
+  };
+  // Keyed by id, so a doc two rows share (a duplicate from before index.html minted fresh ids for
+  // copies) is stored once, last writer winning — the order its IndexedDB puts would land in.
+  if (typeof d.dataUrl === 'string' && d.dataUrl) {
+    attachments.set(id, { id, name: doc.name, type: doc.type, dataUrl: d.dataUrl });
+  }
+  return doc;
+}
+
+/**
+ * A row's attachments. As in migrateState, one without an id is given one rather than dropped —
+ * and it is minted HERE, so its bytes are set aside under the id the row will actually hold.
+ */
+function parseDocs(v: unknown, attachments: Attachments): DocRef[] {
   return arr(v)
-    .map(rec)
-    .filter((d) => typeof d.id === 'string' && d.id)
-    .map((d) => ({
-      id: d.id as string,
-      name: str(d.name),
-      type: str(d.type),
-      size: num(d.size),
-    }));
+    .filter(isRecord)
+    .map((d) => parseDoc(d, keepOrMint('doc', d.id), attachments));
 }
 
 // ---- import: legacy JSON -> Workspace --------------------------------------------------------------
@@ -138,6 +164,7 @@ function flattenActivities(
   activities: unknown[],
   columns: readonly string[],
   warnings: string[],
+  attachments: Attachments,
 ): Record<string, ChartNode> {
   const nodes: Record<string, ChartNode> = {};
   const seen = new Set<string>();
@@ -181,7 +208,7 @@ function flattenActivities(
         primaryR: typeof raw.primaryR === 'string' && raw.primaryR ? raw.primaryR : null,
         org: parseOrgRef(raw.org),
         description: str(raw.description),
-        documents: parseDocs(raw.documents),
+        documents: parseDocs(raw.documents, attachments),
         inputs: arr(raw.inputs).filter((x): x is string => typeof x === 'string'),
         outputs: arr(raw.outputs).filter((x): x is string => typeof x === 'string'),
       });
@@ -196,7 +223,11 @@ function flattenActivities(
   return nodes;
 }
 
-function importChart(raw: Record<string, unknown>, warnings: string[]): Chart {
+function importChart(
+  raw: Record<string, unknown>,
+  warnings: string[],
+  attachments: Attachments,
+): Chart {
   const id = keepOrMint('chart', raw.id);
   const customIn = rec(raw.custom);
   const custom =
@@ -221,7 +252,7 @@ function importChart(raw: Record<string, unknown>, warnings: string[]): Chart {
     finalizedAt: typeof raw.finalizedAt === 'string' ? raw.finalizedAt : null,
     meta: parseMeta(raw.meta),
     custom,
-    nodes: flattenActivities(id, arr(raw.activities), columns, warnings),
+    nodes: flattenActivities(id, arr(raw.activities), columns, warnings, attachments),
   });
 }
 
@@ -406,9 +437,22 @@ function importRoster(raw: unknown): Roster {
   return roster as Roster;
 }
 
+export interface LegacyImport {
+  readonly workspace: Workspace;
+  readonly report: ImportReport;
+  /**
+   * The attachment bytes the file embeds, one per doc id, filed under the ids the imported
+   * DocRefs hold. They are returned beside the workspace rather than in it: the document carries
+   * metadata only, and whoever stores the workspace stores these in the blob store. Deciding what
+   * is kept — the size cap, a malformed dataUrl — is theirs; see prepareEmbeddedDocument.
+   */
+  readonly attachments: EmbeddedDocument[];
+}
+
 /** Read a legacy workspace file into the flat model. */
-export function importLegacy(input: unknown): { workspace: Workspace; report: ImportReport } {
+export function importLegacy(input: unknown): LegacyImport {
   const warnings: string[] = [];
+  const attachments: Attachments = new Map();
   const parsed = LegacyWorkspace.safeParse(input);
   if (!parsed.success) {
     throw new Error(`not a recognizable workspace file: ${parsed.error.issues[0]?.message ?? 'unknown'}`);
@@ -423,7 +467,7 @@ export function importLegacy(input: unknown): { workspace: Workspace; report: Im
 
   const charts: Record<string, Chart> = {};
   for (const c of legacyCharts) {
-    const chart = importChart(c as Record<string, unknown>, warnings);
+    const chart = importChart(c as Record<string, unknown>, warnings, attachments);
     charts[chart.id] = chart;
   }
 
@@ -449,10 +493,8 @@ export function importLegacy(input: unknown): { workspace: Workspace; report: Im
       type: str(a.type, 'other'),
       ownerRef: parseOrgRef(a.ownerRef),
       description: str(a.description),
-      doc:
-        typeof docIn.id === 'string' && docIn.id
-          ? { id: docIn.id, name: str(docIn.name), type: str(docIn.type), size: num(docIn.size) }
-          : null,
+      // A deliverable's spec doc is kept only with an id of its own, as migrateState keeps it.
+      doc: typeof docIn.id === 'string' && docIn.id ? parseDoc(docIn, docIn.id, attachments) : null,
     });
   }
 
@@ -530,10 +572,26 @@ export function importLegacy(input: unknown): { workspace: Workspace; report: Im
       entities: Object.keys(entities).length,
       warnings,
     },
+    attachments: [...attachments.values()],
   };
 }
 
 // ---- export: Workspace -> legacy JSON ---------------------------------------------------------------
+
+export interface ExportLegacyOptions {
+  /**
+   * Attachment bytes as data URLs, by doc id. Given, every document entry carries a `dataUrl`, and
+   * the file is self-contained the way index.html's Save makes it: it hydrates every doc from
+   * IndexedDB before writing. An entry with no stored bytes gets '', which is what index.html
+   * writes for a doc whose bytes it cannot find. Omitted, entries are metadata only.
+   */
+  readonly dataUrls?: ReadonlyMap<string, string>;
+}
+
+/** One document entry in the order index.html writes it: {id, name, type, size, dataUrl}. */
+function exportDoc(doc: DocRef, dataUrls: ReadonlyMap<string, string> | undefined) {
+  return dataUrls ? { ...doc, dataUrl: dataUrls.get(doc.id) ?? '' } : { ...doc };
+}
 
 /**
  * Rebuild one chart's nested `activities` array from the flat node map.
@@ -543,7 +601,7 @@ export function importLegacy(input: unknown): { workspace: Workspace; report: Im
  * row across 810 rows is a lot of nothing to put in a CRDT, and a missing cell and an empty cell
  * mean the same thing — so the full set is filled back in here, at the boundary that has to match.
  */
-function nestNodes(chart: Chart): unknown[] {
+function nestNodes(chart: Chart, dataUrls: ReadonlyMap<string, string> | undefined): unknown[] {
   const columns = chartColumns(chart);
   const byParent = new Map<string | null, ChartNode[]>();
   for (const node of Object.values(chart.nodes)) {
@@ -573,7 +631,7 @@ function nestNodes(chart: Chart): unknown[] {
           name: n.name,
           raci,
           description: n.description,
-          documents: n.documents.map((d) => ({ ...d })),
+          documents: n.documents.map((d) => exportDoc(d, dataUrls)),
           inputs: [...n.inputs],
           outputs: [...n.outputs],
           children: build(n.id),
@@ -592,7 +650,10 @@ function nestNodes(chart: Chart): unknown[] {
  * This is what keeps the two apps interoperable during the migration: whatever the Nuxt app has
  * been editing can be handed back to index.html and opened.
  */
-export function exportLegacy(ws: Workspace): Record<string, unknown> {
+export function exportLegacy(
+  ws: Workspace,
+  opts: ExportLegacyOptions = {},
+): Record<string, unknown> {
   const chartIds = Object.keys(ws.charts).sort((a, b) => {
     const oa = ws.chartOrder[a] ?? '';
     const ob = ws.chartOrder[b] ?? '';
@@ -609,7 +670,7 @@ export function exportLegacy(ws: Workspace): Record<string, unknown> {
       finalizedAt: c.finalizedAt,
       meta: { ...c.meta, tags: [...c.meta.tags] },
       custom: c.custom ? { cols: c.custom.cols.map((x) => ({ ...x })), tiers: [...c.custom.tiers] } : null,
-      activities: nestNodes(c),
+      activities: nestNodes(c, opts.dataUrls),
       // Camera state is per-person and is not carried in the shared document; the legacy app
       // repairs these to defaults on load.
       drillPath: [],
@@ -710,7 +771,7 @@ export function exportLegacy(ws: Workspace): Record<string, unknown> {
       type: a.type,
       ownerRef: a.ownerRef ? { ...a.ownerRef } : null,
       description: a.description,
-      doc: a.doc ? { ...a.doc } : null,
+      doc: a.doc ? exportDoc(a.doc, opts.dataUrls) : null,
     })),
     entities: Object.values(ws.entities).map((e) => ({
       id: e.id,

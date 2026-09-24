@@ -91,8 +91,15 @@ export default defineEventHandler(async (event) => {
       extension = 'mmd';
       break;
 
+    // Each attachment's bytes go into the file as a base64 dataUrl, as index.html's exportJSON puts
+    // them (it hydrates every doc from IndexedDB first), so the file opens there with its
+    // documents — and loads back here with them, through the import.
     case 'json':
-      body = JSON.stringify(exportLegacy(workspace), null, 2);
+      body = JSON.stringify(
+        exportLegacy(workspace, { dataUrls: await attachmentDataUrls(db, id, workspace) }),
+        null,
+        2,
+      );
       contentType = 'application/json; charset=utf-8';
       extension = 'json';
       break;

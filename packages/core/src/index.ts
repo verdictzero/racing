@@ -14,6 +14,7 @@ export * from './constants.js';
 export * from './fractional.js';
 export * from './ids.js';
 export * from './schema.js';
+export * from './documents.js';
 export * from './tree.js';
 export * from './raci.js';
 export * from './legacy.js';

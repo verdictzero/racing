@@ -302,13 +302,18 @@ packages/core/src/flow-geometry.ts
                                  socketPoint, edgePath, edgePathVia, edgeGeometry, flowBounds
 packages/core/src/org.ts         orgLabel, scopeRelation, inheritedOrg, orgScopes, orgRefPath
 packages/core/src/work.ts        collectWork, summarizeWork — "what does my unit own"
-packages/core/src/legacy.ts      importLegacy, exportLegacy, tierLabel
+packages/core/src/legacy.ts      importLegacy (+ the file's attachment bytes), exportLegacy, tierLabel
+packages/core/src/documents.ts   MAX_DOC_BYTES, formatBytes, encodeDataUrl, decodeDataUrl,
+                                 prepareEmbeddedDocument, workspaceDocumentIds — attachment bytes
 packages/core/src/export/       exportXml, exportChartMermaid, exportFlowMermaid, exportXlsx,
                                  exportTemplate, writeWorkbook, zipBytes, topologicalOrder, stepIo
 packages/core/src/import/       importXlsx, readWorkbook, importWorkbook, findHeaderRow, unzip
 packages/crdt/src/roster.ts      flattenRoster, nestRoster — the roster's flat storage
 packages/crdt/src/mutations.ts   every write that currently exists
 packages/db/src/repositories.ts  every query that currently exists
+packages/db/src/documents.ts     the attachment blob store, keyed (workspace, doc id); served by
+                                 /api/workspaces/:id/documents/:docId (PUT, GET, DELETE) and
+                                 /api/workspaces/:id/documents/import
 ```
 
 **`effectiveRaci` vs `displayRaci`** — they answer different questions and the difference matters.
