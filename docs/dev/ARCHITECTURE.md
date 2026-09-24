@@ -165,14 +165,17 @@ table without disturbing this one.
 `document_blob` can hold bytes inline or name a `storage_key`. Only the inline path is implemented.
 Fine for a self-contained deployment, wrong for one with a lot of large attachments.
 
-### The Nuxt app has five screens, not the whole product
+### The rebuild matches index.html; index.html is still the reference
 
-Auth, collaboration, the chart cascade, the flow canvas, the Roster, the Tasks lens and the Object
-Gallery. Still only in `index.html`: PowerPoint and Print/PDF export, the themes, the field guides,
-and the deferred parts of the chart and flow screens listed in [PORTING.md](PORTING.md).
+Every screen, panel, overlay, menu and download of `index.html` v0.39 is in the Nuxt app, built on
+the source's own stylesheet and emitting the source's DOM, and checked against it side by side
+(see §10 of [PORTING.md](PORTING.md), which also lists what differs on purpose — sign-in, the
+per-person camera, attachments on the server, no "save your work" splash). The exports are held to
+index.html's own output byte for byte by the parity capture.
 
-`index.html` stays the shipping product until that list is empty, and both apps read and write the
-same v0.39 JSON — enforced by `core/legacy.test.ts` against the real demo workspace.
+`index.html` stays the reference rather than being retired: when it changes, the parity tests say
+exactly what to port, and both apps keep reading and writing the same v0.39 JSON — enforced by
+`core/legacy.test.ts` against the real demo workspace, down to the bytes Save writes.
 
 ---
 
@@ -181,6 +184,8 @@ same v0.39 JSON — enforced by `core/legacy.test.ts` against the real demo work
 | Where | What it proves |
 |---|---|
 | `core/legacy.test.ts` | The round trip against the **real** 810-row demo workspace, dumped out of the running legacy app. A hand-written fixture would only prove the converter agrees with itself. |
+| `core/export/*.test.ts`, `core/ingest-kit.test.ts`, `core/legacy.test.ts` | index.html's **own** downloads, captured headless by `scripts/capture-legacy-parity.mjs`: Save, PowerPoint, Excel, XML, Mermaid and the Ingest Kit are held to them byte for byte (a ZIP's parts, not its entry dates). |
+| `core/violations.test.ts` | index.html's rule engine — its `_violations` and warnings pill — read out of the real file for the demo and for a workspace built to make every rule fire. The port must say what the source says. |
 | `core/fractional.test.ts` | You can always insert again — 500 successive bisections at one point. |
 | `crdt/convergence.test.ts` | A two-client harness with the wire under the test's control, so "concurrent" means both sides really did apply before either saw the other. |
 | `crdt/roster.test.ts` | The nested roster survives a flatten/nest round trip byte for byte against the real 694-unit demo, and two people editing one directorate no longer clobber each other. |
