@@ -328,6 +328,26 @@ describe('reading a real .xlsx', () => {
     expect(result.chart.title).toBe('ASIC RACI Tool Demo');
   });
 
+  it('keeps every row in the workbook’s order, at every level', async () => {
+    // Order keys used to be handed out as rows arrived, and the n-th of n+1 spread keys is not
+    // ordered against the n-th of n+2: siblings shared keys and came back in id order — random.
+    const result = await importXlsx(exportXlsx(workspace), { fileName: 'demo.xlsx' });
+    const names = (nodes: Record<string, { parentId: string | null; order: string; name: string; id: string }>) => {
+      const out: string[] = [];
+      const walk = (parentId: string | null) => {
+        const kids = Object.values(nodes).filter((n) => n.parentId === parentId);
+        const keys = kids.map((k) => k.order);
+        expect(new Set(keys).size, 'sibling order keys are distinct').toBe(keys.length);
+        kids.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+        for (const k of kids) { out.push(k.name); walk(k.id); }
+      };
+      walk(null);
+      return out;
+    };
+    const demoChart = Object.values(workspace.charts)[0]!;
+    expect(names(result.chart.nodes)).toEqual(names(demoChart.nodes));
+  });
+
   it('does not mistake the export’s Org unit column for a party', () => {
     // It carries org names. Read as letters it would mine a C out of "DIRECTORATE C" and shift
     // every real party column along by one — silently, and wrong on every row.

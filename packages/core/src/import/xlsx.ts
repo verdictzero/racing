@@ -349,7 +349,8 @@ export function importWorkbook(
   const chartId = newId('chart');
   const nodes: Record<string, ChartNode> = {};
   const byPath = new Map<string, string>();
-  const childCount = new Map<string | null, number>();
+  /** Each parent's children in the order the rows first named them — which is their order. */
+  const childrenOf = new Map<string | null, string[]>();
 
   /** Make the row at `path`, creating any ancestor a child row named but no row of its own did. */
   const ensure = (path: readonly string[]): string => {
@@ -360,15 +361,15 @@ export function importWorkbook(
 
     const parentId = path.length > 1 ? ensure(path.slice(0, -1)) : null;
     const id = newId('node');
-    const n = childCount.get(parentId) ?? 0;
-    childCount.set(parentId, n + 1);
+    const siblings = childrenOf.get(parentId);
+    if (siblings) siblings.push(id);
+    else childrenOf.set(parentId, [id]);
     nodes[id] = ChartNode.parse({
       id,
       chartId,
       parentId,
-      // One key per sibling position. Generated in bulk rather than bisected each time, because the
-      // rows arrive in order and bisecting eight hundred of them builds a very long key.
-      order: keysBetween(null, null, n + 1)[n]!,
+      // A placeholder: the real keys are handed out once every row is in (below).
+      order: 'V',
       name: path[path.length - 1]!,
       raci: {},
     });
@@ -412,6 +413,14 @@ export function importWorkbook(
       mine++;
     }
     if (mine > 0) sheetsRead.push(sheet.name);
+  }
+
+  // One evenly spread set of keys per parent, in arrival order. They cannot be handed out as rows
+  // arrive: the n-th of n+1 spread keys is not ordered against the n-th of n+2, so siblings would
+  // share keys and fall back to their random ids for order.
+  for (const ids of childrenOf.values()) {
+    const keys = keysBetween(null, null, ids.length);
+    ids.forEach((id, i) => { nodes[id] = { ...nodes[id]!, order: keys[i]! }; });
   }
 
   if (skipped > 0) {
