@@ -20,6 +20,7 @@ import type { EmbeddedDocument } from './documents.js';
 import { keysBetween } from './fractional.js';
 import { keepOrMint, newId } from './ids.js';
 import { normalizeRaci } from './raci.js';
+import { artifactsInOrder, entitiesInOrder } from './registry.js';
 import {
   Artifact,
   Chart,
@@ -483,8 +484,12 @@ export function importLegacy(input: unknown): LegacyImport {
     flows[flow.id] = flow;
   }
 
+  // The registries are arrays in the file, and their order is the order they were made — which the
+  // gallery shows — so each record carries it as an order key (see Artifact.order).
   const artifacts: Record<string, Artifact> = {};
-  for (const a of (raw.artifacts ?? []).map(rec)) {
+  const artifactsIn = (raw.artifacts ?? []).map(rec);
+  const artifactOrder = keysBetween(null, null, artifactsIn.length);
+  artifactsIn.forEach((a, i) => {
     const id = keepOrMint('artifact', a.id);
     const docIn = rec(a.doc);
     artifacts[id] = Artifact.parse({
@@ -495,11 +500,14 @@ export function importLegacy(input: unknown): LegacyImport {
       description: str(a.description),
       // A deliverable's spec doc is kept only with an id of its own, as migrateState keeps it.
       doc: typeof docIn.id === 'string' && docIn.id ? parseDoc(docIn, docIn.id, attachments) : null,
+      order: artifactOrder[i],
     });
-  }
+  });
 
   const entities: Record<string, Entity> = {};
-  for (const e of (raw.entities ?? []).map(rec)) {
+  const entitiesIn = (raw.entities ?? []).map(rec);
+  const entityOrder = keysBetween(null, null, entitiesIn.length);
+  entitiesIn.forEach((e, i) => {
     const id = keepOrMint('entity', e.id);
     entities[id] = Entity.parse({
       id,
@@ -508,8 +516,9 @@ export function importLegacy(input: unknown): LegacyImport {
       short: str(e.short),
       description: str(e.description),
       lead: parseLead(e.lead),
+      order: entityOrder[i],
     });
-  }
+  });
 
   // Deliverable refs that point at nothing are dropped, matching the legacy loader: the invariant
   // is that no reference outlives its registry entry.
@@ -765,7 +774,7 @@ export function exportLegacy(
     activeChartId: chartIds[0] ?? null,
     bizCases,
     activeBizCaseId: bizCases[0]?.id ?? null,
-    artifacts: Object.values(ws.artifacts).map((a) => ({
+    artifacts: artifactsInOrder(ws).map((a) => ({
       id: a.id,
       name: a.name,
       type: a.type,
@@ -773,7 +782,7 @@ export function exportLegacy(
       description: a.description,
       doc: a.doc ? exportDoc(a.doc, opts.dataUrls) : null,
     })),
-    entities: Object.values(ws.entities).map((e) => ({
+    entities: entitiesInOrder(ws).map((e) => ({
       id: e.id,
       name: e.name,
       kind: e.kind,

@@ -11,29 +11,39 @@
  * specific. Merging them would produce a list that reads as "yours" and is not, which is the exact
  * failure mode that makes people stop trusting the tool.
  *
- * NOT YET PORTED, and stated rather than silently wrong: a Chart-Linked flow (`mode: 'linked'`)
- * gives each step a `bind` to a chart row and cascades that row's letters onto the step, subject to
- * `bindOverrides` and a letter translation when the two documents use different frameworks. That
- * binding subsystem lives with the flow canvas — PORTING.md slice 3 — and until it comes across, a
- * linked step contributes through its own `raci`/`parties` and through its flow's anchor, exactly
- * as a free-form step does. It under-reports for a linked flow; it never mis-reports.
+ * THIS IS index.html's `collectWorkItems`, ported line for line, because the Tasks screen has to
+ * print exactly what the source prints — the same items, in the same order, with the same words:
+ *
+ *   - chart rows come from ORGANIZATION charts only, in tab order, walked in tree order. A row lands
+ *     through its own org or the nearest ancestor's; its role chips are the letters the row STATES
+ *     (the source does not repeat the cascaded owner on a work card);
+ *   - flow steps come after every chart row. A step's letters are what it says after Chart-Linked
+ *     binding is applied, and a column that names no party falls to the column's mapped directorate,
+ *     narrowed by the org refs above the bound row (linked) or the flow's anchor (free-form) — the
+ *     dashed default the flow canvas shows;
+ *   - labels are the source's: "(untitled)", "Untitled case", a handoff's far end quoted and followed
+ *     by the units named on it.
+ *
+ * `bindOverrides` (a step taking a column back from its bound row) has no field in this build's
+ * schema yet; a bound step therefore reads every column from its row, which is what the source does
+ * for a step with no overrides.
  */
 
-
-import { effectiveRaci } from './raci.js';
-import { computeArtifactUses } from './registry.js';
-import { inheritedOrg, orgLabel, scopeRelation } from './org.js';
-import { childIndex, pathTo, walkInOrder } from './tree.js';
+import { ACTOR_LABELS_DEFAULT, ACTORS, COLS, entityKindMeta, framework, type Framework } from './constants.js';
+import { inheritedOwnerColumn, normalizeRaci } from './raci.js';
+import { chartsInTabOrder, computeArtifactUses, entityDisplayName as entityName } from './registry.js';
+import { scopeRelation } from './org.js';
+import { ancestorsOf, childIndex, childrenIn } from './tree.js';
 import { tierLabel } from './legacy.js';
-import { chartColumns, type Flow, type FlowStep, type OrgRef, type Workspace } from './schema.js';
+import type { Chart, ChartNode, FlowStep, OrgRef, Workspace } from './schema.js';
 
 /** One responsibility this unit holds on one item. */
 export interface WorkRole {
   readonly column: string;
   readonly letters: string;
-  /** The letters cascaded from an ancestor row, or the party from the flow's anchor. */
+  /** A flow step's column that names no party, and so falls to the chart context's default. */
   readonly inherited: boolean;
-  /** The unit that holds it — this scope, or something inside it. */
+  /** The unit that holds it. Empty on a chart row, whose unit is the card's own badge. */
   readonly unit: string;
 }
 
@@ -67,152 +77,291 @@ export interface WorkItem {
   readonly stepId?: string;
 }
 
-const named = (name: string, fallback: string) => name || fallback;
+// ---- labels, as index.html words them -----------------------------------------------------------
 
-/**
- * The org a flow step's column falls to when the step names nobody.
- *
- * The flow's anchor row — the chart task the whole flow implements. A step that states no party for
- * a column still belongs to whoever owns the row the flow hangs under, and omitting that would make
- * every anchored flow look unassigned.
- */
-function anchorOrg(ws: Workspace, flow: Flow): OrgRef | null {
-  if (!flow.anchor) return null;
-  const chart = ws.charts[flow.anchor.chartId];
-  if (!chart) return null;
-  return inheritedOrg(chart.nodes, flow.anchor.nodeId).ref;
+/** A party's two display strings: the badge and the tooltip / header line. */
+export interface WorkLabel {
+  readonly short: string;
+  readonly full: string;
 }
 
-function stepIoFor(
-  ws: Workspace,
-  flow: Flow,
-  step: FlowStep,
-): { inputs: WorkIo[]; outputs: WorkIo[] } {
-  const inputs: WorkIo[] = [];
-  const outputs: WorkIo[] = [];
-  const label = (id: string) => ws.artifacts[id]?.name ?? '(missing deliverable)';
+const actorLabel = (ws: Workspace, actor: string): string =>
+  ws.actorLabels[actor] || ACTOR_LABELS_DEFAULT[actor as keyof typeof ACTOR_LABELS_DEFAULT] || actor;
 
-  for (const edge of Object.values(flow.edges)) {
-    if (edge.artifactIds.length === 0) continue;
-    if (edge.to === step.id) {
-      const from = flow.steps[edge.from];
-      const counterparts = from ? [named(from.name, '(untitled step)')] : [];
-      for (const id of edge.artifactIds) inputs.push({ artifactId: id, name: label(id), counterparts });
-    }
-    if (edge.from === step.id) {
-      const to = flow.steps[edge.to];
-      const counterparts = to ? [named(to.name, '(untitled step)')] : [];
-      for (const id of edge.artifactIds) outputs.push({ artifactId: id, name: label(id), counterparts });
-    }
+/** index.html's `orgLabel`: null for a directorate-only ref, and for a unit that no longer exists. */
+function sourceOrgLabel(ws: Workspace, ref: OrgRef | null | undefined): WorkLabel | null {
+  if (!ref) return null;
+  if ('entityId' in ref) {
+    const e = ws.entities[ref.entityId];
+    if (!e) return { short: '(missing entity)', full: 'This party named an entity that has since been deleted' };
+    const lead = e.lead?.name ? ` · Lead: ${e.lead.name}` : '';
+    return { short: entityName(e), full: `${entityKindMeta(e.kind).label}: ${entityName(e)}${lead}` };
   }
-  return { inputs, outputs };
+  const division = ref.divisionId
+    ? ws.roster[ref.actor]?.divisions.find((d) => d.id === ref.divisionId)
+    : undefined;
+  const branch = ref.branchId ? division?.branches.find((b) => b.id === ref.branchId) : undefined;
+  if (ref.teamId) {
+    const team = branch?.teams.find((t) => t.id === ref.teamId);
+    if (!team) return null;
+    const lead = team.chief?.name ? ` · Lead: ${team.chief.name}` : '';
+    const name = team.name || 'Unnamed team';
+    return {
+      short: name,
+      full: `${actorLabel(ws, ref.actor)} › ${division?.name || '—'} › ${branch?.name || '—'} › ${name}${lead}`,
+    };
+  }
+  if (ref.branchId) {
+    if (!branch) return null;
+    const chief = branch.chief?.name ? ` · Chief: ${branch.chief.name}` : '';
+    return {
+      short: branch.name || 'Untitled branch',
+      full: `${actorLabel(ws, ref.actor)} › ${division?.name || '—'} › ${branch.name || 'Untitled branch'}${chief}`,
+    };
+  }
+  if (ref.divisionId) {
+    if (!division) return null;
+    const chief = division.chief?.name ? ` · Chief: ${division.chief.name}` : '';
+    return {
+      short: division.name || 'Untitled division',
+      full: `${actorLabel(ws, ref.actor)} › ${division.name || 'Untitled division'}${chief}`,
+    };
+  }
+  return null;
+}
+
+/**
+ * index.html's `partyLabel`: `orgLabel`, but a directorate-only ref resolves to the directorate.
+ * What the Tasks screen prints for its scope — the header line (`full`) and the hint (`short`).
+ */
+export function workScopeLabel(ws: Workspace, ref: OrgRef | null | undefined): WorkLabel | null {
+  if (!ref) return null;
+  if ('entityId' in ref) return sourceOrgLabel(ws, ref);
+  if (!(ACTORS as readonly string[]).includes(ref.actor)) return null;
+  if (ref.divisionId) return sourceOrgLabel(ws, ref);
+  const label = actorLabel(ws, ref.actor);
+  return { short: label, full: label };
+}
+
+const artifactLabel = (ws: Workspace, id: string): string => {
+  const a = ws.artifacts[id];
+  return a ? a.name || 'Untitled deliverable' : '(missing deliverable)';
+};
+
+// ---- the flow side's chart context ---------------------------------------------------------------
+
+/** The org refs of `node` and every row above it, shallow → deep. */
+function orgRefsDownTo(chart: Chart, node: ChartNode): OrgRef[] {
+  return [...ancestorsOf(chart.nodes, node.id).reverse(), node]
+    .map((n) => n.org)
+    .filter((r): r is OrgRef => r !== null);
+}
+
+/** What a bound step reads off its chart row — index.html's `bizBindCtx`, the parts this needs. */
+interface BindCtx {
+  readonly node: ChartNode;
+  readonly fw: Framework;
+  readonly raci: Record<string, string>;
+  readonly tierLabel: string;
+  readonly orgRefs: OrgRef[];
+}
+
+function bindCtx(ws: Workspace, step: FlowStep): BindCtx | null {
+  if (step.kind === 'subflow' || !step.bind) return null;
+  const chart = ws.charts[step.bind.chartId];
+  // Only organization charts can be bound to: a free-form chart's columns are its own, and have
+  // nothing to correspond to on a flow step.
+  const node = chart && !chart.custom ? chart.nodes[step.bind.nodeId] : undefined;
+  if (!chart || !node) return null;
+  const fw = framework(chart.framework);
+  const inherited = inheritedOwnerColumn(chart.nodes, node.id, COLS, fw)?.column ?? null;
+  const ownCol = COLS.find((k) => normalizeRaci(node.raci[k]).includes(fw.owner)) ?? null;
+  const raci: Record<string, string> = {};
+  for (const k of COLS) {
+    const v = normalizeRaci(node.raci[k]);
+    raci[k] = !ownCol && k === inherited ? normalizeRaci(v + fw.owner) : v;
+  }
+  return {
+    node,
+    fw,
+    raci,
+    tierLabel: tierLabel(chart, ancestorsOf(chart.nodes, node.id).length),
+    orgRefs: orgRefsDownTo(chart, node),
+  };
+}
+
+/**
+ * A chart row's letters in the flow's framework. Owner maps to owner and doer to doer; any other
+ * letter crosses only if the flow's framework has it (an RASCI chart's S drops on a RACI flow).
+ */
+function translateLetters(letters: string, from: Framework, to: Framework): string {
+  if (from === to) return normalizeRaci(letters);
+  const out = new Set<string>();
+  for (const l of normalizeRaci(letters)) {
+    if (l === from.owner) out.add(to.owner);
+    else if (l === from.doer) out.add(to.doer);
+    else if (to.roles.includes(l)) out.add(l);
+  }
+  return normalizeRaci([...out].join(''));
+}
+
+/** A step's own column overrides, if this build's document carries them. */
+function bindOverrides(step: FlowStep): Set<string> {
+  const raw = (step as unknown as { bindOverrides?: unknown }).bindOverrides;
+  return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
+}
+
+/** The column's mapped directorate, narrowed by the deepest ref inside it — `bizDefaultPartyFor`. */
+function defaultParty(ws: Workspace, orgRefs: readonly OrgRef[] | null, column: string): OrgRef | null {
+  if (!orgRefs) return null;
+  const actor = ws.columnActor[column];
+  if (!actor || !(ACTORS as readonly string[]).includes(actor)) return null;
+  let ref: OrgRef = { actor: actor as (typeof ACTORS)[number] };
+  for (const r of orgRefs) if ('actor' in r && r.actor === actor) ref = { ...r };
+  return ref;
 }
 
 /**
  * Everything that lands on `scope`, across every chart and every flow.
  *
- * Returns direct work first, then inherited, each in document order — so the list reads the way the
- * charts do rather than in whatever order the object keys happened to fall.
+ * Chart rows first (tab order, tree order), then flow steps (flow order, step order) — the source's
+ * order, which the screen's two groups each keep.
  */
 export function collectWork(ws: Workspace, scope: OrgRef | null | undefined): WorkItem[] {
   if (!scope) return [];
   const items: WorkItem[] = [];
-  const artifactUses = computeArtifactUses(ws);
-  const unitOf = (ref: OrgRef | null) => (ref ? orgLabel(ws, ref)?.short ?? '' : '');
+  const uses = computeArtifactUses(ws);
+  const unitShort = (ref: OrgRef | null) => workScopeLabel(ws, ref)?.short ?? '';
 
   // ---- chart rows ------------------------------------------------------------------------------
-  for (const chart of Object.values(ws.charts)) {
-    const columns = chartColumns(chart);
+  for (const chart of chartsInTabOrder(ws)) {
+    if (chart.custom) continue;
     const index = childIndex(chart.nodes);
+    const seen = new Set<string>();
 
-    for (const node of walkInOrder(chart.nodes, index)) {
-      const org = inheritedOrg(chart.nodes, node.id);
-      const relation = scopeRelation(scope, org.ref);
-      if (!relation) continue;
-
-      const effective = effectiveRaci(chart, chart.nodes, node.id);
-      const roles: WorkRole[] = [];
-      for (const column of columns) {
-        const cell = effective[column];
-        if (!cell?.letters) continue;
-        roles.push({
-          column,
-          letters: cell.letters,
-          inherited: cell.source === 'inherited',
-          unit: unitOf(org.ref),
-        });
+    const walk = (parentId: string | null, depth: number, ancestors: string[], inheritedRef: OrgRef | null) => {
+      for (const node of childrenIn(index, parentId)) {
+        if (seen.has(node.id)) continue; // a merge can leave a cycle; never walk it twice
+        seen.add(node.id);
+        const ref = node.org ?? inheritedRef;
+        const relation = scopeRelation(scope, ref);
+        if (relation) {
+          items.push({
+            kind: 'chartRow',
+            relation,
+            name: node.name || '(untitled)',
+            where: `${tierLabel(chart, depth)} · ${chart.title || 'Untitled chart'}${
+              ancestors.length ? ` › ${ancestors.join(' › ')}` : ''
+            }`,
+            unit: unitShort(ref),
+            roles: COLS.filter((k) => normalizeRaci(node.raci[k])).map((k) => ({
+              column: k,
+              letters: normalizeRaci(node.raci[k]),
+              inherited: false,
+              unit: '',
+            })),
+            description: node.description,
+            entry: '',
+            exit: '',
+            // A row is never its own supplier: "takes the register, returns the register" is a row
+            // restating what it works on.
+            inputs: node.inputs.map((id) => ({
+              artifactId: id,
+              name: artifactLabel(ws, id),
+              counterparts: (uses.get(id)?.producers ?? []).filter((u) => u.nodeId !== node.id).map((u) => u.name),
+            })),
+            outputs: node.outputs.map((id) => ({
+              artifactId: id,
+              name: artifactLabel(ws, id),
+              counterparts: (uses.get(id)?.consumers ?? []).filter((u) => u.nodeId !== node.id).map((u) => u.name),
+            })),
+            chartId: chart.id,
+            nodeId: node.id,
+          });
+        }
+        walk(node.id, depth + 1, [...ancestors, node.name || '(untitled)'], node.org ?? inheritedRef);
       }
-
-      const ancestors = pathTo(chart.nodes, node.id)
-        .slice(0, -1)
-        .map((n) => named(n.name, '(untitled)'));
-      const depth = ancestors.length;
-
-      // The producers and consumers of a row's own declared IO. The row is excluded from its own
-      // counterparts: "produced by this very row" is not useful provenance.
-      const io = (ids: readonly string[], side: 'producers' | 'consumers'): WorkIo[] =>
-        ids.map((id) => ({
-          artifactId: id,
-          name: ws.artifacts[id]?.name ?? '(missing deliverable)',
-          counterparts: (artifactUses.get(id)?.[side] ?? [])
-            .filter((u) => u.nodeId !== node.id)
-            .map((u) => u.name),
-        }));
-
-      items.push({
-        kind: 'chartRow',
-        relation,
-        name: named(node.name, '(untitled)'),
-        where: `${tierLabel(chart, depth)} · ${chart.title}${ancestors.length ? ` › ${ancestors.join(' › ')}` : ''}`,
-        unit: unitOf(org.ref),
-        roles,
-        description: node.description,
-        entry: '',
-        exit: '',
-        inputs: io(node.inputs, 'producers'),
-        outputs: io(node.outputs, 'consumers'),
-        chartId: chart.id,
-        nodeId: node.id,
-      });
-    }
+    };
+    walk(null, 0, [], null);
   }
 
   // ---- flow steps ------------------------------------------------------------------------------
+  const TO = framework('raci'); // flows are RACI, full stop (v0.34)
   for (const flow of Object.values(ws.flows)) {
-    const fallback = anchorOrg(ws, flow);
-    const anchorCrumb = flow.anchor
-      ? ` ⚓ ${ws.charts[flow.anchor.chartId]?.title ?? ''} › ${
-          ws.charts[flow.anchor.chartId]?.nodes[flow.anchor.nodeId]?.name ?? '(untitled)'
-        }`
-      : '';
+    const anchorChart = flow.anchor ? ws.charts[flow.anchor.chartId] : undefined;
+    const anchorNode = flow.anchor && anchorChart ? anchorChart.nodes[flow.anchor.nodeId] : undefined;
+    const anchorRefs = anchorChart && anchorNode ? orgRefsDownTo(anchorChart, anchorNode) : null;
+    const crumbBase =
+      anchorChart && anchorNode
+        ? `${anchorChart.title || 'Untitled chart'} › … › ${anchorNode.name || '(untitled)'}`
+        : null;
+    const linked = flow.mode === 'linked';
+    const steps = Object.values(flow.steps);
+    const edges = Object.values(flow.edges);
 
-    for (const step of Object.values(flow.steps)) {
-      // A subflow box holds no responsibility of its own — the roles live in the flow it references
-      // and are collected when THAT flow is walked. Counting it here would double the work.
+    // "Recover" (Division C1, Branch C1.2) — the far end of a handoff, as the card names it: the
+    // step, quoted, and the units its own parties name.
+    const endLabel = (step: FlowStep | undefined): string[] => {
+      if (!step) return [];
+      const units = new Set<string>();
+      for (const r of Object.values(step.parties)) {
+        const label = workScopeLabel(ws, r);
+        if (label) units.add(label.short);
+      }
+      return [`"${step.name || 'untitled step'}"${units.size ? ` (${[...units].join(', ')})` : ''}`];
+    };
+
+    for (const step of steps) {
+      // A nested-flow box holds no responsibility of its own — the roles live in the flow it
+      // references and are collected when THAT flow is walked.
       if (step.kind === 'subflow') continue;
+      const bind = linked ? bindCtx(ws, step) : null;
+      const overrides = bind ? bindOverrides(step) : null;
 
       const roles: WorkRole[] = [];
       let best: 'direct' | 'inherited' | null = null;
-
-      for (const column of Object.keys(step.raci)) {
-        const letters = step.raci[column];
+      for (const column of COLS) {
+        const letters =
+          bind && !overrides!.has(column)
+            ? translateLetters(bind.raci[column] ?? '', bind.fw, TO)
+            : normalizeRaci(step.raci[column]);
         if (!letters) continue;
         const explicit = step.parties[column] ?? null;
-        const ref = explicit ?? fallback;
+        const ref = explicit ?? defaultParty(ws, bind ? bind.orgRefs : anchorRefs, column);
         const relation = scopeRelation(scope, ref);
         if (!relation) continue;
-        roles.push({ column, letters, inherited: !explicit, unit: unitOf(ref) });
+        roles.push({ column, letters, inherited: !explicit, unit: unitShort(ref) });
         if (relation === 'direct') best = 'direct';
         else best ??= relation;
       }
       if (!best) continue;
 
-      const { inputs, outputs } = stepIoFor(ws, flow, step);
+      const inputs: WorkIo[] = [];
+      const outputs: WorkIo[] = [];
+      for (const edge of edges) {
+        if (edge.artifactIds.length === 0) continue;
+        if (edge.to === step.id) {
+          const counterparts = endLabel(flow.steps[edge.from]);
+          for (const id of edge.artifactIds) inputs.push({ artifactId: id, name: artifactLabel(ws, id), counterparts });
+        }
+        if (edge.from === step.id) {
+          const counterparts = endLabel(flow.steps[edge.to]);
+          for (const id of edge.artifactIds) outputs.push({ artifactId: id, name: artifactLabel(ws, id), counterparts });
+        }
+      }
+
+      // A linked step's chart row is more useful provenance to a branch reader than the flow's
+      // anchor, so it wins the line when both exist.
+      const provenance = bind
+        ? ` ⛓ ${bind.tierLabel}: ${bind.node.name || '(untitled)'}`
+        : crumbBase
+          ? ` ⚓ ${crumbBase}`
+          : '';
       items.push({
         kind: 'flowStep',
         relation: best,
-        name: named(step.name, '(untitled step)'),
-        where: `Flow step · ${flow.name}${anchorCrumb}`,
+        name: step.name || '(untitled step)',
+        where: `Flow step · ${flow.name || 'Untitled case'}${provenance}`,
         unit: '',
         roles,
         description: step.description,
@@ -226,8 +375,7 @@ export function collectWork(ws: Workspace, scope: OrgRef | null | undefined): Wo
     }
   }
 
-  // Direct first: it is what the reader came for, and an inherited list can be long.
-  return items.sort((a, b) => (a.relation === b.relation ? 0 : a.relation === 'direct' ? -1 : 1));
+  return items;
 }
 
 export interface WorkSummary {

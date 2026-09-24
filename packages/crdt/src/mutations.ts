@@ -25,6 +25,7 @@ import {
   chartColumns,
   chartMaxDepth,
   isAncestorOf,
+  isOrderKey,
   keyBetween,
   newId,
   orderForAppend,
@@ -414,13 +415,30 @@ export function deleteGroup(doc: Y.Doc, groupId: string): void {
 
 // ---- registries -----------------------------------------------------------------------------------
 
+/**
+ * The next key in a registry: after every key already there, so a new deliverable or entity lists
+ * last — where the source's array push put it — on every client and after every reload.
+ */
+function nextRegistryOrder(container: Y.Map<Y.Map<unknown>>): string {
+  let last: string | null = null;
+  for (const raw of container.values()) {
+    const key = raw.get('order');
+    if (typeof key === 'string' && isOrderKey(key) && (last === null || key > last)) last = key;
+  }
+  return keyBetween(last, null);
+}
+
 export function addArtifact(doc: Y.Doc, name: string, type = 'other'): string {
   const id = newId('artifact');
+  const m = maps(doc);
   doc.transact(
     () =>
-      maps(doc).artifacts.set(
+      m.artifacts.set(
         id,
-        toYMap({ id, name, type, ownerRef: null, description: '', doc: null }),
+        toYMap({
+          id, name, type, ownerRef: null, description: '', doc: null,
+          order: nextRegistryOrder(m.artifacts),
+        }),
       ),
     LOCAL_ORIGIN,
   );
@@ -471,11 +489,15 @@ export function deleteArtifact(doc: Y.Doc, artifactId: string): { deleted: boole
 
 export function addEntity(doc: Y.Doc, name: string, kind = 'other'): string {
   const id = newId('entity');
+  const m = maps(doc);
   doc.transact(
     () =>
-      maps(doc).entities.set(
+      m.entities.set(
         id,
-        toYMap({ id, name, kind, short: '', description: '', lead: null }),
+        toYMap({
+          id, name, kind, short: '', description: '', lead: null,
+          order: nextRegistryOrder(m.entities),
+        }),
       ),
     LOCAL_ORIGIN,
   );
@@ -553,7 +575,10 @@ export function insertEntities(
       const key = entity.name.trim().toLowerCase();
       if (!key || taken.has(key)) continue;
       taken.add(key);
-      m.entities.set(entity.id, toYMap(entity as unknown as Record<string, unknown>));
+      m.entities.set(
+        entity.id,
+        toYMap({ ...entity, order: nextRegistryOrder(m.entities) } as unknown as Record<string, unknown>),
+      );
       added.push(entity.id);
     }
   }, origin);
@@ -755,3 +780,44 @@ export function setRoster(doc: Y.Doc, roster: Roster, origin: unknown = LOCAL_OR
 
 /** Columns a chart uses — re-exported so callers do not need @raci/core for the common case. */
 export { chartColumns };
+
+// ---- registry duplicates (the Object Gallery's right-click "Duplicate") ----------------------------
+
+/** index.html's copyName: "Copy of X", then "Copy of X (2)" and so on, never a name already taken. */
+function copyNameAmong(base: string, taken: readonly string[]): string {
+  const want = /^Copy of /.test(base) ? base : `Copy of ${base || 'Untitled'}`;
+  if (!taken.includes(want)) return want;
+  for (let i = 2; ; i++) if (!taken.includes(`${want} (${i})`)) return `${want} (${i})`;
+}
+
+function duplicateRecord(
+  doc: Y.Doc,
+  container: Y.Map<Y.Map<unknown>>,
+  sourceId: string,
+  id: string,
+): string | null {
+  const raw = container.get(sourceId);
+  if (!raw) return null;
+  const source = structuredClone(fromYMap(raw));
+  const taken = [...container.values()].map((r) => String(r.get('name') ?? ''));
+  const name = copyNameAmong(String(source.name ?? ''), taken);
+  // At the end of the registry, as the source's push put it — not beside the original.
+  const order = nextRegistryOrder(container);
+  doc.transact(() => container.set(id, toYMap({ ...source, id, name, order })), LOCAL_ORIGIN);
+  return id;
+}
+
+/**
+ * Copy a deliverable under a fresh id, named "Copy of …", in one transaction. The copy starts with
+ * no uses — the reverse index is derived from who names it, and nothing names a thing made a second
+ * ago. An attached document reference is carried as it is: the bytes live in object storage under
+ * that reference and are not copied here.
+ */
+export function duplicateArtifact(doc: Y.Doc, artifactId: string): string | null {
+  return duplicateRecord(doc, maps(doc).artifacts, artifactId, newId('artifact'));
+}
+
+/** Copy an entity under a fresh id, named "Copy of …", in one transaction. */
+export function duplicateEntity(doc: Y.Doc, entityId: string): string | null {
+  return duplicateRecord(doc, maps(doc).entities, entityId, newId('entity'));
+}

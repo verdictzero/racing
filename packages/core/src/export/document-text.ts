@@ -99,15 +99,8 @@ export function hasSignedStamp(o: {
 
 // ---- charts -------------------------------------------------------------------------------------
 
-/** Chart tabs in the order the tab strip shows them: by order key, then id. */
-export function chartsInTabOrder(ws: Workspace): Chart[] {
-  return Object.values(ws.charts).sort((a, b) => {
-    const oa = ws.chartOrder[a.id] ?? '';
-    const ob = ws.chartOrder[b.id] ?? '';
-    if (oa !== ob) return oa < ob ? -1 : 1;
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-  });
-}
+/** Chart tabs in the order the tab strip shows them — one definition, in registry.ts. */
+export { chartsInTabOrder } from '../registry.js';
 
 export interface DocumentColumn {
   readonly key: string;

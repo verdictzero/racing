@@ -16,6 +16,7 @@ import { framework, TIER_LABELS } from '../constants.js';
 import { displayRaci } from '../raci.js';
 import { childrenOf, rootsOf } from '../tree.js';
 import { chartColumns, type Chart, type ChartNode, type Flow, type Workspace } from '../schema.js';
+import { artifactsInOrder, entitiesInOrder } from '../registry.js';
 import { topologicalOrder } from './order.js';
 
 /** XML text escaping. Attribute values and text nodes take the same treatment. */
@@ -206,7 +207,7 @@ export function exportXml(ws: Workspace, opts: XmlExportOptions = {}): string {
     })
     .join('');
 
-  const artifacts = Object.values(ws.artifacts)
+  const artifacts = artifactsInOrder(ws)
     .map(
       (a) =>
         `    <deliverable name="${esc(a.name)}" type="${esc(a.type)}"` +
@@ -214,7 +215,7 @@ export function exportXml(ws: Workspace, opts: XmlExportOptions = {}): string {
     )
     .join('');
 
-  const entities = Object.values(ws.entities)
+  const entities = entitiesInOrder(ws)
     .map(
       (e) =>
         `    <entity name="${esc(e.name)}" kind="${esc(e.kind)}"` +
