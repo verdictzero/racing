@@ -1,15 +1,17 @@
 /**
- * What index.html's document exports PRINT: the labels, the resolved responsibility lines and the
- * flow-step cells its PowerPoint deck is built from, ported so the rebuild prints the same words.
+ * What index.html's document exports PRINT: the labels, the resolved responsibility lines, the
+ * flow-step cells and the registry listings its PowerPoint deck, workbook, XML and Mermaid files are
+ * built from, ported so the rebuild prints the same words.
  *
  * WHY THIS DOES NOT REUSE THE REBUILD'S OWN SELECTORS
- * `orgLabel`, `displayRaci`, `stepIo` and `topologicalOrder` answer the same questions and are
- * right for the screens they serve, but each phrases the answer slightly differently from the
- * legacy exporter: `orgLabel` calls a deleted unit "(missing unit)" where the legacy prints nothing,
- * and leaves off the " · Chief: …" the legacy appends; `stepIo` sorts where the legacy keeps
- * handoff order; `topologicalOrder` breaks ties by id where the legacy keeps the order the steps
- * were drawn in. Each of those is a changed cell in a deck someone lays beside the one index.html
- * produced from the same file, so the document path uses these and the screens keep theirs.
+ * `orgLabel`, `displayRaci`, `computeArtifactUses` and `computeEntityUses` answer the same questions
+ * and are right for the screens they serve, but each phrases the answer slightly differently from
+ * the legacy exporter: `orgLabel` calls a deleted unit "(missing unit)" where the legacy prints
+ * nothing, and leaves off the " · Chief: …" the legacy appends; the registry indexes count rows and
+ * handoffs the legacy loader has already dropped (a row below an org chart's last tier, a second
+ * copy of one connection) and parties it never keeps. Each of those is a changed cell in a document
+ * someone lays beside the one index.html produced from the same file, so the document path uses
+ * these and the screens keep theirs.
  *
  * WHY SOME CHECKS HERE LOOK REDUNDANT
  * index.html only ever prints a workspace that has been through its loader, `migrateState`, which
@@ -35,9 +37,37 @@ import {
   type Framework,
   type Status,
 } from '../constants.js';
+import { deriveShort } from '../import/xlsx.js';
+import {
+  legacyTree,
+  ownEntry,
+  resolveActiveChart,
+  resolveActiveFlow,
+  subflowRefId,
+} from '../lint-context.js';
 import { normalizeRaci } from '../raci.js';
+import { artifactsInOrder, chartsInTabOrder } from '../registry.js';
 import { ancestorsOf } from '../tree.js';
-import type { Chart, ChartNode, Flow, FlowEdge, FlowStep, OrgRef, Workspace } from '../schema.js';
+import {
+  Chart,
+  Flow,
+  type ChartNode,
+  type FlowEdge,
+  type FlowStep,
+  type Meta,
+  type OrgRef,
+  type Workspace,
+} from '../schema.js';
+
+/** index.html's `escapeHtml` — which is also exactly what XML text and attribute values need. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ---- lifecycle and mode words ---------------------------------------------------------------------
 
@@ -100,7 +130,45 @@ export function hasSignedStamp(o: {
 // ---- charts -------------------------------------------------------------------------------------
 
 /** Chart tabs in the order the tab strip shows them — one definition, in registry.ts. */
-export { chartsInTabOrder } from '../registry.js';
+export { chartsInTabOrder };
+
+/**
+ * The chart a document is printed from — `ac()`: the tab asked for, else the first tab. A workspace
+ * with no chart at all prints the empty "Untitled chart" `ac()` makes in that case.
+ */
+export function documentChart(ws: Workspace, chartId?: string | null): Chart {
+  return (
+    resolveActiveChart(ws, chartId) ??
+    Chart.parse({ id: 'c_untitled', title: 'Untitled chart', meta: {} })
+  );
+}
+
+/**
+ * The flow a flow document is printed from — `abc()`: the flow asked for, else the first one. A
+ * workspace with no flow at all prints the empty one `abc()` makes in that case.
+ */
+export function documentFlow(ws: Workspace, flowId?: string | null): Flow {
+  return (
+    resolveActiveFlow(ws, flowId) ??
+    Flow.parse({ id: 'b_untitled', name: 'Untitled business case', meta: {} })
+  );
+}
+
+/** A document's tags as the legacy loader keeps them: trimmed, blank ones dropped, once, 24 at most. */
+export function documentTags(meta: Pick<Meta, 'tags'>): string[] {
+  return [...new Set(meta.tags.map((t) => t.trim()).filter(Boolean))].slice(0, 24);
+}
+
+/** `hasMeta`: anything past the defaults filled in — what decides whether the XML has a `<meta>`. */
+export function hasDocumentMeta(meta: Meta): boolean {
+  return !!(
+    meta.description ||
+    meta.customer ||
+    meta.priority ||
+    meta.budget ||
+    documentTags(meta).length
+  );
+}
 
 export interface DocumentColumn {
   readonly key: string;
@@ -134,6 +202,17 @@ export function freeFormShape(
 /** The column keys a chart prints — `chartCols()`. */
 export function documentColumns(chart: Pick<Chart, 'custom'>): readonly string[] {
   return freeFormShape(chart)?.cols.map((c) => c.key) ?? COLS;
+}
+
+/**
+ * A chart's columns with the header and the abbreviation it prints for each — `chartColLabel` and
+ * `chartColShort`. A free-form column with no abbreviation of its own is given one from its label,
+ * as the legacy derives it; an org column reads the workspace's labels.
+ */
+export function chartColumnTexts(ws: Workspace, chart: Pick<Chart, 'custom'>): DocumentColumn[] {
+  const free = freeFormShape(chart);
+  if (free) return free.cols.map((c) => ({ ...c, short: c.short || deriveShort(c.label) }));
+  return COLS.map((key) => ({ key, label: columnLabel(ws, key), short: columnShort(ws, key) }));
 }
 
 /** A directorate's display name: the workspace's own, unless it is blank. */
@@ -501,12 +580,22 @@ export function translateLetters(letters: string, from: Framework, to: Framework
   return normalizeRaci([...out].join(''));
 }
 
+/** The row a step is bound to, when its flow is Chart-Linked — `bizIsLinked(b) ? bizBindCtx(t) : null`. */
+function linkedBind(
+  ws: Workspace,
+  flow: Flow,
+  step: FlowStep,
+  columns: readonly string[],
+): BindContext | null {
+  return flow.mode === 'linked' ? bindContext(ws, step, columns) : null;
+}
+
 /**
  * What a step says, per org column — `bizStepRaci`, the one place mode and binding are applied.
  *
- * A bound step in a Chart-Linked flow reads every column off its row. The legacy also lets a step
- * take individual columns back (`bindOverrides`); the rebuild's schema does not carry that list, so
- * here a bound step never overrides — which is what the legacy prints for any step that has not.
+ * A bound step in a Chart-Linked flow reads every column off its row, except the ones it has taken
+ * back (`bindOverrides`): those read the step's own letters, the empty string included — which is
+ * how "the chart says C here, but not for this step" is said.
  */
 export function stepLine(
   ws: Workspace,
@@ -514,13 +603,15 @@ export function stepLine(
   step: FlowStep,
   columns: readonly string[],
 ): Record<string, string> {
-  const bound = flow.mode === 'linked' ? bindContext(ws, step, columns) : null;
+  const bound = linkedBind(ws, flow, step, columns);
+  const overridden = new Set(bound ? step.bindOverrides : []);
   const to = framework(flow.framework);
   const out: Record<string, string> = {};
   for (const k of COLS) {
-    out[k] = bound
-      ? translateLetters(bound.raci[k] ?? '', bound.fw, to)
-      : normalizeRaci(step.raci[k]);
+    out[k] =
+      bound && !overridden.has(k)
+        ? translateLetters(bound.raci[k] ?? '', bound.fw, to)
+        : normalizeRaci(step.raci[k]);
   }
   return out;
 }
@@ -530,7 +621,10 @@ function activeColumns(line: Readonly<Record<string, string>>): string[] {
   return COLS.filter((k) => line[k]);
 }
 
-/** `flowRolesText`: "HQ: A | C&EW: R". */
+/**
+ * `flowRolesText`: "HQ: A | C&EW: R". A column a bound step took back and now says differently from
+ * its row is marked "(override)" — a document someone signs has to show where the step diverges.
+ */
 export function stepRolesText(
   ws: Workspace,
   flow: Flow,
@@ -538,8 +632,16 @@ export function stepRolesText(
   columns: readonly string[],
 ): string {
   const line = stepLine(ws, flow, step, columns);
+  const bound = linkedBind(ws, flow, step, columns);
+  const to = framework(flow.framework);
   return activeColumns(line)
-    .map((k) => `${columnShort(ws, k)}: ${line[k]}`)
+    .map((k) => {
+      const override =
+        !!bound &&
+        step.bindOverrides.includes(k) &&
+        translateLetters(bound.raci[k] ?? '', bound.fw, to) !== line[k];
+      return `${columnShort(ws, k)}: ${line[k]}${override ? ' (override)' : ''}`;
+    })
     .join(' | ');
 }
 
@@ -556,7 +658,7 @@ export function defaultParty(
   anchor: AnchorContext | null,
   columns: readonly string[],
 ): OrgRef | null {
-  const context = (flow.mode === 'linked' ? bindContext(ws, step, columns) : null) ?? anchor;
+  const context = linkedBind(ws, flow, step, columns) ?? anchor;
   if (!context) return null;
   const actor = columnDirectorate(ws, column);
   if (!actor) return null;
@@ -608,4 +710,88 @@ export function stepNextText(ws: Workspace, flow: Flow, step: FlowStep): string 
       return `→ ${to?.name || '?'}${e.label ? ` (${e.label})` : ''}${carried ? ` [${carried}]` : ''}`;
     })
     .join('; ');
+}
+
+/**
+ * The name of the flow a nested-flow box stands for — `bizCaseName(t.refId)`: "Untitled" when that
+ * flow is gone, or has no name, or is the box's own flow (a reference the legacy loader clears).
+ */
+export function nestedFlowName(ws: Workspace, flow: Flow, step: FlowStep): string {
+  const refId = subflowRefId(flow, step);
+  return (refId && ownEntry(ws.flows, refId)?.name) || 'Untitled';
+}
+
+// ---- the registries, as the documents list them -------------------------------------------------
+
+/**
+ * Who produces and who consumes each deliverable, by name, in the legacy's order — its
+ * `computeArtifactUses`: every chart row's declared outputs and inputs (charts in tab order, rows in
+ * tree order), then every handoff that carries it, from the step it leaves to the step it reaches.
+ *
+ * Nothing is de-duplicated: a deliverable carried away from one step on two branches names that step
+ * twice, as the legacy's workbook and XML both list it.
+ */
+export function deliverableUses(
+  ws: Workspace,
+): Map<string, { readonly producers: string[]; readonly consumers: string[] }> {
+  const uses = new Map<string, { producers: string[]; consumers: string[] }>();
+  const entry = (id: string) => {
+    let found = uses.get(id);
+    if (!found) {
+      found = { producers: [], consumers: [] };
+      uses.set(id, found);
+    }
+    return found;
+  };
+  for (const chart of chartsInTabOrder(ws)) {
+    for (const { node } of legacyTree(chart).rows) {
+      const name = node.name || '(untitled)';
+      for (const id of node.outputs) entry(id).producers.push(name);
+      for (const id of node.inputs) entry(id).consumers.push(name);
+    }
+  }
+  for (const flow of Object.values(ws.flows)) {
+    for (const edge of flowEdges(flow)) {
+      for (const id of edge.artifactIds) {
+        entry(id).producers.push(flow.steps[edge.from]?.name || '(untitled step)');
+        entry(id).consumers.push(flow.steps[edge.to]?.name || '(untitled step)');
+      }
+    }
+  }
+  return uses;
+}
+
+/**
+ * Everywhere each entity is named as a party, by entity id — the legacy `entityUses`: chart rows
+ * (as its loader keeps their refs), then flow steps (one naming per org column that names it), then
+ * deliverable owners. The legacy also counts its Work view's scope, which is each person's own view
+ * here and is not part of the document.
+ */
+export function entityNamings(
+  ws: Workspace,
+): Map<string, Array<{ readonly where: string; readonly name: string }>> {
+  const namings = new Map<string, Array<{ where: string; name: string }>>();
+  const add = (ref: OrgRef | null | undefined, where: string, name: string) => {
+    if (!ref || !('entityId' in ref)) return;
+    const list = namings.get(ref.entityId);
+    if (list) list.push({ where, name });
+    else namings.set(ref.entityId, [{ where, name }]);
+  };
+  for (const chart of chartsInTabOrder(ws)) {
+    for (const { node } of legacyTree(chart).rows) {
+      add(rowOrg(chart, node), chart.title || 'Untitled chart', node.name || '(untitled)');
+    }
+  }
+  for (const flow of Object.values(ws.flows)) {
+    for (const step of Object.values(flow.steps)) {
+      for (const [column, ref] of Object.entries(step.parties)) {
+        if (!(COLS as readonly string[]).includes(column)) continue;
+        add(ref, flow.name || 'Untitled flow', step.name || '(untitled step)');
+      }
+    }
+  }
+  for (const artifact of artifactsInOrder(ws)) {
+    add(artifact.ownerRef, 'Deliverables', artifact.name || 'Untitled deliverable');
+  }
+  return namings;
 }

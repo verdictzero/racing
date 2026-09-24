@@ -1,23 +1,48 @@
 import { describe, it, expect } from 'vitest';
 import demo from '../__fixtures__/demo-workspace.json' with { type: 'json' };
+// Digests of every part of the workbook index.html's own `xlsxBytes()` wrote for the demo and two
+// variations of it, run headless in Chromium (en-US, UTC) by scripts/capture-legacy-parity.mjs —
+// rerun it when index.html changes the export.
+import golden from '../__fixtures__/legacy-parity.json' with { type: 'json' };
+import { anchoredVariant, freeFormVariant } from '../__fixtures__/parity-variants.js';
 import { importLegacy } from '../legacy.js';
+import { buildLevelSheets } from './pptx.js';
 import {
-  buildChartSheets,
   buildDeliverableRows,
+  buildDocumentRows,
   buildEntityRows,
   buildFlowRows,
   buildTemplateSheets,
   columnLetter,
   exportTemplate,
   exportXlsx,
-  sheetName,
+  workbookParts,
+  workbookSheets,
   writeWorkbook,
+  xlsxParts,
 } from './xlsx.js';
 import { crc32, zipBytes } from './zip.js';
 
 const { workspace } = importLegacy(demo);
-const chartId = Object.keys(workspace.charts)[0]!;
+const chartId = golden.cases.demo.chartId;
 const chart = workspace.charts[chartId]!;
+const anchored = importLegacy(anchoredVariant(demo)).workspace;
+const freeform = importLegacy(freeFormVariant(demo)).workspace;
+
+/** The locale and zone the golden capture ran in. */
+const CAPTURED = { locale: 'en-US', timeZone: 'UTC' } as const;
+
+async function sha256(text: string): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** The sheet names a workbook's parts declare, in order. */
+const sheetNames = (parts: ReadonlyArray<{ path: string; content: string | Uint8Array }>) => [
+  ...(parts.find((p) => p.path === 'xl/workbook.xml')!.content as string).matchAll(
+    /<sheet name="([^"]*)"/g,
+  ),
+].map((m) => m[1]);
 
 /**
  * A minimal ZIP reader, so the tests read the archive back the way a consumer would rather than
@@ -100,28 +125,27 @@ describe('spreadsheet mechanics', () => {
     expect(columnLetter(702)).toBe('AAA');
   });
 
-  it('strips the characters that make Excel reject the whole workbook', () => {
-    // Not the sheet — the workbook. A free-form chart's tier names are typed by a user, so this is
-    // reachable in normal use and the failure is a file that will not open at all.
-    const taken = new Set<string>();
-    expect(sheetName('Plans / Ops [2026]:*?', taken)).not.toMatch(/[\\/?*[\]:]/);
+  it('numbers a sheet name that is already taken, as the legacy writer does', () => {
+    const sheet = (name: string) => ({ name, headers: ['x'], rows: [] });
+    const parts = workbookParts([sheet('Document'), sheet('Level'), sheet('Document'), sheet('Document')]);
+    expect(sheetNames(parts)).toEqual(['Document', 'Level', 'Document 2', 'Document 3']);
   });
 
-  it('caps a long name at what Excel allows', () => {
-    const taken = new Set<string>();
-    expect(sheetName('x'.repeat(80), taken).length).toBeLessThanOrEqual(31);
-  });
-
-  it('deduplicates names that collide only after sanitizing', () => {
-    const taken = new Set<string>();
-    const a = sheetName('Ops/Plans', taken);
-    const b = sheetName('Ops[Plans', taken);
-    expect(a).not.toBe(b);
-  });
-
-  it('falls back rather than emitting an empty name', () => {
-    const taken = new Set<string>();
-    expect(sheetName('///', taken, 'Sheet 3')).toBe('Sheet 3');
+  it('names a free-form chart’s sheets so Excel will open the workbook', () => {
+    // Not the sheet — the workbook: Excel rejects the whole file over one bad name, and a free-form
+    // chart's level names are typed by a user. `\ / ? * [ ] :` go, and a name that collides after
+    // that — or with one of the fixed sheets — is numbered.
+    expect(sheetNames(xlsxParts(freeform, { chartId: 'c_par_free' }))).toEqual([
+      'Document',
+      'Initiative',
+      'Work stream   phase',
+      'Level 3',
+      'Initiative 2',
+      'Level 5',
+      'Flows',
+      'Deliverables',
+      'Entities',
+    ]);
   });
 });
 
@@ -145,9 +169,15 @@ describe('the workbook', () => {
     expect(rels).toBe(declared);
   });
 
-  it('has one sheet per tier plus the Document header', () => {
+  it('is the Document sheet, one sheet per tier, then the flows and the registries', () => {
     const names = [...parts.get('xl/workbook.xml')!.matchAll(/name="([^"]+)"/g)].map((m) => m[1]);
-    expect(names.slice(0, 5)).toEqual(['Document', 'Portfolio', 'Program', 'Project', 'Task']);
+    // The demo's flows hang off no chart row, so it has no Flows sheet.
+    expect(names).toEqual([
+      'Document', 'Portfolio', 'Program', 'Project', 'Task', 'Deliverables', 'Entities',
+    ]);
+    expect(sheetNames(xlsxParts(anchored, { chartId }))).toEqual([
+      'Document', 'Portfolio', 'Program', 'Project', 'Task', 'Flows', 'Deliverables', 'Entities',
+    ]);
   });
 
   it('carries every one of the 810 rows across its four tier sheets', () => {
@@ -175,22 +205,55 @@ describe('the workbook', () => {
     expect([...exportXlsx(workspace, { chartId })]).toEqual([...exportXlsx(workspace, { chartId })]);
   });
 
-  it('returns a valid one-sheet workbook for a workspace with no charts', () => {
-    const empty = exportXlsx({ ...workspace, charts: {} });
-    expect(unzip(empty).has('xl/worksheets/sheet1.xml')).toBe(true);
+  it('prints the empty Untitled chart index.html makes for a workspace with no charts', () => {
+    const sheets = workbookSheets({ ...workspace, charts: {}, chartOrder: {} });
+    expect(sheets.map((s) => s.name)).toEqual([
+      'Document', 'Portfolio', 'Program', 'Project', 'Task', 'Deliverables', 'Entities',
+    ]);
+    expect(sheets[0]!.rows).toEqual([['Chart', 'Untitled chart', 'Draft', '', '', '', '', '', '']]);
+    expect(sheets.slice(1, 5).map((s) => s.rows.length)).toEqual([0, 0, 0, 0]);
+  });
+
+  it('is the chart in front — the first tab when none is named, or one that does not exist', () => {
+    const want = workbookSheets(freeform, { chartId: 'c_53jst3no' });
+    expect(workbookSheets(freeform)).toEqual(want);
+    expect(workbookSheets(freeform, { chartId: 'c_nope' })).toEqual(want);
   });
 });
 
-describe('what the sheets say', () => {
-  const sheets = buildChartSheets(workspace, chart);
+describe('matches index.html part for part', () => {
+  const inputs = { demo, anchored: anchoredVariant(demo), freeform: freeFormVariant(demo) } as const;
+  for (const name of Object.keys(inputs) as Array<keyof typeof inputs>) {
+    it(`${name}: every part of the workbook is the one index.html writes, in its order`, async () => {
+      const want = golden.cases[name];
+      const { workspace: ws } = importLegacy(inputs[name]);
+      const got: Record<string, string> = {};
+      for (const part of xlsxParts(ws, { chartId: want.chartId, ...CAPTURED })) {
+        got[part.path] = (await sha256(part.content as string)).slice(0, 16);
+      }
+      // Compared as entries, so the part ORDER is held to the legacy's too.
+      expect(Object.entries(got)).toEqual(Object.entries(want.xlsx));
+    });
+  }
+});
 
-  it('writes the RESOLVED RACI, so an inherited owner still shows', () => {
+describe('what the sheets say', () => {
+  const sheets = buildLevelSheets(workspace, chart);
+
+  it('writes the RESOLVED line, so an inherited owner still shows and a blank reads as Informed', () => {
     // A sheet printing only what each row states would drop the cascade — the entire point of a
-    // nested chart — and be wrong in the way nobody notices until they act on it.
-    const tasks = sheets[3]!;
-    const ownerAt = tasks.headers.length - tasks.headers.slice(5).length;
-    const withOwner = tasks.rows.filter((row) => row.slice(ownerAt).some((cell) => cell.includes('A')));
-    expect(withOwner.length).toBe(tasks.rows.length);
+    // nested chart — and be wrong in the way nobody notices until they act on it. "Blank-named
+    // level" is R for legal only, and inherits its owner there from its parent's primary doer; the
+    // parent of "Inherits nothing" has two doers and no primary, so the owner the row above THAT
+    // passes down comes through instead.
+    const level3 = buildLevelSheets(freeform, freeform.charts['c_par_free']!)[2]!;
+    expect(level3.headers).toEqual([
+      'Initiative', 'Work/stream: *phase*', 'Level 3', 'Executive Sponsor', 'Program Office <PMO>', 'Party',
+    ]);
+    expect(level3.rows).toEqual([
+      ['Initiative — Policy Refresh', 'Workstream — Draft Directive', 'Blank-named level', 'I', 'I', 'RA'],
+      ['Initiative — Policy Refresh', 'Two doers, no primary', 'Inherits nothing', 'I', 'AC', 'I'],
+    ]);
   });
 
   it('repeats every ancestor on each row, so a sheet stands alone when filtered', () => {
@@ -203,10 +266,14 @@ describe('what the sheets say', () => {
     }
   });
 
-  it('names the org unit each row is assigned to', () => {
-    const programs = sheets[1]!;
-    expect(programs.headers).toContain('Org unit');
-    expect(programs.rows.some((row) => row[2] !== '')).toBe(true);
+  it('names the division and branch above each row, carried down to the rows below them', () => {
+    expect(sheets[1]!.headers.slice(0, 3)).toEqual(['Portfolio', 'Program', 'Division']);
+    expect(sheets[1]!.rows[0]![2]).toBe('DIRECTORATE A › Division A1 · Chief: Karen Anderson');
+    expect(sheets[3]!.headers.slice(4, 6)).toEqual(['Division (inherited)', 'Branch (inherited)']);
+    expect(sheets[3]!.rows[0]!.slice(4, 6)).toEqual([
+      'DIRECTORATE A › Division A1 · Chief: Karen Anderson',
+      'DIRECTORATE A › Division A1 › Branch A1.1 · Chief: Joshua Sanchez',
+    ]);
   });
 
   it('sizes each tier sheet to that tier', () => {
@@ -214,51 +281,85 @@ describe('what the sheets say', () => {
     expect(sheets.map((s) => s.name)).toEqual(['Portfolio', 'Program', 'Project', 'Task']);
   });
 
+  it('says on the Document sheet what the file is, and when it was signed, in the locale asked for', () => {
+    const rows = buildDocumentRows(anchored, anchored.charts[chartId]!, CAPTURED);
+    expect(rows.map((r) => r.slice(0, 4))).toEqual([
+      ['Chart', 'ASIC <RACI> & "Tool" ’s demo', 'Final', '3/4/2026'],
+      ['Flow', 'Cyber Incident Response (Tabletop)', 'Final', '3/5/2026'],
+      ['Flow', 'Evidence Preservation (procedure)', 'Draft', ''],
+      ['Flow', 'Untitled', 'Draft', ''],
+    ]);
+    const british = buildDocumentRows(anchored, anchored.charts[chartId]!, {
+      locale: 'en-GB',
+      timeZone: 'UTC',
+    });
+    expect(british[0]![3]).toBe('04/03/2026');
+  });
+
   it('ships a Flows sheet only for flows anchored to this chart', () => {
     // The demo's flows are unanchored, so there is nothing to carry — and a Flows sheet of zero
     // rows would be worse than no sheet.
     expect(buildFlowRows(workspace, chart)).toEqual([]);
 
-    const anchored = structuredClone(workspace);
-    const leaf = Object.values(anchored.charts[chartId]!.nodes).find(
-      (n) => !Object.values(anchored.charts[chartId]!.nodes).some((c) => c.parentId === n.id),
-    )!;
-    const flowId = Object.keys(anchored.flows)[0]!;
-    anchored.flows[flowId]!.anchor = { chartId, nodeId: leaf.id };
-
     const rows = buildFlowRows(anchored, anchored.charts[chartId]!);
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0]![1]).toBe(anchored.flows[flowId]!.name);
-    // Every step names the chart row the flow hangs under.
-    for (const row of rows) expect(row[0]).toContain(leaf.name);
+    expect([...new Set(rows.map((r) => r[1]))]).toEqual([
+      'Cyber Incident Response (Tabletop)',
+      'Evidence Preservation (procedure)',
+    ]);
+    // Every step names the chart row its flow hangs under, ancestors first.
+    expect(rows[0]![0]).toBe(
+      "Strategic Portfolio Vision & Objectives › Program Activity 1.1 › Project Activity 1.1.1 › Task Activity 1 — it's <anchored>",
+    );
+  });
+
+  it('writes a step’s roles, parties, deliverables and next steps as the legacy does', () => {
+    const rows = buildFlowRows(anchored, anchored.charts[chartId]!);
+    const detect = rows.find((r) => r[4] === 'Detect & Triage')!;
+    expect(detect.slice(9)).toEqual([
+      'D&HQ: A | C&EW: R',
+      'C&EW → Cyber "D" (default)',
+      '',
+      'Triage Report',
+      '→ Declare Incident (Confirmed incident) [Triage Report]; → After-Action Review (False positive) [Triage Report]',
+    ]);
+    // A step with no name is "Untitled task" here, and "?" where another step points at it.
+    expect(rows.find((r) => r[4] === 'Update risk register')![13]).toBe(
+      '→ ? (Residual risk accepted) [Incident Declaration]',
+    );
+    expect(rows.some((r) => r[4] === 'Untitled task')).toBe(true);
+  });
+
+  it('traces a Chart-Linked step to its row, and marks a column it took back and says differently', () => {
+    const rows = buildFlowRows(anchored, anchored.charts[chartId]!);
+    const freeze = rows.find((r) => r[4] === 'Freeze the host')!;
+    expect(freeze[3]).toBe('Chart-Linked');
+    expect(freeze[6]).toBe(
+      'Portfolio: ASIC <RACI> & "Tool" ’s demo › Strategic Portfolio Vision & Objectives',
+    );
+    expect(freeze[9]).toBe('D&HQ: A | CoS: R | Infra: C | C&EW: R (override) | S&S: C | CMO: I');
+    expect(rows.find((r) => r[4] === 'Hand to legal')![6]).toBe('(linked row is missing)');
+    expect(rows.find((r) => r[4] === 'Seal in evidence store')![6]).toBe('(not linked)');
   });
 
   it('exports a nested-flow box as a pointer, not as work', () => {
-    const anchored = structuredClone(workspace);
-    const chartNodes = anchored.charts[chartId]!.nodes;
-    const leaf = Object.values(chartNodes).find(
-      (n) => !Object.values(chartNodes).some((c) => c.parentId === n.id),
-    )!;
-    const flowId = Object.entries(anchored.flows).find(([, f]) =>
-      Object.values(f.steps).some((s) => s.kind === 'subflow'),
-    )![0];
-    anchored.flows[flowId]!.anchor = { chartId, nodeId: leaf.id };
-
     const rows = buildFlowRows(anchored, anchored.charts[chartId]!);
     const nested = rows.find((row) => row[4]!.startsWith('⧉ '))!;
-    expect(nested).toBeDefined();
-    expect(nested[5]).toContain('Nested flow →');
+    expect(nested.slice(4, 6)).toEqual([
+      '⧉ Preserve evidence',
+      'Nested flow → Evidence Preservation (procedure) — Runs alongside containment — the same procedure every incident uses.',
+    ]);
+    expect(nested.slice(9, 11)).toEqual(['', '']);
   });
 
-  it('lists deliverables with both ends of each, deduplicated by place', () => {
+  it('lists each deliverable’s type and both ends of it, once per handoff, as the legacy does', () => {
     const rows = buildDeliverableRows(workspace);
-    const triage = rows.find((row) => row[0] === 'Triage Report')!;
-    expect(triage).toBeDefined();
-    expect(triage[1]).toBe('Document');
-    // "Detect & Triage" carries it away on two branches. It produces it ONCE — a cell naming the
-    // step twice would read as two producers.
-    expect(triage[2]).toBe('Detect & Triage');
-    expect(triage[3]).toContain('Declare Incident');
+    // "Detect & Triage" carries it away on two branches, and the legacy names it for each.
+    expect(rows.find((row) => row[0] === 'Triage Report')).toEqual([
+      'Triage Report',
+      'document',
+      'Detect & Triage, Detect & Triage',
+      'Declare Incident, After-Action Review',
+    ]);
   });
 
   it('lists entities with everywhere they are named', () => {

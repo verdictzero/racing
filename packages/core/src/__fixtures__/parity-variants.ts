@@ -114,8 +114,9 @@ function edge(id: string, from: string, to: string, label: string, artifactIds: 
 
 /**
  * The org chart signed and carrying flows: the tabletop anchored to a Task row and paginated past
- * one slide, the evidence procedure Chart-Linked and bound at Portfolio, Program and Project, an
- * empty flow, and one anchored to a different chart that must NOT appear.
+ * one slide, the evidence procedure Chart-Linked and bound at Portfolio, Program and Project (one
+ * step taking columns back from its row), an empty flow, and one anchored to a different chart that
+ * must NOT appear.
  */
 export function anchoredVariant(demo: unknown): LegacyFile {
   const s = clone(demo);
@@ -169,6 +170,10 @@ export function anchoredVariant(demo: unknown): LegacyFile {
   evidence.anchor = { chartId: chart.id, nodeId: otherTask.id };
   const [freeze, image, chain, hand] = evidence.tasks;
   freeze!.bind = { chartId: chart.id, nodeId: portfolio.id };
+  // Three columns taken back from the Portfolio row: one the step says differently (C&EW R where the
+  // row says C — marked as an override), one it clears (Mission, which the row has as C), and one it
+  // says exactly as the row does (HQ A — no mark).
+  freeze!.bindOverrides = ['cyber', 'mission', 'hq'];
   image!.bind = { chartId: chart.id, nodeId: program.id };
   chain!.bind = { chartId: chart.id, nodeId: project.id };
   hand!.bind = { chartId: chart.id, nodeId: 'no-such-row' };

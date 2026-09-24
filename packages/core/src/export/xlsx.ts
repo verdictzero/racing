@@ -1,5 +1,5 @@
 /**
- * The Excel export.
+ * The Excel export — index.html's `xlsxBytes()`, out of the DOM.
  *
  * "Most folks responsible for updating, developing and maintaining RACIs would prefer Excel" was
  * the stakeholder note that put this in the product, and it is still the format the chart most
@@ -11,30 +11,58 @@
  * is deterministic to the byte so it can be asserted on. The legacy app reached the same conclusion
  * for the same reasons; this is that writer, out of the DOM and under test.
  *
- * ONE SHEET PER TIER, not one sheet with a level column. A reader who wants "all the projects" gets
- * a sheet of projects, and each row repeats its ancestors so the sheet stands alone when it is
- * filtered, sorted or pasted somewhere else. It is also the shape the importer reads back, which is
- * what makes the round trip through Excel work at all.
+ * THE LEGACY'S WORKBOOK, SHEET FOR SHEET. A Document sheet saying what the file is and whether it
+ * is signed; the chart, one sheet per tier, each row repeating its ancestors (and on an organization
+ * chart the roster units above it) so a sheet stands alone when it is filtered, sorted or pasted
+ * somewhere else; the flows anchored to the chart, a step a row; and the two registries. People
+ * keep the workbook index.html gave them beside this one, so the parity test holds every part of the
+ * package to what index.html writes — the one byte-level difference in the .xlsx file is the ZIP
+ * entry timestamp (see zip.ts). The tier sheets are the ones the PowerPoint deck is paginated from,
+ * as they are in the legacy, and every cell's words come from document-text.ts.
  */
 
-import { chartColumns, type Chart, type Workspace } from '../schema.js';
 import {
   COLS,
   COL_LABELS_DEFAULT,
   ENTITY_KINDS,
   META_PRIORITY_LABELS,
   TIER_LABELS,
+  entityKindMeta,
   framework,
-  type MetaPriority,
 } from '../constants.js';
-import { displayRaci } from '../raci.js';
-import { childIndex, childrenIn, pathTo } from '../tree.js';
-import { orgLabel } from '../org.js';
-import { artifactsInOrder, computeArtifactUses, computeEntityUses, entitiesInOrder } from '../registry.js';
-import { entityKindMeta, artifactTypeMeta } from '../constants.js';
-import { tierLabel } from '../legacy.js';
-import { topologicalOrder } from './order.js';
-import { stepIo } from './xml.js';
+import { stepLabel } from '../lint-context.js';
+import {
+  artifactsInOrder,
+  entitiesInOrder,
+  entityDisplayName,
+  entityDisplayShort,
+} from '../registry.js';
+import { ancestorsOf } from '../tree.js';
+import type { Chart, Workspace } from '../schema.js';
+import {
+  FLOW_MODE_NAMES,
+  STATUS_TEXT,
+  anchorContext,
+  deliverableName,
+  deliverableUses,
+  documentChart,
+  documentColumns,
+  documentTags,
+  entityNamings,
+  escapeHtml as esc,
+  flowStepOrder,
+  flowsAnchoredTo,
+  nestedFlowName,
+  resolvedAnchor,
+  signedOn,
+  stepDeliverables,
+  stepLinkText,
+  stepNextText,
+  stepPartiesText,
+  stepRolesText,
+  type DateStyle,
+} from './document-text.js';
+import { buildLevelSheets } from './pptx.js';
 import { zipBytes, type ZipEntry } from './zip.js';
 
 export interface Sheet {
@@ -43,16 +71,7 @@ export interface Sheet {
   readonly rows: ReadonlyArray<readonly string[]>;
 }
 
-function esc(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/** A1, B1 … Z1, AA1. */
+/** A1, B1 … Z1, AA1 — `colLetter`. */
 export function columnLetter(index: number): string {
   let out = '';
   let n = index + 1;
@@ -64,23 +83,7 @@ export function columnLetter(index: number): string {
   return out;
 }
 
-/**
- * Make a sheet name Excel will actually accept.
- *
- * Excel rejects the whole workbook — not the sheet, the workbook — over a name longer than 31
- * characters or containing any of `\ / ? * [ ] :`. A free-form chart's tier names are typed by a
- * user, so this is reachable in normal use, and the failure is a file that simply will not open.
- * Names are also deduplicated, since two sanitized names can collide even when the originals did not.
- */
-export function sheetName(raw: string, taken: Set<string>, fallback = 'Sheet'): string {
-  const base = raw.replace(/[\\/?*[\]:]/g, ' ').trim().slice(0, 28) || fallback;
-  let name = base;
-  let n = 2;
-  while (taken.has(name.toLowerCase())) name = `${base} ${n++}`;
-  taken.add(name.toLowerCase());
-  return name;
-}
-
+/** One worksheet: a header row, then the rows, every cell an inline string — `sheetXml`. */
 function sheetXml(sheet: Sheet): string {
   const row = (cells: readonly string[], r: number) =>
     `<row r="${r}">${cells
@@ -97,15 +100,25 @@ function sheetXml(sheet: Sheet): string {
   );
 }
 
-/** Assemble a workbook from sheets. Shared with the blank template, which has no content at all. */
-export function writeWorkbook(sheets: readonly Sheet[]): Uint8Array<ArrayBuffer> {
+/**
+ * Every part of a workbook of these sheets, in the order the legacy writes them — `xlsxBytesFor`
+ * short of the ZIP.
+ *
+ * A name that repeats one already taken gets " 2", " 3" … after it, exactly as the legacy guards a
+ * free-form chart's user-named level against the fixed sheet names; making the names safe for Excel
+ * in the first place is the tier sheets' job (see `buildLevelSheets`), as it is in the legacy.
+ */
+export function workbookParts(sheets: readonly Sheet[]): ZipEntry[] {
   const taken = new Set<string>();
-  const named = sheets.map((sheet, i) => ({
-    ...sheet,
-    name: sheetName(sheet.name, taken, `Sheet ${i + 1}`),
-  }));
+  const named = sheets.map((sheet) => {
+    let name = sheet.name;
+    let n = 2;
+    while (taken.has(name)) name = `${sheet.name} ${n++}`;
+    taken.add(name);
+    return { ...sheet, name };
+  });
 
-  const entries: ZipEntry[] = [
+  return [
     {
       path: '[Content_Types].xml',
       content:
@@ -156,8 +169,11 @@ export function writeWorkbook(sheets: readonly Sheet[]): Uint8Array<ArrayBuffer>
     },
     ...named.map((sheet, i) => ({ path: `xl/worksheets/sheet${i + 1}.xml`, content: sheetXml(sheet) })),
   ];
+}
 
-  return zipBytes(entries);
+/** Assemble a workbook from sheets. Shared with the blank template, which has no content at all. */
+export function writeWorkbook(sheets: readonly Sheet[]): Uint8Array<ArrayBuffer> {
+  return zipBytes(workbookParts(sheets));
 }
 
 // ---- the sheets ----------------------------------------------------------------------------------
@@ -167,207 +183,159 @@ export const DOCUMENT_HEADERS = [
 ] as const;
 
 export const FLOW_HEADERS = [
-  'Chart task', 'Flow', 'Status', 'Mode', 'Step', 'Description', 'Entry criteria', 'Exit criteria',
-  'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition',
+  'Chart task', 'Flow', 'Status', 'Mode', 'Step', 'Description', 'Linked chart row', 'Entry criteria',
+  'Exit criteria', 'Roles', 'Responsible parties', 'Inputs', 'Outputs', 'Next / condition',
 ] as const;
 
-const statusName = (status: string) => (status === 'final' ? 'Final' : 'Draft');
+export const DELIVERABLE_HEADERS = ['Deliverable', 'Type', 'Produced by', 'Consumed by'] as const;
 
+export const ENTITY_HEADERS = [
+  'Entity', 'Kind', 'Short', 'Lead', 'Description', 'Named by',
+] as const;
+
+/** One document's header row — `documentRow`. A draft says so; a signed one says when. */
 function documentRow(
   kind: string,
   name: string,
-  o: { status: string; finalizedAt: string | null; meta: { customer: string; priority: string; budget: string; tags: string[]; description: string } },
+  o: Pick<Chart, 'status' | 'finalizedAt' | 'meta'>,
+  style: DateStyle,
 ): string[] {
+  const m = o.meta;
   return [
     kind,
     name,
-    statusName(o.status),
-    o.finalizedAt ?? '',
-    o.meta.customer,
-    META_PRIORITY_LABELS[o.meta.priority as MetaPriority] ?? '',
-    o.meta.budget,
-    o.meta.tags.join(', '),
-    o.meta.description,
+    STATUS_TEXT[o.status].name,
+    signedOn(o, style),
+    m.customer || '',
+    META_PRIORITY_LABELS[m.priority] || '',
+    m.budget || '',
+    documentTags(m).join(', '),
+    m.description || '',
   ];
 }
 
 /**
- * One sheet per tier, each row carrying its ancestors.
- *
- * The RACI written is the RESOLVED one — a child that inherits its owner shows it. A sheet that
- * printed only what each row states would be missing the cascade, which is the entire point of a
- * nested chart, and would be wrong in the way nobody notices until they act on it.
+ * The Document sheet — `buildDocumentRows`: the chart, then every flow anchored to it, each with
+ * its status, signature and metadata. A spreadsheet of a draft that says nothing about being a
+ * draft is the paper version of the failure the status exists to prevent.
  */
-export function buildChartSheets(ws: Workspace, chart: Chart): Sheet[] {
-  const columns = chartColumns(chart);
-  const columnHeaders = columns.map(
-    (key) =>
-      chart.custom?.cols.find((c) => c.key === key)?.label ??
-      ws.columnLabels[key] ??
-      COL_LABELS_DEFAULT[key as keyof typeof COL_LABELS_DEFAULT] ??
-      key,
-  );
-
-  const index = childIndex(chart.nodes);
-  const byDepth: Array<{ name: string; rows: string[][] }> = [];
-  const org = (nodeId: string) => orgLabel(ws, chart.nodes[nodeId]?.org)?.full ?? '';
-
-  const walk = (parentId: string | null, depth: number, ancestors: string[]) => {
-    for (const node of childrenIn(index, parentId)) {
-      const level = (byDepth[depth] ??= { name: tierLabel(chart, depth), rows: [] });
-      const effective = displayRaci(chart, chart.nodes, node.id);
-      level.rows.push([
-        ...ancestors,
-        node.name,
-        org(node.id),
-        ...columns.map((key) => effective[key]?.letters ?? ''),
-      ]);
-      walk(node.id, depth + 1, [...ancestors, node.name]);
-    }
-  };
-  walk(null, 0, []);
-
-  return byDepth.filter(Boolean).map((level, depth) => {
-    const lead: string[] = [];
-    for (let i = 0; i <= depth; i++) lead.push(tierLabel(chart, i));
-    return { name: level.name, headers: [...lead, 'Org unit', ...columnHeaders], rows: level.rows };
-  });
+export function buildDocumentRows(ws: Workspace, chart: Chart, style: DateStyle = {}): string[][] {
+  return [
+    documentRow('Chart', chart.title || 'Untitled chart', chart, style),
+    ...flowsAnchoredTo(ws, chart.id).map((flow) =>
+      documentRow('Flow', flow.name || 'Untitled', flow, style),
+    ),
+  ];
 }
 
 /**
- * The flows this chart's workbook carries: the ones anchored to a row in it.
- *
- * Anchor only, matching `flowsForChart` in index.html. A Chart-Linked flow also records a
- * `sourceChartId` — the chart it was generated from — and arguably belongs to that chart just as
- * much, but the legacy export does not include it and both apps are shipping. Widening it here
- * would mean the same workspace exported from the two apps produced different files, with nothing
- * to tell a reader which was right. Settle it with the flow canvas (PORTING.md slice 3), where
- * linked flows are actually built and there is something to test against.
+ * The Flows sheet — `buildFlowRows`: one row per step, in the order each flow runs, across every
+ * flow anchored to the chart. A nested-flow box is a pointer to the flow it stands for, whose own
+ * rows export wherever that flow is anchored.
  */
-function flowsForChart(ws: Workspace, chartId: string) {
-  return Object.values(ws.flows).filter((f) => f.anchor?.chartId === chartId);
-}
-
 export function buildFlowRows(ws: Workspace, chart: Chart): string[][] {
+  const columns = documentColumns(chart);
   const rows: string[][] = [];
-  const artifactName = (id: string) => ws.artifacts[id]?.name ?? '(missing deliverable)';
-
-  for (const flow of flowsForChart(ws, chart.id)) {
-    const anchorCrumb = flow.anchor
-      ? pathTo(chart.nodes, flow.anchor.nodeId).map((n) => n.name || '(untitled)').join(' › ')
+  for (const flow of flowsAnchoredTo(ws, chart.id)) {
+    const anchor = resolvedAnchor(ws, flow);
+    const context = anchorContext(ws, flow);
+    const crumb = anchor
+      ? [...ancestorsOf(chart.nodes, anchor.node.id).reverse(), anchor.node]
+          .map((n) => n.name || '')
+          .join(' › ')
       : '';
-
-    for (const stepId of topologicalOrder(flow)) {
-      const step = flow.steps[stepId];
-      if (!step) continue;
-      const io = stepIo(flow, step.id);
-      const roles = Object.entries(step.raci)
-        .filter(([, letters]) => letters)
-        .map(([column, letters]) => `${column}: ${letters}`)
-        .join(', ');
-      const parties = Object.entries(step.parties)
-        .map(([column, ref]) => `${column}: ${orgLabel(ws, ref)?.short ?? ''}`)
-        .filter((s) => !s.endsWith(': '))
-        .join(', ');
-      const next = Object.values(flow.edges)
-        .filter((e) => e.from === step.id)
-        .map((e) => `${flow.steps[e.to]?.name ?? '?'}${e.label ? ` (${e.label})` : ''}`)
-        .join('; ');
-
+    for (const step of flowStepOrder(flow)) {
+      const io = stepDeliverables(flow, step.id);
+      const nested = step.kind === 'subflow';
       rows.push([
-        anchorCrumb,
-        flow.name,
-        statusName(flow.status),
-        flow.mode === 'linked' ? 'Chart-linked' : 'Free-form',
-        (step.kind === 'subflow' ? '⧉ ' : '') + (step.name || '(untitled step)'),
-        step.kind === 'subflow'
-          ? `Nested flow → ${ws.flows[step.refId ?? '']?.name ?? '(missing)'}${step.description ? ` — ${step.description}` : ''}`
-          : step.description,
-        step.entry,
-        step.exit,
-        roles,
-        parties,
-        io.inputs.map(artifactName).join(', '),
-        io.outputs.map(artifactName).join(', '),
-        next,
+        crumb,
+        flow.name || '',
+        STATUS_TEXT[flow.status].name,
+        FLOW_MODE_NAMES[flow.mode],
+        (nested ? '⧉ ' : '') + stepLabel(ws, flow, step),
+        nested
+          ? `Nested flow → ${nestedFlowName(ws, flow, step)}${step.description ? ` — ${step.description}` : ''}`
+          : step.description || '',
+        stepLinkText(ws, flow, step, columns),
+        step.entry || '',
+        step.exit || '',
+        stepRolesText(ws, flow, step, columns),
+        stepPartiesText(ws, flow, context, step, columns),
+        io.inputs.map((id) => deliverableName(ws, id)).join(', '),
+        io.outputs.map((id) => deliverableName(ws, id)).join(', '),
+        stepNextText(ws, flow, step),
       ]);
     }
   }
   return rows;
 }
 
-export const DELIVERABLE_HEADERS = [
-  'Deliverable', 'Type', 'Produced by', 'Consumed by', 'Description',
-] as const;
-
-export const ENTITY_HEADERS = [
-  'Entity', 'Kind', 'Short', 'Lead', 'Description', 'Named by',
-] as const;
-
 /**
- * The deliverable registry.
- *
- * Each end is de-duplicated by place: a deliverable carried away from one step on two branches is
- * produced there once, and a cell naming the step twice would read as two producers.
+ * The deliverable registry — `buildDeliverableRows`: each deliverable's type key, and every place
+ * that produces or consumes it, as the legacy lists them (a step handing it on down two branches is
+ * named once per handoff).
  */
 export function buildDeliverableRows(ws: Workspace): string[][] {
-  const uses = computeArtifactUses(ws);
+  const uses = deliverableUses(ws);
   return artifactsInOrder(ws).map((a) => [
-    a.name,
-    artifactTypeMeta(a.type).label,
-    [...new Set((uses.get(a.id)?.producers ?? []).map((u) => u.name))].join(', '),
-    [...new Set((uses.get(a.id)?.consumers ?? []).map((u) => u.name))].join(', '),
-    a.description,
+    a.name || 'Untitled deliverable',
+    a.type,
+    (uses.get(a.id)?.producers ?? []).join(', '),
+    (uses.get(a.id)?.consumers ?? []).join(', '),
   ]);
 }
 
+/** The entity registry — `buildEntityRows`: each entity, and everywhere it is named as a party. */
 export function buildEntityRows(ws: Workspace): string[][] {
+  const namings = entityNamings(ws);
   return entitiesInOrder(ws).map((e) => [
-    e.name,
+    entityDisplayName(e),
     entityKindMeta(e.kind).label,
-    e.short,
-    e.lead?.name ?? '',
-    e.description,
-    computeEntityUses(ws, e.id).map((u) => `${u.where} › ${u.name}`).join('; '),
+    entityDisplayShort(e),
+    e.lead?.name || '',
+    e.description || '',
+    (namings.get(e.id) ?? []).map((u) => `${u.where} › ${u.name}`).join('; '),
   ]);
 }
 
-export interface XlsxOptions {
-  /** Which chart to export. Defaults to the first. */
+/**
+ * Which chart to export, and how its signed date is written.
+ *
+ * The date on a Final chart's (or flow's) Document row prints the way index.html prints it, with
+ * `toLocaleDateString()` in the reader's own locale and zone — see `DateStyle`.
+ */
+export interface XlsxOptions extends DateStyle {
+  /** The chart tab in front of the person — index.html's `ac()`. Absent or unknown: the first tab. */
   readonly chartId?: string;
 }
 
-/** The workbook, as bytes. */
-export function exportXlsx(ws: Workspace, opts: XlsxOptions = {}): Uint8Array<ArrayBuffer> {
-  const chart = opts.chartId ? ws.charts[opts.chartId] : Object.values(ws.charts)[0];
-  if (!chart) return writeWorkbook([{ name: 'Document', headers: DOCUMENT_HEADERS, rows: [] }]);
-
+/** Every sheet of the chart's workbook, in order — what `xlsxBytes` hands the writer. */
+export function workbookSheets(ws: Workspace, opts: XlsxOptions = {}): Sheet[] {
+  const chart = documentChart(ws, opts.chartId);
   const sheets: Sheet[] = [
-    {
-      name: 'Document',
-      headers: DOCUMENT_HEADERS,
-      rows: [
-        documentRow('Chart', chart.title, chart),
-        ...flowsForChart(ws, chart.id).map((flow) => documentRow('Flow', flow.name, flow)),
-      ],
-    },
-    ...buildChartSheets(ws, chart),
+    { name: 'Document', headers: DOCUMENT_HEADERS, rows: buildDocumentRows(ws, chart, opts) },
+    ...buildLevelSheets(ws, chart),
   ];
-
-  const flowRows = buildFlowRows(ws, chart);
-  if (flowRows.length > 0) sheets.push({ name: 'Flows', headers: FLOW_HEADERS, rows: flowRows });
-
-  const deliverables = buildDeliverableRows(ws);
-  if (deliverables.length > 0) {
-    sheets.push({ name: 'Deliverables', headers: DELIVERABLE_HEADERS, rows: deliverables });
+  // Anchored flows and the two registries ride along when there is anything in them.
+  const flows = buildFlowRows(ws, chart);
+  if (flows.length > 0) sheets.push({ name: 'Flows', headers: FLOW_HEADERS, rows: flows });
+  if (artifactsInOrder(ws).length > 0) {
+    sheets.push({ name: 'Deliverables', headers: DELIVERABLE_HEADERS, rows: buildDeliverableRows(ws) });
   }
-
-  const entities = buildEntityRows(ws);
-  if (entities.length > 0) {
-    sheets.push({ name: 'Entities', headers: ENTITY_HEADERS, rows: entities });
+  if (entitiesInOrder(ws).length > 0) {
+    sheets.push({ name: 'Entities', headers: ENTITY_HEADERS, rows: buildEntityRows(ws) });
   }
+  return sheets;
+}
 
-  return writeWorkbook(sheets);
+/** Every part of the chart's workbook, in the order the legacy writes them. */
+export function xlsxParts(ws: Workspace, opts: XlsxOptions = {}): ZipEntry[] {
+  return workbookParts(workbookSheets(ws, opts));
+}
+
+/** The chart's workbook, as bytes. */
+export function exportXlsx(ws: Workspace, opts: XlsxOptions = {}): Uint8Array<ArrayBuffer> {
+  return zipBytes(xlsxParts(ws, opts));
 }
 
 // ---- the blank template --------------------------------------------------------------------------

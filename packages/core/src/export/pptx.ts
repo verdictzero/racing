@@ -12,11 +12,10 @@
  * shared store-only ZIP writer; the one byte-level difference from the legacy file is the entry
  * timestamp, which the legacy writes as zero (not a valid DOS date) and `zipBytes` as 1980-01-01.
  *
- * NOT THE WORKBOOK'S SHEETS. `buildChartSheets` in xlsx.ts looks like the legacy's
- * `buildLevelSheets` and is not: its org-chart sheets carry one "Org unit" column where the legacy
- * carries Division / Branch / "(inherited)" columns, it omits an empty tier the legacy keeps, and
- * it labels units differently. Slides built from it would be different slides, so this module
- * ports `buildLevelSheets` itself (see document-text.ts for the vocabulary both share).
+ * THE WORKBOOK'S SHEETS. The tier tables are the legacy's `buildLevelSheets`, ported here and
+ * shared with the workbook (xlsx.ts), exactly as index.html shares one function between its deck
+ * and its workbook: a slide's table and a sheet are the same rows (see document-text.ts for the
+ * vocabulary both print).
  */
 
 import { COLS, framework } from '../constants.js';

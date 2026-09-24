@@ -1,169 +1,176 @@
 /**
- * Mermaid export.
+ * The Mermaid exports — index.html's `exportMermaid` (a chart, top down) and `exportMermaidFlow`
+ * (a flow, left to right), out of the DOM.
  *
- * The diagram people actually paste into a wiki, which shapes two decisions:
+ * The diagram people actually paste into a wiki, which shaped two of the legacy's decisions, kept
+ * here as they are there:
  *
- *   - Mermaid has no document header, so the chart's name and status go in as a `%%` comment. It
- *     survives the copy-paste, which a separate caption would not.
- *   - Node labels carry only the Accountable and Responsible columns. A full RACI matrix in a box
- *     is unreadable at diagram scale, and the reader who needs it is looking at the chart, not at
- *     a picture of it.
+ *   - Mermaid has no document header, so the name and status go in as a `%%` comment. It survives
+ *     the copy-paste, which a separate caption would not.
+ *   - A chart row's box carries only who is Accountable and who is Responsible. A full RACI matrix
+ *     in a box is unreadable at diagram scale, and the reader who needs it is looking at the chart,
+ *     not at a picture of it.
  *
- * Pure, like the XML exporter, and for the same reason: in `index.html` this reads the active
- * chart from global state and calls `download()`.
+ * Byte for byte what index.html writes — the parity test holds both to the legacy app's own output
+ * for the demo and two variations of it — so a diagram re-exported from either app does not churn
+ * the wiki page it was pasted into.
  */
 
-import { framework } from '../constants.js';
-import { effectiveRaci } from '../raci.js';
-import { childrenOf, rootsOf } from '../tree.js';
-import { chartColumns, type Chart, type Workspace } from '../schema.js';
-import { topologicalOrder } from './order.js';
+import { APP_NAME, APP_STAGE, APP_VERSION, MAX_TIER, framework } from '../constants.js';
+import { childIndex, childrenIn } from '../tree.js';
+import type { ChartNode, Workspace } from '../schema.js';
+import {
+  FLOW_MODE_NAMES,
+  STATUS_TEXT,
+  bindContext,
+  chartColumnTexts,
+  deliverableName,
+  documentChart,
+  documentColumns,
+  documentFlow,
+  flowEdges,
+  freeFormShape,
+  hasSignedStamp,
+  passDown,
+  printedLine,
+  signedOn,
+  stepRolesText,
+  type DateStyle,
+} from './document-text.js';
+
+/** The banner the legacy signs a flow diagram with — `APP_BANNER`. */
+const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
 
 /**
- * Mermaid labels are quoted strings, and a newline or a stray quote ends the diagram rather than
- * the label — so both are removed rather than escaped. `|` would break an edge label the same way.
+ * Which chart, and how a signed date is written — index.html prints it in the reader's own locale
+ * and zone (see `DateStyle`).
  */
-function esc(value: unknown): string {
-  return String(value ?? '')
-    .replace(/"/g, '&quot;')
-    .replace(/[\r\n|]+/g, ' ')
-    .trim();
-}
-
-/** Short column labels, honouring a free-form chart's own names. */
-function shortLabels(ws: Workspace, chart: Chart): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const key of chartColumns(chart)) {
-    const custom = chart.custom?.cols.find((c) => c.key === key);
-    out[key] = custom?.short || custom?.label || ws.columnShort[key] || key;
-  }
-  return out;
-}
-
-export interface MermaidOptions {
-  /** Which chart. Defaults to the first, matching the legacy exporter's "active chart". */
+export interface ChartMermaidOptions extends DateStyle {
+  /** The chart tab in front of the person — index.html's `ac()`. Absent or unknown: the first tab. */
   readonly chartId?: string;
-  /** Include the palette classDefs. Off suits a wiki with its own Mermaid theme. */
-  readonly includeStyles?: boolean;
 }
 
-/** A chart as a top-down Mermaid flowchart. */
-export function exportChartMermaid(ws: Workspace, opts: MermaidOptions = {}): string {
-  const chart = opts.chartId ? ws.charts[opts.chartId] : Object.values(ws.charts)[0];
-  if (!chart) return '%% no chart\nflowchart TD\n';
+/**
+ * A chart as a top-down Mermaid flowchart: a box per row, labelled with who is Accountable and who
+ * is Responsible once the cascade is resolved, and an edge from each row to each of its children.
+ */
+export function exportChartMermaid(ws: Workspace, opts: ChartMermaidOptions = {}): string {
+  const chart = documentChart(ws, opts.chartId);
+  // A quote would end the label and a line break the statement, so both go; nothing else is touched.
+  const esc = (value: string) => value.replace(/"/g, '&quot;').replace(/[\r\n]+/g, ' ');
+  const columns = chartColumnTexts(ws, chart);
+  const keys = columns.map((c) => c.key);
+  const short = new Map(columns.map((c) => [c.key, c.short]));
+  const index = childIndex(chart.nodes);
+  // An org chart ends at its fourth tier, as the legacy loader cuts it.
+  const lastTier = freeFormShape(chart) ? Number.POSITIVE_INFINITY : MAX_TIER;
 
-  const columns = chartColumns(chart);
-  const short = shortLabels(ws, chart);
-  const fw = framework(chart.framework);
-
-  const lines: string[] = [
-    `%% ${esc(chart.title) || 'RACI chart'} — ${chart.status === 'final' ? 'FINAL' : 'DRAFT'}` +
-      (chart.finalizedAt ? ` (signed ${chart.finalizedAt.slice(0, 10)})` : ''),
+  const lines = [
+    `%% ${chart.title || 'RACI chart'} — ${STATUS_TEXT[chart.status].short}` +
+      (hasSignedStamp(chart) ? ` (signed ${signedOn(chart, opts)})` : ''),
     'flowchart TD',
   ];
-
   const tierClass = ['pf', 'pg', 'pj', 'tk'];
   let counter = 0;
 
-  const summary = (nodeId: string): string => {
-    const eff = effectiveRaci(chart, chart.nodes, nodeId);
-    const owners = columns.filter((k) => (eff[k]?.letters ?? '').includes(fw.owner)).map((k) => short[k]!);
-    const doers = columns.filter((k) => (eff[k]?.letters ?? '').includes(fw.doer)).map((k) => short[k]!);
-    return (
-      (owners.length ? `<br/>${fw.owner}: ${esc(owners.join(', '))}` : '') +
-      (doers.length ? `<br/>${fw.doer}: ${esc(doers.join(', '))}` : '')
+  const walk = (
+    node: ChartNode,
+    depth: number,
+    parent: string | null,
+    inherited: string | null,
+  ) => {
+    const id = `n${counter++}`;
+    const line = printedLine(node, inherited, keys);
+    const owners = keys.filter((k) => line[k]!.includes('A')).map((k) => short.get(k)!);
+    const doers = keys.filter((k) => line[k]!.includes('R')).map((k) => short.get(k)!);
+    const summary =
+      (owners.length ? `<br/>A: ${owners.join(', ')}` : '') +
+      (doers.length ? `<br/>R: ${doers.join(', ')}` : '');
+    lines.push(
+      `  ${id}["${esc(node.name) || '(unnamed)'}${summary}"]:::${tierClass[depth] ?? 'tk'}`,
     );
+    if (parent) lines.push(`  ${parent} --> ${id}`);
+    const down = passDown(node, inherited, keys);
+    if (depth < lastTier) {
+      for (const child of childrenIn(index, node.id)) walk(child, depth + 1, id, down);
+    }
   };
+  for (const root of childrenIn(index, null)) walk(root, 0, null, null);
 
-  const walk = (nodeId: string, depth: number, parentMid: string | null) => {
-    const node = chart.nodes[nodeId];
-    if (!node) return;
-    const mid = `n${counter++}`;
-    const cls = tierClass[Math.min(depth, tierClass.length - 1)]!;
-    lines.push(`  ${mid}["${esc(node.name) || '(unnamed)'}${summary(nodeId)}"]:::${cls}`);
-    if (parentMid) lines.push(`  ${parentMid} --> ${mid}`);
-    for (const child of childrenOf(chart.nodes, nodeId)) walk(child.id, depth + 1, mid);
-  };
-
-  for (const root of rootsOf(chart.nodes)) walk(root.id, 0, null);
-
-  if (opts.includeStyles !== false) {
-    lines.push('  classDef pf fill:#1c2b45,stroke:#4dabf7,color:#fff;');
-    lines.push('  classDef pg fill:#1d2540,stroke:#748ffc,color:#fff;');
-    lines.push('  classDef pj fill:#2a2140,stroke:#b07cff,color:#fff;');
-    lines.push('  classDef tk fill:#14271c,stroke:#51cf66,color:#fff;');
-  }
+  lines.push('  classDef pf fill:#1c2b45,stroke:#4dabf7,color:#fff;');
+  lines.push('  classDef pg fill:#1d2540,stroke:#748ffc,color:#fff;');
+  lines.push('  classDef pj fill:#2a2140,stroke:#b07cff,color:#fff;');
+  lines.push('  classDef tk fill:#14271c,stroke:#51cf66,color:#fff;');
   return lines.join('\n') + '\n';
 }
 
-/** A flow as a left-to-right Mermaid graph. Decision points render as diamonds. */
-export function exportFlowMermaid(ws: Workspace, flowId: string, opts: MermaidOptions = {}): string {
-  const flow = ws.flows[flowId];
-  if (!flow) return '%% no flow\nflowchart LR\n';
+/** How a flow's signed date is written, and which chart is in front of the person exporting it. */
+export interface FlowMermaidOptions extends DateStyle {
+  /**
+   * The chart tab in front — index.html's `ac()`. A Chart-Linked step's inherited owner is resolved
+   * through that chart's columns, as the legacy resolves it (see `bindContext`). Absent: the first tab.
+   */
+  readonly chartId?: string;
+}
 
-  const fw = framework(flow.framework);
-  const lines: string[] = [
-    `%% ${esc(flow.name) || 'Flow'} — ${flow.status === 'final' ? 'FINAL' : 'DRAFT'}` +
-      ` · ${flow.mode === 'linked' ? 'Chart-Linked' : 'Free-Form'}` +
-      (flow.finalizedAt ? ` (signed ${flow.finalizedAt.slice(0, 10)})` : ''),
+/**
+ * A flow as a left-to-right Mermaid graph: a box per step, in the order they were drawn, each
+ * labelled with the chart row it implements (a Chart-Linked step) and the roles it assigns; a step
+ * with two or more ways out is a decision diamond; each handoff labelled with its condition and the
+ * deliverables it carries.
+ *
+ * An unknown `flowId` draws the first flow, as index.html's `abc()` falls back to it.
+ */
+export function exportFlowMermaid(
+  ws: Workspace,
+  flowId: string,
+  opts: FlowMermaidOptions = {},
+): string {
+  const flow = documentFlow(ws, flowId);
+  // The legacy strips `|` here as well: it would end an edge label early.
+  const esc = (value: string) => value.replace(/"/g, '&quot;').replace(/[\r\n|]+/g, ' ');
+  const columns = documentColumns(documentChart(ws, opts.chartId));
+  const edges = flowEdges(flow);
+
+  const lines = [
+    `%% ${flow.name || 'Flow'} — ${STATUS_TEXT[flow.status].short} · ${FLOW_MODE_NAMES[flow.mode]}` +
+      (hasSignedStamp(flow) ? ` (signed ${signedOn(flow, opts)})` : ''),
     'flowchart LR',
   ];
 
-  const outCount = new Map<string, number>();
-  for (const edge of Object.values(flow.edges)) {
-    outCount.set(edge.from, (outCount.get(edge.from) ?? 0) + 1);
+  const outgoing = new Map<string, number>();
+  for (const e of edges) outgoing.set(e.from, (outgoing.get(e.from) ?? 0) + 1);
+  const steps = Object.values(flow.steps);
+  const ids = new Map(steps.map((step, i) => [step.id, `s${i}`]));
+
+  for (const step of steps) {
+    const roles = stepRolesText(ws, flow, step, columns);
+    const row = flow.mode === 'linked' ? bindContext(ws, step, columns)?.node : undefined;
+    const label =
+      (esc(step.name) || '(unnamed)') +
+      (row ? `<br/>⛓ ${esc(row.name || 'untitled row')}` : '') +
+      (roles ? `<br/>${esc(roles)}` : '');
+    const id = ids.get(step.id)!;
+    lines.push(
+      (outgoing.get(step.id) ?? 0) >= 2
+        ? `  ${id}{"${label}"}:::dec`
+        : `  ${id}["${label}"]:::step`,
+    );
   }
 
-  // Declared in dependency order, so the .mmd source reads the way the flow runs. Mermaid lays the
-  // graph out itself, but a person reading or diffing the text should not have to trace edges to
-  // work out where it starts. Topological order is deterministic, so a wiki page's diff still does
-  // not churn between exports.
-  const stepIds = topologicalOrder(flow);
-  const mid = new Map(stepIds.map((id, i) => [id, `s${i}`]));
-
-  for (const id of stepIds) {
-    const step = flow.steps[id]!;
-    const roles = fw.roles
-      .map((letter) => {
-        const cols = Object.entries(step.raci)
-          .filter(([, letters]) => letters.includes(letter))
-          .map(([col]) => ws.columnShort[col] || col)
-          .sort();
-        return cols.length ? `${letter}: ${cols.join(', ')}` : '';
-      })
-      .filter(Boolean)
-      .join(' · ');
-
-    const label = `${esc(step.name) || '(unnamed)'}${roles ? `<br/>${esc(roles)}` : ''}`;
-
-    if (step.kind === 'subflow') {
-      // A nested flow is a subroutine, not a decision — even though it has several exits, which
-      // is what the plain out-degree rule would otherwise call it. Mermaid's subroutine shape says
-      // "this stands in for another whole flow", which is exactly what the box means on the canvas.
-      lines.push(`  ${mid.get(id)}[["${label}"]]:::sub`);
-    } else if ((outCount.get(id) ?? 0) >= 2) {
-      lines.push(`  ${mid.get(id)}{"${label}"}:::dec`);
-    } else {
-      lines.push(`  ${mid.get(id)}["${label}"]:::step`);
+  for (const e of edges) {
+    const parts: string[] = [];
+    if (e.label) parts.push(esc(e.label));
+    if (e.artifactIds.length) {
+      parts.push(esc(e.artifactIds.map((id) => deliverableName(ws, id)).join(', ')));
     }
+    lines.push(
+      `  ${ids.get(e.from)} ${parts.length ? `-->|${parts.join(' · ')}|` : '-->'} ${ids.get(e.to)}`,
+    );
   }
 
-  for (const edge of Object.values(flow.edges).sort((a, b) => a.id.localeCompare(b.id))) {
-    const from = mid.get(edge.from);
-    const to = mid.get(edge.to);
-    if (!from || !to) continue;
-    const carried = edge.artifactIds
-      .map((a) => ws.artifacts[a]?.name)
-      .filter(Boolean)
-      .join(', ');
-    const label = [edge.label, carried].filter(Boolean).join(' — ');
-    lines.push(label ? `  ${from} -->|"${esc(label)}"| ${to}` : `  ${from} --> ${to}`);
-  }
-
-  if (opts.includeStyles !== false) {
-    lines.push('  classDef step fill:#1b1e24,stroke:#4dabf7,color:#fff;');
-    lines.push('  classDef dec fill:#2a2140,stroke:#b07cff,color:#fff;');
-    lines.push('  classDef sub fill:#1d2b26,stroke:#51cf66,color:#fff;');
-  }
+  lines.push('  classDef step fill:#14271c,stroke:#51cf66,color:#fff;');
+  lines.push('  classDef dec fill:#2a2140,stroke:#b07cff,color:#fff;');
+  lines.push(`  %% ${framework(flow.framework).name} flow — exported from ${APP_BANNER}`);
   return lines.join('\n') + '\n';
 }
