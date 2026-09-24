@@ -694,6 +694,13 @@ function lockKeyGate(e: KeyboardEvent): void {
 
 function onDocClick(e: MouseEvent): void {
   if (exportOpen.value && !exportMenu.value?.contains(e.target as Node)) exportOpen.value = false;
+  // index.html answers a click on a screen's button by re-rendering the screen, which throws the
+  // button away and the keyboard focus with it. Here the button survives Vue's patch and would keep
+  // focus, so the next Space or Enter would press it again — a second "+ Add", a second delete.
+  // Dropping focus once the click has been handled leaves the keyboard where the source leaves it;
+  // a screen that focuses something new (a fresh row's name) does so after this, and keeps it.
+  const btn = (e.target as Element | null)?.closest?.('#ws-main button');
+  if (btn instanceof HTMLElement) queueMicrotask(() => { if (document.activeElement === btn) btn.blur(); });
 }
 
 let resizeObs: ResizeObserver | null = null;
