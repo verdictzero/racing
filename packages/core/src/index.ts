@@ -20,6 +20,8 @@ export * from './legacy.js';
 export * from './export/xml.js';
 export * from './export/mermaid.js';
 export * from './registry.js';
+export * from './lint-context.js';
+export * from './chart-rules.js';
 export * from './flow-rules.js';
 export * from './cascade.js';
 export * from './flow-geometry.js';

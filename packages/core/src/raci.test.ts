@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import demo from './__fixtures__/demo-workspace.json' with { type: 'json' };
 import { importLegacy } from './legacy.js';
+import { chartViolations } from './chart-rules.js';
 import {
-  chartViolations,
   doerColumns,
   displayRaci,
   effectiveRaci,
@@ -152,17 +152,24 @@ describe('the cascade', () => {
   });
 });
 
+// The rule ids, severities and scope below are index.html's (`recomputeViolations`), which
+// violations.test.ts pins against the legacy app's own output. Where an expectation here changed,
+// the comment beside it says what this engine used to do and what the source does instead.
 describe('chartViolations', () => {
   it('reports two accountable parties as an error', () => {
+    // Was 'multipleOwners'; the source's rule id is 'multipleOwner'.
     const chart = chartOf([['top', null, { hq: 'A', cos: 'A', cyber: 'R' }]]);
     const rules = chartViolations(chart).map((v) => v.rule);
-    expect(rules).toContain('multipleOwners');
-    expect(chartViolations(chart).find((v) => v.rule === 'multipleOwners')!.severity).toBe('err');
+    expect(rules).toContain('multipleOwner');
+    expect(chartViolations(chart).find((v) => v.rule === 'multipleOwner')!.severity).toBe('err');
   });
 
-  it('reports a row nobody owns', () => {
+  it('reports a row nobody owns — as a warning', () => {
+    // Was an ERROR here. In index.html a row with no owner and none inherited is a WARNING: only
+    // two owners on one row is an error. A chart being written has rows nobody has got to yet.
     const chart = chartOf([['top', null, { cyber: 'R' }]]);
-    expect(chartViolations(chart).map((v) => v.rule)).toContain('noOwner');
+    const found = chartViolations(chart).find((v) => v.rule === 'noOwner')!;
+    expect(found.severity).toBe('warn');
   });
 
   it('does not report a row that inherits an owner', () => {
@@ -182,9 +189,50 @@ describe('chartViolations', () => {
     expect(v.severity).toBe('warn');
   });
 
+  it('does not ask a parent row for a doer — only a leaf is a unit of work', () => {
+    // This engine used to flag every row without an R. index.html checks leaf rows only: a parent
+    // is a grouping, and its work is done by the rows beneath it.
+    const chart = chartOf([
+      ['top', null, { hq: 'A' }],
+      ['kid', 'top', { cyber: 'R' }],
+    ]);
+    expect(chartViolations(chart).filter((v) => v.rule === 'noDoer')).toEqual([]);
+  });
+
   it('warns about an undesignated primary doer', () => {
+    // Was 'noPrimaryDoer'; the source's rule id is 'ambiguousPrimaryR'.
     const chart = chartOf([['top', null, { hq: 'A', cyber: 'R', sw: 'R' }]]);
-    expect(chartViolations(chart).map((v) => v.rule)).toContain('noPrimaryDoer');
+    expect(chartViolations(chart).map((v) => v.rule)).toContain('ambiguousPrimaryR');
+  });
+
+  it('warns about a primary that is not one of the row’s doers', () => {
+    // New with the port: index.html's invalidPrimaryR, which this engine did not have.
+    const chart = chartOf([['top', null, { hq: 'A', cyber: 'R', sw: 'R' }, 'cos']]);
+    expect(chartViolations(chart).map((v) => v.rule)).toContain('invalidPrimaryR');
+  });
+
+  it('warns when more than half the columns are Consulted', () => {
+    // New with the port: index.html's overConsulted, which this engine did not have.
+    // Four of the seven columns: the threshold is more than half.
+    const four = { hq: 'A', cyber: 'R', cos: 'C', sw: 'C', infra: 'C', mission: 'C' };
+    expect(chartViolations(chartOf([['top', null, four]])).map((v) => v.rule)).toContain(
+      'overConsulted',
+    );
+    const three = { hq: 'A', cyber: 'R', cos: 'C', sw: 'C', infra: 'C' };
+    expect(chartViolations(chartOf([['top', null, three]])).map((v) => v.rule)).not.toContain(
+      'overConsulted',
+    );
+  });
+
+  it('raises nothing for an owner that overrides the cascade — that is a marker, not a rule', () => {
+    // This engine used to warn 'ownerOverride' here, 668 times on the demo. index.html has no such
+    // chart rule: it draws the owner chip with an amber ring (isOwnerOverride) and says nothing.
+    const chart = chartOf([
+      ['top', null, { hq: 'A', cyber: 'R' }],
+      ['kid', 'top', { sw: 'A', infra: 'R' }],
+    ]);
+    expect(isOwnerOverride(chart, chart.nodes, 'kid')).toBe(true);
+    expect(chartViolations(chart).filter((v) => v.nodeId === 'kid')).toEqual([]);
   });
 
   it('is deterministic — same chart, same list, in the same order', () => {
@@ -253,8 +301,10 @@ describe('the supply check — a declared input nothing produces', () => {
     return 'a_ghost';
   };
 
+  // The rule id was 'inputWithoutProducer' here; index.html's is 'inputNoProducer', and the tests
+  // below say so. What the rule checks is unchanged.
   it('flags an input that nothing anywhere declares as an output or hands over', () => {
-    expect(withInput(addGhost)).toContain('inputWithoutProducer');
+    expect(withInput(addGhost)).toContain('inputNoProducer');
   });
 
   it('names the deliverable, so the message is actionable without hunting', () => {
@@ -265,7 +315,7 @@ describe('the supply check — a declared input nothing produces', () => {
       artifactUses: computeArtifactUses(ws),
       artifacts: ws.artifacts,
     });
-    const v = found.find((x) => x.rule === 'inputWithoutProducer')!;
+    const v = found.find((x) => x.rule === 'inputNoProducer')!;
     expect(v.message).toContain('"Ghost Report"');
     expect(v.severity).toBe('warn');
   });
@@ -279,7 +329,7 @@ describe('the supply check — a declared input nothing produces', () => {
       host.nodes[supplier]!.outputs = ['a_ghost'];
       return 'a_ghost';
     });
-    expect(rules).not.toContain('inputWithoutProducer');
+    expect(rules).not.toContain('inputNoProducer');
   });
 
   it('is satisfied by a flow handoff, not just by a chart row', () => {
@@ -291,7 +341,7 @@ describe('the supply check — a declared input nothing produces', () => {
       Object.values(flow.edges)[0]!.artifactIds = ['a_ghost'];
       return 'a_ghost';
     });
-    expect(rules).not.toContain('inputWithoutProducer');
+    expect(rules).not.toContain('inputNoProducer');
   });
 
   it('does not let a row supply itself', () => {
@@ -306,7 +356,7 @@ describe('the supply check — a declared input nothing produces', () => {
       artifactUses: computeArtifactUses(ws),
       artifacts: ws.artifacts,
     });
-    expect(found.map((v) => v.rule)).toContain('inputWithoutProducer');
+    expect(found.map((v) => v.rule)).toContain('inputNoProducer');
   });
 
   it('ignores an input pointing at a deliverable that no longer exists', () => {
@@ -318,7 +368,7 @@ describe('the supply check — a declared input nothing produces', () => {
       artifactUses: computeArtifactUses(ws),
       artifacts: ws.artifacts,
     });
-    expect(found.map((v) => v.rule)).not.toContain('inputWithoutProducer');
+    expect(found.map((v) => v.rule)).not.toContain('inputNoProducer');
   });
 
   it('does not run at all when the caller cannot supply the index', () => {
@@ -328,7 +378,7 @@ describe('the supply check — a declared input nothing produces', () => {
     addGhost(ws);
     ws.charts[chartId]!.nodes[rowId]!.inputs = ['a_ghost'];
     const found = chartViolations(ws.charts[chartId]!);
-    expect(found.map((v) => v.rule)).not.toContain('inputWithoutProducer');
+    expect(found.map((v) => v.rule)).not.toContain('inputNoProducer');
   });
 });
 
@@ -346,7 +396,7 @@ describe('linting the whole workspace', () => {
     ws.charts[chartId]!.nodes[rowId]!.inputs = ['a_ghost'];
 
     const report = workspaceViolations(ws);
-    expect(report.charts.get(chartId)!.map((v) => v.rule)).toContain('inputWithoutProducer');
+    expect(report.charts.get(chartId)!.map((v) => v.rule)).toContain('inputNoProducer');
   });
 
   it('covers charts and flows in one flat list, with the counts adding up', () => {
@@ -360,29 +410,42 @@ describe('linting the whole workspace', () => {
 
   it('passes an anchored flow the owner its chart row cascades down', () => {
     // The single most annoying false positive this engine can produce is nagging every step of an
-    // anchored flow for an owner it already has. The wrapper exists to make that unforgettable.
+    // anchored flow for an owner it already has.
+    //
+    // Rewritten for the port. It used to anchor under a row that HAS an owner, and assert 'noOwner'
+    // stayed quiet — but the demo's steps all name their own A, so it could not fail. And in
+    // index.html a flow inherits what the cascade would hand the anchor row's CHILDREN, its primary
+    // R column, not the row's own owner (see anchorOwnerColumn). So: a row that cascades an owner,
+    // steps that lean on it, and the source's rule id, 'flowNoOwner'.
     const ws = structuredClone(base);
     const chartId = Object.keys(ws.charts)[0]!;
-    const chart = ws.charts[chartId]!;
-    const owned = Object.keys(chart.nodes).find((id) => {
-      const eff = effectiveRaci(chart, chart.nodes, id);
-      return COLS.some((c) => (eff[c]?.letters ?? '').includes(fw.owner));
-    })!;
     const flowId = Object.keys(ws.flows)[0]!;
-    ws.flows[flowId]!.anchor = { chartId, nodeId: owned };
+    const flow = ws.flows[flowId]!;
+    const cascades = Object.keys(ws.charts[chartId]!.nodes).find(
+      (nodeId) => anchorOwnerColumn(ws, { anchor: { chartId, nodeId } }) !== null,
+    )!;
+    flow.anchor = { chartId, nodeId: cascades };
+    for (const step of Object.values(flow.steps)) {
+      if (step.kind === 'step') step.raci = { cyber: 'R' };
+    }
 
-    expect(anchorOwnerColumn(ws, ws.flows[flowId]!)).not.toBeNull();
+    expect(anchorOwnerColumn(ws, flow)).not.toBeNull();
     const rules = (workspaceViolations(ws).flows.get(flowId) ?? []).map((v) => v.rule);
-    expect(rules).not.toContain('noOwner');
+    expect(rules).not.toContain('flowNoOwner');
+
+    flow.anchor = null;
+    const standalone = (workspaceViolations(ws).flows.get(flowId) ?? []).map((v) => v.rule);
+    expect(standalone).toContain('flowNoOwner');
   });
 
   it('still reports an unanchored flow’s ownerless steps', () => {
+    // Was 'noOwner'; index.html's flow rule is 'flowNoOwner'.
     const ws = structuredClone(base);
     const flowId = Object.keys(ws.flows)[0]!;
     ws.flows[flowId]!.anchor = null;
     for (const step of Object.values(ws.flows[flowId]!.steps)) step.raci = {};
     const rules = (workspaceViolations(ws).flows.get(flowId) ?? []).map((v) => v.rule);
-    expect(rules).toContain('noOwner');
+    expect(rules).toContain('flowNoOwner');
   });
 });
 

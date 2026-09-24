@@ -25,16 +25,16 @@ describe('reachability', () => {
       id: 't_island', flowId: flow.id, kind: 'step', refId: null,
       name: 'Orphaned step', description: '', entry: '', exit: '',
       x: 0, y: 0, groupId: null, raci: { hq: 'A', cyber: 'R' }, parties: {}, bind: null,
-      ports: { in: [], out: [] },
+      bindOverrides: [], ports: { in: [], out: [] },
     };
     // A step with no incoming edge is by definition an ENTRY point, so an isolated one counts as
     // reachable — which is why "disconnected" has to be its own rule rather than a case of
-    // unreachability.
+    // unreachability. The rule id was 'disconnected' here; index.html's is 'flowDisconnected'.
     expect(reachableSteps(flow).has('t_island')).toBe(true);
-    expect(rulesOf(ws, tabletopId)).toContain('disconnected');
+    expect(rulesOf(ws, tabletopId)).toContain('flowDisconnected');
   });
 
-  it('flags a step stranded inside a cycle as unreachable', () => {
+  it('knows a step stranded inside a cycle is unreachable — and, like index.html, says nothing', () => {
     const ws = structuredClone(workspace);
     const flow = ws.flows[tabletopId]!;
     // Two steps that only point at each other: they have handoffs, so they are not disconnected,
@@ -43,14 +43,21 @@ describe('reachability', () => {
       flow.steps[id] = {
         id, flowId: flow.id, kind: 'step', refId: null, name,
         description: '', entry: '', exit: '', x: 0, y: 0, groupId: null,
-        raci: { hq: 'A', cyber: 'R' }, parties: {}, bind: null, ports: { in: [], out: [] },
+        raci: { hq: 'A', cyber: 'R' }, parties: {}, bind: null, bindOverrides: [],
+        ports: { in: [], out: [] },
       };
     }
     flow.edges['e_xy'] = { id: 'e_xy', flowId: flow.id, from: 't_x', to: 't_y', fromPort: null, toPort: null, label: '', artifactIds: [], via: [] };
     flow.edges['e_yx'] = { id: 'e_yx', flowId: flow.id, from: 't_y', to: 't_x', fromPort: null, toPort: null, label: '', artifactIds: [], via: [] };
 
     expect(reachableSteps(flow).has('t_x')).toBe(false);
-    expect(rulesOf(ws, tabletopId)).toContain('unreachable');
+    // This engine used to warn 'unreachable' here. index.html's lintFlow has no reachability rule
+    // at all, so the port raises nothing; `reachableSteps` stays as a question the canvas can ask.
+    expect(rulesOf(ws, tabletopId)).not.toContain('unreachable');
+    // What the stranded pair does get is what any wired step with those letters gets: a bare
+    // handoff, and a doer column with no executing party.
+    const stranded = flowViolations(ws, tabletopId).filter((v) => v.stepId === 't_x');
+    expect(stranded.map((v) => v.rule)).toEqual(['handoffWithoutArtifact', 'flowPartyMissing']);
   });
 
   it('treats a pure cycle as reachable rather than flagging every step', () => {
@@ -68,14 +75,18 @@ describe('reachability', () => {
   });
 });
 
+// The rule ids below are index.html's (`lintFlow`), which violations.test.ts pins against the legacy
+// app's own output. Where an expectation changed, the comment beside it says what this engine used
+// to do and what the source does instead.
 describe('flow rules', () => {
   it('flags a step nobody owns', () => {
+    // Was 'noOwner'; index.html's flow rule is 'flowNoOwner'.
     const ws = structuredClone(workspace);
     const flow = ws.flows[tabletopId]!;
     const step = Object.values(flow.steps).find((s) => s.kind === 'step')!;
     step.raci = { cyber: 'R' }; // a doer but no owner
     const found = flowViolations(ws, tabletopId).filter(
-      (v) => v.stepId === step.id && v.rule === 'noOwner',
+      (v) => v.stepId === step.id && v.rule === 'flowNoOwner',
     );
     expect(found).toHaveLength(1);
   });
@@ -83,26 +94,42 @@ describe('flow rules', () => {
   it('does NOT flag an ownerless step when the flow inherits an owner from its anchor', () => {
     // The single most annoying false positive this engine could produce: an anchored flow's steps
     // have an owner, they just did not have to repeat it.
+    //
+    // This used to hand the rule an owner column through `anchorOwnerColumn` on a flow with no
+    // anchor. The rule now resolves the anchor itself, as index.html does, so the test anchors the
+    // flow for real — under the demo's first row, whose single R cascades down to its children.
     const ws = structuredClone(workspace);
     const flow = ws.flows[tabletopId]!;
+    const chartId = Object.keys(ws.charts)[0]!;
+    const top = Object.values(ws.charts[chartId]!.nodes).find((n) => n.parentId === null)!;
+    flow.anchor = { chartId, nodeId: top.id };
     const step = Object.values(flow.steps).find((s) => s.kind === 'step')!;
     step.raci = { cyber: 'R' };
-    expect(rulesOf(ws, tabletopId, { anchorOwnerColumn: 'hq' })).not.toContain('noOwner');
+    const onStep = (w: Workspace) =>
+      flowViolations(w, tabletopId).filter((v) => v.stepId === step.id).map((v) => v.rule);
+    expect(onStep(ws)).not.toContain('flowNoOwner');
+
+    // The explicit override still works for a caller that wants to ask "what if".
+    flow.anchor = null;
+    expect(onStep(ws)).toContain('flowNoOwner');
+    expect(rulesOf(ws, tabletopId, { anchorOwnerColumn: 'hq' })).not.toContain('flowNoOwner');
   });
 
   it('flags two owners on one step', () => {
+    // Was 'multipleOwners'; index.html's rule id is 'multipleOwner'.
     const ws = structuredClone(workspace);
     const step = Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'step')!;
     step.raci = { hq: 'A', cos: 'A', cyber: 'R' };
-    const found = flowViolations(ws, tabletopId).find((v) => v.rule === 'multipleOwners')!;
+    const found = flowViolations(ws, tabletopId).find((v) => v.rule === 'multipleOwner')!;
     expect(found.severity).toBe('err');
   });
 
   it('flags a decision point whose branches carry no condition', () => {
+    // Was 'unlabelledBranch'; index.html's rule id is 'decisionUnlabeled'.
     const ws = structuredClone(workspace);
     const flow = ws.flows[tabletopId]!;
     for (const edge of Object.values(flow.edges)) edge.label = '';
-    expect(rulesOf(ws, tabletopId)).toContain('unlabelledBranch');
+    expect(rulesOf(ws, tabletopId)).toContain('decisionUnlabeled');
   });
 
   it('does not flag a labelled decision point — the demo labels both branches', () => {
@@ -110,14 +137,16 @@ describe('flow rules', () => {
       (s) => s.name === 'Detect & Triage',
     )!;
     const found = flowViolations(workspace, tabletopId).filter(
-      (v) => v.stepId === detect.id && v.rule === 'unlabelledBranch',
+      (v) => v.stepId === detect.id && v.rule === 'decisionUnlabeled',
     );
     expect(found).toHaveLength(0);
   });
 
   it('flags a handoff that names no deliverable', () => {
     // "And then the work moves along" is exactly what the typed handoff exists to stop.
-    expect(rulesOf(workspace, tabletopId)).toContain('handoffWithoutDeliverable');
+    // Was 'handoffWithoutDeliverable', one per edge; index.html's is 'handoffWithoutArtifact', one
+    // per step, counting that step's bare outgoing handoffs.
+    expect(rulesOf(workspace, tabletopId)).toContain('handoffWithoutArtifact');
   });
 
   it('does not check inputs at all — a flow cannot have one without a producer', () => {
@@ -135,6 +164,7 @@ describe('flow rules', () => {
 
     expect(computeArtifactUses(ws).get('a_ghost')!.producers).toHaveLength(1);
     expect(rulesOf(ws, tabletopId)).not.toContain('inputWithoutProducer');
+    expect(rulesOf(ws, tabletopId)).not.toContain('inputNoProducer');
     // Where it IS a real rule is a chart row, whose inputs are declared rather than delivered.
     // See raci.test.ts.
   });
@@ -159,6 +189,7 @@ describe('flow rules', () => {
     const rules = rulesOf(ws, tabletopId);
     expect(rules).not.toContain('outputNeverConsumed');
     expect(rules).not.toContain('inputWithoutProducer');
+    expect(rules).not.toContain('inputNoProducer');
 
     // …and it is not an orphan either: something DOES point at it. See registry.test.ts for the
     // annotations that answer the question the rule engine deliberately stays quiet about.
@@ -182,8 +213,10 @@ describe('nested-flow rules', () => {
     const rules = flowViolations(workspace, tabletopId)
       .filter((v) => v.stepId === sub.id)
       .map((v) => v.rule);
-    expect(rules).not.toContain('noOwner');
-    expect(rules).not.toContain('noDoer');
+    // The role rules' ids were 'noOwner' / 'noDoer' here; index.html's are these.
+    expect(rules).not.toContain('flowNoOwner');
+    expect(rules).not.toContain('flowNoDoer');
+    expect(rules).not.toContain('flowPartyMissing');
   });
 
   it('flags a box whose flow is gone', () => {
@@ -195,10 +228,24 @@ describe('nested-flow rules', () => {
   });
 
   it('flags a nesting loop', () => {
+    // Rewritten for the port. This used to make the tabletop's box nest the tabletop ITSELF and
+    // expect 'subflowCycle'. index.html's loader clears a self-reference (the editor refuses one),
+    // so such a box points at nothing — 'subflowMissing' — and a loop takes two flows: here the
+    // evidence procedure nests the tabletop that nests it.
     const ws = structuredClone(workspace);
-    const sub = Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'subflow')!;
-    sub.refId = tabletopId; // the flow nests itself
+    const self = structuredClone(ws);
+    const sub = Object.values(self.flows[tabletopId]!.steps).find((s) => s.kind === 'subflow')!;
+    sub.refId = tabletopId;
+    expect(rulesOf(self, tabletopId)).toContain('subflowMissing');
+    expect(rulesOf(self, tabletopId)).not.toContain('subflowCycle');
+
+    const evidence = ws.flows[evidenceId]!;
+    evidence.steps['t_back'] = {
+      ...Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'subflow')!,
+      id: 't_back', flowId: evidenceId, refId: tabletopId, name: 'Back to the tabletop',
+    };
     expect(rulesOf(ws, tabletopId)).toContain('subflowCycle');
+    expect(rulesOf(ws, evidenceId)).toContain('subflowCycle');
   });
 
   it('flags a box pointing at an empty flow', () => {
@@ -251,5 +298,24 @@ describe('flowHealth', () => {
 
   it('returns null for a flow that does not exist', () => {
     expect(flowHealth(workspace, 'b_nope')).toBeNull();
+  });
+
+  it('asks a Chart-Linked flow one more question per step: does it trace to a row?', () => {
+    // index.html's flowHealth, which this one now follows: in Chart-Linked mode a step's owner and
+    // doer come off the row it is bound to, and an unbound step is itself a failed check.
+    const ws = structuredClone(workspace);
+    const flow = ws.flows[tabletopId]!;
+    const ordinary = Object.values(flow.steps).filter((s) => s.kind === 'step');
+    const free = flowHealth(ws, tabletopId)!;
+    flow.mode = 'linked';
+    const linked = flowHealth(ws, tabletopId)!;
+    expect(linked.total).toBe(free.total + ordinary.length);
+    // No step is bound, so every step keeps its own letters and fails only the new check.
+    expect(linked.passed).toBe(free.passed);
+
+    const chartId = Object.keys(ws.charts)[0]!;
+    const rowId = Object.keys(ws.charts[chartId]!.nodes)[0]!;
+    for (const step of ordinary) step.bind = { chartId, nodeId: rowId };
+    expect(flowHealth(ws, tabletopId)!.passed).toBeGreaterThan(linked.passed);
   });
 });

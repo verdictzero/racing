@@ -133,9 +133,12 @@ It also brought across the structure the remaining screens hang off:
 - `useWorkspaceSession()` gives a screen the shared `Y.Doc` and a plain `Workspace` ref. **Use it.**
   Calling `useCollab` from a screen opens a second socket and a second undo manager for the same
   workspace, which is the bug it exists to prevent.
-- `workspaceViolations(ws)` is how you lint. `chartViolations(chart)` on its own silently skips the
-  supply check, and `flowViolations` without an anchor owner column invents a warning on every step
-  of every anchored flow.
+- `viewViolations(ws, { view, chartId, flowId })` is how a screen lints. It is index.html's
+  `recomputeViolations` + `lintFlow`, run over what the legacy app runs them over (the chart in
+  front; in the flow view the open flow, elsewhere every flow anchored to that chart) and returned
+  as its RECORDS — one per row or step, as severe as the worst issue on it. The pill counts those:
+  `violationPillText(records)` words it exactly as index.html does ("410 warnings",
+  "2 errors · 3 warnings"). `chartViolations(chart)` on its own silently skips the supply check.
 
 ### 5 · ~~Tasks / work lens~~ — `renderWork` (index.html:10185)
 
@@ -157,7 +160,9 @@ slice 2. Until then the picker starts empty, which is correct but one click wors
 each step to a chart row and cascades that row's letters onto it, subject to `bindOverrides` and a
 letter translation between frameworks. That subsystem belongs with slice 3. Until it lands,
 `collectWork` treats a linked step exactly like a free one — it under-reports for a linked flow, and
-never mis-reports.
+never mis-reports. The RESOLUTION itself now exists, because the flow rules need it:
+`createLintContext(ws).stepRaci(flow, step)` is index.html's `bizStepRaci`, and `FlowStep` carries
+`bindOverrides`. Use it rather than writing a second one.
 
 ### 6 · Exports — **parallel, one person each**
 
@@ -280,9 +285,15 @@ Before writing anything, check whether it is already done:
 ```
 packages/core/src/tree.ts        childrenOf, pathTo, subtreeOf, planMove, depthOf, findCycles…
 packages/core/src/raci.ts        effectiveRaci, inheritedOwnerColumn, primaryDoerColumn,
-                                 isOwnerOverride, chartViolations
-packages/core/src/flow-rules.ts  flowViolations, flowHealth, reachableSteps, embedWouldCycle
-packages/core/src/violations.ts  workspaceViolations — lint everything, correctly. Start here.
+                                 isOwnerOverride, the violation record types
+packages/core/src/violations.ts  viewViolations, violationRecords, flowsToLint, violationPillText,
+                                 violationIndex, workspaceViolations — the rules, run as index.html
+                                 runs them. Start here.
+packages/core/src/chart-rules.ts chartRecords, chartViolations — recomputeViolations' chart walk
+packages/core/src/flow-rules.ts  flowRecords, flowViolations, flowHealth, embedWouldCycle — lintFlow
+packages/core/src/lint-context.ts
+                                 createLintContext (stepRaci, anchor, bind), legacyTree,
+                                 legacyChartShape — the document as the legacy rules read it
 packages/core/src/registry.ts    objectRegistry, computeArtifactUses, computeEntityUses,
                                  artifactRefCount, filterObjects, orphanArtifacts,
                                  terminalArtifacts, walkChartRows
@@ -307,22 +318,28 @@ exports write** (index.html does the same, so the two apps only agree if you use
 for `displayRaci` in a lens that asks who owns what: a unit does not own work because a blank cell
 defaulted to Informed, and `collectWork` would report every unit as Informed on everything.
 
-Two rules the engine deliberately does NOT raise, so do not "fix" them:
-
-- **"this deliverable is never consumed"** — a terminal report is what a process is usually for.
-  It surfaces as `terminalArtifacts`, an annotation on the gallery card.
-- **"this flow input has no producer"** — unfalsifiable in a flow, because a handoff registers its
-  source step as the producer. It is a real rule about a chart row, and lives in `chartViolations`.
+The rule engine is a PORT, not a design: every rule id, severity and message is index.html's, and
+so is which rows and flows get linted. Rules the legacy app does not raise are not raised here —
+"this deliverable is never consumed" (a terminal report is what a process is usually for; it
+surfaces as `terminalArtifacts`), "this flow input has no producer" (unfalsifiable in a flow; the
+real rule is `inputNoProducer`, on a chart row), an unreachable step, an owner overriding the chart
+cascade (a marker — `isOwnerOverride` — never a chart rule). To change a rule, change it in
+index.html first; the parity test below will then say exactly what to port.
 
 `pnpm test` runs in about fifteen seconds. Run it often.
 
-There are two fixtures, and both are real files rather than hand-written ones:
+There are three fixtures, and all are real files rather than hand-written ones:
 
 - `demo-workspace.json` — the 810-row demo, dumped out of `index.html` v0.39.
 - `foreign-workbook.xlsx` — written by **openpyxl**, not by this repo. Our writer emits inline
   strings in a store-only ZIP; Excel emits shared strings in deflated parts, so a reader tested only
   against our own output would pass everything and still open nothing a user has. Regenerate with
   `scripts/make-foreign-workbook.py`.
+- `legacy-violations.json` — index.html's own `_violations` and warnings pill, read out of the real
+  file in headless Chromium, for the demo and for a workspace built to make every rule fire.
+  `violations.test.ts` checks the port against it, and fails with the function's name if a rule
+  function in index.html changes after the capture. Regenerate with
+  `scripts/capture-legacy-violations.mjs` (it needs a Playwright install; see its header).
 
 ---
 

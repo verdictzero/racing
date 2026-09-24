@@ -6,6 +6,10 @@
  * `effectiveRaci`, `cascadeDown`, `inheritedOwnerCol`, `primaryRColumn` — where they are hard to
  * see and impossible to test without a browser. Here they are pure functions over the node map.
  *
+ * These are the helpers the CHART SCREEN draws with. The violation rules do not use them: they are a
+ * line-for-line port of index.html's own rule pass and read the document the way it does (see
+ * lint-context.ts) — which differs in details a renderer can ignore and a rule cannot.
+ *
  * THE CASCADE, in one paragraph
  * A row's Accountable column is the one that owns its outcome. Its Responsible column is the one
  * that does the work. The cascade says: whoever DOES the work at one tier OWNS it at the next.
@@ -18,7 +22,6 @@
 import { ALL_ROLE_LETTERS, framework, type Framework } from './constants.js';
 import { ancestorsOf, type NodeMap } from './tree.js';
 import { chartColumns, type Chart, type ChartNode } from './schema.js';
-import type { ArtifactUses } from './registry.js';
 
 /**
  * Where a cell's letters came from.
@@ -169,7 +172,13 @@ function mergeLetters(letters: string, add: string): string {
   return order.filter((l) => set.has(l)).join('');
 }
 
-/** True when the row names an owner that differs from the one it would have inherited. */
+/**
+ * True when the row names an owner that differs from the one it would have inherited.
+ *
+ * A MARKER, not a rule: index.html draws it as an amber ring on the owner chip (`.raci-chip.override`)
+ * and raises no chart violation for it. Only a flow STEP overriding its cascade is a rule
+ * (`flowOwnerOverride`, flow-rules.ts).
+ */
 export function isOwnerOverride(
   chart: Pick<Chart, 'custom' | 'framework'>,
   nodes: NodeMap,
@@ -185,10 +194,14 @@ export function isOwnerOverride(
   return inherited !== null && !own.includes(inherited.column);
 }
 
-// ---- the rule engine -----------------------------------------------------------------------------
+// ---- the rule engine's vocabulary ----------------------------------------------------------------
+// The rules themselves are in chart-rules.ts and flow-rules.ts, ported from index.html's
+// `recomputeViolations` and `lintFlow`, and violations.ts runs them the way the legacy app does.
+// The shapes they report in live here, below all of them, so the module graph stays one-way.
 
 export type Severity = 'err' | 'warn';
 
+/** One finding, flat: one rule broken on one row. */
 export interface Violation {
   readonly nodeId: string;
   readonly rule: string;
@@ -196,112 +209,65 @@ export interface Violation {
   readonly message: string;
 }
 
-/**
- * The chart rules, as they exist in the legacy app.
- *
- * Advisory by design: this is a reading list, never a blocker. A chart mid-edit is allowed to be
- * wrong, and a tool that refused to save one would just be worked around.
- */
-/**
- * What `chartViolations` needs that a chart alone cannot answer.
- *
- * A row's declared input may be produced by a row in a DIFFERENT chart, or by a handoff in a flow.
- * That makes the supply check workspace-scoped, and a chart-scoped function cannot do it honestly.
- * Rather than pretend, the check simply does not run unless the caller hands over the index —
- * `workspaceViolations` does, and is what most callers should use.
- */
-export interface ChartRuleContext {
-  /** The producer/consumer index from `computeArtifactUses`, computed once for the workspace. */
-  readonly artifactUses?: Map<string, ArtifactUses>;
-  /** The deliverable registry, for names in the message and to ignore ids that no longer resolve. */
-  readonly artifacts?: Readonly<Record<string, { readonly name: string }>>;
+/** One rule broken, as the legacy popover lists it under its row. */
+export interface ViolationIssue {
+  readonly rule: string;
+  readonly severity: Severity;
+  readonly message: string;
 }
 
-export function chartViolations(chart: Chart, ctx: ChartRuleContext = {}): Violation[] {
-  const columns = chartColumns(chart);
-  const fw = framework(chart.framework);
-  const out: Violation[] = [];
-  const nodes = chart.nodes;
+/**
+ * One step of the crumb a record prints under its name. A chart row's crumb is the rows above it; a
+ * flow step's is its flow, with a null id — exactly as index.html writes it.
+ */
+export interface ViolationCrumb {
+  readonly id: string | null;
+  readonly name: string;
+}
 
-  for (const node of Object.values(nodes)) {
-    const label = node.name || 'Untitled row';
-    const owners = ownerColumns(node, columns, fw);
-    const doers = doerColumns(node, columns, fw);
-    const eff = effectiveRaci(chart, nodes, node.id);
-    const effOwners = columns.filter((c) => (eff[c]?.letters ?? '').includes(fw.owner));
+/**
+ * Everything wrong with ONE chart row: an entry of index.html's `_violations`.
+ *
+ * The legacy app counts, pins and lists these rather than individual issues. A row breaking three
+ * rules is one line in the popover and one toward the pill, and its severity is the worst of them.
+ */
+export interface ChartViolationRecord {
+  readonly kind: 'chart';
+  readonly chartId: string;
+  readonly nodeId: string;
+  readonly flowId?: never;
+  readonly stepId?: never;
+  /** The row's name, or "(untitled)". */
+  readonly name: string;
+  /** Depth in the chart; 0 is the top tier. */
+  readonly tier: number;
+  readonly tierLabel: string;
+  /** The rows above it, top down. */
+  readonly ancestors: readonly ViolationCrumb[];
+  readonly severity: Severity;
+  readonly issues: readonly ViolationIssue[];
+}
 
-    // Exactly one accountable party. Two is the classic RACI failure — nobody owns it, because
-    // both assume the other does.
-    if (owners.length > 1) {
-      out.push({
-        nodeId: node.id,
-        rule: 'multipleOwners',
-        severity: 'err',
-        message: `"${label}" names ${owners.length} ${fw.meta[fw.owner]?.label ?? fw.owner} parties. Exactly one party owns an outcome.`,
-      });
-    }
-    if (effOwners.length === 0) {
-      out.push({
-        nodeId: node.id,
-        rule: 'noOwner',
-        severity: 'err',
-        message: `"${label}" has no ${fw.meta[fw.owner]?.label ?? fw.owner} party, and none cascades down to it.`,
-      });
-    }
-    if (doers.length === 0) {
-      out.push({
-        nodeId: node.id,
-        rule: 'noDoer',
-        severity: 'warn',
-        message: `"${label}" has no ${fw.meta[fw.doer]?.label ?? fw.doer} party — nobody is named to do the work.`,
-      });
-    }
-    if (needsPrimaryDoer(node, columns, fw)) {
-      out.push({
-        nodeId: node.id,
-        rule: 'noPrimaryDoer',
-        severity: 'warn',
-        message: `"${label}" has ${doers.length} ${fw.meta[fw.doer]?.label ?? fw.doer} parties and has not said which one carries down to its children.`,
-      });
-    }
-    if (isOwnerOverride(chart, nodes, node.id)) {
-      out.push({
-        nodeId: node.id,
-        rule: 'ownerOverride',
-        severity: 'warn',
-        message: `"${label}" names an owner different from the one it inherits. Allowed, but deliberate — check it is meant.`,
-      });
-    }
+/** Everything wrong with ONE flow step or nested-flow box. */
+export interface FlowViolationRecord {
+  readonly kind: 'flow';
+  readonly flowId: string;
+  readonly stepId: string;
+  readonly nodeId?: never;
+  readonly tier?: never;
+  readonly name: string;
+  readonly tierLabel: 'Nested flow' | 'Flow step';
+  /** Just the flow, under a null id. */
+  readonly ancestors: readonly ViolationCrumb[];
+  readonly severity: Severity;
+  readonly issues: readonly ViolationIssue[];
+}
 
-    // A declared input that nothing anywhere produces — the supply chain breaks upstream of this
-    // row. Skipped entirely when the caller gave no index, because a chart on its own cannot see
-    // the flow handoff or the sibling chart that might be the producer, and guessing would mean
-    // warning about supplies that exist.
-    //
-    // A row is never its own producer. Listing the same deliverable as both an input and an output
-    // is a row restating what it works on — "takes the register, returns the register" — and
-    // counting that as a supply would silence the rule exactly where it matters.
-    const uses = ctx.artifactUses;
-    if (uses) {
-      const orphans = node.inputs.filter((id) => {
-        if (ctx.artifacts && !ctx.artifacts[id]) return false;
-        const producers = uses.get(id)?.producers ?? [];
-        return !producers.some((p) => !(p.kind === 'chartRow' && p.nodeId === node.id));
-      });
-      if (orphans.length > 0) {
-        const names = orphans.map((id) => `"${ctx.artifacts?.[id]?.name ?? id}"`).join(', ');
-        const one = orphans.length === 1;
-        out.push({
-          nodeId: node.id,
-          rule: 'inputWithoutProducer',
-          severity: 'warn',
-          message: `"${label}" takes in ${names}, but nothing anywhere declares ${one ? 'it' : 'them'} as an output or hands ${one ? 'it' : 'them'} over.`,
-        });
-      }
-    }
-  }
+export type ViolationRecord = ChartViolationRecord | FlowViolationRecord;
 
-  return out.sort((a, b) => a.nodeId.localeCompare(b.nodeId) || a.rule.localeCompare(b.rule));
+/** A record's severity: an error when any one of its issues is. */
+export function worstSeverity(issues: readonly ViolationIssue[]): Severity {
+  return issues.some((i) => i.severity === 'err') ? 'err' : 'warn';
 }
 
 /**

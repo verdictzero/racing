@@ -55,7 +55,9 @@ I/O.** If something needs a browser, a server or a database, it does not belong 
 | `schema.ts` | Zod schemas for everything. Not just types: every one of these crosses a trust boundary (a file someone emailed, a row from Postgres, a value another client wrote into the CRDT). |
 | `fractional.ts` | Ordering keys. See [ADR-0001](adr/0001-flat-tree-fractional-order.md). |
 | `tree.ts` | Navigation and moves over the flat node map, plus cycle/orphan detection and the deterministic repair plan. |
-| `raci.ts` | The cascade and the rule engine. The genuinely hard logic, and the part most worth having under test. |
+| `raci.ts` | The cascade the chart screen draws with. The genuinely hard logic, and the part most worth having under test. |
+| `chart-rules.ts`, `flow-rules.ts`, `violations.ts` | The rule engine: index.html's `recomputeViolations` and `lintFlow`, ported rule for rule and message for message, and run — scoped and counted — the way the legacy app runs them. Pinned to index.html's own output by `violations.test.ts`. |
+| `lint-context.ts` | The document as those rules read it: the legacy app's reading helpers, and the repairs its loader makes before any rule runs. |
 | `legacy.ts` | v0.39 JSON ↔ the flat model, both directions. The contract the whole migration rests on. |
 
 **The invariant:** anything a reviewer would call "a rule about RACI" lives here, so there is exactly
