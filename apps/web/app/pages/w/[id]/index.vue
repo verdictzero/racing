@@ -24,7 +24,7 @@
       </div>
       <div id="zoom-ctl" class="zoom-ctl">
         <button id="zoom-out" title="Zoom out" @click.stop="zoomBy(-0.1)">−</button>
-        <span id="zoom-level" class="zoom-level" title="Reset zoom" @click.stop="setZoom(1)">{{ Math.round(cam.zoom * 100) }}%</span>
+        <span id="zoom-level" class="zoom-level" title="Reset zoom" @click.stop="zoomTo(1)">{{ Math.round(cam.zoom * 100) }}%</span>
         <button id="zoom-in" title="Zoom in" @click.stop="zoomBy(0.1)">+</button>
       </div>
       <ChartPopover :pop="pop" :chart="chart" :cols="cols" :can-edit="canEdit" @close="pop = null"
@@ -81,7 +81,7 @@ const docs = useDocuments();
 const { guardEdit, refuseLockedEdit } = useLock();
 const canEdit = inject<Ref<boolean>>('raci:canEdit', ref(false));
 const attachDocuments = inject<(nodeId: string) => void>('raci:attachDocuments', () => {});
-const { activeNodeId, panesMoved, arrangeTick, openDetails, selectNode } = useChartView();
+const { activeNodeId, arrangeTick, openDetails, selectNode, syncArrangeFab, breatheArrangeFab } = useChartView();
 const activeChartId = useActiveChartId();
 const activeFlowId = useActiveFlowId();
 
@@ -103,12 +103,14 @@ const edit = () => canEdit.value && guardEdit('chart', chart.value);
 
 // ---- the camera --------------------------------------------------------------------------------
 const { cam, update, setZoom } = useChartCamera(session.workspaceId, chartIdRef);
-const zoomBy = (d: number) => setZoom(cam.value.zoom + d);
+/** index.html's setZoom: every step re-lays the cascade out, even one clamped to the same zoom. */
+function zoomTo(z: number): void { setZoom(z); queueLayout(false); }
+const zoomBy = (d: number) => zoomTo(cam.value.zoom + d);
 const cascade = computed(() => (chart.value ? resolveCascade(chart.value, cam.value.drillPath) : null));
 const panes = computed(() => cascade.value?.panes ?? []);
 // A row someone else deleted leaves a path pointing at nothing: follow what could be honoured.
 watch(cascade, (c) => { if (c?.trimmed) update({ drillPath: [...c.path] }); });
-watch(() => cam.value.pos, (pos) => { panesMoved.value = Object.keys(pos).length > 0; }, { immediate: true });
+const syncFab = () => syncArrangeFab(Object.keys(cam.value.pos).length > 0);
 
 // ---- what the panes show -------------------------------------------------------------------------
 const records = computed(() => {
@@ -150,20 +152,27 @@ const svg = ref<SVGSVGElement | null>(null);
 const grip = ref<HTMLElement | null>(null);
 const arranging = ref(false);
 
-function layoutCascade(): void {
+/**
+ * index.html has two kinds of layout pass, and they give different widths. A render (an edit, a
+ * drill, a tab switch) rebuilds #cascade, so layoutCascade measures the panes against the cascade's
+ * NATURAL width. A zoom, a pane drag, a snap back, Auto Arrange, the resize grip and a window
+ * resize only re-run layoutCascade on the cascade already there — whose width the previous pass
+ * wrote, one cascade indent wider than the panes it measured. A pane's max-width is a percentage of
+ * the cascade, so each of those passes widens the focused pane by 48px until it reaches its natural
+ * width. `fresh` says which kind this is; this element persists between renders, so a fresh pass
+ * clears what the last one wrote.
+ */
+function layoutCascade(fresh: boolean): void {
   const wrap = cascadeEl.value;
   if (!wrap) return;
   const blocks = Array.from(wrap.querySelectorAll<HTMLElement>('.chart-block'));
   if (!blocks.length) return;
-  // index.html rebuilds #cascade on every render, so it always measures against the cascade's
-  // NATURAL width. This element persists between renders, so the sizes the last layout wrote have
-  // to go first — otherwise every layout measures against the previous one and the cascade creeps
-  // wider, and the extra width leaks into the party columns (a pane's max-width is a percentage of
-  // the cascade).
-  wrap.style.width = '';
-  wrap.style.height = '';
-  wrap.style.transform = '';
-  if (zoomWrap.value) { zoomWrap.value.style.width = ''; zoomWrap.value.style.height = ''; }
+  if (fresh) {
+    wrap.style.width = '';
+    wrap.style.height = '';
+    wrap.style.transform = '';
+    if (zoomWrap.value) { zoomWrap.value.style.width = ''; zoomWrap.value.style.height = ''; }
+  }
   const n = blocks.length;
   const pos = cam.value.pos;
   const focused = blocks[n - 1]!;
@@ -233,19 +242,35 @@ function drawConnectors(): void {
   }
   s.innerHTML = out + dots;
 }
-function relayout(): void { layoutCascade(); drawConnectors(); }
-watch([() => session.workspace.value, cam, panes], () => nextTick(relayout), { flush: 'post', deep: false });
-onMounted(() => { nextTick(relayout); window.addEventListener('resize', relayout); });
-onBeforeUnmount(() => window.removeEventListener('resize', relayout));
+function relayout(fresh = false): void { layoutCascade(fresh); drawConnectors(); }
+/** One pass after Vue has patched the DOM; if a render and a camera move land together, the render's
+ *  fresh pass is the one index.html would have run. */
+let layoutQueued = false, queuedFresh = false;
+function queueLayout(fresh: boolean): void {
+  queuedFresh ||= fresh;
+  if (layoutQueued) return;
+  layoutQueued = true;
+  nextTick(() => {
+    const f = queuedFresh;
+    layoutQueued = false; queuedFresh = false;
+    relayout(f);
+  });
+}
+// What index.html re-renders for: the document, the drill, the tab. Camera moves queue their own pass.
+watch([() => session.workspace.value, () => cam.value.drillPath, chartIdRef], () => { queueLayout(true); syncFab(); }, { flush: 'post' });
+const onWindowResize = () => relayout(false);
+onMounted(() => { queueLayout(true); syncFab(); window.addEventListener('resize', onWindowResize); });
+onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize));
 
 // ---- auto arrange (index.html autoArrange): drop every manual offset and glide home ------------
 function autoArrange(): void {
   const had = Object.keys(cam.value.pos).length > 0;
   update({ pos: {} });
-  if (!had) { nextTick(relayout); return; }
-  arranging.value = true;
+  syncFab(); // nothing left out of place → the floating button goes
+  queueLayout(false);
+  if (!had) return; // already tidy
+  arranging.value = true; // the CSS transition animates the glide home
   nextTick(() => {
-    layoutCascade();
     let start: number | null = null;
     const frame = (ts: number) => {
       if (start === null) start = ts;
@@ -626,7 +651,7 @@ function onMouseMove(e: MouseEvent): void {
     chartDrag.block.classList.add('dragging-active');
   }
   update({ pos: { ...cam.value.pos, [chartDrag.tier]: { x: Math.max(0, Math.round(chartDrag.ox + dx)), y: Math.max(0, Math.round(chartDrag.oy + dy)) } } });
-  nextTick(relayout);
+  queueLayout(false);
 }
 function onMouseUp(): void {
   if (chartResize) {
@@ -640,15 +665,12 @@ function onMouseUp(): void {
     chartDrag.block.classList.remove('dragging-active');
     document.body.classList.remove('chart-dragging');
     dragSuppressClick = true;
-    // Breathe the floating Auto Arrange only when it first appears.
-    if (!document.querySelector('#arrange-fab.show')) {
-      nextTick(() => {
-        const fab = document.getElementById('arrange-fab');
-        if (!fab) return;
-        fab.classList.remove('attention'); void fab.offsetWidth; fab.classList.add('attention');
-      });
-    }
+    // The floating Auto Arrange appears now, and breathes only when it first appears — a series of
+    // drags must not re-pulse a button already showing.
+    const fabWasHidden = !document.querySelector('#arrange-fab.show');
     drawConnectors();
+    syncFab();
+    if (fabWasHidden) breatheArrangeFab();
   }
   chartDrag = null;
 }
@@ -662,6 +684,8 @@ function onDblClick(e: MouseEvent): void {
     const pos = { ...cam.value.pos };
     delete pos[tier];
     update({ pos });
+    queueLayout(false);
+    syncFab(); // the last pane snapped back → the floating button goes
   }
 }
 /** Scroll zooms the chart, anywhere in #ws-main — the side panels keep normal scrolling. */

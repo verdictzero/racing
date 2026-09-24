@@ -19,8 +19,12 @@ export function useChartView() {
   const showDetails = useState<boolean>('raci:showDetails', () => false);
   /** body.show-legend — persisted per browser, as index.html persists `state.showLegend`. */
   const showLegend = useState<boolean>('raci:showLegend', () => false);
-  /** True while any pane has been dragged out of the cascade; shows the floating Auto Arrange. */
+  /** True while any pane has been dragged out of the cascade; shows the floating Auto Arrange.
+   *  Synced where index.html calls syncArrangeFab — a render, the end of a drag, a snap back, an
+   *  arrange — so the button appears when you let go of a pane, not while you drag it. */
   const panesMoved = useState<boolean>('raci:panesMoved', () => false);
+  /** #arrange-fab.attention — the three breaths it takes when it first appears. */
+  const fabAttention = useState<boolean>('raci:fabAttention', () => false);
   /** Bumped by Auto Arrange (rail button or floating one); the chart screen watches it. */
   const arrangeTick = useState<number>('raci:arrangeTick', () => 0);
 
@@ -36,9 +40,22 @@ export function useChartView() {
   function closeDetails(): void { showDetails.value = false; activeNodeId.value = null; }
   function selectNode(id: string | null): void { activeNodeId.value = id; }
   function arrange(): void { arrangeTick.value++; }
+  /** index.html's syncArrangeFab. */
+  function syncArrangeFab(moved: boolean): void {
+    panesMoved.value = moved;
+    if (!moved) fabAttention.value = false;
+  }
+  /** index.html's breatheArrangeFab: drop the class, reflow, add it back so the animation restarts. */
+  function breatheArrangeFab(): void {
+    fabAttention.value = false;
+    nextTick(() => {
+      void document.getElementById('arrange-fab')?.offsetWidth;
+      fabAttention.value = true;
+    });
+  }
 
   return {
-    activeNodeId, showDetails, showLegend, panesMoved, arrangeTick,
-    setLegend, restoreLegend, openDetails, closeDetails, selectNode, arrange,
+    activeNodeId, showDetails, showLegend, panesMoved, fabAttention, arrangeTick,
+    setLegend, restoreLegend, openDetails, closeDetails, selectNode, arrange, syncArrangeFab, breatheArrangeFab,
   };
 }

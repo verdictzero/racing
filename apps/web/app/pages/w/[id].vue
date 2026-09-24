@@ -7,7 +7,7 @@
     </div>
   </div>
   <ShellViolationsToast :records="violationRecordsNow" @jump="jumpTo" />
-  <button id="arrange-fab" type="button" :class="{ show: view === 'chart' && panesMoved }"
+  <button id="arrange-fab" type="button" :class="{ show: view === 'chart' && panesMoved, attention: fabAttention }"
     title="Snap all moved panes back into the tight nested cascade (or double-click any pane header)" @click="arrange">
     <span class="af-icon" aria-hidden="true">⤧</span><span class="af-text">Auto Arrange</span>
   </button>
@@ -275,7 +275,7 @@ const view = computed(() => {
 const go = (suffix: string) => navigateTo(`/w/${workspaceId}${suffix}`);
 
 // ---- chart-view camera: Details, Legend, Auto Arrange --------------------------------------------
-const { showDetails, showLegend, panesMoved, activeNodeId, setLegend, restoreLegend, openDetails: open, closeDetails, arrange } = useChartView();
+const { showDetails, showLegend, panesMoved, fabAttention, activeNodeId, setLegend, restoreLegend, openDetails: open, closeDetails, arrange } = useChartView();
 const sidebarArrow = ref<HTMLElement | null>(null);
 let arrowTimer: ReturnType<typeof setTimeout> | undefined;
 /**
