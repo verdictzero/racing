@@ -89,6 +89,7 @@ import {
   ACTORS,
   depthOf,
   doerColumns,
+  entitiesInOrder,
   entityKindMeta,
   framework,
   inheritedOwnerColumn,
@@ -281,7 +282,7 @@ const orgOpts = computed(() => {
       }
     }
   }
-  for (const e of Object.values(ws.entities)) {
+  for (const e of entitiesInOrder(ws)) {
     out.push({ ref: { entityId: e.id }, label: `${entityKindMeta(e.kind).icon}  ${e.name?.trim() || 'Untitled entity'}`, g: 'Entities' });
   }
   return out;

@@ -90,6 +90,7 @@
 import {
   COLS,
   MAX_TIER,
+  artifactsInOrder,
   computeArtifactUses,
   depthOf,
   framework,
@@ -177,7 +178,7 @@ function ioTitle(kind: 'in' | 'out', aid: string): string {
     : (names.length ? ` — consumed by: ${names.join(', ')}` : '');
   return artName(aid) + rel;
 }
-const addable = (ids: readonly string[]) => Object.values(session.workspace.value.artifacts).filter((a) => !ids.includes(a.id));
+const addable = (ids: readonly string[]) => artifactsInOrder(session.workspace.value).filter((a) => !ids.includes(a.id));
 function addIo(kind: 'in' | 'out', e: Event): void {
   const sel = e.target as HTMLSelectElement;
   const val = sel.value;
@@ -188,7 +189,7 @@ function addIo(kind: 'in' | 'out', e: Event): void {
   if (val === '__new') {
     const nm = (window.prompt('New deliverable name:') || '').trim();
     if (!nm) return;
-    const existing = Object.values(session.workspace.value.artifacts).find((a) => a.name.trim().toLowerCase() === nm.toLowerCase());
+    const existing = artifactsInOrder(session.workspace.value).find((a) => a.name.trim().toLowerCase() === nm.toLowerCase());
     aid = existing ? existing.id : addArtifact(session.doc, nm, 'other');
   }
   const key = kind === 'in' ? 'inputs' : 'outputs';

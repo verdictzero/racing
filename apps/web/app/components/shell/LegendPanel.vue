@@ -53,7 +53,7 @@
  * The Legend rail — index.html's renderLegend: the active chart's framework, the column →
  * directorate mapping (org charts), and the shared deliverables registry.
  */
-import { ACTORS, ARTIFACT_TYPES, COLS, computeArtifactUses, framework, type Chart } from '@raci/core';
+import { ACTORS, ARTIFACT_TYPES, COLS, artifactsInOrder, computeArtifactUses, framework, type Chart } from '@raci/core';
 import { LOCAL_ORIGIN, addArtifact, deleteArtifact, maps, setArtifactField } from '@raci/crdt';
 
 const props = defineProps<{ chart: Chart | null; canEdit: boolean }>();
@@ -63,7 +63,8 @@ const shell = useShell();
 
 const fw = computed(() => framework(props.chart?.framework));
 // Registry order, as the source lists state.artifacts.
-const artifacts = computed(() => Object.values(session.workspace.value.artifacts));
+// Registry order: the order index.html's array holds them in, the same on every client.
+const artifacts = computed(() => artifactsInOrder(session.workspace.value));
 const uses = computed(() => computeArtifactUses(session.workspace.value));
 function refs(id: string) {
   const u = uses.value.get(id);

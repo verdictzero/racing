@@ -115,7 +115,7 @@
           <span class="ent-sec-note">Parties that are not people and not directorates — boards, committees, vendors, standing teams. Assignable anywhere a directorate is.</span>
         </div>
         <div class="ent-grid">
-          <RosterEntityCard v-for="e in entities" :key="e.id" :entity="e" :uses="entityUsesInOrder(ws, e.id)" />
+          <RosterEntityCard v-for="e in entities" :key="e.id" :entity="e" :uses="computeEntityUses(ws, e.id)" />
           <button v-if="canEdit" class="rost-add ent-add" data-add-entity="1" @click="edits.addEntity()">+ Add entity</button>
         </div>
       </section>
@@ -143,7 +143,7 @@
  * unit with an `externalId` came from the directory and a sync will re-assert it, so its name says
  * so on hover; a unit created here has `externalId: null` on purpose, and `reconcile` preserves it.
  */
-import { ACTOR_LABELS_DEFAULT, ACTORS, entityUsesInOrder, unitStat, type Actor, type Directorate, type OrgRef } from '@raci/core';
+import { ACTOR_LABELS_DEFAULT, ACTORS, computeEntityUses, entitiesInOrder, unitStat, type Actor, type Directorate, type OrgRef } from '@raci/core';
 import { useRosterEdits } from '~/composables/roster/edits';
 
 const session = useWorkspaceSession();
@@ -163,7 +163,8 @@ const EMPTY: Directorate = { lead: null, externalId: null, divisions: [] };
 const dir = (a: Actor): Directorate => ws.value.roster[a] ?? EMPTY;
 const label = (a: Actor) => ws.value.actorLabels[a] || ACTOR_LABELS_DEFAULT[a];
 const stat = (ref: OrgRef) => unitStat(ws.value, ref);
-const entities = computed(() => Object.values(ws.value.entities));
+// Registry order — the order index.html's array holds them in, the same on every client after a reload.
+const entities = computed(() => entitiesInOrder(ws.value));
 /** Each directorate's content as one string — what the Full hierarchy memoises its panels on. */
 const dirSig = computed(() => Object.fromEntries(ACTORS.map((a) => [a, JSON.stringify(dir(a))])) as Record<Actor, string>);
 

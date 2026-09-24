@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import demo from './__fixtures__/demo-workspace.json' with { type: 'json' };
 import { importLegacy } from './legacy.js';
-import { entityUsesInOrder } from './entity-uses.js';
+import { computeEntityUses } from './registry.js';
 import { keyBetween } from './fractional.js';
 import type { ChartNode, Workspace } from './schema.js';
 
@@ -24,16 +24,16 @@ function treeOrder(ws: Workspace): ChartNode[] {
   return out;
 }
 
-describe('entityUsesInOrder — index.html’s entityUses', () => {
+describe('computeEntityUses — index.html’s entityUses, which the Roster and the Gallery both print', () => {
   it('finds nothing for an entity nothing names (the demo’s two)', () => {
-    for (const e of Object.values(workspace.entities)) expect(entityUsesInOrder(workspace, e.id)).toEqual([]);
+    for (const e of Object.values(workspace.entities)) expect(computeEntityUses(workspace, e.id)).toEqual([]);
   });
 
   it('counts a step once per column that names the entity, as the source does', () => {
     const ws = structuredClone(workspace);
     const step = Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'step')!;
     step.parties = { hq: { entityId }, cos: { entityId }, cyber: { actor: 'cyber' } };
-    const uses = entityUsesInOrder(ws, entityId);
+    const uses = computeEntityUses(ws, entityId);
     expect(uses).toHaveLength(2);
     expect(uses.every((u) => u.kind === 'flowStep' && u.stepId === step.id)).toBe(true);
     expect(uses[0]!.where).toMatch(/Tabletop/);
@@ -47,7 +47,7 @@ describe('entityUsesInOrder — index.html’s entityUses', () => {
     // Name the deep row first and the root row second, so record order and tree order disagree.
     ws.charts[chartId]!.nodes[deep.id]!.org = { entityId };
     ws.charts[chartId]!.nodes[first.id]!.org = { entityId };
-    expect(entityUsesInOrder(ws, entityId).map((u) => u.nodeId)).toEqual([first.id, deep.id]);
+    expect(computeEntityUses(ws, entityId).map((u) => u.nodeId)).toEqual([first.id, deep.id]);
   });
 
   it('uses the source’s fallbacks for unnamed places', () => {
@@ -65,7 +65,7 @@ describe('entityUsesInOrder — index.html’s entityUses', () => {
     const art = Object.values(ws.artifacts)[0]!;
     art.ownerRef = { entityId };
 
-    const lines = entityUsesInOrder(ws, entityId).map((u) => `${u.where} › ${u.name}`);
+    const lines = computeEntityUses(ws, entityId).map((u) => `${u.where} › ${u.name}`);
     expect(lines).toEqual([
       'Untitled chart › (untitled)',
       'Untitled flow › (untitled step)',
@@ -85,6 +85,6 @@ describe('entityUsesInOrder — index.html’s entityUses', () => {
     const row = treeOrder(ws)[0]!;
     ws.charts[chartId]!.nodes[row.id]!.org = { entityId };
     second.nodes[row.id]!.org = { entityId };
-    expect(entityUsesInOrder(ws, entityId).map((u) => u.chartId)).toEqual([chartId, 'c_second']);
+    expect(computeEntityUses(ws, entityId).map((u) => u.chartId)).toEqual([chartId, 'c_second']);
   });
 });

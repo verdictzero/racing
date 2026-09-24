@@ -22,7 +22,7 @@ import type { ShellBridge } from '~/composables/useShell';
 import {
   ACTOR_LABELS_DEFAULT,
   ENTITY_KINDS,
-  entityUsesInOrder,
+  computeEntityUses,
   newId,
   type Actor,
   type Entity,
@@ -284,7 +284,7 @@ function createRosterEdits(session: WorkspaceSession, shell: ShellBridge, canEdi
     if (!e) return;
     // References are not rewritten on delete — they read "(missing entity)" — so the warning names
     // what would be left dangling rather than just how many.
-    const uses = entityUsesInOrder(ws(), id);
+    const uses = computeEntityUses(ws(), id);
     if (
       uses.length &&
       !confirm(

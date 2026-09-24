@@ -226,6 +226,7 @@ import {
   ENTITY_KIND_META,
   ENTITY_KINDS,
   artifactTypeMeta,
+  artifactsInOrder,
   computeEntityUses,
   deriveShort,
   entityDisplayName,
@@ -340,7 +341,7 @@ function newDeliverable(): void {
   if (!canEdit.value) return;
   const nm = (window.prompt('New deliverable name:') || '').trim();
   if (!nm) return;
-  const existing = Object.values(ws.value.artifacts).find((a) => a.name.trim().toLowerCase() === nm.toLowerCase());
+  const existing = artifactsInOrder(ws.value).find((a) => a.name.trim().toLowerCase() === nm.toLowerCase());
   if (existing) {
     // "Where is the one that already exists" is the next question, so land on it.
     shell.toast(`"${existing.name}" already exists in the registry.`, 'suggest');
