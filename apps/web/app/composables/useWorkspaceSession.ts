@@ -71,13 +71,13 @@ export function provideWorkspaceSession(workspaceId: string): WorkspaceSession {
     workspace,
     ready,
   };
-  provide(KEY, session);
+  provideOwn(KEY, session);
   return session;
 }
 
 /** Called by any screen inside the workspace. */
 export function useWorkspaceSession(): WorkspaceSession {
-  const session = inject(KEY, null);
+  const session = injectOwn<WorkspaceSession | null>(KEY, null);
   if (!session) throw new Error('useWorkspaceSession() called outside a workspace route');
   return session;
 }

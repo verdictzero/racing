@@ -31,7 +31,7 @@ const NOOP: ShellBridge = { openMeta: () => {}, toast: () => {} };
  * without the shell renders rather than throws.
  */
 export function useShell(): ShellBridge {
-  return inject<ShellBridge>(SHELL_KEY, NOOP);
+  return injectOwn<ShellBridge>(SHELL_KEY, NOOP);
 }
 
 /**
