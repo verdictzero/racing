@@ -25,7 +25,7 @@
             <button v-for="it in colGroups[l]" :key="it.node.id + (it.inherited ? ':i' : '')" type="button" class="cv-item" :data-nodeview-jump="it.node.id"
               :title="`${[...it.path, it.node.name || '(untitled)'].join(' › ')}${it.inherited ? ` — ${fw.meta[fw.owner]?.label} inherited from the cascade` : ''} · click to jump to this row`"
               @click="emit('jump', it.node.id)">
-              <span class="cv-name">{{ it.node.name || '(untitled)' }}<template v-if="it.inherited"> <span class="cv-inh">(inherited)</span></template></span>
+              <span class="cv-name">{{ it.node.name || '(untitled)' }}<template v-if="it.inherited">{{ ' ' }}<span class="cv-inh">(inherited)</span></template></span>
               <span class="cv-tier">{{ tierLabel(chart, it.tier) }}</span>
             </button>
           </div>
@@ -45,7 +45,7 @@
         <span class="cv-chips"><div class="cell-chips"><span v-for="c in chipsFor(k)" :key="c.l + c.cls" class="raci-chip" :class="[c.l, c.cls]" :title="c.title">{{ c.l }}</span></div></span>
       </button>
       <div v-if="ioLines.length" class="cv-io-block">
-        <div v-for="(io, i) in ioLines" :key="i" class="cv-io">{{ io.arrow }} {{ io.name }}<template v-if="io.src !== null"> <span class="cv-io-src" :class="{ none: io.none }">{{ io.src }}</span></template></div>
+        <div v-for="(io, i) in ioLines" :key="i" class="cv-io">{{ io.arrow }} {{ io.name }}<template v-if="io.src !== null">{{ ' ' }}<span class="cv-io-src" :class="{ none: io.none }">{{ io.src }}</span></template></div>
       </div>
       <button v-for="b in rowFlows" :key="b.id" type="button" class="cv-item cv-flow" :data-flow-open="b.id" title="Open this task's flow" @click="emit('openFlow', b.id)">
         <span class="cv-name">⤵ {{ b.name || 'Untitled' }}</span>

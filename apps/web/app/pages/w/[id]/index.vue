@@ -6,7 +6,7 @@
       <div class="art-status-strip" :class="`is-${status}`" data-art-kind="chart">
         <span class="ast-badge">{{ status === 'final' ? '✓' : '✎' }} {{ status === 'final' ? 'FINAL' : 'DRAFT' }}</span>
         <span class="ast-txt">{{ status === 'final' ? 'Signed off, and locked against edits.' : 'Working copy — still being written, and free to change.' }}<template
-          v-if="signedOn"> <span class="ast-when">Signed {{ signedOn }}.</span></template></span>
+          v-if="signedOn">{{ ' ' }}<span class="ast-when">Signed {{ signedOn }}.</span></template></span>
         <button type="button" class="ast-set" data-status-set="chart" :data-status-id="chart.id" :data-status="status === 'final' ? 'draft' : 'final'"
           :title="status === 'final'
             ? `Reopen “${chart.title || 'Untitled chart'}” for editing. Nothing is lost — the status is just a field, and you can mark it Final again whenever you like.`
@@ -96,7 +96,7 @@ const signedOn = computed(() => {
   const at = chart.value?.finalizedAt;
   if (!at) return '';
   const d = new Date(at);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(); // the source's finalizedOn, exactly
 });
 const locked = computed(() => status.value === 'final');
 const edit = () => canEdit.value && guardEdit('chart', chart.value);

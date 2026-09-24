@@ -300,7 +300,11 @@ watch(activeNodeId, (id) => { if (id) openDetails(); });
 // ---- chart tabs ------------------------------------------------------------------------------------
 const chartTabs = computed(() => {
   const ws = session.workspace.value;
-  const order = Object.entries(ws.chartOrder ?? {}).sort(([, a], [, b]) => String(a).localeCompare(String(b))).map(([id]) => id);
+  // Code-unit order, never localeCompare: fractional-index keys are case-sensitive base-62, and a
+  // locale-aware compare folds case — which put a newly added chart BEFORE the existing tabs.
+  const order = Object.entries(ws.chartOrder ?? {})
+    .sort(([, a], [, b]) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0))
+    .map(([id]) => id);
   const ids = order.length ? order : Object.keys(ws.charts);
   return ids.map((id) => ws.charts[id]).filter((c): c is Chart => Boolean(c));
 });
