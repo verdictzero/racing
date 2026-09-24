@@ -7,6 +7,8 @@
  *   /api/workspaces/:id/export?format=json          the v0.39 file index.html reads
  *   /api/workspaces/:id/export?format=xlsx          a workbook, one sheet per tier
  *   /api/workspaces/:id/export?format=template      the blank workbook the importer reads back
+ *   /api/workspaces/:id/export?format=pptx&chartId=c_…&locale=en-US&tz=America/New_York
+ *                                                   one chart as a PowerPoint deck
  *
  * The JSON format is the interoperability one and matters most: it is what lets someone take
  * their work back to the single-file app, or email it to a colleague who has no account. As long
@@ -15,6 +17,10 @@
 
 import { z } from 'zod';
 import {
+  PPTX_CONTENT_TYPE,
+  chartFileBase,
+  chartToPptx,
+  chartsInTabOrder,
   exportChartMermaid,
   exportFlowMermaid,
   exportLegacy,
@@ -26,10 +32,36 @@ import { readWorkspace } from '@raci/crdt';
 import { getWorkspace, loadDoc, recordAudit } from '@raci/db';
 
 const Query = z.object({
-  format: z.enum(['xml', 'mermaid', 'json', 'xlsx', 'template']).default('json'),
+  format: z.enum(['xml', 'mermaid', 'json', 'xlsx', 'template', 'pptx']).default('json'),
   chartId: z.string().optional(),
   flowId: z.string().optional(),
+  /**
+   * How the deck's "signed" date is written. index.html prints it in the reader's own locale and
+   * timezone, so the page passes the browser's; without them it is the server's, which on a UTC
+   * host moves an evening signature in the Americas onto the next day.
+   */
+  locale: z.string().max(64).optional(),
+  tz: z.string().max(64).optional(),
 });
+
+/**
+ * Keep only what this server's `Intl` understands. An unknown locale or zone is dropped rather than
+ * failing the download: the date then prints the server's way, a far smaller loss than no deck.
+ */
+function dateStyle(locale: string | undefined, timeZone: string | undefined) {
+  const accepted = (options: { locale?: string; timeZone?: string }) => {
+    try {
+      const zone = options.timeZone ? { timeZone: options.timeZone } : undefined;
+      return !!new Intl.DateTimeFormat(options.locale, zone);
+    } catch {
+      return false;
+    }
+  };
+  return {
+    locale: locale && accepted({ locale }) ? locale : undefined,
+    timeZone: timeZone && accepted({ timeZone }) ? timeZone : undefined,
+  };
+}
 
 /** A filename that survives a download on every OS. */
 function safeFilename(name: string, extension: string): string {
@@ -64,6 +96,7 @@ export default defineEventHandler(async (event) => {
   let body: string | Uint8Array;
   let contentType: string;
   let extension: string;
+  let filename = query.format === 'template' ? 'raci-template' : record.name;
 
   const SPREADSHEET =
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -113,14 +146,24 @@ export default defineEventHandler(async (event) => {
       contentType = SPREADSHEET;
       extension = 'xlsx';
       break;
+
+    // One chart — the tab in front of the person who asked, or the first tab when they did not
+    // say. Named after the chart as index.html names it, since a deck is about one chart.
+    case 'pptx': {
+      const chart = query.chartId ? workspace.charts[query.chartId] : chartsInTabOrder(workspace)[0];
+      if (!chart) {
+        throw createError({ statusCode: 404, statusMessage: 'No such chart in this workspace' });
+      }
+      body = chartToPptx(workspace, chart.id, dateStyle(query.locale, query.tz));
+      contentType = PPTX_CONTENT_TYPE;
+      extension = 'pptx';
+      filename = chartFileBase(chart);
+      break;
+    }
   }
 
   setHeader(event, 'content-type', contentType);
-  setHeader(
-    event,
-    'content-disposition',
-    `attachment; filename="${safeFilename(query.format === 'template' ? 'raci-template' : record.name, extension)}"`,
-  );
+  setHeader(event, 'content-disposition', `attachment; filename="${safeFilename(filename, extension)}"`);
   // Exports reflect a document that changes continuously; a cached one would be wrong the moment
   // anybody edits.
   setHeader(event, 'cache-control', 'no-store');

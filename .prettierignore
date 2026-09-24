@@ -5,3 +5,6 @@ pnpm-lock.yaml
 dist/
 .nuxt/
 .output/
+# Captured byte for byte from index.html; the parity tests compare against them exactly.
+packages/core/src/__fixtures__/legacy-ingest-kit.md
+packages/core/src/__fixtures__/legacy-parity.json
