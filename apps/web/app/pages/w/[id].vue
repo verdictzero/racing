@@ -87,7 +87,7 @@
           <button id="btn-details" title="Show/hide the Activity Details panel (definitions + documents)"
             @click="showDetails ? closeDetails() : openDetails()">Details</button>
           <button id="btn-legend" title="Show/hide RACI legend" @click="setLegend(!showLegend)">Legend</button>
-          <div id="export-menu" ref="exportMenu" class="export-menu">
+          <div id="export-menu" ref="exportMenu" class="export-menu" :class="{ open: exportOpen }">
             <button id="btn-export-menu" type="button" aria-haspopup="true" :aria-expanded="exportOpen"
               aria-controls="export-menu-list" title="Export the matrix as a document — Print/PDF, PowerPoint, Excel, XML, or Mermaid"
               @click="exportOpen = !exportOpen">⭳ Export <span class="em-caret" aria-hidden="true">▾</span></button>
