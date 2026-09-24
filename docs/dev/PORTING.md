@@ -161,13 +161,10 @@ instead of making you pick. Nothing sets it — matching an account to a roster 
 directory sync to write a person's `externalId` against the user's OIDC subject, and belongs with
 slice 2. Until then the picker starts empty, which is correct but one click worse.
 
-**Also not ported, stated rather than silently wrong:** a Chart-Linked flow (`mode: 'linked'`) binds
-each step to a chart row and cascades that row's letters onto it, subject to `bindOverrides` and a
-letter translation between frameworks. That subsystem belongs with slice 3. Until it lands,
-`collectWork` treats a linked step exactly like a free one — it under-reports for a linked flow, and
-never mis-reports. The RESOLUTION itself now exists, because the flow rules need it:
-`createLintContext(ws).stepRaci(flow, step)` is index.html's `bizStepRaci`, and `FlowStep` carries
-`bindOverrides`. Use it rather than writing a second one.
+`collectWork` is a line-for-line port of index.html's `collectWorkItems`, Chart-Linked flows
+included: a linked step reads its letters through `createLintContext(ws).stepRaci(flow, step)` —
+index.html's `bizStepRaci`, `bindOverrides` and all. Use that resolution rather than writing a
+second one; the flow rules, the exports and the lens all go through it.
 
 ### 6 · ~~Exports~~
 
