@@ -160,7 +160,17 @@
       </template>
     </div>
 
-    <main><NuxtPage /></main>
+    <!-- Same shape as index.html's <main>: the screen renders into #ws-main, and the side panels
+         are its siblings so the flex row lays them out beside it. Each screen's page root is a
+         .ws-page (display: contents — see ours.css), so the source's selectors see the screen's
+         markup as #ws-main's own children. -->
+    <main>
+      <div id="print-head" />
+      <section id="ws-main"><NuxtPage /></section>
+      <aside id="details" aria-label="Activity details panel" />
+      <aside id="legend" />
+      <aside id="bz-party-panel" aria-label="Responsible party picker" />
+    </main>
   </div>
 </template>
 

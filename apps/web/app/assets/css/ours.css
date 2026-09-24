@@ -1,0 +1,61 @@
+/*
+ * Rules this rebuild needs and index.html never had. Loaded AFTER legacy.css.
+ *
+ * Keep this file small, and never use it to restyle something the source already styles — that is
+ * how the two apps drift apart. Everything here exists because the rebuild has something the
+ * single-file app does not: a framework wrapper, a signed-in person, a live connection.
+ */
+
+/*
+ * Nuxt mounts the application into #__nuxt, a wrapper the single-file app has no equivalent of.
+ * The source gives #app-frame `flex: 1` and expects body to be its flex parent; with the wrapper in
+ * between there is nothing to fill, the frame collapses to its content height, and every
+ * full-height pane stops short of the viewport.
+ */
+#__nuxt {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Who is signed in, and whether the collaboration link is up. Sits at the foot of the right rail
+ * below Demo and Clear, where the source's rail simply ends — so the rail above it reads exactly as
+ * the source's does.
+ */
+.rail-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.rail-who .rw-name { color: var(--text); font-weight: 600; }
+.rail-who .rw-role,
+.rail-who .rw-live,
+.rail-who .rw-peers {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0 6px;
+  line-height: 1.6;
+}
+.rail-who .rw-live[data-state='connected'] { color: var(--ok, #51cf66); border-color: rgba(81, 207, 102, 0.5); }
+.rail-who .rw-live[data-state='offline'] { color: var(--warn); border-color: rgba(var(--warn-rgb), 0.5); }
+.actions .rw-out { width: 100%; }
+
+/* The brand block doubles as the way back to the workspace list — the source has one document and
+   so nowhere to go back to. Pointer only; the look is the source's. */
+#brand-zone.to-list { cursor: pointer; }
+
+/*
+ * Every workspace screen's root element. index.html renders each screen's markup DIRECTLY into
+ * #ws-main, and its stylesheet relies on that: #ws-main is a flex column, and screen roots such as
+ * .wk-wrap and .objv size themselves with `min-height: 100%` against it. A Vue page needs one root
+ * element of its own, which would sit between the two and break both. `display: contents` makes
+ * that root generate no box at all, so for layout purposes the screen's markup is #ws-main's own
+ * children again — exactly as in the source.
+ */
+.ws-page { display: contents; }
