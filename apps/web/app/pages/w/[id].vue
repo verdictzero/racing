@@ -1,4 +1,10 @@
 <template>
+  <div id="toast-tray" aria-live="polite">
+    <div v-for="t in toasts" :key="t.id" class="toast" :class="[t.type, { show: t.show }]">
+      <span class="toast-ico">{{ t.type === 'error' ? '⛔' : '💡' }}</span><span>{{ t.message }}</span>
+    </div>
+  </div>
+
   <!-- Fixed, and painted OVER the chart pane rather than behind it — see the note in shell.css.
        Outside #app-frame exactly as in index.html, so its stacking is not trapped in the grid. -->
   <img id="bg-watermark" src="/asic-emblem.png" alt="" aria-hidden="true">
@@ -195,6 +201,7 @@
  */
 import type { ThemeName } from '~/composables/useTheme';
 import { CRUMB_KEY, type Crumb } from '~/composables/useCrumbs';
+import { SHELL_KEY, type ShellBridge, type ToastType } from '~/composables/useShell';
 
 /** Shown in the brand block. Tracks the document format, which is why it is not the package version. */
 const VERSION = '0.39 alpha';
@@ -262,6 +269,27 @@ provide('raci:activeChartId', activeChartId);
 const crumbs = ref<Crumb[]>([]);
 const crumbNav = ref<(index: number) => void>(() => {});
 provide(CRUMB_KEY, { crumbs, crumbNav });
+
+// ---- the bridge screens use to reach chrome outside #ws-main (see composables/useShell.ts) -------
+interface Toast { id: number; message: string; type: ToastType; show: boolean }
+const toasts = ref<Toast[]>([]);
+let toastSeq = 0;
+function toast(message: string, type: ToastType = 'suggest'): void {
+  const t: Toast = { id: ++toastSeq, message, type, show: false };
+  toasts.value.push(t);
+  // Next frame, so the transition runs from the hidden state — same as index.html's showToast.
+  requestAnimationFrame(() => { const live = toasts.value.find((x) => x.id === t.id); if (live) live.show = true; });
+  setTimeout(() => {
+    const live = toasts.value.find((x) => x.id === t.id);
+    if (live) live.show = false;
+    setTimeout(() => { toasts.value = toasts.value.filter((x) => x.id !== t.id); }, 220);
+  }, type === 'error' ? 3200 : 5200);
+}
+const metaTarget = ref<{ kind: 'chart' | 'flow'; id: string | null } | null>(null);
+function openMeta(kind: 'chart' | 'flow', id?: string): void {
+  metaTarget.value = { kind, id: id ?? (kind === 'chart' ? activeChartId.value : null) };
+}
+provide<ShellBridge>(SHELL_KEY, { openMeta, toast });
 
 // ---- status -------------------------------------------------------------------------------------
 const statusLabel = computed(() => {
