@@ -113,7 +113,7 @@
             </div>
           </div>
           <span class="actions-divider" aria-hidden="true" />
-          <div id="theme-switch" class="theme-switch" role="radiogroup" aria-label="Appearance theme">
+          <div id="theme-switch" class="theme-switch" role="radiogroup" aria-label="Appearance theme" @keydown="onThemeKey">
             <span class="ts-label" aria-hidden="true">Theme</span>
             <button v-for="opt in THEME_OPTIONS.slice(0, 2)" :key="opt.id" type="button" class="ts-opt" role="radio"
               :aria-checked="theme === opt.id" :data-theme-set="opt.id" :title="opt.title" @click="setTheme(opt.id)">
@@ -208,7 +208,7 @@
  */
 import { CHART_FRAMEWORKS, FRAMEWORKS, type Chart } from '@raci/core';
 import { LOCAL_ORIGIN, deleteChart, insertChart, setChartField } from '@raci/crdt';
-import type { ThemeName } from '~/composables/useTheme';
+import { THEMES, type ThemeName } from '~/composables/useTheme';
 import { CRUMB_KEY, type Crumb } from '~/composables/useCrumbs';
 import type { CtxEntry } from '~/composables/useContextMenu';
 import { SHELL_KEY, type ShellBridge, type ToastType } from '~/composables/useShell';
@@ -238,6 +238,15 @@ const workspaceId = route.params.id as string;
 const { data: me } = await useFetch('/api/auth/me');
 const session = provideWorkspaceSession(workspaceId);
 const { theme, set: setTheme } = useTheme();
+/** index.html's theme switch: ← and → step through the five themes, and focus follows the choice. */
+function onThemeKey(e: KeyboardEvent): void {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  e.preventDefault();
+  const step = e.key === 'ArrowRight' ? 1 : -1;
+  const next = THEMES[(THEMES.indexOf(theme.value) + step + THEMES.length) % THEMES.length]!;
+  setTheme(next);
+  nextTick(() => document.querySelector<HTMLElement>(`#theme-switch .ts-opt[data-theme-set="${next}"]`)?.focus());
+}
 const canEdit = computed(() => me.value?.user?.role === 'editor' || me.value?.user?.role === 'admin');
 provide('raci:canEdit', canEdit);
 
@@ -605,8 +614,21 @@ function beforePrint(): void {
 function onKey(e: KeyboardEvent): void {
   const t = e.target as HTMLElement | null;
   if (e.key === 'Enter' && !e.shiftKey && t?.matches?.('[contenteditable="true"]')) { e.preventDefault(); t.blur(); return; }
-  if (e.key === 'Escape' && showDetails.value && !(t?.matches?.('input, textarea, [contenteditable="true"]'))) {
-    if (!metaTarget.value) closeDetails();
+  // index.html's first Escape: the topmost of its dialogs, then the Export menu (focus back on its
+  // button). The chart's popover and the context menu close themselves.
+  if (e.key === 'Escape') {
+    if (newChartOpen.value) newChartOpen.value = false;
+    else if (xlsxOpen.value) xlsxOpen.value = false;
+    else if (metaTarget.value) metaTarget.value = null;
+    else if (exportOpen.value) {
+      exportOpen.value = false;
+      document.getElementById('btn-export-menu')?.focus();
+    }
+  }
+  // …and its second, separate listener: Escape closes the Details panel unless you are typing.
+  if (e.key === 'Escape' && showDetails.value) {
+    const a = document.activeElement as HTMLElement | null;
+    if (!(a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' || a.isContentEditable))) closeDetails();
   }
   if ((e.ctrlKey || e.metaKey) && !e.altKey) {
     if (t?.matches?.('input, textarea, [contenteditable="true"]')) return;
@@ -635,6 +657,17 @@ function lockGate(e: Event): void {
   refuseLockedEdit(kind);
 }
 const LOCK_EVENTS = ['beforeinput', 'paste', 'drop', 'dragstart', 'change'] as const;
+/** The delete shortcut, which no CSS lock can take away. Undo and redo stay live on purpose: they
+ *  are how you step back out of a finalize you did not mean to make. */
+function lockKeyGate(e: KeyboardEvent): void {
+  const kind = lockKind.value;
+  if (!kind || (e.key !== 'Delete' && e.key !== 'Backspace')) return;
+  const el = e.target as HTMLElement | null;
+  if (el && (el.isContentEditable || /^(INPUT|TEXTAREA)$/.test(el.tagName || ''))) return;
+  e.preventDefault();
+  e.stopPropagation();
+  refuseLockedEdit(kind);
+}
 
 function onDocClick(e: MouseEvent): void {
   if (exportOpen.value && !exportMenu.value?.contains(e.target as Node)) exportOpen.value = false;
@@ -644,6 +677,7 @@ let resizeObs: ResizeObserver | null = null;
 onMounted(() => {
   restoreLegend();
   for (const t of LOCK_EVENTS) document.addEventListener(t, lockGate, true);
+  document.addEventListener('keydown', lockKeyGate, true);
   document.addEventListener('keydown', onKey);
   document.addEventListener('click', onDocClick);
   window.addEventListener('beforeprint', beforePrint);
@@ -656,6 +690,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   for (const t of LOCK_EVENTS) document.removeEventListener(t, lockGate, true);
+  document.removeEventListener('keydown', lockKeyGate, true);
   document.removeEventListener('keydown', onKey);
   document.removeEventListener('click', onDocClick);
   window.removeEventListener('beforeprint', beforePrint);
