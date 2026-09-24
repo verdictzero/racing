@@ -41,6 +41,7 @@ export function createUndoManager(doc: Y.Doc, opts: UndoOptions = {}): Y.UndoMan
     m.artifacts,
     m.entities,
     m.roster,
+    m.rosterUnits,
     m.meta,
   ];
   return new Y.UndoManager(scope, {

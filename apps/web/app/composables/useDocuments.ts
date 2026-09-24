@@ -65,13 +65,15 @@ export function useDocuments() {
       }
       const id = newDocId();
       try {
+        // No Content-Type of our own: the browser sends the File's, or none when it has none, and the
+        // server records exactly that — index.html's `file.type || ''`.
         const saved = await $fetch<DocRef>(url(id), {
           method: 'PUT',
           body: file,
-          headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
+          headers: { 'X-File-Name': encodeURIComponent(file.name) },
         });
         // Re-read at write time, not before the upload: a collaborator may have attached one too.
-        write(nodeId, [...current(nodeId), { id: saved.id ?? id, name: saved.name ?? file.name, type: saved.type ?? file.type, size: saved.size ?? file.size }]);
+        write(nodeId, [...current(nodeId), { id: saved.id ?? id, name: file.name, type: file.type || '', size: file.size }]);
       } catch {
         alert(`Failed to read "${file.name}".`);
       }

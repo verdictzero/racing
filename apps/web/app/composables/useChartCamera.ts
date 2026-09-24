@@ -55,3 +55,18 @@ export function useChartCamera(workspaceId: string, chartId: Ref<string | null>)
 
   return { cam, update, setZoom };
 }
+
+/**
+ * Write whole cameras for any chart of a workspace — what a Load or a Demo does in index.html,
+ * whose file carries each chart's drillPath, chartPos, chartZoom and chartSize. Call it in setup;
+ * the setter it returns is safe to call later, from a handler.
+ */
+export function useChartCameraStore(workspaceId: string) {
+  const cams = useState<Record<string, ChartCameraState>>('raci:chartCameras', () => ({}));
+  return function put(chartId: string, patch: Partial<ChartCameraState>): void {
+    const next: ChartCameraState = { ...blank(), ...patch };
+    next.zoom = Number.isFinite(next.zoom) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next.zoom)) : 1;
+    cams.value = { ...cams.value, [chartId]: next };
+    try { localStorage.setItem(PREFIX + workspaceId + ':' + chartId, JSON.stringify(next)); } catch { /* session only */ }
+  };
+}
