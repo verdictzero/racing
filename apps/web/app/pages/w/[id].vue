@@ -134,6 +134,9 @@
             <span class="rw-live" :data-state="session.status.value" :title="statusTitle">{{ statusLabel }}</span>
             <span v-if="session.peers.value > 1" class="rw-peers">{{ session.peers.value }} here</span>
           </div>
+          <button v-if="me?.user?.role === 'admin'" class="rw-sync" :disabled="syncing"
+            title="Sync from directory — read the organization directory now and bring this workspace's roster in line with it"
+            @click="syncDirectory"><span aria-hidden="true">⟳</span><span class="rs-label">{{ syncing ? ' Syncing…' : ' Sync from directory' }}</span></button>
           <button class="rw-out" :title="`Sign out ${me?.user?.displayName ?? ''} (${me?.user?.role ?? ''} · ${statusLabel})`" @click="signOut">Sign out</button>
         </div>
       </div>
@@ -553,6 +556,24 @@ async function onDocuments(e: Event): Promise<void> {
   attachTo = null;
 }
 provide('raci:attachDocuments', pickDocuments);
+
+/** Ours: pull the org from the directory (AD / Entra) into this workspace's roster, now. */
+const syncing = ref(false);
+async function syncDirectory(): Promise<void> {
+  if (syncing.value) return;
+  syncing.value = true;
+  try {
+    const result = await $fetch<{ status: string; message: string }>('/api/directory/sync', {
+      method: 'POST',
+      body: { workspaceId },
+    });
+    toast(result.message, result.status === 'failed' || result.status === 'refused' ? 'error' : 'suggest');
+  } catch (err) {
+    toast(err instanceof Error ? err.message : 'The sync could not be started.', 'error');
+  } finally {
+    syncing.value = false;
+  }
+}
 
 async function signOut() {
   const result = await $fetch<{ endSessionUrl: string | null }>('/api/auth/logout', { method: 'POST' });

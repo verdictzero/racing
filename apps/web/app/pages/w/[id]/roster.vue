@@ -1,14 +1,8 @@
 <template>
   <div class="ws-page">
-    <div ref="headerEl" class="roster-header">
+    <div class="roster-header">
       <h2>Roster</h2>
-      <span ref="metaEl" class="meta">Org structure under each directorate (shared across workstreams). Divisions, branches, and people are all optional.</span>
-      <!-- Ours, not the source's: the server can pull the org from the directory (AD / Entra).
-           Administrators only, and immediately left of the layout toggle so the toggle stays where
-           index.html puts it — see ours.css and fitSync below. -->
-      <button v-if="isAdmin" ref="syncEl" class="rost-sync" :class="{ compact: syncCompact }" :disabled="syncing"
-        title="Sync from directory — read the organization directory now and bring this roster in line with it"
-        @click="runSync"><span class="rs-ico" aria-hidden="true">⟳</span><span class="rs-label">{{ syncing ? ' Syncing…' : ' Sync from directory' }}</span></button>
+      <span class="meta">Org structure under each directorate (shared across workstreams). Divisions, branches, and people are all optional.</span>
       <div class="rost-modes" role="tablist" aria-label="Roster layout">
         <button data-roster-mode="explore" :class="{ active: layout === 'explore' }"
           title="Big boxes — drill directorate → division → branch → team" @click="setLayout('explore')">▦ Explore</button>
@@ -153,7 +147,6 @@ import { ACTOR_LABELS_DEFAULT, ACTORS, entityUsesInOrder, unitStat, type Actor, 
 import { useRosterEdits } from '~/composables/roster/edits';
 
 const session = useWorkspaceSession();
-const shell = useShell();
 const edits = useRosterEdits();
 const canEdit = edits.canEdit;
 
@@ -272,71 +265,4 @@ const crumbs = computed(() => {
   out.push({ text: tm?.name || 'Unnamed team', goto: '', current: true });
   return out;
 });
-
-// ---- directory sync (ours: the source has no directory) ---------------------------------------------
-// The same call the shell makes, so it is the shell's answer (Nuxt shares it) rather than a second one.
-const { data: me } = useFetch('/api/auth/me');
-const isAdmin = computed(() => me.value?.user?.role === 'admin');
-const syncing = ref(false);
-
-/**
- * The header is index.html's, and the sync button must not rearrange it. With its label the button
- * fits beside the note at wide widths; where it would not, taking the room would wrap the note onto
- * a second line and squeeze the toggle's labels. So it drops to its ⟳ alone whenever the full label
- * would take space the source's own layout is using, and comes back once there is room again.
- *
- * The room is read off the layout itself: the note ends, then the flex gap, then the button's auto
- * margin — which is exactly the free space, and collapses to nothing the moment anything is squeezed.
- */
-const headerEl = ref<HTMLElement | null>(null);
-const metaEl = ref<HTMLElement | null>(null);
-const syncEl = ref<HTMLElement | null>(null);
-const syncCompact = ref(false);
-function fitSync() {
-  const header = headerEl.value;
-  const meta = metaEl.value;
-  const btn = syncEl.value;
-  if (!header || !meta || !btn) return;
-  const gap = parseFloat(getComputedStyle(header).columnGap) || 0;
-  const free = btn.getBoundingClientRect().left - meta.getBoundingClientRect().right - gap;
-  if (!syncCompact.value) {
-    if (free < 0.5) syncCompact.value = true;
-    return;
-  }
-  // Compact, the label is laid out but takes no room (see ours.css), so it can still be measured.
-  const extra = btn.querySelector<HTMLElement>('.rs-label')?.getBoundingClientRect().width ?? 0;
-  if (free >= extra + 1) syncCompact.value = false;
-}
-// Re-measured whenever the header, the note or the button changes size — a resize, a rail folding
-// away, fonts arriving — and whenever the button itself comes or goes.
-let fitObserver: ResizeObserver | null = null;
-watch(
-  [headerEl, metaEl, syncEl],
-  (els) => {
-    fitObserver ??= new ResizeObserver(() => fitSync());
-    fitObserver.disconnect();
-    for (const el of els) if (el) fitObserver.observe(el);
-    fitSync();
-  },
-  { flush: 'post' },
-);
-onBeforeUnmount(() => fitObserver?.disconnect());
-// "Syncing…" is shorter than "Sync from directory"; either way, re-check once it has rendered.
-watch([syncing, syncCompact], () => void nextTick(fitSync));
-
-async function runSync() {
-  if (syncing.value) return;
-  syncing.value = true;
-  try {
-    const result = await $fetch<{ status: string; message: string }>('/api/directory/sync', {
-      method: 'POST',
-      body: { workspaceId: session.workspaceId },
-    });
-    shell.toast(result.message, result.status === 'failed' || result.status === 'refused' ? 'error' : 'suggest');
-  } catch (err) {
-    shell.toast(err instanceof Error ? err.message : 'The sync could not be started.', 'error');
-  } finally {
-    syncing.value = false;
-  }
-}
 </script>

@@ -80,13 +80,13 @@
 .obj-kind-sel:disabled:hover { border-color: var(--border); }
 
 /*
- * Roster: "Sync from directory" (administrators only). The source has no directory to sync from.
- * It sits immediately left of the Explore / Full hierarchy toggle and takes over the toggle's auto
- * margin, so the toggle stays pinned right where index.html puts it. Where the full label would take
- * room the source's own header is using, the page marks it .compact and it shows just its ⟳: the
- * label stays laid out (so the page can measure when it would fit again) but takes no room.
+ * "Sync from directory" — administrators only; the source has no directory to sync from. It lives
+ * down here with Sign out, in the part of the rail the source does not have, so the Roster screen
+ * itself stays exactly the source's. In the narrow top bar it is its ⟳ alone, beside Sign out.
  */
-.roster-header .rost-sync { margin-left: auto; flex: none; white-space: nowrap; }
-.roster-header .rost-sync.compact { position: relative; }
-.roster-header .rost-sync.compact .rs-label { position: absolute; left: 0; top: 0; visibility: hidden; }
-.roster-header .rost-sync + .rost-modes { margin-left: 0; }
+.actions .rw-sync { flex: 0 0 auto; }
+.actions .rw-sync .rs-label { display: none; }
+@media (min-width: 1200px) {
+  .actions .rw-sync { width: 100%; }
+  .actions .rw-sync .rs-label { display: inline; }
+}
