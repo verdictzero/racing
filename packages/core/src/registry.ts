@@ -12,7 +12,8 @@
  */
 
 import { childIndex, childrenIn, walkInOrder } from './tree.js';
-import { artifactTypeMeta, entityKindMeta } from './constants.js';
+import { entityKindMeta } from './constants.js';
+import { deriveShort } from './import/xlsx.js';
 import type { Artifact, Chart, ChartNode, Entity, OrgRef, Workspace } from './schema.js';
 
 /** Where a use was found, in terms a person recognizes. */
@@ -62,6 +63,37 @@ export function chartsInTabOrder(ws: Workspace): Chart[] {
       return oa === ob ? a.localeCompare(b) : oa < ob ? -1 : 1;
     })
     .map((id) => ws.charts[id]!);
+}
+
+/**
+ * A registry's records in registry order: by `order` key, records without one (written before the
+ * key existed) first and in the map's own order. That is the order the source's array held them
+ * in — the order they were made — and it is the same on every client after every reload.
+ */
+function inRegistryOrder<T extends { id: string; order?: string }>(records: Readonly<Record<string, T>>): T[] {
+  return Object.values(records)
+    .map((record, i) => ({ record, i }))
+    .sort((a, b) => {
+      const ka = a.record.order, kb = b.record.order;
+      if (ka === undefined && kb === undefined) return a.i - b.i;
+      if (ka === undefined) return -1;
+      if (kb === undefined) return 1;
+      if (ka !== kb) return ka < kb ? -1 : 1;
+      // Two people adding at the same instant can mint the same key; the id settles it the same
+      // way on every client.
+      return a.record.id < b.record.id ? -1 : a.record.id > b.record.id ? 1 : 0;
+    })
+    .map(({ record }) => record);
+}
+
+/** The deliverable registry in registry order (see `Artifact.order`). */
+export function artifactsInOrder(ws: Pick<Workspace, 'artifacts'>): Artifact[] {
+  return inRegistryOrder(ws.artifacts);
+}
+
+/** The entity registry in registry order (see `Artifact.order`). */
+export function entitiesInOrder(ws: Pick<Workspace, 'entities'>): Entity[] {
+  return inRegistryOrder(ws.entities);
 }
 
 /** Every chart's rows in the order the tree shows them, charts in tab order. */
@@ -150,23 +182,27 @@ function refersToEntity(ref: OrgRef | null | undefined, entityId: string): boole
 }
 
 /**
- * Everywhere an entity is named as a party.
+ * Everywhere an entity is named as a party — index.html's `entityUses`.
  *
  * Unlike a deliverable, an entity CAN be deleted while in use — the legacy app's behaviour, kept
  * deliberately: an entity that no longer exists is a fact about the org, and refusing the delete
  * would not change it. Anything still naming it reads "(missing entity)" until re-pointed. So this
  * index feeds a warning on the delete rather than a block.
+ *
+ * One entry per NAMING, as the source counts them: a step that names the entity on two columns is
+ * two entries, because it gave the entity two responsibilities. That is the number the gallery's
+ * "3 uses" pill and the delete confirmation print.
  */
 export function computeEntityUses(ws: Workspace, entityId: string): UseSite[] {
   const out: UseSite[] = [];
 
-  for (const chart of Object.values(ws.charts)) {
-    for (const node of Object.values(chart.nodes)) {
+  for (const { chart, rows } of chartRowsInOrder(ws)) {
+    for (const node of rows) {
       if (refersToEntity(node.org, entityId)) {
         out.push({
           kind: 'chartRow',
           name: rowName(node.name),
-          where: chart.title,
+          where: chart.title || 'Untitled chart',
           chartId: chart.id,
           nodeId: node.id,
         });
@@ -181,17 +217,16 @@ export function computeEntityUses(ws: Workspace, entityId: string): UseSite[] {
           out.push({
             kind: 'flowStep',
             name: stepName(step.name),
-            where: flow.name,
+            where: flow.name || 'Untitled flow',
             flowId: flow.id,
             stepId: step.id,
           });
-          break; // one mention per step is enough; listing each column would read as many uses
         }
       }
     }
   }
 
-  for (const artifact of Object.values(ws.artifacts)) {
+  for (const artifact of artifactsInOrder(ws)) {
     if (refersToEntity(artifact.ownerRef, entityId)) {
       out.push({ kind: 'deliverable', name: artifact.name, where: 'Deliverables' });
     }
@@ -214,13 +249,14 @@ export type ObjectKind = 'deliverable' | 'entity';
 export interface RegistryObject {
   readonly id: string;
   readonly kind: ObjectKind;
+  /** The display name, with the source's fallback ("Untitled deliverable", "Untitled entity"). */
   readonly name: string;
-  /** The type or entity-kind, already humanized. */
+  /** A deliverable's type key (the card uppercases it), or an entity's kind label. */
   readonly typeLabel: string;
-  /** Secondary line: an entity's short name, a deliverable's owner. */
+  /** Secondary line: an entity's short name, derived from its name when none is set. */
   readonly sub: string;
   readonly description: string;
-  /** Every place that names it, de-duplicated by (verb, place). */
+  /** Every place that names it. A deliverable's are de-duplicated by (verb, place). */
   readonly uses: UseRef[];
   readonly ref: Artifact | Entity;
 }
@@ -242,12 +278,28 @@ function dedupe(verb: UseVerb, sites: readonly UseSite[], seen: Set<string>, int
   }
 }
 
-/** Both registries, flattened, with each object's uses resolved. */
+/** An entity's display name — index.html's `entityName`. */
+export function entityDisplayName(entity: Pick<Entity, 'name'>): string {
+  return entity.name.trim() || 'Untitled entity';
+}
+
+/** An entity's short name, derived from its name when none was typed — `entityShort`. */
+export function entityDisplayShort(entity: Pick<Entity, 'name' | 'short'>): string {
+  return entity.short.trim() || deriveShort(entityDisplayName(entity));
+}
+
+/**
+ * Both registries, flattened, with each object's uses resolved — index.html's `objRegistry`.
+ *
+ * In REGISTRY order, deliverables first and then entities, each in the order they were added: that
+ * is the order the gallery shows, and the order a person who just made something expects to find
+ * it in (at the end), rather than wherever its name happens to sort.
+ */
 export function objectRegistry(ws: Workspace): RegistryObject[] {
   const artifactUses = computeArtifactUses(ws);
   const out: RegistryObject[] = [];
 
-  for (const artifact of Object.values(ws.artifacts)) {
+  for (const artifact of artifactsInOrder(ws)) {
     const entry = artifactUses.get(artifact.id);
     const uses: UseRef[] = [];
     const seen = new Set<string>();
@@ -257,8 +309,8 @@ export function objectRegistry(ws: Workspace): RegistryObject[] {
     out.push({
       id: artifact.id,
       kind: 'deliverable',
-      name: artifact.name,
-      typeLabel: artifactTypeMeta(artifact.type).label,
+      name: artifact.name || 'Untitled deliverable',
+      typeLabel: artifact.type || 'other',
       sub: '',
       description: artifact.description,
       uses,
@@ -266,22 +318,21 @@ export function objectRegistry(ws: Workspace): RegistryObject[] {
     });
   }
 
-  for (const entity of Object.values(ws.entities)) {
-    const uses: UseRef[] = [];
-    dedupe('named by', computeEntityUses(ws, entity.id), new Set<string>(), uses);
+  for (const entity of entitiesInOrder(ws)) {
     out.push({
       id: entity.id,
       kind: 'entity',
-      name: entity.name,
+      name: entityDisplayName(entity),
       typeLabel: entityKindMeta(entity.kind).label,
-      sub: entity.short,
+      sub: entityDisplayShort(entity),
       description: entity.description,
-      uses,
+      // Not de-duplicated: each naming is a responsibility given to it (see computeEntityUses).
+      uses: computeEntityUses(ws, entity.id).map((site) => ({ ...site, verb: 'named by' as const })),
       ref: entity,
     });
   }
 
-  return out.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  return out;
 }
 
 /** Everything the gallery's filter box matches on. */
@@ -314,7 +365,7 @@ export function filterObjects(
  */
 export function orphanArtifacts(ws: Workspace): Artifact[] {
   const uses = computeArtifactUses(ws);
-  return Object.values(ws.artifacts).filter((a) => artifactRefCount(uses, a.id) === 0);
+  return artifactsInOrder(ws).filter((a) => artifactRefCount(uses, a.id) === 0);
 }
 
 /**
@@ -331,7 +382,7 @@ export function orphanArtifacts(ws: Workspace): Artifact[] {
  */
 export function terminalArtifacts(ws: Workspace): Artifact[] {
   const uses = computeArtifactUses(ws);
-  return Object.values(ws.artifacts).filter((a) => {
+  return artifactsInOrder(ws).filter((a) => {
     const entry = uses.get(a.id);
     return (entry?.producers.length ?? 0) > 0 && (entry?.consumers.length ?? 0) === 0;
   });

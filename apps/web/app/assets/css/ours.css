@@ -59,3 +59,14 @@
  * children again — exactly as in the source.
  */
 .ws-page { display: contents; }
+
+/*
+ * Someone signed in as a viewer. The single-file app has no read-only role, so it never styles a
+ * disabled "+ Deliverable" / "+ Entity" or kind picker in the Object Gallery — without this they
+ * would look (and hover) exactly like live controls. Only ever matches for a viewer: an editor's
+ * gallery never disables these.
+ */
+.objv-new button:disabled,
+.obj-kind-sel:disabled { opacity: 0.5; cursor: not-allowed; }
+.objv-new button:disabled:hover { border-color: var(--border); color: var(--text); border-style: dashed; }
+.obj-kind-sel:disabled:hover { border-color: var(--border); }

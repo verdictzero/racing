@@ -119,6 +119,15 @@ export const Artifact = z.object({
   ownerRef: OrgRef.nullable().default(null),
   description: z.string().default(''),
   doc: DocRef.nullable().default(null),
+  /**
+   * Place in the registry. The legacy file keeps deliverables in an array — the order they were
+   * made, which is the order the Object Gallery lists them in — and a keyed map has no order of its
+   * own: Yjs iterates it in integration order, which after a reload puts another client's addition
+   * wherever its client id sorts. Absent on records written before this existed; see
+   * `artifactsInOrder`. A plain string rather than a checked OrderKey: a bad key only misplaces one
+   * card, and must not stop the whole workspace from reading.
+   */
+  order: z.string().optional(),
 });
 export type Artifact = z.infer<typeof Artifact>;
 
@@ -131,6 +140,8 @@ export const Entity = z.object({
   short: z.string().default(''),
   description: z.string().default(''),
   lead: Lead.nullable().default(null),
+  /** Place in the registry — see `Artifact.order`. */
+  order: z.string().optional(),
 });
 export type Entity = z.infer<typeof Entity>;
 

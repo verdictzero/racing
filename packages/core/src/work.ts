@@ -31,11 +31,11 @@
 
 import { ACTOR_LABELS_DEFAULT, ACTORS, COLS, entityKindMeta, framework, type Framework } from './constants.js';
 import { inheritedOwnerColumn, normalizeRaci } from './raci.js';
-import { chartsInTabOrder, computeArtifactUses } from './registry.js';
+import { chartsInTabOrder, computeArtifactUses, entityDisplayName as entityName } from './registry.js';
 import { scopeRelation } from './org.js';
 import { ancestorsOf, childIndex, childrenIn } from './tree.js';
 import { tierLabel } from './legacy.js';
-import type { Chart, ChartNode, Entity, FlowStep, OrgRef, Workspace } from './schema.js';
+import type { Chart, ChartNode, FlowStep, OrgRef, Workspace } from './schema.js';
 
 /** One responsibility this unit holds on one item. */
 export interface WorkRole {
@@ -87,8 +87,6 @@ export interface WorkLabel {
 
 const actorLabel = (ws: Workspace, actor: string): string =>
   ws.actorLabels[actor] || ACTOR_LABELS_DEFAULT[actor as keyof typeof ACTOR_LABELS_DEFAULT] || actor;
-
-const entityName = (e: Entity): string => e.name.trim() || 'Untitled entity';
 
 /** index.html's `orgLabel`: null for a directorate-only ref, and for a unit that no longer exists. */
 function sourceOrgLabel(ws: Workspace, ref: OrgRef | null | undefined): WorkLabel | null {

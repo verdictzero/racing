@@ -46,12 +46,15 @@ describe('the reverse indexes', () => {
     expect(uses[0]!.where).toMatch(/Tabletop/);
   });
 
-  it('counts a step naming an entity in two columns once, not twice', () => {
+  it('counts each column that names an entity — each is a responsibility it was given', () => {
+    // index.html's entityUses lists a step once per column naming the entity; the gallery's "N uses"
+    // and the delete confirmation both print that count.
     const ws = structuredClone(workspace);
     const entity = Object.values(ws.entities)[0]!;
     const step = Object.values(ws.flows[tabletopId]!.steps).find((s) => s.kind === 'step')!;
     step.parties = { hq: { entityId: entity.id }, cos: { entityId: entity.id } };
-    expect(computeEntityUses(ws, entity.id)).toHaveLength(1);
+    expect(computeEntityUses(ws, entity.id)).toHaveLength(2);
+    expect(objectRegistry(ws).find((o) => o.id === entity.id)!.uses).toHaveLength(2);
   });
 
   it('reports an entity nothing names', () => {
@@ -67,9 +70,28 @@ describe('the object registry', () => {
     expect(objects.filter((o) => o.kind === 'entity')).toHaveLength(2);
   });
 
-  it('is sorted by name, so the gallery is stable', () => {
-    const names = objects.map((o) => o.name);
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+  it('keeps registry order — deliverables as added, then entities', () => {
+    // The gallery shows them in the order they were made, as index.html does; sorting would move a
+    // thing someone just added away from the end, where they look for it.
+    expect(objects.map((o) => o.name)).toEqual([
+      'Triage Report', 'Incident Declaration', 'Containment Scope', 'After-Action Report',
+      'Cyber Review Board', 'Managed SOC Vendor',
+    ]);
+  });
+
+  it('names what has no name, and derives an entity’s short name, as the source does', () => {
+    const ws = structuredClone(workspace);
+    const entity = Object.values(ws.entities)[0]!;
+    entity.short = '';
+    entity.name = '  ';
+    const artifact = Object.values(ws.artifacts)[0]!;
+    artifact.name = '';
+    const all = objectRegistry(ws);
+    expect(all.find((o) => o.id === entity.id)!.name).toBe('Untitled entity');
+    expect(all.find((o) => o.id === entity.id)!.sub).toBe('UE');
+    expect(all.find((o) => o.id === artifact.id)!.name).toBe('Untitled deliverable');
+    const vendor = all.find((o) => o.name === 'Managed SOC Vendor')!;
+    expect(vendor.sub).toBe('SOC');
   });
 
   it('resolves each object’s uses', () => {
@@ -156,11 +178,14 @@ describe('the use list the detail pane prints', () => {
 });
 
 describe('the shared kind vocabulary', () => {
-  it('humanizes a deliverable’s type rather than printing the enum', () => {
+  it('carries a deliverable’s type key and an entity’s kind label, as the cards print them', () => {
+    // The card sets the type in capitals either way; the key is what the source prints and what
+    // its filter box matches.
     const objects = objectRegistry(workspace);
     const triage = objects.find((o) => o.name === 'Triage Report')!;
-    expect(triage.typeLabel).toBe(artifactTypeMeta(triage.ref.type as string).label);
-    expect(triage.typeLabel[0]).toBe(triage.typeLabel[0]!.toUpperCase());
+    expect(triage.typeLabel).toBe('document');
+    const board = objects.find((o) => o.name === 'Cyber Review Board')!;
+    expect(board.typeLabel).toBe(entityKindMeta('board').label);
   });
 
   it('covers every kind in both enums, so nothing renders as a raw key', () => {

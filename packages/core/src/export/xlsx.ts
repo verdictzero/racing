@@ -30,7 +30,7 @@ import {
 import { displayRaci } from '../raci.js';
 import { childIndex, childrenIn, pathTo } from '../tree.js';
 import { orgLabel } from '../org.js';
-import { computeArtifactUses, computeEntityUses } from '../registry.js';
+import { artifactsInOrder, computeArtifactUses, computeEntityUses, entitiesInOrder } from '../registry.js';
 import { entityKindMeta, artifactTypeMeta } from '../constants.js';
 import { tierLabel } from '../legacy.js';
 import { topologicalOrder } from './order.js';
@@ -312,7 +312,7 @@ export const ENTITY_HEADERS = [
  */
 export function buildDeliverableRows(ws: Workspace): string[][] {
   const uses = computeArtifactUses(ws);
-  return Object.values(ws.artifacts).map((a) => [
+  return artifactsInOrder(ws).map((a) => [
     a.name,
     artifactTypeMeta(a.type).label,
     [...new Set((uses.get(a.id)?.producers ?? []).map((u) => u.name))].join(', '),
@@ -322,7 +322,7 @@ export function buildDeliverableRows(ws: Workspace): string[][] {
 }
 
 export function buildEntityRows(ws: Workspace): string[][] {
-  return Object.values(ws.entities).map((e) => [
+  return entitiesInOrder(ws).map((e) => [
     e.name,
     entityKindMeta(e.kind).label,
     e.short,

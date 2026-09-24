@@ -1,438 +1,502 @@
 <template>
-  <div class="objv">
-    <div class="objv-head">
-      <div class="objv-title">
-        <h2>Object Gallery</h2>
-        <p class="meta">
-          Every named thing the charts and flows point at — deliverables that move between steps,
-          entities that act as parties. Shared across the whole workspace.
-        </p>
-      </div>
-      <div class="objv-tools">
-        <input
-          v-model="query"
-          type="search"
-          class="objv-filter"
-          placeholder="Filter objects…"
-          spellcheck="false"
-        >
-        <div class="objv-facets">
-          <button
-            v-for="facet in facets"
-            :key="facet.key"
-            type="button"
-            class="objv-facet"
-            :class="{ active: kind === facet.key }"
-            @click="kind = facet.key"
+  <div class="ws-page">
+    <!-- index.html's renderObjects / objCardHtml / objDetailHtml, element for element: the same
+         classes, ids and data-* attributes, so legacy.css styles it exactly as the source. -->
+    <div class="objv" @contextmenu="onContextMenu">
+      <div class="objv-head">
+        <div class="objv-title">
+          <h2>Object Gallery</h2>
+          <span class="meta">Every named thing the charts and flows point at — deliverables that move between steps, entities that act as parties. Shared across the whole workspace.</span>
+        </div>
+        <div class="objv-tools">
+          <input
+            id="obj-filter"
+            type="search"
+            data-lock-ok
+            placeholder="Filter objects…"
+            :value="query"
+            spellcheck="false"
+            @input="onFilter"
           >
-            {{ facet.label }} <b>{{ facet.count }}</b>
-          </button>
-        </div>
-        <div class="objv-new">
-          <button :disabled="!canEdit" title="Add a deliverable to the shared registry"
-            @click="newArtifact">＋ Deliverable</button>
-          <button :disabled="!canEdit" title="Add a board, committee, vendor or standing team"
-            @click="newEntity">＋ Entity</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="objv-body">
-      <div class="objv-grid">
-        <article
-          v-for="object in shown"
-          :key="object.id"
-          class="obj-card"
-          :class="[`k-${object.kind}`, { 'is-sel': object.id === selectedId }]"
-          tabindex="0"
-          role="button"
-          :title="object.description || object.name"
-          @click="selectedId = object.id"
-          @keydown.enter.prevent="selectedId = object.id"
-          @keydown.space.prevent="selectedId = object.id"
-        >
-          <div class="obj-card-top">
-            <span class="obj-ico" aria-hidden="true">{{ iconFor(object) }}</span>
-            <span class="obj-type">{{ object.typeLabel }}</span>
-            <span class="obj-uses" :class="{ none: !object.uses.length }" :title="usesTitle(object)">
-              {{ usesLabel(object) }}
-            </span>
-          </div>
-          <div class="obj-name">{{ object.name || '(unnamed)' }}</div>
-          <div v-if="object.sub" class="obj-sub">{{ object.sub }}</div>
-          <div v-if="object.description" class="obj-desc">{{ object.description }}</div>
-        </article>
-
-        <p v-if="!shown.length" class="objv-none">
-          {{ objects.length ? 'Nothing matches that filter.'
-                            : 'No objects yet. Add a deliverable or an entity to start the registry.' }}
-        </p>
-      </div>
-
-      <aside class="objv-detail">
-        <p v-if="!selected" class="obj-detail-empty">Pick an object to see everywhere it is used.</p>
-
-        <template v-else>
-          <div class="obj-detail-head">
-            <span class="obj-ico lg" aria-hidden="true">{{ iconFor(selected) }}</span>
-            <input
-              class="obj-detail-name"
-              :value="selected.name"
-              :disabled="!canEdit"
-              placeholder="Name"
-              @change="setName(($event.target as HTMLInputElement).value)"
-            >
-          </div>
-
-          <label class="obj-field">
-            <span>{{ selected.kind === 'entity' ? 'Kind' : 'Type' }}</span>
-            <select
-              :value="selected.kind === 'entity' ? (selected.ref as Entity).kind : (selected.ref as Artifact).type"
-              :disabled="!canEdit"
-              :title="kindBlurb"
-              @change="setKind(($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="option in kindOptions" :key="option.value" :value="option.value">
-                {{ option.icon }} {{ option.label }}
-              </option>
-            </select>
-          </label>
-          <p class="obj-blurb">{{ kindBlurb }}</p>
-
-          <template v-if="selected.kind === 'entity'">
-            <label class="obj-field">
-              <span>Short</span>
-              <input
-                :value="(selected.ref as Entity).short"
-                :disabled="!canEdit"
-                placeholder="An abbreviation people use"
-                @change="setField('short', ($event.target as HTMLInputElement).value)"
-              >
-            </label>
-          </template>
-
-          <label class="obj-field col">
-            <span>Description</span>
-            <textarea
-              :value="selected.description"
-              :disabled="!canEdit"
-              rows="3"
-              placeholder="What this is"
-              @change="setField('description', ($event.target as HTMLTextAreaElement).value)"
-            />
-          </label>
-
-          <h4 class="obj-uses-h">
-            Where it is used
-            <b v-if="selected.uses.length">{{ selected.uses.length }}</b>
-          </h4>
-
-          <ul v-if="selected.uses.length" class="obj-use-list">
-            <li v-for="(use, i) in selected.uses" :key="`${use.verb}:${use.chartId ?? use.flowId ?? ''}:${use.name}:${i}`">
-              <span class="ou-verb">{{ use.verb }}</span>
-              <span class="ou-target">{{ use.name }}</span>
-              <span v-if="use.where" class="ou-where">{{ use.where }}</span>
-            </li>
-          </ul>
-          <p v-else class="obj-unused">
-            Nothing in the workspace names this yet.
-            {{ selected.kind === 'deliverable'
-              ? 'Attach it to a handoff in a flow, or declare it on a chart row.'
-              : 'Name it as a responsible party on a flow step, or on a chart row.' }}
-          </p>
-
-          <div class="obj-detail-acts">
+          <div class="objv-facets">
             <button
-              class="obj-del"
-              :disabled="!canEdit || blockedBy > 0"
-              :title="deleteTitle"
-              @click="remove"
-            >Delete</button>
-            <span v-if="deleteNote" class="obj-del-note">{{ deleteNote }}</span>
+              v-for="k in OBJ_KINDS"
+              :key="k.key"
+              type="button"
+              class="obj-facet"
+              :class="{ active: kind === k.key }"
+              :data-obj-kind="k.key"
+              @click="setKind(k.key)"
+            >{{ k.label }} <b>{{ counts[k.key] }}</b></button>
           </div>
-        </template>
-      </aside>
+          <div class="objv-new">
+            <button id="art-new" type="button" title="Add a deliverable to the shared registry" :disabled="!canEdit" @click="newDeliverable">＋ Deliverable</button>
+            <button type="button" data-add-entity="1" title="Add a board, committee, vendor or standing team" :disabled="!canEdit" @click="newEntity">＋ Entity</button>
+          </div>
+        </div>
+      </div>
+      <div class="objv-body">
+        <div class="objv-grid">
+          <article
+            v-for="o in list"
+            :key="o.id"
+            class="obj-card"
+            :class="[`k-${o.kind}`, { 'is-sel': o.id === selectedId }]"
+            :data-obj-card="o.id"
+            tabindex="0"
+            role="button"
+            :title="o.description || o.name"
+            @click="toggle(o.id)"
+          >
+            <div class="obj-card-top">
+              <span class="obj-ico" aria-hidden="true">{{ iconOf(o) }}</span>
+              <span class="obj-type">{{ o.typeLabel }}</span>
+              <span class="obj-uses" :class="{ none: !o.uses.length }">{{ usesLabel(o) }}</span>
+            </div>
+            <div class="obj-name">{{ o.name }}</div>
+            <div v-if="o.sub" class="obj-sub">{{ o.sub }}</div>
+            <div v-if="o.description" class="obj-desc">{{ o.description }}</div>
+          </article>
+          <div v-if="!list.length" class="objv-none">{{ all.length ? 'Nothing matches that filter.' : 'No objects yet. Add a deliverable or an entity to start the registry.' }}</div>
+        </div>
+        <aside class="objv-detail">
+          <div v-if="!selected" class="obj-detail-empty">Pick an object to see everywhere it is used.</div>
+          <template v-else-if="selectedEntity">
+            <div class="obj-detail-head">
+              <span class="obj-ico lg" aria-hidden="true">{{ iconOf(selected) }}</span>
+              <span
+                :key="`n${paint}`"
+                class="obj-detail-name"
+                :contenteditable="editable"
+                spellcheck="false"
+                :data-entity-id="selected.id"
+                data-field="ent-name"
+                data-placeholder="Name"
+                @keydown="enterBlurs"
+                @blur="commitEntity($event, 'name')"
+              >{{ selectedEntity.name || '' }}</span>
+            </div>
+            <div class="obj-field">
+              <label>Kind</label>
+              <select :key="`k${paint}`" class="obj-kind-sel" :data-ent-kind="selected.id" title="What kind of body this is" :disabled="!canEdit" @change="changeEntityKind">
+                <option v-for="k in ENTITY_KINDS" :key="k" :value="k" :selected="k === selectedEntity.kind">{{ ENTITY_KIND_META[k].icon }} {{ ENTITY_KIND_META[k].label }}</option>
+              </select>
+            </div>
+            <div class="obj-field">
+              <label>Short</label>
+              <span
+                :key="`s${paint}`"
+                :contenteditable="editable"
+                spellcheck="false"
+                :data-entity-id="selected.id"
+                data-field="ent-short"
+                :data-placeholder="deriveShort(selected.name)"
+                @keydown="enterBlurs"
+                @blur="commitEntity($event, 'short')"
+              >{{ selectedEntity.short || '' }}</span>
+            </div>
+            <div class="obj-field">
+              <label>Lead</label>
+              <span
+                :key="`l${paint}`"
+                :contenteditable="editable"
+                spellcheck="false"
+                :data-entity-id="selected.id"
+                data-field="ent-lead"
+                data-placeholder="Who speaks for it"
+                @keydown="enterBlurs"
+                @blur="commitEntity($event, 'lead')"
+              >{{ selectedEntity.lead?.name || '' }}</span>
+            </div>
+            <div class="obj-field col">
+              <label>Description</label>
+              <span
+                :key="`d${paint}`"
+                class="obj-detail-desc"
+                :contenteditable="editable"
+                spellcheck="false"
+                :data-entity-id="selected.id"
+                data-field="ent-desc"
+                data-placeholder="＋ what this is"
+                @keydown="enterBlurs"
+                @blur="commitEntity($event, 'description')"
+              >{{ selected.description }}</span>
+            </div>
+            <h4 class="obj-uses-h">Where it is used<template v-if="selected.uses.length">{{ ' ' }}<b>{{ selected.uses.length }}</b></template></h4>
+            <ul v-if="selected.uses.length" class="obj-use-list">
+              <li v-for="(u, i) in selected.uses" :key="i">
+                <span class="ou-verb">{{ u.verb }}</span>
+                <button type="button" class="ou-target" disabled title="No place to open">{{ u.name }}</button>
+                <span v-if="u.where" class="ou-where">{{ u.where }}</span>
+              </li>
+            </ul>
+            <div v-else class="obj-unused">Nothing in the workspace names this yet. Name it as a responsible party on a flow step, or on a Program or Project row.</div>
+            <div class="obj-detail-acts">
+              <button type="button" class="obj-del" :data-del-entity="selected.id" title="Delete this entity" :disabled="!canEdit" @click="removeEntity(selected.id)">Delete</button>
+            </div>
+          </template>
+          <template v-else-if="selectedArtifact">
+            <div class="obj-detail-head">
+              <span class="obj-ico lg" aria-hidden="true">{{ iconOf(selected) }}</span>
+              <span
+                :key="`n${paint}`"
+                class="obj-detail-name"
+                :contenteditable="editable"
+                spellcheck="false"
+                :data-art-name="selected.id"
+                data-placeholder="Name"
+                @keydown="enterBlurs"
+                @blur="commitArtifactName"
+              >{{ selectedArtifact.name || '' }}</span>
+            </div>
+            <div class="obj-field">
+              <label>Type</label>
+              <select :key="`k${paint}`" class="obj-kind-sel" :data-art-type="selected.id" title="Deliverable type" :disabled="!canEdit" @change="changeArtifactType">
+                <option v-for="t in ARTIFACT_TYPES" :key="t" :value="t" :selected="t === selectedArtifact.type">{{ t }}</option>
+              </select>
+            </div>
+            <div class="obj-field col">
+              <label>Description</label>
+              <span
+                :key="`d${paint}`"
+                class="obj-detail-desc"
+                :contenteditable="editable"
+                spellcheck="false"
+                :data-art-desc="selected.id"
+                data-placeholder="＋ what this is"
+                @keydown="enterBlurs"
+                @blur="commitArtifactDesc"
+              >{{ selected.description }}</span>
+            </div>
+            <h4 class="obj-uses-h">Where it is used<template v-if="selected.uses.length">{{ ' ' }}<b>{{ selected.uses.length }}</b></template></h4>
+            <ul v-if="selected.uses.length" class="obj-use-list">
+              <li v-for="(u, i) in selected.uses" :key="i">
+                <span class="ou-verb">{{ u.verb }}</span>
+                <button
+                  type="button"
+                  class="ou-target"
+                  :data-obj-go-chart="u.chartId"
+                  :data-obj-go-flow="u.chartId ? undefined : u.flowId"
+                  :disabled="!u.chartId && !u.flowId"
+                  :title="u.chartId || u.flowId ? `Open ${u.where}` : 'No place to open'"
+                  @click="goTo(u)"
+                >{{ u.name }}</button>
+                <span v-if="u.where" class="ou-where">{{ u.where }}</span>
+              </li>
+            </ul>
+            <div v-else class="obj-unused">Nothing in the workspace names this yet. Attach it to a handoff (click a line in a flow) or declare it on a chart row (Details rail).</div>
+            <div class="obj-detail-acts">
+              <button
+                type="button"
+                class="obj-del"
+                :data-art-del="selected.id"
+                :disabled="!canEdit || selected.uses.length > 0"
+                :title="selected.uses.length ? 'Referenced — remove its uses first' : 'Delete this deliverable'"
+                @click="removeArtifact(selected.id)"
+              >Delete</button>
+            </div>
+          </template>
+        </aside>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * The Object Gallery — PORTING.md slice 4.
+ * The Object Gallery — index.html's renderObjects, objCardHtml and objDetailHtml, with the handlers
+ * the source delegates on `document` (data-obj-kind, data-obj-card, #obj-filter, #art-new,
+ * data-add-entity, data-art-type / data-ent-kind, the contenteditable commits on blur, data-art-del,
+ * data-del-entity, data-obj-go-chart / -flow) and its right-click menu (ctxObjectCardItems /
+ * ctxObjectBlankItems).
  *
  * Both registries in one screen, because a deliverable and an entity are the same kind of thing: a
- * named noun with a stable id that charts and flows reference rather than contain. The gallery is
- * where you answer "what IS this, and who actually uses it" without opening every chart.
+ * named noun with a stable id that charts and flows reference rather than contain. The thinking is
+ * in `@raci/core`'s `objectRegistry` (the source's objRegistry); this file is the source's markup.
  *
- * All of the thinking is in `@raci/core`'s `objectRegistry` — the flattening, the use index, the
- * de-duplication, the search text. This file is the arrangement of it, and that split is the point:
- * "is this deliverable still referenced" now has exactly one answer in the codebase, where
- * index.html computes it in three places.
+ * THE TWO REGISTRIES DELETE DIFFERENTLY, as in the source: a deliverable in use cannot be deleted
+ * (its references are the supply chain), while an entity in use can, after a confirmation that names
+ * what will be left pointing at "(missing entity)".
  *
- * THE TWO REGISTRIES DELETE DIFFERENTLY, and it is not an oversight:
- *   - a deliverable in use cannot be deleted, because the references are the supply chain and
- *     breaking them silently would corrupt every flow that carries it;
- *   - an entity in use CAN be deleted, because a body that no longer exists is a fact about the
- *     org, and refusing the delete would not make it exist. What names it reads "(missing)" until
- *     it is re-pointed.
- * That asymmetry is the legacy app's behaviour, kept deliberately.
+ * The filter, the facet and the selection are the source's transient view state: per person, kept
+ * across screen switches, reset on reload. Every edit goes through a @raci/crdt mutation.
  */
 import {
-  objectRegistry,
-  filterObjects,
-  artifactRefCount,
-  computeArtifactUses,
-  orphanArtifacts,
-  terminalArtifacts,
   ARTIFACT_TYPES,
+  ENTITY_KIND_META,
   ENTITY_KINDS,
   artifactTypeMeta,
+  computeEntityUses,
+  deriveShort,
+  entityDisplayName,
   entityKindMeta,
+  filterObjects,
+  newId,
+  objectRegistry,
   type Artifact,
   type Entity,
   type ObjectKind,
   type RegistryObject,
+  type UseRef,
 } from '@raci/core';
 import {
   addArtifact,
   addEntity,
   deleteArtifact,
   deleteEntity,
+  duplicateArtifact,
+  duplicateEntity,
   setArtifactField,
   setEntityField,
 } from '@raci/crdt';
+import { useActiveChartId, useActiveFlowId, useShell } from '~/composables/useShell';
+import type { CtxEntry } from '~/composables/useContextMenu';
+
+type Facet = ObjectKind | 'all';
+const OBJ_KINDS: { key: Facet; label: string }[] = [
+  { key: 'all', label: 'Everything' },
+  { key: 'deliverable', label: 'Deliverables' },
+  { key: 'entity', label: 'Entities' },
+];
 
 const session = useWorkspaceSession();
+const shell = useShell();
+const menu = useContextMenu();
 const canEdit = inject<Ref<boolean>>('raci:canEdit', ref(false));
+const editable = computed(() => (canEdit.value ? 'true' : 'false'));
+const activeChartId = useActiveChartId();
+const activeFlowId = useActiveFlowId();
+const ws = computed(() => session.workspace.value);
 
-const query = ref('');
-const kind = ref<ObjectKind | 'all'>('all');
-const selectedId = ref<string | null>(null);
-
-const objects = computed(() => objectRegistry(session.workspace.value));
-const shown = computed(() => filterObjects(objects.value, { kind: kind.value, query: query.value }));
-
-const facets = computed(() => {
-  const all = objects.value;
-  return [
-    { key: 'all' as const, label: 'Everything', count: all.length },
-    { key: 'deliverable' as const, label: 'Deliverables', count: all.filter((o) => o.kind === 'deliverable').length },
-    { key: 'entity' as const, label: 'Entities', count: all.filter((o) => o.kind === 'entity').length },
-  ];
-});
-
-// A selection the filter just hid would leave the pane describing something not on screen — and
-// worse, let you delete a thing you cannot see.
-watch(shown, (list) => {
-  if (selectedId.value && !list.some((o) => o.id === selectedId.value)) selectedId.value = null;
-});
-
-const selected = computed<RegistryObject | null>(
-  () => (selectedId.value ? objects.value.find((o) => o.id === selectedId.value) ?? null : null),
-);
-
+// ---- the source's _objQ / _objKind / _objSel ----------------------------------------------------
+const query = useState<string>(`raci:objQ:${session.workspaceId}`, () => '');
+const kind = useState<Facet>(`raci:objKind:${session.workspaceId}`, () => 'all');
+const selectedId = useState<string | null>(`raci:objSel:${session.workspaceId}`, () => null);
 /**
- * The two annotations the rule engine deliberately does not raise as violations.
- *
- * An ORPHAN is a registry entry nothing points at in either direction — usually a leftover.
- * A TERMINAL deliverable is produced and never consumed, which is what a process is usually FOR.
- * They read almost the same on a card and mean opposite things, so the card says which.
+ * One tick per repaint the source would do. index.html rebuilds the pane on every click, filter
+ * keystroke and commit, which also throws away a half-typed contenteditable whose commit was refused
+ * (an empty deliverable name). The editable fields are keyed on this so they do the same — and a
+ * peer's edit arriving mid-typing, which the source never had to survive, does not.
  */
-const orphanIds = computed(() => new Set(orphanArtifacts(session.workspace.value).map((a) => a.id)));
-const terminalIds = computed(
-  () => new Set(terminalArtifacts(session.workspace.value).map((a) => a.id)),
-);
+const paint = ref(0);
+const repaint = () => { paint.value++; };
 
-function usesLabel(object: RegistryObject): string {
-  const n = object.uses.length;
-  if (n === 0) return 'unused';
-  if (terminalIds.value.has(object.id)) return `${n} · terminal`;
-  return `${n} ${n === 1 ? 'use' : 'uses'}`;
-}
-
-function usesTitle(object: RegistryObject): string {
-  if (orphanIds.value.has(object.id)) {
-    return 'Nothing points at this yet — attach it to a handoff or declare it on a chart row.';
-  }
-  if (terminalIds.value.has(object.id)) {
-    return 'Produced, and nothing downstream takes it. Usually right — this is where the process ends.';
-  }
-  return `${object.uses.length} place(s) name this`;
-}
-
-const iconFor = (object: RegistryObject) =>
-  object.kind === 'entity'
-    ? entityKindMeta((object.ref as Entity).kind).icon
-    : artifactTypeMeta((object.ref as Artifact).type).icon;
-
-const kindOptions = computed(() =>
-  selected.value?.kind === 'entity'
-    ? ENTITY_KINDS.map((k) => ({ value: k as string, ...entityKindMeta(k) }))
-    : ARTIFACT_TYPES.map((t) => ({ value: t as string, ...artifactTypeMeta(t) })),
-);
-
-const kindBlurb = computed(() => {
-  const object = selected.value;
-  if (!object) return '';
-  return object.kind === 'entity'
-    ? entityKindMeta((object.ref as Entity).kind).blurb
-    : artifactTypeMeta((object.ref as Artifact).type).blurb;
+const all = computed(() => objectRegistry(ws.value));
+const counts = computed(() => {
+  const c: Record<Facet, number> = { all: all.value.length, deliverable: 0, entity: 0 };
+  for (const o of all.value) c[o.kind]++;
+  return c;
 });
+const list = computed(() => filterObjects(all.value, { kind: kind.value, query: query.value }));
+// A selection the filter just hid would leave the pane showing something not on screen.
+watch(list, (l) => {
+  if (selectedId.value && !l.some((o) => o.id === selectedId.value)) selectedId.value = null;
+}, { immediate: true });
 
-/**
- * How many references stand in the way of deleting this.
- *
- * Counted from the raw index rather than from the card's use list: the card collapses two handoffs
- * out of one step into one line, and a guard that counted lines would under-report what it is
- * protecting. Entities are never blocked — see the header.
- */
-const blockedBy = computed(() => {
-  const object = selected.value;
-  if (!object || object.kind !== 'deliverable') return 0;
-  return artifactRefCount(computeArtifactUses(session.workspace.value), object.id);
-});
+const selected = computed<RegistryObject | null>(() =>
+  selectedId.value ? all.value.find((o) => o.id === selectedId.value) ?? null : null);
+const selectedEntity = computed(() => (selected.value?.kind === 'entity' ? (selected.value.ref as Entity) : null));
+const selectedArtifact = computed(() => (selected.value?.kind === 'deliverable' ? (selected.value.ref as Artifact) : null));
 
-const deleteTitle = computed(() => {
-  if (!selected.value) return '';
-  if (blockedBy.value > 0) return 'Referenced — remove its uses first';
-  return selected.value.kind === 'entity'
-    ? 'Delete this entity. Anything naming it will read “(missing)” until re-pointed.'
-    : 'Delete this deliverable';
-});
+const iconOf = (o: RegistryObject) =>
+  o.kind === 'entity' ? entityKindMeta((o.ref as Entity).kind).icon : artifactTypeMeta((o.ref as Artifact).type).icon;
+const usesLabel = (o: RegistryObject) => {
+  const n = o.uses.length;
+  return n ? `${n}${n === 1 ? ' use' : ' uses'}` : 'unused';
+};
 
-const deleteNote = computed(() => {
-  const object = selected.value;
-  if (!object) return '';
-  if (blockedBy.value > 0) {
-    return `Referenced in ${blockedBy.value} place${blockedBy.value === 1 ? '' : 's'}. Remove those first.`;
+// ---- browsing -------------------------------------------------------------------------------------
+function onFilter(e: Event): void {
+  query.value = (e.target as HTMLInputElement).value;
+  repaint();
+}
+function setKind(k: Facet): void {
+  kind.value = k;
+  repaint();
+}
+function toggle(id: string): void {
+  selectedId.value = selectedId.value === id ? null : id;
+  repaint();
+}
+function goTo(u: UseRef): void {
+  if (u.chartId) {
+    activeChartId.value = u.chartId;
+    void navigateTo(`/w/${session.workspaceId}`);
+  } else if (u.flowId) {
+    activeFlowId.value = u.flowId;
+    void navigateTo(`/w/${session.workspaceId}/flow`);
   }
-  if (object.kind === 'entity' && object.uses.length > 0) {
-    return `${object.uses.length} place${object.uses.length === 1 ? '' : 's'} name this — they will read “(missing)”.`;
+}
+
+// ---- adding -------------------------------------------------------------------------------------
+/** Land on the thing that was just made — the source clears the filter and facet to show it. */
+function land(id: string): void {
+  selectedId.value = id;
+  kind.value = 'all';
+  query.value = '';
+  repaint();
+}
+function newDeliverable(): void {
+  if (!canEdit.value) return;
+  const nm = (window.prompt('New deliverable name:') || '').trim();
+  if (!nm) return;
+  const existing = Object.values(ws.value.artifacts).find((a) => a.name.trim().toLowerCase() === nm.toLowerCase());
+  if (existing) {
+    // "Where is the one that already exists" is the next question, so land on it.
+    shell.toast(`"${existing.name}" already exists in the registry.`, 'suggest');
+    land(existing.id);
+    return;
   }
-  return '';
-});
-
-function newArtifact() {
-  selectedId.value = addArtifact(session.doc, 'New deliverable', 'document');
+  const id = addArtifact(session.doc, nm, 'other');
+  shell.toast(`Deliverable "${nm}" added.`);
+  land(id);
 }
-function newEntity() {
-  selectedId.value = addEntity(session.doc, 'New entity', 'committee');
-}
-
-function setName(name: string) {
-  const object = selected.value;
-  if (!object) return;
-  if (object.kind === 'entity') setEntityField(session.doc, object.id, 'name', name);
-  else setArtifactField(session.doc, object.id, 'name', name);
+async function newEntity(): Promise<void> {
+  if (!canEdit.value) return;
+  const id = addEntity(session.doc, '', 'board');
+  land(id);
+  await nextTick();
+  document.querySelector<HTMLElement>(`.obj-detail-name[data-entity-id="${id}"]`)?.focus();
 }
 
-function setKind(value: string) {
-  const object = selected.value;
-  if (!object) return;
-  if (object.kind === 'entity') setEntityField(session.doc, object.id, 'kind', value);
-  else setArtifactField(session.doc, object.id, 'type', value);
+// ---- editing ------------------------------------------------------------------------------------
+function enterBlurs(e: KeyboardEvent): void {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    (e.target as HTMLElement).blur();
+  }
 }
+const textOf = (e: Event) => ((e.target as HTMLElement).textContent ?? '').trim();
 
-function setField(field: 'short' | 'description', value: string) {
-  const object = selected.value;
-  if (!object) return;
-  if (object.kind === 'entity') setEntityField(session.doc, object.id, field, value);
-  else if (field === 'description') setArtifactField(session.doc, object.id, 'description', value);
+function commitArtifactName(e: Event): void {
+  const a = selectedArtifact.value;
+  if (!a || !canEdit.value) return;
+  const nm = textOf(e);
+  // An empty name is refused, as in the source: a deliverable must stay findable by name.
+  if (nm && nm !== a.name) {
+    setArtifactField(session.doc, a.id, 'name', nm);
+    repaint();
+  }
 }
-
-function remove() {
-  const object = selected.value;
-  if (!object) return;
-  if (object.kind === 'entity') {
-    deleteEntity(session.doc, object.id);
+function commitArtifactDesc(e: Event): void {
+  const a = selectedArtifact.value;
+  if (!a || !canEdit.value) return;
+  const d = textOf(e);
+  if (d !== a.description) {
+    setArtifactField(session.doc, a.id, 'description', d);
+    repaint();
+  }
+}
+function commitEntity(e: Event, field: 'name' | 'short' | 'description' | 'lead'): void {
+  const ent = selectedEntity.value;
+  if (!ent || !canEdit.value) return;
+  const v = textOf(e);
+  if (field === 'lead') {
+    if ((ent.lead?.name || '') === v) return;
+    setEntityField(session.doc, ent.id, 'lead', v ? { id: ent.lead?.id || newId('person'), name: v } : null);
   } else {
-    // The mutation re-checks against the live document rather than trusting this screen's read: a
-    // peer can attach the deliverable in the instant between the button rendering and the click.
-    const result = deleteArtifact(session.doc, object.id);
-    if (!result.deleted) return;
+    if (ent[field] === v) return;
+    setEntityField(session.doc, ent.id, field, v);
   }
-  selectedId.value = null;
+  repaint();
+}
+function changeArtifactType(e: Event): void {
+  const a = selectedArtifact.value;
+  const v = (e.target as HTMLSelectElement).value;
+  if (!a || !canEdit.value || !(ARTIFACT_TYPES as readonly string[]).includes(v)) return;
+  setArtifactField(session.doc, a.id, 'type', v);
+  repaint();
+}
+function changeEntityKind(e: Event): void {
+  const ent = selectedEntity.value;
+  const v = (e.target as HTMLSelectElement).value;
+  if (!ent || !canEdit.value || !(ENTITY_KINDS as readonly string[]).includes(v) || ent.kind === v) return;
+  setEntityField(session.doc, ent.id, 'kind', v);
+  repaint();
+}
+
+// ---- deleting -----------------------------------------------------------------------------------
+function removeArtifact(id: string): void {
+  if (!canEdit.value || !ws.value.artifacts[id]) return;
+  // The mutation re-checks against the live document: a peer can attach the deliverable in the
+  // instant between the button rendering and the click.
+  if (!deleteArtifact(session.doc, id).deleted) {
+    shell.toast('Deliverable is referenced — remove its uses first.', 'error');
+    return;
+  }
+  repaint();
+}
+function removeEntity(id: string): void {
+  const e = ws.value.entities[id];
+  if (!canEdit.value || !e) return;
+  // Refs are not rewritten on delete — they read "(missing entity)" — so the confirmation names
+  // what would be left dangling rather than just how many.
+  const uses = computeEntityUses(ws.value, id);
+  const name = entityDisplayName(e);
+  if (uses.length && !window.confirm(
+    `"${name}" is named as a party by ${uses.length} ${uses.length === 1 ? 'thing' : 'things'}:\n\n` +
+      uses.slice(0, 8).map((u) => `  • ${u.where} › ${u.name}`).join('\n') +
+      (uses.length > 8 ? `\n  … and ${uses.length - 8} more` : '') +
+      '\n\nDelete it anyway? Those parties will read "(missing entity)" until they are re-pointed.',
+  )) return;
+  deleteEntity(session.doc, id);
+  repaint();
+  shell.toast(`Entity "${name}" deleted.`);
+}
+
+// ---- the right-click menu (ctxObjectCardItems / ctxObjectBlankItems) ----------------------------
+function duplicate(id: string): void {
+  const copy = ws.value.artifacts[id] ? duplicateArtifact(session.doc, id) : duplicateEntity(session.doc, id);
+  if (!copy) return;
+  selectedId.value = copy;
+  repaint();
+}
+function cardItems(oid: string): CtxEntry[] | null {
+  const o = all.value.find((x) => x.id === oid);
+  if (!o) return null;
+  const isEnt = o.kind === 'entity';
+  return [
+    { title: o.name || (isEnt ? 'Unnamed entity' : 'Untitled deliverable') },
+    {
+      label: o.id === selectedId.value ? 'Hide where it is used' : 'Show where it is used',
+      ico: '👁',
+      hint: `${o.uses.length} use${o.uses.length === 1 ? '' : 's'}`,
+      run: () => toggle(oid),
+    },
+    { label: 'Duplicate', ico: '⧉', hint: 'A copy starts with no uses of its own', disabled: !canEdit.value, run: () => duplicate(oid) },
+    { sep: true },
+    {
+      label: isEnt ? 'Delete entity' : 'Delete deliverable',
+      ico: '✕',
+      danger: true,
+      disabled: !canEdit.value,
+      // undefined rather than '': the menu then prints no tooltip at all, as the source's does.
+      hint: !isEnt && o.uses.length ? 'Something still references it — that has to go first' : undefined,
+      // The source drives the registry's own Delete button, which is disabled while anything
+      // references the deliverable — so on a referenced one this does nothing.
+      run: () => (isEnt ? removeEntity(oid) : o.uses.length ? undefined : removeArtifact(oid)),
+    },
+  ];
+}
+function blankItems(): CtxEntry[] {
+  return [
+    { title: 'Object Gallery' },
+    { label: 'New deliverable', ico: '＋', disabled: !canEdit.value, run: newDeliverable },
+    { label: 'New entity', ico: '＋', disabled: !canEdit.value, run: () => { void newEntity(); } },
+  ];
+}
+function onContextMenu(e: MouseEvent): void {
+  const t = e.target as Element;
+  // A real form field keeps the browser's own menu: spellcheck and the system clipboard live there.
+  if (t.closest('input, textarea')) return;
+  // Inside an editable name, a live selection means someone is lining up a copy — the browser's.
+  const ce = t.closest('[contenteditable="true"]');
+  if (ce) {
+    const sl = document.getSelection();
+    if (sl && !sl.isCollapsed && sl.anchorNode && ce.contains(sl.anchorNode)) return;
+  }
+  const card = t.closest('[data-obj-card]');
+  const items = card ? cardItems(card.getAttribute('data-obj-card') ?? '') : blankItems();
+  if (items && menu.open(e.clientX, e.clientY, items)) e.preventDefault();
 }
 </script>
-
-<style scoped>
-.objv-head { display: flex; align-items: flex-start; gap: 24px; flex-wrap: wrap;
-  margin-bottom: 18px; }
-.objv-title h2 { margin: 0 0 4px; font-size: 16px; }
-.objv-title .meta { margin: 0; max-width: 62ch; font-size: 12px; color: var(--text-dim); }
-.objv-tools { margin-left: auto; display: flex; flex-direction: column; gap: 8px;
-  align-items: flex-end; }
-.objv-filter { font: inherit; background: var(--bg-2); color: inherit; min-width: 260px;
-  border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
-.objv-filter:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
-.objv-facets, .objv-new { display: flex; gap: 6px; }
-.objv-facet { font: inherit; font-size: 12px; background: var(--bg-2); color: var(--text-dim);
-  border: 1px solid var(--border); border-radius: 14px; padding: 3px 12px; cursor: pointer; }
-.objv-facet:hover { color: var(--text); }
-.objv-facet.active { color: var(--text); border-color: var(--accent); }
-.objv-facet b { font-weight: 600; opacity: .7; margin-left: 4px; }
-
-.objv-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px;
-  align-items: start; }
-@media (max-width: 900px) { .objv-body { grid-template-columns: minmax(0, 1fr); } }
-
-.objv-grid { display: grid; gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
-.objv-none { grid-column: 1 / -1; color: var(--text-dim); font-size: 13px; }
-
-.obj-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
-  padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
-  border-left-width: 3px; }
-.obj-card:hover { border-color: var(--accent); }
-.obj-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.obj-card.is-sel { border-color: var(--accent); background: #1f2530; }
-.obj-card.k-deliverable { border-left-color: #4dabf7; }
-.obj-card.k-entity { border-left-color: #b197fc; }
-.obj-card-top { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
-.obj-ico { font-size: 14px; }
-.obj-ico.lg { font-size: 20px; }
-.obj-type { text-transform: uppercase; letter-spacing: .04em; }
-.obj-uses { margin-left: auto; }
-.obj-uses.none { opacity: .55; font-style: italic; }
-.obj-name { font-weight: 600; }
-.obj-sub { font-size: 12px; color: var(--text-dim); }
-.obj-desc { font-size: 12px; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical; overflow: hidden; }
-
-.objv-detail { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px;
-  padding: 14px; position: sticky; top: 14px; }
-.obj-detail-empty { margin: 0; color: var(--text-dim); font-size: 13px; }
-.obj-detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.obj-detail-name { font: inherit; font-size: 15px; font-weight: 600; flex: 1; min-width: 0;
-  background: transparent; color: inherit; border: 0; border-bottom: 1px solid transparent;
-  padding: 2px 0; }
-.obj-detail-name:hover:not(:disabled) { border-bottom-color: var(--border); }
-.obj-detail-name:focus { outline: none; border-bottom-color: var(--accent); }
-
-.obj-field { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
-.obj-field.col { flex-direction: column; align-items: stretch; gap: 4px; }
-.obj-field > span { color: var(--text-dim); min-width: 74px; }
-.obj-field select, .obj-field input, .obj-field textarea { font: inherit; font-size: 13px;
-  flex: 1; min-width: 0; background: var(--bg); color: inherit; resize: vertical;
-  border: 1px solid var(--border); border-radius: 5px; padding: 4px 7px; }
-.obj-field :focus { outline: 1px solid var(--accent); outline-offset: -1px; }
-.obj-blurb { margin: -2px 0 12px; font-size: 11px; color: var(--text-dim); }
-
-.obj-uses-h { margin: 16px 0 6px; font-size: 11px; text-transform: uppercase;
-  letter-spacing: .05em; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 12px; }
-.obj-uses-h b { font-weight: 600; }
-.obj-use-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;
-  gap: 6px; }
-.obj-use-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
-  font-size: 12px; }
-.ou-verb { color: var(--text-dim); font-size: 10px; text-transform: uppercase;
-  letter-spacing: .04em; min-width: 82px; }
-.ou-target { color: var(--text); }
-.ou-where { color: var(--text-dim); font-size: 11px; }
-.obj-unused { margin: 0; font-size: 12px; color: var(--text-dim); }
-
-.obj-detail-acts { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;
-  display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.obj-del:hover:not(:disabled) { border-color: #ff6b6b; color: #ff6b6b; }
-.obj-del-note { font-size: 11px; color: var(--text-dim); }
-</style>
