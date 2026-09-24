@@ -11,9 +11,9 @@
  * second copy of the truth, and the copy is what goes stale.
  */
 
-import { childIndex, childrenIn } from './tree.js';
+import { childIndex, childrenIn, walkInOrder } from './tree.js';
 import { artifactTypeMeta, entityKindMeta } from './constants.js';
-import type { Artifact, Entity, OrgRef, Workspace } from './schema.js';
+import type { Artifact, Chart, ChartNode, Entity, OrgRef, Workspace } from './schema.js';
 
 /** Where a use was found, in terms a person recognizes. */
 export interface UseSite {
@@ -46,15 +46,36 @@ export interface UseRef extends UseSite {
   readonly verb: UseVerb;
 }
 
-const rowName = (name: string) => name || '(untitled row)';
+// index.html's own fallbacks, because these names are printed: "from (untitled)" on a work card.
+const rowName = (name: string) => name || '(untitled)';
 const stepName = (name: string) => name || '(untitled step)';
+
+/**
+ * Charts in tab order — the order index.html keeps `state.charts` in, so anything listed from a walk
+ * over the charts (a use list, a work lens) reads in the same order as the source's.
+ */
+export function chartsInTabOrder(ws: Workspace): Chart[] {
+  return Object.keys(ws.charts)
+    .sort((a, b) => {
+      const oa = ws.chartOrder[a] ?? '';
+      const ob = ws.chartOrder[b] ?? '';
+      return oa === ob ? a.localeCompare(b) : oa < ob ? -1 : 1;
+    })
+    .map((id) => ws.charts[id]!);
+}
+
+/** Every chart's rows in the order the tree shows them, charts in tab order. */
+function chartRowsInOrder(ws: Workspace): Array<{ chart: Chart; rows: ChartNode[] }> {
+  return chartsInTabOrder(ws).map((chart) => ({ chart, rows: walkInOrder(chart.nodes, childIndex(chart.nodes)) }));
+}
 
 /**
  * Every producer and consumer of every deliverable, across all charts and flows.
  *
  * Computed in one pass and keyed by artifact id, because the callers want it for many artifacts at
  * once — the gallery lists ref-counts for the whole registry, and the rules engine checks every
- * input in the workspace.
+ * input in the workspace. Each list is in the source's order: charts in tab order and rows in tree
+ * order, then flows.
  */
 export function computeArtifactUses(ws: Workspace): Map<string, ArtifactUses> {
   const index = new Map<string, ArtifactUses>();
@@ -67,8 +88,8 @@ export function computeArtifactUses(ws: Workspace): Map<string, ArtifactUses> {
     return entry;
   };
 
-  for (const chart of Object.values(ws.charts)) {
-    for (const node of Object.values(chart.nodes)) {
+  for (const { chart, rows } of chartRowsInOrder(ws)) {
+    for (const node of rows) {
       const site = {
         kind: 'chartRow' as const,
         name: rowName(node.name),
