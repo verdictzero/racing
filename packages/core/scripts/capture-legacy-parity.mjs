@@ -70,14 +70,14 @@ const golden = {
 };
 let demoKit = '';
 
-for (const [name, state] of Object.entries(cases)) {
+for (const [name, input] of Object.entries(cases)) {
   // The signed date prints with the browser's locale and zone, so both are pinned; the tests pass
   // the same pair to the port.
   const context = await browser.newContext({ locale: 'en-US', timezoneId: 'UTC' });
   await context.addInitScript((s) => {
     localStorage.setItem('raci-matrix-v8', s);
     localStorage.setItem('raci-matrix-splash-v2', 'never');
-  }, JSON.stringify(state));
+  }, JSON.stringify(input));
   const page = await context.newPage();
   await page.clock.setFixedTime(new Date(NOW));
   await page.goto(indexHtml);
