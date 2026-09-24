@@ -41,6 +41,8 @@ export function createUndoManager(doc: Y.Doc, opts: UndoOptions = {}): Y.UndoMan
     m.artifacts,
     m.entities,
     m.roster,
+    // The roster's current storage. Without it every Roster-screen edit was out of undo's reach,
+    // where index.html's snapshot undo covers the roster like any other content.
     m.rosterUnits,
     m.meta,
   ];
