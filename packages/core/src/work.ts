@@ -24,9 +24,8 @@
  *   - labels are the source's: "(untitled)", "Untitled case", a handoff's far end quoted and followed
  *     by the units named on it.
  *
- * `bindOverrides` (a step taking a column back from its bound row) has no field in this build's
- * schema yet; a bound step therefore reads every column from its row, which is what the source does
- * for a step with no overrides.
+ * A bound step reads every column from its row except the ones in its `bindOverrides`, which it
+ * states itself — as the source's does.
  */
 
 import { ACTOR_LABELS_DEFAULT, ACTORS, COLS, entityKindMeta, framework, type Framework } from './constants.js';
@@ -205,10 +204,9 @@ function translateLetters(letters: string, from: Framework, to: Framework): stri
   return normalizeRaci([...out].join(''));
 }
 
-/** A step's own column overrides, if this build's document carries them. */
+/** The columns a bound step has taken back from its row. */
 function bindOverrides(step: FlowStep): Set<string> {
-  const raw = (step as unknown as { bindOverrides?: unknown }).bindOverrides;
-  return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
+  return new Set(step.bindOverrides);
 }
 
 /** The column's mapped directorate, narrowed by the deepest ref inside it — `bizDefaultPartyFor`. */

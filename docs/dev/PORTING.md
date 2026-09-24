@@ -162,9 +162,9 @@ directory sync to write a person's `externalId` against the user's OIDC subject,
 slice 2. Until then the picker starts empty, which is correct but one click worse.
 
 `collectWork` is a line-for-line port of index.html's `collectWorkItems`, Chart-Linked flows
-included: a linked step reads its letters through `createLintContext(ws).stepRaci(flow, step)` —
-index.html's `bizStepRaci`, `bindOverrides` and all. Use that resolution rather than writing a
-second one; the flow rules, the exports and the lens all go through it.
+included: a linked step reads its letters off its bound row through `bindCtx` (index.html's
+`bizBindCtx`), with the step's `bindOverrides` taken back. The flow rules resolve the same way
+through `createLintContext(ws).stepRaci(flow, step)` — index.html's `bizStepRaci`.
 
 ### 6 · ~~Exports~~
 
