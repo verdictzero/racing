@@ -5,7 +5,7 @@
  * those files, and a tool they have to re-key everything into is a tool they will not adopt.
  */
 import { z } from 'zod';
-import { importLegacy } from '@raci/core';
+import { clearedWorkspace, emptyWorkspace, importLegacy } from '@raci/core';
 import { docFromWorkspace } from '@raci/crdt';
 import { appendUpdate, createWorkspace, recordAudit, storeEmbeddedDocuments } from '@raci/db';
 import * as Y from 'yjs';
@@ -28,7 +28,18 @@ export default defineEventHandler(async (event) => {
   });
 
   let report = null;
-  if (body.legacy !== undefined) {
+  if (body.legacy === undefined) {
+    // index.html can never be without a chart — its ac() makes an "Untitled chart" the moment there
+    // is none — so a new workspace starts where the source's Clear leaves it: one blank chart, the
+    // six directorates empty, the default labels. An empty document would open on a bare screen
+    // with no tab, no pane and nothing to click.
+    await appendUpdate(db, {
+      workspaceId: workspace.id,
+      update: Y.encodeStateAsUpdate(docFromWorkspace(clearedWorkspace(emptyWorkspace()))),
+      userId: session.userId,
+      origin: 'create',
+    });
+  } else {
     const imported = importLegacy(body.legacy);
     const doc = docFromWorkspace(imported.workspace);
     await appendUpdate(db, {

@@ -60,6 +60,9 @@ export function provideWorkspaceSession(workspaceId: string): WorkspaceSession {
     });
     // Sync step 1 may already have landed for a warm cache.
     if (collab.status.value === 'connected') refresh();
+    // A brand-new, empty workspace syncs without a single 'update' event; the server's answer to
+    // our sync step 1 is what says it has arrived.
+    watch(collab.synced, (s) => { if (s && !ready.value) refresh(); }, { immediate: true });
   }
 
   const session: WorkspaceSession = {

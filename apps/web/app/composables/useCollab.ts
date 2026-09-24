@@ -30,6 +30,12 @@ export interface CollabSession {
   readonly undo: Y.UndoManager;
   readonly status: Ref<CollabStatus>;
   readonly peers: Ref<number>;
+  /**
+   * True once the server has answered this client's sync step 1 — the document now holds everything
+   * the server had. An EMPTY workspace answers with an empty update, which changes nothing in the
+   * doc and so fires no 'update' event: this is the only signal that it has arrived.
+   */
+  readonly synced: Ref<boolean>;
   destroy(): void;
 }
 
@@ -39,6 +45,7 @@ export function useCollab(workspaceId: string): CollabSession {
   const undo = createUndoManager(doc);
   const status = ref<CollabStatus>('connecting');
   const peers = ref(0);
+  const synced = ref(false);
 
   const detachRepair = attachAutoRepair(doc);
 
@@ -104,7 +111,8 @@ export function useCollab(workspaceId: string): CollabSession {
       if (messageType === MESSAGE_SYNC) {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_SYNC);
-        syncProtocol.readSyncMessage(decoder, encoder, doc, 'remote');
+        const kind = syncProtocol.readSyncMessage(decoder, encoder, doc, 'remote');
+        if (kind === syncProtocol.messageYjsSyncStep2) synced.value = true;
         if (encoding.length(encoder) > 1) send(encoding.toUint8Array(encoder));
         return;
       }
@@ -133,6 +141,7 @@ export function useCollab(workspaceId: string): CollabSession {
     undo,
     status,
     peers,
+    synced,
     destroy() {
       closed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
