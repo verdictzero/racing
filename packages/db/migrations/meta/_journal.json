@@ -8,6 +8,13 @@
       "when": 1788134181271,
       "tag": "0000_cultured_roughhouse",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790277243297,
+      "tag": "0001_document_blob_per_workspace",
+      "breakpoints": true
     }
   ]
 }

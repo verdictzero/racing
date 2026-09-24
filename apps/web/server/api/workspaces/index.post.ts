@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import { importLegacy } from '@raci/core';
 import { docFromWorkspace } from '@raci/crdt';
-import { appendUpdate, createWorkspace, recordAudit } from '@raci/db';
+import { appendUpdate, createWorkspace, recordAudit, storeEmbeddedDocuments } from '@raci/db';
 import * as Y from 'yjs';
 
 const Body = z.object({
@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
   let report = null;
   if (body.legacy !== undefined) {
     const imported = importLegacy(body.legacy);
-    report = imported.report;
     const doc = docFromWorkspace(imported.workspace);
     await appendUpdate(db, {
       workspaceId: workspace.id,
@@ -38,6 +37,21 @@ export default defineEventHandler(async (event) => {
       userId: session.userId,
       origin: 'import',
     });
+
+    // The file carries each attachment's bytes inline, as index.html's Save writes them. The
+    // document keeps only the metadata, so the bytes go to the blob store under the ids the
+    // imported rows already hold. One that cannot be kept — over the size cap, or undecodable —
+    // becomes a warning in the report rather than the end of an import that is otherwise fine.
+    const documents = await storeEmbeddedDocuments(db, {
+      workspaceId: workspace.id,
+      uploadedBy: session.userId,
+      docs: imported.attachments,
+    });
+    report = {
+      ...imported.report,
+      documents: documents.stored,
+      warnings: [...imported.report.warnings, ...documents.skipped.map((s) => s.reason)],
+    };
   }
 
   await recordAudit(db, {

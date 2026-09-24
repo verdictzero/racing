@@ -228,12 +228,19 @@ export const workspaceIndex = pgTable(
  *
  * The legacy app offloads these to IndexedDB for the same reason: a base64 dataUrl inside the
  * document would put megabytes into every CRDT update and into every peer's memory. The document
- * carries only the metadata; the bytes live here, keyed by the doc id it references.
+ * carries only the metadata; the bytes live here, keyed by the workspace and the doc id it
+ * references.
+ *
+ * The key is (workspace_id, id) and not the id alone because doc ids are not ours to make unique:
+ * the client mints them, and a legacy file carries its own. Two workspaces created from the same
+ * file hold the same ids; under a global key they would share one row, so the second import
+ * would overwrite the first one's bytes, and removing the file from either would take it from both.
  */
 export const documentBlobs = pgTable(
   'document_blob',
   {
-    id: text('id').primaryKey(),
+    /** The DocRef id: minted by the client that attached the file, or carried in from a file. */
+    id: text('id').notNull(),
     workspaceId: uuid('workspace_id')
       .notNull()
       .references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -247,9 +254,12 @@ export const documentBlobs = pgTable(
     bytes: bytea('bytes'),
     storageKey: text('storage_key'),
     uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
+    /** When the bytes now stored arrived — a replacing upload resets it. */
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('document_blob_workspace_idx').on(t.workspaceId)],
+  // Workspace first, so the key's own index also serves "every document in this workspace" — the
+  // export's query — and the separate workspace index it replaces would be pure write overhead.
+  (t) => [primaryKey({ columns: [t.workspaceId, t.id] })],
 );
 
 // ---- directory sync ------------------------------------------------------------------------------

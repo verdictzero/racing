@@ -10,4 +10,5 @@
 export * from './schema.js';
 export * from './client.js';
 export * from './doc-store.js';
+export * from './documents.js';
 export * from './repositories.js';
