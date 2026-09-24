@@ -19,20 +19,16 @@
 }
 
 /*
- * Who is signed in, and whether the collaboration link is up. Sits at the foot of the right rail
- * below Demo and Clear, where the source's rail simply ends — so the rail above it reads exactly as
- * the source's does.
+ * Who is signed in, and whether the collaboration link is up.
+ *
+ * In the two-rail layout (>=1200px) this sits at the foot of the right rail, below Demo and Clear,
+ * where the source's rail simply ends — so everything above it reads exactly as the source's does.
+ * In the narrow top-bar layout there is no free foot to put it in, and a row of its own would push
+ * the whole screen down, so there only Sign out appears — joining the Demo / Clear row without
+ * growing — and who you are and whether you are live move into its tooltip.
  */
-.rail-who {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  width: 100%;
-  padding: 2px 4px;
-  font-size: 11px;
-  color: var(--text-dim);
-}
+.rail-who { display: none; }
+.actions .rw-out { flex: 0 0 auto; }
 .rail-who .rw-name { color: var(--text); font-weight: 600; }
 .rail-who .rw-role,
 .rail-who .rw-live,
@@ -44,7 +40,19 @@
 }
 .rail-who .rw-live[data-state='connected'] { color: var(--ok, #51cf66); border-color: rgba(81, 207, 102, 0.5); }
 .rail-who .rw-live[data-state='offline'] { color: var(--warn); border-color: rgba(var(--warn-rgb), 0.5); }
-.actions .rw-out { width: 100%; }
+@media (min-width: 1200px) {
+  .rail-who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    width: 100%;
+    padding: 2px 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .actions .rw-out { width: 100%; }
+}
 
 /* The brand block doubles as the way back to the workspace list — the source has one document and
    so nowhere to go back to. Pointer only; the look is the source's. */

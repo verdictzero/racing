@@ -134,12 +134,12 @@
             <span class="rw-live" :data-state="session.status.value" :title="statusTitle">{{ statusLabel }}</span>
             <span v-if="session.peers.value > 1" class="rw-peers">{{ session.peers.value }} here</span>
           </div>
-          <button class="rw-out" title="Sign out" @click="signOut">Sign out</button>
+          <button class="rw-out" :title="`Sign out ${me?.user?.displayName ?? ''} (${me?.user?.role ?? ''} · ${statusLabel})`" @click="signOut">Sign out</button>
         </div>
       </div>
     </header>
 
-    <div id="chart-tabs" role="tablist" aria-label="RACI chart tabs">
+    <div id="chart-tabs" role="tablist" aria-label="RACI chart tabs" @contextmenu="onTabsContext">
       <div v-for="chart in chartTabs" :key="chart.id" class="chart-tab"
         :class="{ active: chart.id === activeChart?.id, 'is-only': chartTabs.length === 1 }"
         :data-status="chart.status" role="tab" :aria-selected="chart.id === activeChart?.id" :data-tab="chart.id"
@@ -207,9 +207,10 @@
  * `canEdit` is a UI affordance, never the enforcement: the server checks the role on every write.
  */
 import { CHART_FRAMEWORKS, FRAMEWORKS, type Chart } from '@raci/core';
-import { deleteChart, setChartField } from '@raci/crdt';
+import { LOCAL_ORIGIN, deleteChart, insertChart, setChartField } from '@raci/crdt';
 import type { ThemeName } from '~/composables/useTheme';
 import { CRUMB_KEY, type Crumb } from '~/composables/useCrumbs';
+import type { CtxEntry } from '~/composables/useContextMenu';
 import { SHELL_KEY, type ShellBridge, type ToastType } from '~/composables/useShell';
 import { violationRecords, type ViolationRecord } from '~/composables/useViolationRecords';
 
@@ -379,6 +380,72 @@ function setFramework(key: string): void {
   if (!c || c.framework === key) return;
   if (!guardEdit('chart', c)) return;
   setChartField(session.doc, c.id, 'framework', key);
+}
+/** index.html's duplicateChart: a draft copy under fresh ids, landing as the open tab. */
+function duplicateChart(id: string): void {
+  const src = session.workspace.value.charts[id];
+  if (!src || !canEdit.value) return;
+  const mint = (p: string) => `${p}_${Math.random().toString(36).slice(2, 12)}`;
+  const chartId = mint('chart');
+  const idMap = new Map(Object.keys(src.nodes).map((n) => [n, mint('node')]));
+  const taken = chartTabs.value.map((c) => c.title);
+  const base = /^Copy of /.test(src.title) ? src.title : `Copy of ${src.title || 'Untitled'}`;
+  let title = base;
+  for (let i = 2; taken.includes(title); i++) title = `${base} (${i})`;
+  const nodes = Object.fromEntries(Object.values(src.nodes).map((n) => [idMap.get(n.id)!, {
+    ...n, id: idMap.get(n.id)!, chartId, parentId: n.parentId ? idMap.get(n.parentId) ?? null : null,
+  }]));
+  // A copy is a working document however the original was signed — otherwise "duplicate to try
+  // something" hands you a locked tab.
+  insertChart(session.doc, { ...src, id: chartId, title, status: 'draft', finalizedAt: null, nodes });
+  activeChartId.value = chartId;
+  activeNodeId.value = null;
+}
+function setChartStatusFromTab(id: string, next: 'draft' | 'final'): void {
+  const c = session.workspace.value.charts[id];
+  if (!c || !canEdit.value || c.status === next) return;
+  session.doc.transact(() => {
+    setChartField(session.doc, id, 'status', next);
+    setChartField(session.doc, id, 'finalizedAt', next === 'final' ? new Date().toISOString() : null);
+  }, LOCAL_ORIGIN);
+  toast(next === 'final' ? `“${c.title || 'Untitled chart'}” is Final — locked against edits.` : `“${c.title || 'Untitled chart'}” reopened as a Draft.`, 'suggest');
+}
+/** index.html's ctxChartTabItems / ctxChartTabBarItems. */
+const menu = useContextMenu();
+function onTabsContext(e: MouseEvent): void {
+  const t = e.target as Element;
+  if (t.closest('input, select')) return;
+  const tab = t.closest<HTMLElement>('[data-tab]');
+  let items: CtxEntry[];
+  if (tab) {
+    const id = tab.dataset.tab!;
+    const c = session.workspace.value.charts[id];
+    if (!c) return;
+    const locked = c.status === 'final';
+    const only = chartTabs.value.length <= 1;
+    items = [
+      { title: c.title || 'Untitled chart' },
+      id !== activeChartId.value && { label: 'Switch to this chart', ico: '→', run: () => { activeChartId.value = id; activeNodeId.value = null; } },
+      { label: 'Details…', ico: '✎', hint: 'Description, customer, priority, budget and tags', run: () => { activeChartId.value = id; openMeta('chart', id); } },
+      canEdit.value && { label: 'Duplicate chart', ico: '⧉', run: () => duplicateChart(id) },
+      { sep: true },
+      canEdit.value && { label: locked ? 'Reopen as draft' : 'Mark final', ico: locked ? '↺' : '✓', run: () => setChartStatusFromTab(id, locked ? 'draft' : 'final') },
+      canEdit.value && !locked && { label: 'Rename', ico: '✏', run: () => {
+        const el = document.querySelector<HTMLElement>(`.tab-label[data-tab-id="${id}"]`);
+        if (el) startRename({ target: el } as unknown as MouseEvent);
+      } },
+      { sep: true },
+      canEdit.value && { label: 'Close chart', ico: '✕', danger: true, disabled: only,
+        hint: only ? 'The last chart cannot be closed' : 'Discard this tab', run: () => closeChart(id) },
+    ];
+  } else {
+    items = [
+      { title: 'Chart tabs' },
+      canEdit.value && { label: 'New chart…', ico: '＋', hint: 'Organization or free-form', run: () => { newChartOpen.value = true; } },
+      canEdit.value && activeChart.value && { label: 'Duplicate the open chart', ico: '⧉', run: () => duplicateChart(activeChart.value!.id) },
+    ];
+  }
+  if (menu.open(e.clientX, e.clientY, items)) e.preventDefault();
 }
 const newChartOpen = ref(false);
 async function onChartCreated(id: string): Promise<void> {
