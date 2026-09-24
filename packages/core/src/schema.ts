@@ -260,6 +260,14 @@ export const FlowStep = z.object({
   parties: z.record(z.string(), OrgRef).default({}),
   /** Chart row this step implements, in a Chart-Linked flow. */
   bind: FlowBind.nullable().default(null),
+  /**
+   * Columns a bound step has taken back from its chart row. A column NOT listed reads its letters
+   * from the row (and `raci[col]` is simply unused); a listed one reads `raci[col]` verbatim, the
+   * empty string included — which is how "the chart says C here, but not for this step" is said.
+   * Inert in a Free-Form flow: kept, not applied, so a round trip through Free-Form and back
+   * restores the flow exactly. index.html's field of the same name, carried as-is.
+   */
+  bindOverrides: z.array(z.string()).default([]),
   /** For a subflow box: which of the referenced flow's entry/exit points are exposed as sockets. */
   ports: z.object({ in: z.array(z.string()), out: z.array(z.string()) }).default({ in: [], out: [] }),
 });
@@ -325,7 +333,14 @@ export const Workspace = z.object({
   actorLabels: z.record(z.string(), z.string()).default({}),
   columnLabels: z.record(z.string(), z.string()).default({}),
   columnShort: z.record(z.string(), z.string()).default({}),
-  /** Which roster unit stands behind each responsibility column. */
+  /**
+   * Which directorate stands behind each responsibility column.
+   *
+   * Absent and empty mean different things, exactly as `null` and absent do in index.html. A column
+   * with NO entry takes the default mapping — a column keyed like a directorate maps to it — while
+   * an empty string is a column someone deliberately unmapped. The flow rules read the difference:
+   * a mapped column gives a step a default executing party, an unmapped one does not.
+   */
   columnActor: z.record(z.string(), z.string()).default({}),
 });
 export type Workspace = z.infer<typeof Workspace>;

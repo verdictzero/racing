@@ -219,6 +219,60 @@ describe('resilience', () => {
   });
 });
 
+describe('fields the flow rules read', () => {
+  // Each of these changes what index.html's rules say about a flow, so each has to arrive exactly
+  // as the legacy loader would leave it. violations.test.ts checks the rules' output end to end.
+
+  const withStep = (step: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    bizCases: [{ id: 'b_1', name: 'Flow', tasks: [{ id: 't_1', name: 'Step', ...step }], edges: [] }],
+    ...extra,
+  });
+
+  it('carries a bound step’s column overrides in and back out', () => {
+    const { workspace } = importLegacy(
+      withStep({
+        raci: { hq: 'A' },
+        bind: { chartId: 'c_1', nodeId: 'n_1' },
+        // Junk and a repeat are dropped, as the legacy loader drops them.
+        bindOverrides: ['hq', 'cyber', 'not-a-column', 'hq', 7],
+      }),
+    );
+    const step = workspace.flows.b_1!.steps.t_1!;
+    expect(step.bindOverrides).toEqual(['hq', 'cyber']);
+    const out = exportLegacy(workspace) as { bizCases: Array<{ tasks: Array<Record<string, unknown>> }> };
+    expect(out.bizCases[0]!.tasks[0]!.bindOverrides).toEqual(['hq', 'cyber']);
+  });
+
+  it('keeps no overrides on a step that is not bound to a row', () => {
+    const { workspace } = importLegacy(withStep({ bindOverrides: ['hq'] }));
+    expect(workspace.flows.b_1!.steps.t_1!.bindOverrides).toEqual([]);
+  });
+
+  it('moves pre-v0.17 letter-keyed parties onto the columns holding the letter', () => {
+    const { workspace } = importLegacy(
+      withStep({
+        raci: { hq: 'R', cos: 'ra', cyber: 'A' },
+        parties: { R: { actor: 'ocio' }, cos: { actor: 'cyber' } },
+      }),
+    );
+    const parties = workspace.flows.b_1!.steps.t_1!.parties;
+    expect(parties.hq).toEqual({ actor: 'ocio' });
+    // A column that already names its own party keeps it.
+    expect(parties.cos).toEqual({ actor: 'cyber' });
+    expect(parties.cyber).toBeUndefined();
+  });
+
+  it('tells a column unmapped on purpose from one never mapped', () => {
+    // index.html maps an absent column to its namesake directorate and leaves a null one unmapped.
+    const { workspace } = importLegacy(
+      withStep({}, { columnActor: { infra: null, cyber: 'cyber' } }),
+    );
+    expect(workspace.columnActor).toEqual({ infra: '', cyber: 'cyber' });
+    const out = exportLegacy(workspace) as { columnActor: Record<string, unknown> };
+    expect(out.columnActor).toEqual({ infra: null, cyber: 'cyber' });
+  });
+});
+
 describe('walkInOrder', () => {
   it('returns every node once, parents before their children', () => {
     const { workspace } = importLegacy(demo);

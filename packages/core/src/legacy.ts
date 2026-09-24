@@ -15,9 +15,10 @@
  */
 
 import { z } from 'zod';
-import { ACTORS, COLS, META_PRIORITIES, TIER_LABELS } from './constants.js';
+import { ACTORS, ALL_ROLE_LETTERS, COLS, META_PRIORITIES, TIER_LABELS } from './constants.js';
 import { keysBetween } from './fractional.js';
 import { keepOrMint, newId } from './ids.js';
+import { normalizeRaci } from './raci.js';
 import {
   Artifact,
   Chart,
@@ -243,8 +244,37 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
       const cell = str(raciIn[key]);
       if (cell) raci[key] = cell;
     }
+    // Before v0.17 a step's parties were keyed by role LETTER, not by column. The legacy loader
+    // copies each onto every column whose cell holds that letter and has no party of its own —
+    // lossless in effect, since the old shape could never tell two columns sharing a letter apart.
+    // Done here too, or a file of that age arrives with every executing party unreadable and the
+    // flow rules report each one missing.
+    for (const letter of Object.keys(partiesIn)) {
+      if (!(ALL_ROLE_LETTERS as readonly string[]).includes(letter)) continue;
+      const ref = parseOrgRef(partiesIn[letter]);
+      if (!ref) continue;
+      for (const col of COLS) {
+        if (!parties[col] && normalizeRaci(raci[col]).includes(letter)) parties[col] = ref;
+      }
+    }
     const bindIn = rec(t.bind);
     const portsIn = rec(t.ports);
+    const bind =
+      typeof bindIn.chartId === 'string' && typeof bindIn.nodeId === 'string'
+        ? { chartId: bindIn.chartId, nodeId: bindIn.nodeId }
+        : null;
+    // Only a bound ordinary step can take a column back, and only one of the columns a step has;
+    // the legacy loader drops anything else, and a repeat, the same way.
+    const bindOverrides =
+      bind && !isSub
+        ? [
+            ...new Set(
+              arr(t.bindOverrides).filter(
+                (k): k is string => typeof k === 'string' && (COLS as readonly string[]).includes(k),
+              ),
+            ),
+          ]
+        : [];
 
     steps[stepId] = FlowStep.parse({
       id: stepId,
@@ -260,10 +290,8 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
       groupId: typeof t.groupId === 'string' && t.groupId ? t.groupId : null,
       raci,
       parties,
-      bind:
-        typeof bindIn.chartId === 'string' && typeof bindIn.nodeId === 'string'
-          ? { chartId: bindIn.chartId, nodeId: bindIn.nodeId }
-          : null,
+      bind,
+      bindOverrides,
       ports: {
         in: arr(portsIn.in).filter((p): p is string => typeof p === 'string'),
         out: arr(portsIn.out).filter((p): p is string => typeof p === 'string'),
@@ -465,9 +493,13 @@ export function importLegacy(input: unknown): { workspace: Workspace; report: Im
     warnings.push(`${droppedRefs} deliverable reference(s) pointed at nothing and were dropped`);
   }
 
+  // An explicit null is a column someone unmapped; an absent key takes the default mapping. The
+  // legacy app tells the two apart, so the difference is kept as '' rather than dropped — dropping
+  // it would quietly re-map the column to its namesake directorate on the way in.
   const columnActor: Record<string, string> = {};
   for (const [k, v] of Object.entries(rec(raw.columnActor))) {
     if (typeof v === 'string') columnActor[k] = v;
+    else if (v === null) columnActor[k] = '';
   }
 
   const workspace = Workspace.parse({
@@ -616,6 +648,8 @@ export function exportLegacy(ws: Workspace): Record<string, unknown> {
         out.kind = 'subflow';
         out.refId = s.refId;
         out.ports = { in: [...s.ports.in], out: [...s.ports.out] };
+      } else {
+        out.bindOverrides = [...s.bindOverrides];
       }
       return out;
     }),
@@ -690,7 +724,10 @@ export function exportLegacy(ws: Workspace): Record<string, unknown> {
     actorLabels: { ...ws.actorLabels },
     columnLabels: { ...ws.columnLabels },
     columnShort: { ...ws.columnShort },
-    columnActor: { ...ws.columnActor },
+    // '' is how a deliberately unmapped column is held here; the legacy file says null.
+    columnActor: Object.fromEntries(
+      Object.entries(ws.columnActor).map(([k, v]) => [k, v === '' ? null : v]),
+    ),
     collapsedDirectorates: {},
     workScope: null,
     bizGallery: true,
