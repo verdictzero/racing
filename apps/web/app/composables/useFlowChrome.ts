@@ -51,7 +51,6 @@ import {
   setStepRaci,
 } from '@raci/crdt';
 import type { ToastType } from '~/composables/useShell';
-import { FLOW_CAMERA_PREFIX } from '~/composables/useFlowScreen';
 import { legacyOrgLabel } from '~/composables/useOrgLabel';
 
 /** index.html's BIZ_MODES / BIZ_MODE_META — the mode picker's options, icons and explanations. */
@@ -292,10 +291,8 @@ export function useFlowChrome() {
     // The copy carries the original's camera and table pane, as the source's JSON copy carries its
     // view and showTable — both are this browser's, so they are copied here rather than in the doc.
     if (screen.isTableOpen(id)) screen.setTable(copy, true);
-    try {
-      const cam = localStorage.getItem(`${FLOW_CAMERA_PREFIX}${session.workspaceId}:${id}`);
-      if (cam !== null) localStorage.setItem(`${FLOW_CAMERA_PREFIX}${session.workspaceId}:${copy}`, cam);
-    } catch { /* storage blocked: the copy opens with a fresh camera */ }
+    const cam = screen.getCamera(session.workspaceId, id);
+    if (cam) screen.putCamera(session.workspaceId, copy, cam);
     screen.switchFlow(copy);
   }
   /** setCaseStatus. */
