@@ -966,9 +966,7 @@ function openSubflow(taskId: string): void {
   const ref = refFlow(ws.value, f, t);
   if (!ref) return;
   fs.navStack.value = [...fs.navStack.value, f.id];
-  activeFlowId.value = ref.id;
-  selection.value = [];
-  selectedGroup.value = null;
+  fs.switchFlow(ref.id, true);
 }
 /** bizTogglePort: expose or hide one mating point; a handoff wired to a hidden one goes with it. */
 function togglePort(taskId: string, side: 'in' | 'out', portId: string): void {
@@ -1706,11 +1704,9 @@ function onDragOver(e: DragEvent): void {
   canvasEl.value?.classList.add('drop-target');
 }
 function onDrop(e: DragEvent): void {
-  let id = fs.dragFlowId.value;
-  if (!id) {
-    const raw = e.dataTransfer?.getData('text/plain') ?? '';
-    if (raw.startsWith('bzcase:')) id = raw.slice('bzcase:'.length);
-  }
+  // Only a drag the gallery started (index.html's _bizDragCase): text dragged in from anywhere else,
+  // whatever it says, nests nothing.
+  const id = fs.dragFlowId.value;
   if (!id) return;
   e.preventDefault();
   const p = screenToWorld(e.clientX, e.clientY);
