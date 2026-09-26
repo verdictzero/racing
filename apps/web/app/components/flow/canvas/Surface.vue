@@ -212,9 +212,9 @@ import {
   COLS,
   createLintContext,
   embedWouldCycle,
-  viewViolations,
-  violationIndex,
+  flowRecords,
   type Flow,
+  type FlowViolationRecord,
 } from '@raci/core';
 import {
   LOCAL_ORIGIN,
@@ -284,15 +284,21 @@ const ws = computed(() => session.workspace.value);
 const ce = computed(() => (props.canEdit ? 'true' : 'false'));
 
 // ---- the cards, frames and pins (renderBizcase's content) -------------------------------------------
+/** One rule pass's view of the document — the chart in front decides every cascade, as ac() does. */
+const lint = computed(() => createLintContext(ws.value, activeChartId.value));
 const ctx = computed(() => {
   const f = props.flow;
-  return f ? flowCtx(ws.value, f, createLintContext(ws.value, activeChartId.value)) : null;
+  return f ? flowCtx(ws.value, f, lint.value) : null;
 });
-/** _violationsByBizTaskId: the open flow linted as index.html lints it in this view. */
+/**
+ * _violationsByBizTaskId: the open flow's records, as index.html's lintFlow makes them for the card
+ * pins. Only the flow: the chart half of the pass is the warnings pill's, which the shell runs.
+ */
 const vioByStep = computed(() => {
   const f = props.flow;
-  if (!f) return new Map();
-  return violationIndex(viewViolations(ws.value, { view: 'bizcase', chartId: activeChartId.value, flowId: f.id })).byStepId;
+  const out = new Map<string, FlowViolationRecord>();
+  if (f) for (const r of flowRecords(lint.value, f)) out.set(r.stepId, r);
+  return out;
 });
 const stepCount = computed(() => (props.flow ? Object.keys(props.flow.steps).length : 0));
 const cards = computed(() => {
@@ -906,7 +912,7 @@ function deleteTask(id: string): void {
 function unbindStep(taskId: string): void {
   const f = props.flow, t = f?.steps[taskId];
   if (!editable() || !f || !t || !t.bind) return;
-  const eff = createLintContext(ws.value, activeChartId.value).stepRaci(f, t);
+  const eff = lint.value.stepRaci(f, t);
   commit(() => doc.transact(() => {
     for (const k of COLS) if (eff[k].from === 'chart') setStepRaci(doc, taskId, k, eff[k].letters);
     setStepField(doc, taskId, 'bind', null);
