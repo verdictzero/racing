@@ -91,9 +91,27 @@ export function useFlowScreen() {
   /** The primary selection — bizPrimarySel. */
   const primary = computed(() => selection.value[selection.value.length - 1] ?? null);
 
+  /**
+   * Each flow's camera — index.html's per-flow `view` — cached for the session and kept per browser
+   * under FLOW_CAMERA_PREFIX + workspace + ':' + flow. The canvas reads and writes it through these
+   * two, and so do Save (which writes it into the file) and Load (which brings the file's back).
+   */
+  const cameras = useState<Record<string, FlowCamera>>('raci:flow:cameras', () => ({}));
+  function getCamera(workspaceId: string, flowId: string): FlowCamera | null {
+    const key = FLOW_CAMERA_PREFIX + workspaceId + ':' + flowId;
+    if (cameras.value[key]) return cameras.value[key]!;
+    const stored = import.meta.client ? read<FlowCamera | null>(key, null) : null;
+    return stored && Number.isFinite(stored.panX) && Number.isFinite(stored.panY) && Number.isFinite(stored.zoom) ? stored : null;
+  }
+  function putCamera(workspaceId: string, flowId: string, cam: FlowCamera): void {
+    const key = FLOW_CAMERA_PREFIX + workspaceId + ':' + flowId;
+    cameras.value = { ...cameras.value, [key]: { panX: cam.panX, panY: cam.panY, zoom: cam.zoom } };
+    write(key, cameras.value[key]);
+  }
+
   return {
     galleryOpen, setGallery, tableOpen, isTableOpen, setTable,
-    selection, selectedGroup, primary, partyTarget, partyDraft, popover,
+    selection, selectedGroup, primary, partyTarget, partyDraft, popover, getCamera, putCamera,
     /** The canvas's half of the seam (see FlowCanvasBridge). */
     canvas: {
       register(b: FlowCanvasBridge | null): void { bridge.value = b; },

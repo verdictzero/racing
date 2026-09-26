@@ -39,6 +39,7 @@ export function useRailActions() {
   const activeChartId = useActiveChartId();
   const activeFlowId = useActiveFlowId();
   const { showLegend, setLegend, closeDetails } = useChartView();
+  const flowScreen = useFlowScreen();
   const cameras = useChartCameraStore(session.workspaceId);
   const route = useRoute();
   // The Tasks lens's chosen unit — the tasks screen's own state, which index.html saves as workScope.
@@ -106,6 +107,16 @@ export function useRailActions() {
         zoom: Number.isFinite(c.chartZoom) ? Number(c.chartZoom) : 1,
         size,
       });
+    }
+    // The flow screen's: the gallery pane (defaultState has it open), each flow's table pane and camera.
+    flowScreen.setGallery(raw.bizGallery !== false);
+    for (const b of Array.isArray(raw.bizCases) ? raw.bizCases : []) {
+      if (!isObj(b) || typeof b.id !== 'string' || !ws.flows[b.id]) continue;
+      flowScreen.setTable(b.id, b.showTable === true);
+      const v = isObj(b.view) ? b.view : {};
+      if (Number.isFinite(v.panX) && Number.isFinite(v.panY) && Number.isFinite(v.zoom)) {
+        flowScreen.putCamera(session.workspaceId, b.id, { panX: Number(v.panX), panY: Number(v.panY), zoom: Number(v.zoom) });
+      }
     }
     const view = typeof raw.viewMode === 'string' && raw.viewMode in VIEW_ROUTE ? raw.viewMode : 'chart';
     void navigateTo(`/w/${session.workspaceId}${VIEW_ROUTE[view]}`);
@@ -186,6 +197,13 @@ export function useRailActions() {
       file.workScope = currentWorkScope();
       file.viewMode = viewOf(route.path, session.workspaceId);
       file.showLegend = showLegend.value;
+      file.bizGallery = flowScreen.galleryOpen.value;
+      for (const b of Array.isArray(file.bizCases) ? file.bizCases : []) {
+        if (!isObj(b) || typeof b.id !== 'string') continue;
+        const cam = flowScreen.getCamera(session.workspaceId, b.id);
+        if (cam) b.view = { panX: cam.panX, panY: cam.panY, zoom: cam.zoom };
+        b.showTable = flowScreen.isTableOpen(b.id);
+      }
       for (const c of Array.isArray(file.charts) ? file.charts : []) {
         if (!isObj(c) || typeof c.id !== 'string') continue;
         const cam = cameras.get(c.id);
