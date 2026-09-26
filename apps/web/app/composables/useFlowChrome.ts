@@ -317,12 +317,14 @@ export function useFlowChrome() {
     // Hiding a pane with an × is a one-way door unless something names the way back.
     if (!on) shell.toast('Gallery hidden — ⊞ Gallery in the toolbar brings it back.', 'suggest');
   }
-  /** detachFlow. */
+  /**
+   * detachFlow. On a Final flow index.html makes the change, rolls it back in saveState (and says
+   * so), and then announces the detach anyway — both toasts show there, so both show here.
+   */
   function detach(id: string): void {
     const b = ws.value.flows[id];
     if (!b || !b.anchor || !canEdit.value) return;
-    if (refusedByLock(b)) return;
-    setFlowField(session.doc, id, 'anchor', null);
+    if (!refusedByLock(b)) setFlowField(session.doc, id, 'anchor', null);
     shell.toast(`"${b.name || 'Untitled'}" detached — now a standalone tabletop case.`);
   }
   /** jumpToChartNode: the chart row, in the chart view. */

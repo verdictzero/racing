@@ -133,6 +133,8 @@ watch(() => (target.value ? !!chrome.locate(target.value.taskId) : true), (there
 
 // body.show-bz-party, merged with the shell's own body classes.
 useHead({ bodyAttrs: { class: computed(() => (target.value ? 'show-bz-party' : '')) } });
+// index.html's setViewMode: the panel is not carried into another view.
+onBeforeUnmount(() => chrome.closeParty());
 
 /** What the panel draws — renderBizPartyPanel. Null when there is nothing to draw. */
 const view = computed(() => {
@@ -225,8 +227,10 @@ function assign(): void {
   if (!step || !props.flow) { chrome.closeParty(); return; }
   const ref = normalizeOrgRef(draft.value);
   if (!ref) { shell.toast('Pick at least a directorate first.', 'error'); return; }
-  if (!props.canEdit || chrome.refusedByLock(props.flow)) return;
-  chrome.setParty(step.id, t.col, ref);
+  if (!props.canEdit) return;
+  // A Final flow: index.html writes, rolls back in saveState (and says so), then announces the pick
+  // anyway — both toasts show there, so both show here.
+  if (!chrome.refusedByLock(props.flow)) chrome.setParty(step.id, t.col, ref);
   const lbl = chrome.partyLabel(ref);
   shell.toast(`${chrome.colShort(t.col)} → ${lbl ? lbl.short : 'party set'}`);
 }
@@ -236,8 +240,8 @@ function clear(): void {
   if (!t) return;
   const step = chrome.stepOf(t.taskId);
   if (!step || !props.flow) { chrome.closeParty(); return; }
-  if (!props.canEdit || chrome.refusedByLock(props.flow)) return;
-  chrome.setParty(step.id, t.col, null);
-  draft.value = null;
+  if (!props.canEdit) return;
+  if (!chrome.refusedByLock(props.flow)) chrome.setParty(step.id, t.col, null);
+  draft.value = null; // cleared before index.html's saveState, so a rollback leaves it cleared too
 }
 </script>
