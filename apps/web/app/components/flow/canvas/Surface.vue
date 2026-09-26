@@ -171,7 +171,7 @@
     </div>
     <div id="bz-zoom-ctl" class="zoom-ctl">
       <button id="bz-zoom-out" title="Zoom out">−</button>
-      <span id="bz-zoom-level" class="zoom-level" title="Reset to 100%">{{ zoomPct }}%</span>
+      <span id="bz-zoom-level" ref="zoomEl" class="zoom-level" title="Reset to 100%" />
       <button id="bz-zoom-in" title="Zoom in">+</button>
       <button id="bz-zoom-fit" title="Fit all tasks in view">⤢</button>
     </div>
@@ -347,6 +347,7 @@ const worldEl = ref<HTMLElement | null>(null);
 const edgesEl = ref<SVGSVGElement | null>(null);
 const redirsEl = ref<SVGSVGElement | null>(null);
 const miniEl = ref<HTMLCanvasElement | null>(null);
+const zoomEl = ref<HTMLElement | null>(null);
 /** An id inside an attribute selector. */
 const q = (id: string) => (typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id);
 const nodeEl = (id: string) => worldEl.value?.querySelector<HTMLElement>(`.bz-node[data-bz-node="${q(id)}"]`) ?? null;
@@ -385,13 +386,12 @@ function bizSelect(id: string | null, additive = false): void {
 
 // ---- the camera (b.view) -----------------------------------------------------------------------------
 const cam = { panX: 0, panY: 0, zoom: 1 };
-const zoomPct = ref(100);
 function loadCamera(flowId: string): void {
   const c = fs.getCamera(wsId, flowId);
   cam.panX = c && Number.isFinite(c.panX) ? c.panX : 0;
   cam.panY = c && Number.isFinite(c.panY) ? c.panY : 0;
   cam.zoom = c && Number.isFinite(c.zoom) ? Math.min(BZ_ZOOM_MAX, Math.max(BZ_ZOOM_MIN, c.zoom)) : 1;
-  zoomPct.value = Math.round((cam.zoom || 1) * 100);
+  zoomLabel();
 }
 function saveCamera(): void {
   if (props.flow) fs.putCamera(wsId, props.flow.id, cam);
@@ -402,8 +402,11 @@ function applyTransform(): void {
   if (w) w.style.transform = `translate(${cam.panX}px, ${cam.panY}px) scale(${cam.zoom})`;
   drawMinimap();
 }
-/** bizZoomLabel. */
-function zoomLabel(): void { zoomPct.value = Math.round((cam.zoom || 1) * 100); }
+/**
+ * bizZoomLabel: the pill's percentage, written straight into it as the source writes it — a zoom is
+ * not a render, and re-rendering the canvas for one would re-measure every noodle for nothing.
+ */
+function zoomLabel(): void { if (zoomEl.value) zoomEl.value.textContent = Math.round((cam.zoom || 1) * 100) + '%'; }
 /** bizZoomTo: zoom holding (cx, cy) in canvas space fixed — the centre when omitted. */
 function zoomTo(next: number, cx?: number, cy?: number): void {
   const old = cam.zoom || 1;
@@ -1786,6 +1789,7 @@ onMounted(() => {
     resizeObs = new ResizeObserver(() => drawMinimap());
     resizeObs.observe(canvasEl.value);
   }
+  zoomLabel();
   layoutAll();
   // Card heights are text: lay out again once the fonts they are set in have arrived.
   void document.fonts?.ready.then(() => layoutAll());
