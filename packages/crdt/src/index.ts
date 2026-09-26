@@ -14,4 +14,5 @@ export * from './undo.js';
 export * from './roster.js';
 export * from './replace.js';
 export * from './roster-edits.js';
+export * from './flow-canvas.js';
 export * from './flow-chrome.js';

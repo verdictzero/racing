@@ -133,45 +133,26 @@ function onClick(e: MouseEvent): void {
 
 // ---- drag a card onto the canvas to nest it -----------------------------------------------------
 // HTML5 drag and drop, as the source does it: the drag starts outside #bz-canvas, so it can never be
-// mistaken for a pan, and the browser draws the cursor feedback. `dragging` is the source of truth;
-// the dataTransfer payload is a courtesy for other drop targets.
-let dragging: string | null = null;
-const canvasEl = () => document.getElementById('bz-canvas');
+// mistaken for a pan, and the browser draws the cursor feedback. The shared `dragFlowId` is the
+// source of truth (index.html's _bizDragCase) — the gallery sets it here and clears it on dragend;
+// the canvas owns #bz-canvas's dragover and drop, and nests the flow where it lands. The
+// dataTransfer payload is a courtesy for other drop targets.
 function onDragStart(e: DragEvent): void {
   const card = (e.target as Element).closest?.<HTMLElement>('[data-gal-case]');
   if (!card) return;
-  dragging = card.dataset.galCase!;
+  screen.dragFlowId.value = card.dataset.galCase!;
   document.body.classList.add('bz-embedding');
-  try { e.dataTransfer?.setData('text/plain', `bzcase:${dragging}`); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy'; } catch { /* some browsers refuse; the id is held above */ }
+  try { e.dataTransfer?.setData('text/plain', `bzcase:${screen.dragFlowId.value}`); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy'; } catch { /* some browsers refuse; the id is held above */ }
 }
 function endDrag(): void {
-  dragging = null;
+  screen.dragFlowId.value = null;
   document.body.classList.remove('bz-embedding');
-  canvasEl()?.classList.remove('drop-target');
+  document.getElementById('bz-canvas')?.classList.remove('drop-target');
 }
-function onDragOver(e: DragEvent): void {
-  if (!dragging || !(e.target as Element | null)?.closest?.('#bz-canvas')) return;
-  e.preventDefault();
-  try { if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; } catch { /* read-only in some browsers */ }
-  canvasEl()?.classList.add('drop-target');
-}
-function onDrop(e: DragEvent): void {
-  if (!dragging || !(e.target as Element | null)?.closest?.('#bz-canvas')) return;
-  e.preventDefault();
-  const id = dragging;
-  endDrag();
-  if (props.canEdit) screen.canvas.embedAt(id, e.clientX, e.clientY);
-}
-onMounted(() => {
-  document.addEventListener('dragend', endDrag);
-  document.addEventListener('dragover', onDragOver);
-  document.addEventListener('drop', onDrop);
-});
+onMounted(() => { document.addEventListener('dragend', endDrag); });
 onBeforeUnmount(() => {
   document.removeEventListener('dragend', endDrag);
-  document.removeEventListener('dragover', onDragOver);
-  document.removeEventListener('drop', onDrop);
-  if (dragging) endDrag();
+  if (screen.dragFlowId.value) endDrag();
 });
 
 // ---- right-click (index.html's ctxFlowCardItems / ctxFlowGalleryItems) ---------------------------

@@ -32,7 +32,13 @@ export type FlowPopover =
    */
   | { kind: 'edge'; edgeId: string; anchor: FlowAnchor }
   /** openBizBindPopover: a Chart-Linked step's bind bar — which chart row it implements. */
-  | { kind: 'bind'; taskId: string; anchor: FlowAnchor };
+  | { kind: 'bind'; taskId: string; anchor: FlowAnchor }
+  /**
+   * openSubflowPickerPopover: a nested-flow box's "point it at another flow". Opened from the box
+   * and drawn by the canvas itself (components/flow/canvas/Repoint.vue) — one slot with the others,
+   * as index.html has one openPopover.
+   */
+  | { kind: 'repoint'; taskId: string; anchor: FlowAnchor };
 
 /**
  * What the chrome asks of the canvas. The canvas registers it when it mounts; until then (and on
@@ -47,19 +53,10 @@ export interface FlowCanvasBridge {
   fit(): void;
   /** Centre a step in the view and flash it (the jumps from Tasks, the warnings, the table). */
   focusTask(taskId: string): void;
+  /** Centre a step without the flash — bizBindNextUnbound's "centre the next unlinked step". */
+  centreTask(taskId: string): void;
   /** bizGroupSelection: wrap the selected steps in a frame. */
   groupSelection(): void;
-  /**
-   * The gallery's drop (index.html's drop listener): a nested-flow box referencing `flowId` at the
-   * world point under the pointer, offset as the source offsets it (x − BZ_NODE_W / 2, y − 28).
-   * Optional: without it a drop nests at the centre of the view.
-   */
-  embedAt?(flowId: string, clientX: number, clientY: number): void;
-  /**
-   * bizBindNextUnbound's pan: centre a step in the view WITHOUT the flash (and save the camera).
-   * Optional: without it the chrome falls back to focusTask.
-   */
-  centreTask?(taskId: string): void;
 }
 
 const LS_GALLERY = 'raci-flow-gallery-v1';
@@ -105,7 +102,11 @@ export function useFlowScreen() {
   }
   /** The primary selection — bizPrimarySel. */
   const primary = computed(() => selection.value[selection.value.length - 1] ?? null);
-  /** _bizNavStack — the way back out of nested flows (↩ Back): the flows descended from, in order. */
+  /**
+   * _bizNavStack — the flows this person descended through to reach the open one (⇱ on a nested
+   * box pushes; the toolbar's ↩ Back pops). Runtime-only, as in index.html: picking a flow from the
+   * dropdown or the gallery is a jump, not a step out, and clears it.
+   */
   const navStack = useState<string[]>('raci:flow:navStack', () => []);
   const activeFlowId = useActiveFlowId();
   /**
@@ -119,10 +120,36 @@ export function useFlowScreen() {
     selectedGroup.value = null;
   }
 
+  /**
+   * Each flow's camera — index.html's per-flow `view` — cached for the session and kept per browser
+   * under FLOW_CAMERA_PREFIX + workspace + ':' + flow. The canvas reads and writes it through these
+   * two, and so do Save (which writes it into the file) and Load (which brings the file's back).
+   */
+  const cameras = useState<Record<string, FlowCamera>>('raci:flow:cameras', () => ({}));
+  function getCamera(workspaceId: string, flowId: string): FlowCamera | null {
+    const key = FLOW_CAMERA_PREFIX + workspaceId + ':' + flowId;
+    if (cameras.value[key]) return cameras.value[key]!;
+    const stored = import.meta.client ? read<FlowCamera | null>(key, null) : null;
+    return stored && Number.isFinite(stored.panX) && Number.isFinite(stored.panY) && Number.isFinite(stored.zoom) ? stored : null;
+  }
+  function putCamera(workspaceId: string, flowId: string, cam: FlowCamera): void {
+    const key = FLOW_CAMERA_PREFIX + workspaceId + ':' + flowId;
+    cameras.value = { ...cameras.value, [key]: { panX: cam.panX, panY: cam.panY, zoom: cam.zoom } };
+    write(key, cameras.value[key]);
+  }
+
+  /**
+   * _bizDragCase — the flow a Flow Gallery card is being dragged as, from its dragstart to its
+   * dragend. The gallery sets and clears it; the canvas owns the drop (#bz-canvas's dragover and
+   * drop), reads it to accept one and nests that flow where it lands — index.html's source of truth
+   * for the drag, as `_bizDragCase` is there.
+   */
+  const dragFlowId = useState<string | null>('raci:flow:dragFlowId', () => null);
+
   return {
     galleryOpen, setGallery, tableOpen, isTableOpen, setTable,
-    selection, selectedGroup, primary, partyTarget, partyDraft, popover,
-    navStack, switchFlow,
+    selection, selectedGroup, primary, partyTarget, partyDraft, popover, getCamera, putCamera,
+    navStack, switchFlow, dragFlowId,
     /** The canvas's half of the seam (see FlowCanvasBridge). */
     canvas: {
       register(b: FlowCanvasBridge | null): void { bridge.value = b; },
@@ -130,15 +157,8 @@ export function useFlowScreen() {
       embedAtCentre: (flowId: string) => bridge.value?.embedAtCentre(flowId),
       fit: () => bridge.value?.fit(),
       focusTask: (taskId: string) => bridge.value?.focusTask(taskId),
+      centreTask: (taskId: string) => bridge.value?.centreTask(taskId),
       groupSelection: () => bridge.value?.groupSelection(),
-      embedAt: (flowId: string, clientX: number, clientY: number) => {
-        const b = bridge.value;
-        if (b?.embedAt) b.embedAt(flowId, clientX, clientY); else b?.embedAtCentre(flowId);
-      },
-      centreTask: (taskId: string) => {
-        const b = bridge.value;
-        if (b?.centreTask) b.centreTask(taskId); else b?.focusTask(taskId);
-      },
     },
   };
 }
