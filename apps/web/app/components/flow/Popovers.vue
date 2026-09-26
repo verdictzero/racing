@@ -309,6 +309,8 @@ function onDocClick(e: MouseEvent): void {
   if (!popover.value) return;
   const t = e.target as Element | null;
   if (!t?.closest) return;
+  // The canvas answers its own clicks, this rule and the drag's swallowed click included.
+  if (t.closest('#bz-canvas')) return;
   if (t.closest('.raci-popover, .org-popover, .bz-edge-popover')) return;
   if (t.closest(HANDLED)) return;
   if (t.closest('[data-gal-case]') && !t.closest('button')) return;
