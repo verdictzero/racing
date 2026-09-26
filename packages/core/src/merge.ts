@@ -28,7 +28,7 @@
  * `legacySections(raw)` — or use `mergeLegacy`, which does both steps.
  */
 
-import { keysBetween } from './fractional.js';
+import { isOrderKey, keysBetween } from './fractional.js';
 import { newId } from './ids.js';
 import { importLegacy, type ImportReport } from './legacy.js';
 import {
@@ -42,6 +42,7 @@ import {
   type FlowStep,
 } from './schema.js';
 import { chartsInTabOrder, flowEdges, freeFormShape } from './export/document-text.js';
+import { artifactsInOrder, flowsInOrder } from './registry.js';
 
 /** Which sections of a file are merged. A section the file did not carry is never merged. */
 export interface MergeSections {
@@ -106,18 +107,27 @@ export function mergeWorkspace(
   sections: MergeSections = ALL_SECTIONS,
 ): MergeResult {
   const charts = sections.charts ? chartsInTabOrder(incoming) : [];
-  const flows = sections.flows ? Object.values(incoming.flows) : [];
+  const flows = sections.flows ? flowsInOrder(incoming) : [];
+  // What arrives goes after what is here, as index.html's push appends it: flows and deliverables
+  // each take order keys past the workspace's last one (see Flow.order, Artifact.order).
+  const afterLast = (records: ReadonlyArray<{ order?: string }>, n: number): string[] => {
+    const last = records.reduce<string | null>((m, r) => (r.order && isOrderKey(r.order) && (m === null || r.order > m) ? r.order : m), null);
+    return keysBetween(last, null, n);
+  };
 
   // ---- deliverables, by identity ------------------------------------------------------------
   // An incoming deliverable with the same name and type as one already registered maps onto it,
   // so the registry stays deduplicated and a merged flow's handoffs connect to existing work. The
   // search includes deliverables added earlier in this same merge, so a file that names one thing
   // twice registers it once.
-  const registry: Artifact[] = Object.values(current.artifacts);
+  const registry: Artifact[] = artifactsInOrder(current);
+  const incomingArtifacts = sections.artifacts ? artifactsInOrder(incoming) : [];
+  const artifactKeys = afterLast(registry, incomingArtifacts.length);
+  let nextArtifactKey = 0;
   const artifacts: Record<string, Artifact> = {};
   const artifactIds = new Map<string, string>();
   if (sections.artifacts) {
-    for (const a of Object.values(incoming.artifacts)) {
+    for (const a of incomingArtifacts) {
       const existing = registry.find((x) => sameDeliverable(x, a));
       if (existing) {
         artifactIds.set(a.id, existing.id);
@@ -126,6 +136,7 @@ export function mergeWorkspace(
       const copy: Artifact = {
         ...a,
         id: newId('artifact'),
+        order: artifactKeys[nextArtifactKey++],
         ownerRef: a.ownerRef ? { ...a.ownerRef } : null,
         doc: a.doc ? { ...a.doc } : null,
       };
@@ -234,7 +245,8 @@ export function mergeWorkspace(
 
   // ---- flows --------------------------------------------------------------------------------
   const addedFlows: Record<string, Flow> = {};
-  for (const flow of flows) {
+  const flowKeys = afterLast(Object.values(current.flows), flows.length);
+  for (const [flowIndex, flow] of flows.entries()) {
     const id = flowIds.get(flow.id)!;
     const ids = stepIds.get(flow.id)!;
     const groupIds = new Map(Object.keys(flow.groups).map((g) => [g, newId('group')]));
@@ -310,6 +322,7 @@ export function mergeWorkspace(
     addedFlows[id] = {
       ...flow,
       id,
+      order: flowKeys[flowIndex],
       meta: { ...flow.meta, tags: [...flow.meta.tags] },
       anchor: followAnchor(flow.anchor),
       sourceChartId: followSourceChart(flow.sourceChartId),

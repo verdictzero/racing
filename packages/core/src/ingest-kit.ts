@@ -35,6 +35,7 @@ import {
   TIER_LABELS,
 } from './constants.js';
 import { rootsOf } from './tree.js';
+import { flowsInOrder } from './registry.js';
 import type { Workspace } from './schema.js';
 import {
   actorLabel,
@@ -735,7 +736,7 @@ export function ingestKitMarkdown(ws: Workspace, opts: IngestKitOptions = {}): s
     );
   }
   p('', '### Business cases already in the workspace', '');
-  const flows = Object.values(ws.flows);
+  const flows = flowsInOrder(ws);
   if (!flows.length) p('- (none)');
   for (const b of flows) {
     const steps = Object.values(b.steps);

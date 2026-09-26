@@ -30,7 +30,7 @@
 
 import { ACTOR_LABELS_DEFAULT, ACTORS, COLS, entityKindMeta, framework, type Framework } from './constants.js';
 import { inheritedOwnerColumn, normalizeRaci } from './raci.js';
-import { chartsInTabOrder, computeArtifactUses, entityDisplayName as entityName } from './registry.js';
+import { chartsInTabOrder, computeArtifactUses, entityDisplayName as entityName, flowsInOrder } from './registry.js';
 import { scopeRelation } from './org.js';
 import { ancestorsOf, childIndex, childrenIn } from './tree.js';
 import { tierLabel } from './legacy.js';
@@ -285,7 +285,7 @@ export function collectWork(ws: Workspace, scope: OrgRef | null | undefined): Wo
 
   // ---- flow steps ------------------------------------------------------------------------------
   const TO = framework('raci'); // flows are RACI, full stop (v0.34)
-  for (const flow of Object.values(ws.flows)) {
+  for (const flow of flowsInOrder(ws)) {
     const anchorChart = flow.anchor ? ws.charts[flow.anchor.chartId] : undefined;
     const anchorNode = flow.anchor && anchorChart ? anchorChart.nodes[flow.anchor.nodeId] : undefined;
     const anchorRefs = anchorChart && anchorNode ? orgRefsDownTo(anchorChart, anchorNode) : null;

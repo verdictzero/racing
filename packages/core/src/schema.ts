@@ -339,6 +339,12 @@ export const Flow = z.object({
   steps: z.record(z.string(), FlowStep).default({}),
   edges: z.record(z.string(), FlowEdge).default({}),
   groups: z.record(z.string(), FlowGroup).default({}),
+  /**
+   * Place among the flows — see `Artifact.order`. index.html keeps its flows in an array, in the
+   * order they were made, and that order is the gallery's, the flow picker's and every walk over
+   * the flows (the rules, the Tasks lens, the exports). See `flowsInOrder`.
+   */
+  order: z.string().optional(),
 });
 export type Flow = z.infer<typeof Flow>;
 

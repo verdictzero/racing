@@ -303,9 +303,17 @@ export function deleteChart(doc: Y.Doc, chartId: string): void {
 
 // ---- flows --------------------------------------------------------------------------------------
 
-export function addFlow(doc: Y.Doc, name = 'Untitled business case'): string {
+/**
+ * A new, empty flow — last among the flows, where index.html's push puts a new one (see
+ * Flow.order). `fields` sets its header: a mode, the chart it follows, the chart row it hangs under.
+ */
+export function addFlow(
+  doc: Y.Doc,
+  name = 'Untitled business case',
+  fields: Partial<Pick<Flow, 'mode' | 'sourceChartId' | 'anchor' | 'meta'>> = {},
+): string {
   const id = newId('flow');
-  const flow = Flow.parse({ id, name });
+  const flow = Flow.parse({ meta: {}, ...fields, id, name, order: nextRegistryOrder(maps(doc).flows) });
   const { steps: _s, edges: _e, groups: _g, ...header } = flow;
   doc.transact(() => maps(doc).flows.set(id, toYMap(header)), LOCAL_ORIGIN);
   return id;

@@ -91,6 +91,7 @@ import {
   COLS,
   MAX_TIER,
   artifactsInOrder,
+  flowsInOrder,
   computeArtifactUses,
   depthOf,
   framework,
@@ -148,7 +149,7 @@ const who = computed(() => {
 const flows = computed(() => {
   const f = found.value;
   if (!f) return [];
-  return Object.values(session.workspace.value.flows)
+  return flowsInOrder(session.workspace.value)
     .filter((b) => b.anchor?.chartId === f.chart.id && b.anchor.nodeId === f.node.id);
 });
 const stepCount = (b: Flow) => Object.keys(b.steps).length;

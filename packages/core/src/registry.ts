@@ -14,7 +14,7 @@
 import { childIndex, childrenIn, walkInOrder } from './tree.js';
 import { entityKindMeta } from './constants.js';
 import { deriveShort } from './import/xlsx.js';
-import type { Artifact, Chart, ChartNode, Entity, OrgRef, Workspace } from './schema.js';
+import type { Artifact, Chart, ChartNode, Entity, Flow, OrgRef, Workspace } from './schema.js';
 
 /** Where a use was found, in terms a person recognizes. */
 export interface UseSite {
@@ -87,6 +87,11 @@ function inRegistryOrder<T extends { id: string; order?: string }>(records: Read
     .map(({ record }) => record);
 }
 
+/** The flows in the order index.html's array holds them (see `Flow.order`). */
+export function flowsInOrder(ws: Pick<Workspace, 'flows'>): Flow[] {
+  return inRegistryOrder(ws.flows);
+}
+
 /** The deliverable registry in registry order (see `Artifact.order`). */
 export function artifactsInOrder(ws: Pick<Workspace, 'artifacts'>): Artifact[] {
   return inRegistryOrder(ws.artifacts);
@@ -135,7 +140,7 @@ export function computeArtifactUses(ws: Workspace): Map<string, ArtifactUses> {
     }
   }
 
-  for (const flow of Object.values(ws.flows)) {
+  for (const flow of flowsInOrder(ws)) {
     for (const edge of Object.values(flow.edges)) {
       if (edge.artifactIds.length === 0) continue;
       const from = flow.steps[edge.from];
@@ -211,7 +216,7 @@ export function computeEntityUses(ws: Workspace, entityId: string): UseSite[] {
     }
   }
 
-  for (const flow of Object.values(ws.flows)) {
+  for (const flow of flowsInOrder(ws)) {
     for (const step of Object.values(flow.steps)) {
       for (const ref of Object.values(step.parties)) {
         if (refersToEntity(ref, entityId)) {

@@ -11,6 +11,7 @@ import {
   orphanArtifacts,
   terminalArtifacts,
   walkChartRows,
+  flowsInOrder,
 } from './registry.js';
 import { artifactTypeMeta, entityKindMeta, ARTIFACT_TYPES, ENTITY_KINDS } from './constants.js';
 
@@ -279,5 +280,23 @@ describe('the two registry annotations', () => {
       edge.artifactIds = [...edge.artifactIds, 'a_carried'];
     });
     expect(terminalArtifacts(ws).map((a) => a.id)).not.toContain('a_carried');
+  });
+});
+
+describe('flowsInOrder', () => {
+  it('keeps the file’s order through an import, and follows the keys over the map’s own order', () => {
+    const { workspace } = importLegacy(demo);
+    expect(flowsInOrder(workspace).map((f) => f.name)).toEqual((demo.bizCases as Array<{ name: string }>).map((b) => b.name));
+    // A map filled the other way round — as another client's addition can arrive after a reload —
+    // still lists by key.
+    const reversed = Object.fromEntries(Object.entries(workspace.flows).reverse());
+    expect(flowsInOrder({ flows: reversed }).map((f) => f.id)).toEqual(flowsInOrder(workspace).map((f) => f.id));
+  });
+
+  it('lists a flow written before flows had keys first, in the map’s order', () => {
+    const { workspace } = importLegacy(demo);
+    const [a, b] = Object.values(workspace.flows);
+    const flows = { [b!.id]: { ...b!, order: undefined }, [a!.id]: a! };
+    expect(flowsInOrder({ flows }).map((f) => f.id)).toEqual([b!.id, a!.id]);
   });
 });

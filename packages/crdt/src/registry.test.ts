@@ -5,11 +5,12 @@ import {
   artifactsInOrder,
   computeArtifactUses,
   entitiesInOrder,
+  flowsInOrder,
   importLegacy,
   objectRegistry,
 } from '@raci/core';
 import { docFromWorkspace, readWorkspace } from './doc.js';
-import { addArtifact, addEntity, duplicateArtifact, duplicateEntity } from './mutations.js';
+import { addArtifact, addEntity, addFlow, duplicateArtifact, duplicateEntity } from './mutations.js';
 
 const { workspace } = importLegacy(demo);
 
@@ -97,5 +98,14 @@ describe('registry order — what the gallery lists first', () => {
     const doc = docFromWorkspace(workspace);
     expect(duplicateArtifact(doc, 'a_gone')).toBeNull();
     expect(duplicateEntity(doc, 'ent_gone')).toBeNull();
+  });
+});
+
+describe('addFlow', () => {
+  it('puts a new flow last, where index.html’s push puts it', () => {
+    const doc = docFromWorkspace(importLegacy(demo).workspace);
+    const id = addFlow(doc, 'Brand new');
+    const ordered = flowsInOrder(readWorkspace(doc)).map((f) => f.id);
+    expect(ordered[ordered.length - 1]).toBe(id);
   });
 });

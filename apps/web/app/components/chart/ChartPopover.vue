@@ -90,6 +90,7 @@ import {
   depthOf,
   doerColumns,
   entitiesInOrder,
+  flowsInOrder,
   entityKindMeta,
   framework,
   inheritedOwnerColumn,
@@ -261,9 +262,9 @@ const rowFlows = computed(() => {
   const n = node.value;
   if (!n) return [];
   if (props.pop?.kind === 'taskview' && (props.chart.custom || depth.value < 3)) return [];
-  return Object.values(session.workspace.value.flows).filter((b) => b.anchor?.chartId === props.chart.id && b.anchor.nodeId === n.id);
+  return flowsInOrder(session.workspace.value).filter((b) => b.anchor?.chartId === props.chart.id && b.anchor.nodeId === n.id);
 });
-const standalone = computed(() => Object.values(session.workspace.value.flows).filter((b) => !b.anchor));
+const standalone = computed(() => flowsInOrder(session.workspace.value).filter((b) => !b.anchor));
 const stepCount = (id: string) => Object.keys(session.workspace.value.flows[id]?.steps ?? {}).length;
 
 // ---- the org picker ----

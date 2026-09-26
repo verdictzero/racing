@@ -36,6 +36,7 @@ import type {
   ViolationRecord,
 } from './raci.js';
 import type { Flow, Workspace } from './schema.js';
+import { flowsInOrder } from './registry.js';
 
 /**
  * Which screen is up, in index.html's names — the same ones the shell writes to `body[data-view]`.
@@ -69,7 +70,7 @@ export function flowsToLint(ws: Workspace, scope: ViolationScope): string[] {
   const chart = resolveActiveChart(ws, scope.chartId);
   if (!chart) return [];
   const cache = createLintCache();
-  return Object.values(ws.flows)
+  return flowsInOrder(ws)
     .filter((flow) => liveAnchor(ws, flow, cache)?.chartId === chart.id)
     .map((flow) => flow.id);
 }
@@ -205,7 +206,7 @@ export function workspaceViolations(ws: Workspace): WorkspaceViolations {
     all.push(...found);
   }
 
-  for (const flow of Object.values(ws.flows)) {
+  for (const flow of flowsInOrder(ws)) {
     const found = flowIssues(flowRecords(contextFor(defaultChartFor(ws, flow, cache)), flow));
     if (found.length > 0) flows.set(flow.id, found);
     all.push(...found);

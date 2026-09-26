@@ -51,6 +51,7 @@ import {
 } from './constants.js';
 import { normalizeRaci } from './raci.js';
 import { childIndex, childrenIn } from './tree.js';
+import { flowsInOrder } from './registry.js';
 import type { Chart, ChartNode, Flow, FlowEdge, FlowStep, Workspace } from './schema.js';
 
 const isOrgColumn = (key: string): key is ColKey => (COLS as readonly string[]).includes(key);
@@ -212,7 +213,7 @@ export function resolveActiveFlow(
   flowId?: string | null,
 ): Flow | null {
   const asked = flowId ? ownEntry(ws.flows, flowId) : undefined;
-  return asked ?? Object.values(ws.flows)[0] ?? null;
+  return asked ?? flowsInOrder(ws)[0] ?? null;
 }
 
 // ---- flows ----------------------------------------------------------------------------------------
@@ -431,7 +432,7 @@ export function createLintContext(
           for (const id of row.node.outputs) add(id, { chartNode: true, id: row.node.id });
         }
       }
-      for (const flow of Object.values(ws.flows)) {
+      for (const flow of flowsInOrder(ws)) {
         for (const edge of edges(flow)) {
           for (const id of edge.artifactIds) add(id, { chartNode: false, id: edge.from });
         }

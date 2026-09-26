@@ -13,7 +13,7 @@
  * places the screens keep them.
  */
 import {
-  chartsInTabOrder, clearedWorkspace, importLegacy, ingestKitMarkdown, mergeLegacy, mergeToast,
+  chartsInTabOrder, clearedWorkspace, flowsInOrder, importLegacy, ingestKitMarkdown, mergeLegacy, mergeToast,
   OrgRef as OrgRefSchema, type EmbeddedDocument, type OrgRef, type Workspace,
 } from '@raci/core';
 import { LOCAL_ORIGIN, loadWorkspace, readWorkspace, replaceWorkspace } from '@raci/crdt';
@@ -90,7 +90,7 @@ export function useRailActions() {
     const tabs = chartsInTabOrder(ws);
     const chartId = typeof raw.activeChartId === 'string' && ws.charts[raw.activeChartId] ? raw.activeChartId : tabs[0]?.id ?? null;
     activeChartId.value = chartId;
-    const flowIds = Object.keys(ws.flows);
+    const flowIds = flowsInOrder(ws).map((f) => f.id);
     activeFlowId.value = typeof raw.activeBizCaseId === 'string' && ws.flows[raw.activeBizCaseId] ? raw.activeBizCaseId : flowIds[0] ?? null;
     setLegend(raw.showLegend === true);
     const scope = OrgRefSchema.safeParse(raw.workScope);

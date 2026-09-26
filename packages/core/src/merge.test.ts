@@ -4,6 +4,7 @@ import { anchoredVariant } from './__fixtures__/parity-variants.js';
 import { importLegacy } from './legacy.js';
 import { legacySections, mergeLegacy, mergeToast, mergeWorkspace } from './merge.js';
 import type { Workspace } from './schema.js';
+import { flowsInOrder } from './registry.js';
 
 /** The workspace after `additions` are loaded on top — what `loadWorkspace` leaves in the document. */
 function applied(current: Workspace, additions: Workspace): Workspace {
@@ -273,5 +274,24 @@ describe('Merge', () => {
     const before = JSON.stringify([workspace, incoming]);
     mergeWorkspace(workspace, incoming);
     expect(JSON.stringify([workspace, incoming])).toBe(before);
+  });
+});
+
+describe('Merge keeps index.html’s order', () => {
+  // The source appends: a merged flow or deliverable lands after everything already there, and the
+  // workspace's own keep their places.
+  it('lists merged flows and deliverables after the workspace’s own', () => {
+    const { workspace: current } = importLegacy(demo);
+    const { additions } = mergeLegacy(current, demo);
+    const combined: Workspace = {
+      ...current,
+      flows: { ...current.flows, ...additions.flows },
+      artifacts: { ...current.artifacts, ...additions.artifacts },
+    };
+    const flowIds = flowsInOrder(combined).map((f) => f.id);
+    expect(flowIds.slice(0, Object.keys(current.flows).length)).toEqual(flowsInOrder(current).map((f) => f.id));
+    expect(flowIds.slice(Object.keys(current.flows).length).sort()).toEqual(Object.keys(additions.flows).sort());
+    const names = flowsInOrder(combined).map((f) => f.name);
+    expect(names).toEqual([...flowsInOrder(current).map((f) => f.name), ...flowsInOrder(current).map((f) => f.name)]);
   });
 });

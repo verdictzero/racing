@@ -56,9 +56,11 @@ import {
   tierLabel,
   type Chart,
   type ChartNode,
+  flowsInOrder,
 } from '@raci/core';
 import {
   LOCAL_ORIGIN,
+  addFlow,
   addNode,
   addStep,
   deleteNode as deleteNodeTree,
@@ -122,7 +124,7 @@ const records = computed(() => {
 });
 const flowsByNode = computed(() => {
   const map = new Map<string, Array<{ id: string; name: string }>>();
-  for (const f of Object.values(session.workspace.value.flows)) {
+  for (const f of flowsInOrder(session.workspace.value)) {
     if (!f.anchor || f.anchor.chartId !== chart.value?.id) continue;
     const list = map.get(f.anchor.nodeId) ?? [];
     list.push({ id: f.id, name: f.name });
@@ -482,15 +484,11 @@ async function createFlowFromNode(nodeId: string): Promise<void> {
   const c = chart.value!;
   const n = c.nodes[nodeId];
   if (!n || !canEdit.value) return;
-  const flowId = `flow_${Math.random().toString(36).slice(2, 12)}`;
-  const flows = maps(session.doc).flows;
+  let flowId = '';
   session.doc.transact(() => {
-    flows.set(flowId, toYMap({
-      id: flowId, name: `${n.name || 'Untitled task'} — flow`,
-      meta: { description: '', customer: '', priority: '', budget: '', tags: [] },
-      framework: 'raci', mode: c.custom ? 'free' : 'linked', sourceChartId: c.custom ? null : c.id,
-      status: 'draft', finalizedAt: null, anchor: { chartId: c.id, nodeId },
-    }));
+    flowId = addFlow(session.doc, `${n.name || 'Untitled task'} — flow`, {
+      mode: c.custom ? 'free' : 'linked', sourceChartId: c.custom ? null : c.id, anchor: { chartId: c.id, nodeId },
+    });
     addStep(session.doc, flowId, c.custom
       ? { name: n.name || '', x: 60, y: 80, raci: Object.fromEntries(cols.value.map((k) => [k, n.raci[k] ?? ''])) }
       : { name: n.name || '', x: 60, y: 80, bind: { chartId: c.id, nodeId } });

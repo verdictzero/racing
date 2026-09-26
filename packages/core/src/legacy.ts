@@ -20,7 +20,7 @@ import type { EmbeddedDocument } from './documents.js';
 import { keysBetween } from './fractional.js';
 import { keepOrMint, newId } from './ids.js';
 import { normalizeRaci } from './raci.js';
-import { artifactsInOrder, entitiesInOrder } from './registry.js';
+import { artifactsInOrder, entitiesInOrder, flowsInOrder } from './registry.js';
 import {
   Artifact,
   Chart,
@@ -496,11 +496,14 @@ export function importLegacy(input: unknown): LegacyImport {
     chartOrder[id] = orderKeys[i]!;
   });
 
+  // Flows keep the file's order as an order key, as the registries below do (see Flow.order).
   const flows: Record<string, Flow> = {};
-  for (const f of raw.bizCases ?? []) {
+  const flowsIn = raw.bizCases ?? [];
+  const flowOrder = keysBetween(null, null, flowsIn.length);
+  flowsIn.forEach((f, i) => {
     const flow = importFlow(f as Record<string, unknown>, warnings);
-    flows[flow.id] = flow;
-  }
+    flows[flow.id] = { ...flow, order: flowOrder[i] };
+  });
 
   // The registries are arrays in the file, and their order is the order they were made — which the
   // gallery shows — so each record carries it as an order key (see Artifact.order).
@@ -711,7 +714,7 @@ export function exportLegacy(
 
   // Keys in the order index.html's migrateState builds them, so a file saved here reads like one
   // saved there — a diff between the two shows what changed, not how each app happens to type.
-  const bizCases = Object.values(ws.flows).map((f) => ({
+  const bizCases = flowsInOrder(ws).map((f) => ({
     id: f.id,
     name: f.name,
     meta: { ...f.meta, tags: [...f.meta.tags] },

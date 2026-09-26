@@ -46,7 +46,7 @@ import {
   subflowRefId,
 } from '../lint-context.js';
 import { normalizeRaci } from '../raci.js';
-import { artifactsInOrder, chartsInTabOrder } from '../registry.js';
+import { artifactsInOrder, chartsInTabOrder, flowsInOrder } from '../registry.js';
 import { ancestorsOf } from '../tree.js';
 import {
   Chart,
@@ -485,7 +485,7 @@ export function resolvedAnchor(
  * file leaves out of index.html's.
  */
 export function flowsAnchoredTo(ws: Workspace, chartId: string): Flow[] {
-  return Object.values(ws.flows).filter(
+  return flowsInOrder(ws).filter(
     (f) => f.anchor?.chartId === chartId && resolvedAnchor(ws, f),
   );
 }
@@ -750,7 +750,7 @@ export function deliverableUses(
       for (const id of node.inputs) entry(id).consumers.push(name);
     }
   }
-  for (const flow of Object.values(ws.flows)) {
+  for (const flow of flowsInOrder(ws)) {
     for (const edge of flowEdges(flow)) {
       for (const id of edge.artifactIds) {
         entry(id).producers.push(flow.steps[edge.from]?.name || '(untitled step)');
@@ -782,7 +782,7 @@ export function entityNamings(
       add(rowOrg(chart, node), chart.title || 'Untitled chart', node.name || '(untitled)');
     }
   }
-  for (const flow of Object.values(ws.flows)) {
+  for (const flow of flowsInOrder(ws)) {
     for (const step of Object.values(flow.steps)) {
       for (const [column, ref] of Object.entries(step.parties)) {
         if (!(COLS as readonly string[]).includes(column)) continue;
