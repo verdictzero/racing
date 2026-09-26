@@ -122,8 +122,10 @@ const bind = computed(() => {
   if (!step || chrome.isSub(step)) return null;
   return { step, chart: chrome.sourceChart(props.flow) };
 });
-// A popover whose subject has gone (deleted here or by a colleague) goes with it.
-watch([popover, raci, edge, bind], ([p, r, e, b]) => { if (p && !r && !e && !b) popover.value = null; });
+// A popover whose subject has gone (deleted here or by a colleague) goes with it. Only the three drawn
+// here: the slot also holds the canvas's own 'repoint' popover, which is none of these.
+const MINE = new Set(['raci', 'edge', 'bind']);
+watch([popover, raci, edge, bind], ([p, r, e, b]) => { if (p && MINE.has(p.kind) && !r && !e && !b) popover.value = null; });
 
 // ---- placement: once, as the source places each popover when it opens ----------------------------
 const el = ref<HTMLElement | null>(null);
