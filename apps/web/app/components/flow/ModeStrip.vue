@@ -45,8 +45,12 @@ const hasMeta = computed(() => {
 function openMeta(): void { if (props.flow) shell.openMeta('flow', props.flow.id); }
 /** #bz-mode: the party panel closes, then the mode changes. */
 function pickMode(e: Event): void {
+  const sel = e.target as HTMLSelectElement;
+  // index.html repaints the strip when the panel closes or the mode changes — and the picker's
+  // focus goes with it.
+  const hadParty = !!chrome.screen.partyTarget.value;
   chrome.closeParty();
-  chrome.setMode((e.target as HTMLSelectElement).value);
+  if (chrome.setMode(sel.value) || hadParty) sel.blur();
 }
 
 // "Never linked" and "linked to a row that has since gone" are different problems with different

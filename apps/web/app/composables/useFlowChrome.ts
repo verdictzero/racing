@@ -333,10 +333,10 @@ export function useFlowChrome() {
   }
 
   // ---- modes and binds -----------------------------------------------------------------------------
-  /** bizSetMode. */
-  function setMode(mode: string): void {
+  /** bizSetMode. True when the mode changed (index.html then repaints). */
+  function setMode(mode: string): boolean {
     const b = active.value;
-    if (!b || !canEdit.value || !(BIZ_MODES as readonly string[]).includes(mode) || b.mode === mode) return;
+    if (!b || !canEdit.value || !(BIZ_MODES as readonly string[]).includes(mode) || b.mode === mode) return false;
     if (mode === 'free') {
       // Offer to bake in what the chart is supplying, so the flow reads the same either side.
       const supplied = steps(b).filter((t) => !isSub(t)).filter((t) => {
@@ -361,7 +361,7 @@ export function useFlowChrome() {
     } else {
       if (!linkable.value.length) {
         shell.toast('Chart-Linked needs an organization chart to draw rows from — this workspace has none (free-form charts have no organizational columns to link).', 'error');
-        return;
+        return false;
       }
       const src = sourceChart(b);
       session.doc.transact(() => {
@@ -374,12 +374,14 @@ export function useFlowChrome() {
     shell.toast(unbound
       ? `Chart-Linked — ${unbound} step${unbound === 1 ? '' : 's'} still need${unbound === 1 ? 's' : ''} a chart row. Click ⛓ on a card to pick one.`
       : `${M.name} — ${M.blurb}`, unbound ? 'suggest' : TOAST_OK);
+    return true;
   }
-  /** bizSetSourceChart. */
-  function setSourceChart(chartId: string): void {
+  /** bizSetSourceChart. True when it was set (index.html then repaints). */
+  function setSourceChart(chartId: string): boolean {
     const b = active.value, c = ws.value.charts[chartId];
-    if (!b || !c || isFreeChart(c) || !canEdit.value) return;
+    if (!b || !c || isFreeChart(c) || !canEdit.value) return false;
     setFlowField(session.doc, b.id, 'sourceChartId', c.id);
+    return true;
   }
   /** bizBindStep. */
   function bindStep(taskId: string, chartId: string, nodeId: string): void {

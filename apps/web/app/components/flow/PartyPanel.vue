@@ -194,6 +194,8 @@ function onSelect(e: Event): void {
   if (!sel || !target.value) return;
   // The panel is still showing a step of a flow just left: its next repaint closes it.
   if (!chrome.stepOf(target.value.taskId)) { chrome.closeParty(); return; }
+  // renderBizPartyPanel rebuilds the panel after every pick, and the select's focus goes with it.
+  sel.blur();
   const k = sel.dataset.bzPartySel, val = sel.value;
   const d = (draft.value ?? {}) as Record<string, string | undefined>;
   if (k === 'kind') {

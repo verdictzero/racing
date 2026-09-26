@@ -197,6 +197,7 @@ function addArt(e: Event): void {
   sel.value = ''; // the list is rebuilt in the source; its first option shows again
   const p = popover.value;
   if (p?.kind !== 'edge' || !props.flow || !val) return;
+  sel.blur(); // index.html rebuilds the popover here, and the list goes with the focus it had
   const f = props.flow;
   if (val === '__new') {
     const nm = (window.prompt('New deliverable name:') || '').trim();
