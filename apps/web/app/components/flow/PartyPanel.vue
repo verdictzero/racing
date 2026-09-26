@@ -69,8 +69,8 @@
           <div class="bzp-preview" :class="{ set: !!preview }">{{ preview ? preview.full
             : isEnt ? 'No entity selected yet — pick one above.' : 'No party selected yet — scrub the hierarchy above.' }}</div>
           <div class="bzp-actions">
-            <button id="bz-party-assign" type="button" data-bz-party-assign="1" :disabled="!previewRef" @click="assign">Assign</button>
-            <button id="bz-party-clear" type="button" data-bz-party-clear="1" :disabled="!view.committed" @click="clear">Clear</button>
+            <button id="bz-party-assign" type="button" data-bz-party-assign="1" :disabled="!previewRef || !canEdit" @click="assign">Assign</button>
+            <button id="bz-party-clear" type="button" data-bz-party-clear="1" :disabled="!view.committed || !canEdit" @click="clear">Clear</button>
           </div>
         </template>
       </div>
