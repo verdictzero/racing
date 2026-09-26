@@ -25,7 +25,11 @@ export interface FlowAnchor {
 export type FlowPopover =
   /** openBizRaciPopover: a step's cell in the card's RACI strip. */
   | { kind: 'raci'; taskId: string; col: string; anchor: FlowAnchor }
-  /** openBizEdgePopover: a handoff — its label, condition and deliverables. */
+  /**
+   * openBizEdgePopover: a handoff — its label, condition and deliverables. The source places this
+   * one by the POINTER (clientX, clientY), not by an element: pass the click point as a 0×0 box
+   * (the chrome reads the anchor's centre).
+   */
   | { kind: 'edge'; edgeId: string; anchor: FlowAnchor }
   /** openBizBindPopover: a Chart-Linked step's bind bar — which chart row it implements. */
   | { kind: 'bind'; taskId: string; anchor: FlowAnchor }
@@ -98,6 +102,23 @@ export function useFlowScreen() {
   }
   /** The primary selection — bizPrimarySel. */
   const primary = computed(() => selection.value[selection.value.length - 1] ?? null);
+  /**
+   * _bizNavStack — the flows this person descended through to reach the open one (⇱ on a nested
+   * box pushes; the toolbar's ↩ Back pops). Runtime-only, as in index.html: picking a flow from the
+   * dropdown or the gallery is a jump, not a step out, and clears it.
+   */
+  const navStack = useState<string[]>('raci:flow:navStack', () => []);
+  const activeFlowId = useActiveFlowId();
+  /**
+   * bizSwitchCase: open another flow. The selection goes with the flow it was made in, and so does
+   * the Back trail — unless `keepTrail`, which is how a descent into a nested flow keeps it.
+   */
+  function switchFlow(id: string, keepTrail = false): void {
+    if (!keepTrail) navStack.value = [];
+    activeFlowId.value = id;
+    selection.value = [];
+    selectedGroup.value = null;
+  }
 
   /**
    * Each flow's camera — index.html's per-flow `view` — cached for the session and kept per browser
@@ -118,21 +139,17 @@ export function useFlowScreen() {
   }
 
   /**
-   * _bizNavStack — the flows this person descended through to reach the open one (⇱ on a nested
-   * box pushes; the toolbar's ↩ Back pops). Runtime-only, as in index.html: picking a flow from the
-   * dropdown or the gallery is a jump, not a step out, and clears it.
-   */
-  const navStack = useState<string[]>('raci:flow:navStack', () => []);
-  /**
    * _bizDragCase — the flow a Flow Gallery card is being dragged as, from its dragstart to its
-   * dragend. The canvas reads it to accept the drop and nest that flow where it lands.
+   * dragend. The gallery sets and clears it; the canvas owns the drop (#bz-canvas's dragover and
+   * drop), reads it to accept one and nests that flow where it lands — index.html's source of truth
+   * for the drag, as `_bizDragCase` is there.
    */
   const dragFlowId = useState<string | null>('raci:flow:dragFlowId', () => null);
 
   return {
     galleryOpen, setGallery, tableOpen, isTableOpen, setTable,
     selection, selectedGroup, primary, partyTarget, partyDraft, popover, getCamera, putCamera,
-    navStack, dragFlowId,
+    navStack, switchFlow, dragFlowId,
     /** The canvas's half of the seam (see FlowCanvasBridge). */
     canvas: {
       register(b: FlowCanvasBridge | null): void { bridge.value = b; },
