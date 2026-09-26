@@ -366,6 +366,8 @@ function commit(write: () => void): boolean {
   if (!f || !props.canEdit) return false;
   if (f.status === 'final') {
     refuseLockedEdit('flow', `“${f.name || 'Untitled'}” is Final — that change was rolled back. Reopen it as a draft to edit it.`);
+    // index.html renders after the rollback all the same.
+    void nextTick(() => { layoutAll(); freshRaster(); });
     return false;
   }
   write();
