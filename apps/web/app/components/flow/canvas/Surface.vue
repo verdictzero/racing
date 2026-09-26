@@ -1601,6 +1601,19 @@ function onMouseUp(e: MouseEvent): void {
 }
 
 // ---- clicks (the bizcase branch of index.html's delegated click handler, in its order) --------------
+/**
+ * The shell drops focus from a clicked button, because index.html's re-render throws the button
+ * away. Where the source does NOT re-render — a zoom pill, ⧉, a "point at…" opener, a delete that
+ * was cancelled — its button keeps focus, and Space or Enter presses it again. Those hand it back,
+ * once the shell's blur has run, unless something else has taken focus meanwhile.
+ */
+function keepFocus(el: Element | null): void {
+  if (!(el instanceof HTMLElement)) return;
+  setTimeout(() => {
+    const a = document.activeElement;
+    if ((!a || a === document.body) && el.isConnected) el.focus({ preventScroll: true });
+  }, 0);
+}
 function onClick(e: MouseEvent): void {
   const t = e.target as Element;
   // A drag just ended — swallow its trailing click if it lands on what was dragged.
@@ -1613,19 +1626,24 @@ function onClick(e: MouseEvent): void {
   const el = (sel: string) => t.closest<HTMLElement>(sel);
   let hit: HTMLElement | null;
   if ((hit = el('[data-bz-open-sub]'))) { openSubflow(hit.dataset.bzOpenSub!); return; }
-  if ((hit = el('[data-bz-repoint]'))) { popover.value = { kind: 'repoint', taskId: hit.dataset.bzRepoint!, anchor: anchorOf(hit) }; return; }
+  if ((hit = el('[data-bz-repoint]'))) {
+    popover.value = { kind: 'repoint', taskId: hit.dataset.bzRepoint!, anchor: anchorOf(hit) };
+    keepFocus(hit);
+    return;
+  }
   if ((hit = el('[data-bz-port]'))) { togglePort(hit.dataset.bzPort!, hit.dataset.side as 'in' | 'out', hit.dataset.portId!); return; }
   if ((hit = el('[data-bz-group-collapse]'))) { toggleCollapse(hit.dataset.bzGroupCollapse!); return; }
   if ((hit = el('[data-bz-group-color]'))) { cycleColor(hit.dataset.bzGroupColor!); return; }
   if ((hit = el('[data-bz-group-ungroup]'))) { ungroup(hit.dataset.bzGroupUngroup!); return; }
-  if ((hit = el('[data-bz-group-del]'))) { deleteFrame(hit.dataset.bzGroupDel!); return; }
-  if (t.closest('#bz-zoom-in')) { zoomBy(1.1); return; }
-  if (t.closest('#bz-zoom-out')) { zoomBy(1 / 1.1); return; }
-  if (t.closest('#bz-zoom-fit')) { fit(); return; }
+  if ((hit = el('[data-bz-group-del]'))) { const gid = hit.dataset.bzGroupDel!; deleteFrame(gid); if (props.flow?.groups[gid]) keepFocus(hit); return; }
+  if ((hit = el('#bz-zoom-in'))) { zoomBy(1.1); keepFocus(hit); return; }
+  if ((hit = el('#bz-zoom-out'))) { zoomBy(1 / 1.1); keepFocus(hit); return; }
+  if ((hit = el('#bz-zoom-fit'))) { fit(); keepFocus(hit); return; }
   if (t.closest('#bz-zoom-level')) { zoomTo(1); return; }
-  if ((hit = el('[data-bz-del-task]'))) { deleteTask(hit.dataset.bzDelTask!); return; }
+  if ((hit = el('[data-bz-del-task]'))) { const id = hit.dataset.bzDelTask!; deleteTask(id); if (props.flow?.steps[id]) keepFocus(hit); return; }
   if ((hit = el('[data-bz-copy-task]'))) {
     if (copyTask(hit.dataset.bzCopyTask!)) toast('Step copied — Ctrl+V to paste', 'suggest');
+    keepFocus(hit);
     return;
   }
   const edge = t.closest<SVGElement>('[data-bz-edge]');
