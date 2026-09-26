@@ -1,11 +1,8 @@
 <template>
   <!-- index.html's bizCharterHtml: the exec context an ANCHORED flow lives under. Nothing for a
-       standalone flow. -->
-  <div v-if="flow?.anchor && !an" class="bz-charter broken" @click="onClick">
-    <span class="bzc-crumb-txt">⚓ Anchored chart task is missing (chart deleted?)</span>
-    <button v-if="canEdit" class="bzc-detach" :data-bz-detach="flow.id" title="Make this a standalone case">Detach</button>
-  </div>
-  <div v-else-if="flow && an" class="bz-charter" @click="onClick">
+       standalone flow — nor for an anchor whose row is gone: index.html's loader drops that anchor
+       and its row delete clears it, so its "task is missing" strip never shows for a document. -->
+  <div v-if="flow && an" class="bz-charter" @click="onClick">
     <button class="bzc-crumb" data-charter-jump="1" :data-chart-id="an.chart.id" :data-node-id="an.node.id"
       title="Back to this task's row in the org chart">⤴ {{ crumb }}</button>
     <span class="bzc-chips"><span v-for="c in chips" :key="c.col" class="bzc-col" :title="c.title"><span

@@ -53,13 +53,14 @@ const chrome = useFlowChrome();
 const screen = chrome.screen;
 
 // The picker groups flows attached to a chart task apart from standalone tabletop exercises — but
-// only when there are both kinds.
-const attached = computed(() => chrome.flows.value.filter((c) => c.anchor));
-const standalone = computed(() => chrome.flows.value.filter((c) => !c.anchor));
+// only when there are both kinds. An anchor whose row is gone is no anchor: index.html's loader drops
+// it and its row delete clears it, so it never lists a flow as attached to nothing (core's liveAnchor).
+const attached = computed(() => chrome.flows.value.filter((c) => chrome.anchorInfo(c)));
+const standalone = computed(() => chrome.flows.value.filter((c) => !chrome.anchorInfo(c)));
 /** Status leads the label, so the picker reads as signed and unsigned at a glance. */
 function optLabel(c: Flow): string {
   const an = chrome.anchorInfo(c);
-  const tail = an ? ` — ⚓ ${an.node.name || 'untitled task'}` : c.anchor ? ' — ⚓ (missing chart)' : '';
+  const tail = an ? ` — ⚓ ${an.node.name || 'untitled task'}` : '';
   return `[${ART_STATUS_META[c.status === 'final' ? 'final' : 'draft'].short}] ${c.name || 'Untitled'}${tail}`;
 }
 /** Picking from the dropdown is a jump, not a step out of a nested flow, so the Back trail goes. */
