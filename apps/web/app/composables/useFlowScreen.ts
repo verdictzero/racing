@@ -25,7 +25,11 @@ export interface FlowAnchor {
 export type FlowPopover =
   /** openBizRaciPopover: a step's cell in the card's RACI strip. */
   | { kind: 'raci'; taskId: string; col: string; anchor: FlowAnchor }
-  /** openBizEdgePopover: a handoff — its label, condition and deliverables. */
+  /**
+   * openBizEdgePopover: a handoff — its label, condition and deliverables. The source places this
+   * one by the POINTER (clientX, clientY), not by an element: pass the click point as a 0×0 box
+   * (the chrome reads the anchor's centre).
+   */
   | { kind: 'edge'; edgeId: string; anchor: FlowAnchor }
   /** openBizBindPopover: a Chart-Linked step's bind bar — which chart row it implements. */
   | { kind: 'bind'; taskId: string; anchor: FlowAnchor };
@@ -45,6 +49,17 @@ export interface FlowCanvasBridge {
   focusTask(taskId: string): void;
   /** bizGroupSelection: wrap the selected steps in a frame. */
   groupSelection(): void;
+  /**
+   * The gallery's drop (index.html's drop listener): a nested-flow box referencing `flowId` at the
+   * world point under the pointer, offset as the source offsets it (x − BZ_NODE_W / 2, y − 28).
+   * Optional: without it a drop nests at the centre of the view.
+   */
+  embedAt?(flowId: string, clientX: number, clientY: number): void;
+  /**
+   * bizBindNextUnbound's pan: centre a step in the view WITHOUT the flash (and save the camera).
+   * Optional: without it the chrome falls back to focusTask.
+   */
+  centreTask?(taskId: string): void;
 }
 
 const LS_GALLERY = 'raci-flow-gallery-v1';
@@ -90,10 +105,24 @@ export function useFlowScreen() {
   }
   /** The primary selection — bizPrimarySel. */
   const primary = computed(() => selection.value[selection.value.length - 1] ?? null);
+  /** _bizNavStack — the way back out of nested flows (↩ Back): the flows descended from, in order. */
+  const navStack = useState<string[]>('raci:flow:navStack', () => []);
+  const activeFlowId = useActiveFlowId();
+  /**
+   * bizSwitchCase: open another flow. The selection goes with the flow it was made in, and so does
+   * the Back trail — unless `keepTrail`, which is how a descent into a nested flow keeps it.
+   */
+  function switchFlow(id: string, keepTrail = false): void {
+    if (!keepTrail) navStack.value = [];
+    activeFlowId.value = id;
+    selection.value = [];
+    selectedGroup.value = null;
+  }
 
   return {
     galleryOpen, setGallery, tableOpen, isTableOpen, setTable,
     selection, selectedGroup, primary, partyTarget, partyDraft, popover,
+    navStack, switchFlow,
     /** The canvas's half of the seam (see FlowCanvasBridge). */
     canvas: {
       register(b: FlowCanvasBridge | null): void { bridge.value = b; },
@@ -102,6 +131,14 @@ export function useFlowScreen() {
       fit: () => bridge.value?.fit(),
       focusTask: (taskId: string) => bridge.value?.focusTask(taskId),
       groupSelection: () => bridge.value?.groupSelection(),
+      embedAt: (flowId: string, clientX: number, clientY: number) => {
+        const b = bridge.value;
+        if (b?.embedAt) b.embedAt(flowId, clientX, clientY); else b?.embedAtCentre(flowId);
+      },
+      centreTask: (taskId: string) => {
+        const b = bridge.value;
+        if (b?.centreTask) b.centreTask(taskId); else b?.focusTask(taskId);
+      },
     },
   };
 }
