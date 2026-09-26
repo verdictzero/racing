@@ -794,6 +794,12 @@ let quietWrite = false;
 function freshRaster(): void {
   const w = worldEl.value;
   if (!w) return;
+  // The same rebuild throws away any text a shift-click or a drag had selected on the cards —
+  // except under someone's caret: a colleague's edit must never cost this person their typing.
+  const sl = document.getSelection();
+  const typing = document.activeElement as HTMLElement | null;
+  if (sl && sl.rangeCount && !(typing?.isContentEditable && w.contains(typing))
+    && ((sl.anchorNode && w.contains(sl.anchorNode)) || (sl.focusNode && w.contains(sl.focusNode)))) sl.removeAllRanges();
   w.style.willChange = 'auto';
   cancelAnimationFrame(rasterFrame);
   rasterFrame = requestAnimationFrame(() => {
