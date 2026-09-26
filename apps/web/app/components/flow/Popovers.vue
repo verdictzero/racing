@@ -154,6 +154,9 @@ watch(popover, async (p) => {
     }
   }
   at.value = { top, left };
+  // Focus once it is visible: a visibility:hidden field cannot take the focus.
+  await nextTick();
+  if (popover.value !== p) return;
   if (p.kind === 'edge') { epInput.value?.focus(); epInput.value?.select(); }
   if (p.kind === 'bind') { const f = bindFilter.value; if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }
 }, { immediate: true });
