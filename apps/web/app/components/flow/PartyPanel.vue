@@ -69,8 +69,8 @@
           <div class="bzp-preview" :class="{ set: !!preview }">{{ preview ? preview.full
             : isEnt ? 'No entity selected yet — pick one above.' : 'No party selected yet — scrub the hierarchy above.' }}</div>
           <div class="bzp-actions">
-            <button id="bz-party-assign" type="button" data-bz-party-assign="1" :disabled="!previewRef" @click="assign">Assign</button>
-            <button id="bz-party-clear" type="button" data-bz-party-clear="1" :disabled="!view.committed" @click="clear">Clear</button>
+            <button id="bz-party-assign" type="button" data-bz-party-assign="1" :disabled="!previewRef || !canEdit" @click="assign">Assign</button>
+            <button id="bz-party-clear" type="button" data-bz-party-clear="1" :disabled="!view.committed || !canEdit" @click="clear">Clear</button>
           </div>
         </template>
       </div>
@@ -133,6 +133,8 @@ watch(() => (target.value ? !!chrome.locate(target.value.taskId) : true), (there
 
 // body.show-bz-party, merged with the shell's own body classes.
 useHead({ bodyAttrs: { class: computed(() => (target.value ? 'show-bz-party' : '')) } });
+// index.html's setViewMode: the panel is not carried into another view.
+onBeforeUnmount(() => chrome.closeParty());
 
 /** What the panel draws — renderBizPartyPanel. Null when there is nothing to draw. */
 const view = computed(() => {
@@ -192,6 +194,8 @@ function onSelect(e: Event): void {
   if (!sel || !target.value) return;
   // The panel is still showing a step of a flow just left: its next repaint closes it.
   if (!chrome.stepOf(target.value.taskId)) { chrome.closeParty(); return; }
+  // renderBizPartyPanel rebuilds the panel after every pick, and the select's focus goes with it.
+  sel.blur();
   const k = sel.dataset.bzPartySel, val = sel.value;
   const d = (draft.value ?? {}) as Record<string, string | undefined>;
   if (k === 'kind') {
@@ -225,8 +229,10 @@ function assign(): void {
   if (!step || !props.flow) { chrome.closeParty(); return; }
   const ref = normalizeOrgRef(draft.value);
   if (!ref) { shell.toast('Pick at least a directorate first.', 'error'); return; }
-  if (!props.canEdit || chrome.refusedByLock(props.flow)) return;
-  chrome.setParty(step.id, t.col, ref);
+  if (!props.canEdit) return;
+  // A Final flow: index.html writes, rolls back in saveState (and says so), then announces the pick
+  // anyway — both toasts show there, so both show here.
+  if (!chrome.refusedByLock(props.flow)) chrome.setParty(step.id, t.col, ref);
   const lbl = chrome.partyLabel(ref);
   shell.toast(`${chrome.colShort(t.col)} → ${lbl ? lbl.short : 'party set'}`);
 }
@@ -236,8 +242,8 @@ function clear(): void {
   if (!t) return;
   const step = chrome.stepOf(t.taskId);
   if (!step || !props.flow) { chrome.closeParty(); return; }
-  if (!props.canEdit || chrome.refusedByLock(props.flow)) return;
-  chrome.setParty(step.id, t.col, null);
-  draft.value = null;
+  if (!props.canEdit) return;
+  if (!chrome.refusedByLock(props.flow)) chrome.setParty(step.id, t.col, null);
+  draft.value = null; // cleared before index.html's saveState, so a rollback leaves it cleared too
 }
 </script>

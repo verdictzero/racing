@@ -122,8 +122,10 @@ const bind = computed(() => {
   if (!step || chrome.isSub(step)) return null;
   return { step, chart: chrome.sourceChart(props.flow) };
 });
-// A popover whose subject has gone (deleted here or by a colleague) goes with it.
-watch([popover, raci, edge, bind], ([p, r, e, b]) => { if (p && !r && !e && !b) popover.value = null; });
+// A popover whose subject has gone (deleted here or by a colleague) goes with it. Only the three drawn
+// here: the slot also holds the canvas's own 'repoint' popover, which is none of these.
+const MINE = new Set(['raci', 'edge', 'bind']);
+watch([popover, raci, edge, bind], ([p, r, e, b]) => { if (p && MINE.has(p.kind) && !r && !e && !b) popover.value = null; });
 
 // ---- placement: once, as the source places each popover when it opens ----------------------------
 const el = ref<HTMLElement | null>(null);
@@ -197,6 +199,7 @@ function addArt(e: Event): void {
   sel.value = ''; // the list is rebuilt in the source; its first option shows again
   const p = popover.value;
   if (p?.kind !== 'edge' || !props.flow || !val) return;
+  sel.blur(); // index.html rebuilds the popover here, and the list goes with the focus it had
   const f = props.flow;
   if (val === '__new') {
     const nm = (window.prompt('New deliverable name:') || '').trim();
@@ -309,6 +312,8 @@ function onDocClick(e: MouseEvent): void {
   if (!popover.value) return;
   const t = e.target as Element | null;
   if (!t?.closest) return;
+  // The canvas answers its own clicks, this rule and the drag's swallowed click included.
+  if (t.closest('#bz-canvas')) return;
   if (t.closest('.raci-popover, .org-popover, .bz-edge-popover')) return;
   if (t.closest(HANDLED)) return;
   if (t.closest('[data-gal-case]') && !t.closest('button')) return;

@@ -9,7 +9,7 @@
     <div class="bz-gal-hint">Click to open · drag onto the canvas to nest</div>
     <div class="bz-gal-list">
       <article v-for="c in cards" :key="c.b.id" class="bz-gal-card" :class="{ 'is-active': c.active, 'is-blocked': c.blocked }"
-        :draggable="c.blocked ? undefined : 'true'" :data-gal-case="c.b.id" :title="c.title">
+        :draggable="c.blocked || !canEdit ? undefined : 'true'" :data-gal-case="c.b.id" :title="c.title">
         <svg v-if="c.thumb" class="bz-gal-thumb" viewBox="0 0 100 52" aria-hidden="true">
           <line v-for="(l, i) in c.thumb.lines" :key="`l${i}`" :x1="l[0]" :y1="l[1]" :x2="l[2]" :y2="l[3]" />
           <rect v-for="(r, i) in c.thumb.boxes" :key="`r${i}`" :class="r.sub ? 'is-sub' : ''" :x="r.x" :y="r.y" :width="c.thumb.w" :height="c.thumb.h" rx="1.2" />

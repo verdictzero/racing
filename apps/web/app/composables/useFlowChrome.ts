@@ -51,7 +51,6 @@ import {
   setStepRaci,
 } from '@raci/crdt';
 import type { ToastType } from '~/composables/useShell';
-import { FLOW_CAMERA_PREFIX } from '~/composables/useFlowScreen';
 import { legacyOrgLabel } from '~/composables/useOrgLabel';
 
 /** index.html's BIZ_MODES / BIZ_MODE_META — the mode picker's options, icons and explanations. */
@@ -292,10 +291,8 @@ export function useFlowChrome() {
     // The copy carries the original's camera and table pane, as the source's JSON copy carries its
     // view and showTable — both are this browser's, so they are copied here rather than in the doc.
     if (screen.isTableOpen(id)) screen.setTable(copy, true);
-    try {
-      const cam = localStorage.getItem(`${FLOW_CAMERA_PREFIX}${session.workspaceId}:${id}`);
-      if (cam !== null) localStorage.setItem(`${FLOW_CAMERA_PREFIX}${session.workspaceId}:${copy}`, cam);
-    } catch { /* storage blocked: the copy opens with a fresh camera */ }
+    const cam = screen.getCamera(session.workspaceId, id);
+    if (cam) screen.putCamera(session.workspaceId, copy, cam);
     screen.switchFlow(copy);
   }
   /** setCaseStatus. */
@@ -317,12 +314,14 @@ export function useFlowChrome() {
     // Hiding a pane with an × is a one-way door unless something names the way back.
     if (!on) shell.toast('Gallery hidden — ⊞ Gallery in the toolbar brings it back.', 'suggest');
   }
-  /** detachFlow. */
+  /**
+   * detachFlow. On a Final flow index.html makes the change, rolls it back in saveState (and says
+   * so), and then announces the detach anyway — both toasts show there, so both show here.
+   */
   function detach(id: string): void {
     const b = ws.value.flows[id];
     if (!b || !b.anchor || !canEdit.value) return;
-    if (refusedByLock(b)) return;
-    setFlowField(session.doc, id, 'anchor', null);
+    if (!refusedByLock(b)) setFlowField(session.doc, id, 'anchor', null);
     shell.toast(`"${b.name || 'Untitled'}" detached — now a standalone tabletop case.`);
   }
   /** jumpToChartNode: the chart row, in the chart view. */
@@ -334,10 +333,10 @@ export function useFlowChrome() {
   }
 
   // ---- modes and binds -----------------------------------------------------------------------------
-  /** bizSetMode. */
-  function setMode(mode: string): void {
+  /** bizSetMode. True when the mode changed (index.html then repaints). */
+  function setMode(mode: string): boolean {
     const b = active.value;
-    if (!b || !canEdit.value || !(BIZ_MODES as readonly string[]).includes(mode) || b.mode === mode) return;
+    if (!b || !canEdit.value || !(BIZ_MODES as readonly string[]).includes(mode) || b.mode === mode) return false;
     if (mode === 'free') {
       // Offer to bake in what the chart is supplying, so the flow reads the same either side.
       const supplied = steps(b).filter((t) => !isSub(t)).filter((t) => {
@@ -362,7 +361,7 @@ export function useFlowChrome() {
     } else {
       if (!linkable.value.length) {
         shell.toast('Chart-Linked needs an organization chart to draw rows from — this workspace has none (free-form charts have no organizational columns to link).', 'error');
-        return;
+        return false;
       }
       const src = sourceChart(b);
       session.doc.transact(() => {
@@ -375,12 +374,14 @@ export function useFlowChrome() {
     shell.toast(unbound
       ? `Chart-Linked — ${unbound} step${unbound === 1 ? '' : 's'} still need${unbound === 1 ? 's' : ''} a chart row. Click ⛓ on a card to pick one.`
       : `${M.name} — ${M.blurb}`, unbound ? 'suggest' : TOAST_OK);
+    return true;
   }
-  /** bizSetSourceChart. */
-  function setSourceChart(chartId: string): void {
+  /** bizSetSourceChart. True when it was set (index.html then repaints). */
+  function setSourceChart(chartId: string): boolean {
     const b = active.value, c = ws.value.charts[chartId];
-    if (!b || !c || isFreeChart(c) || !canEdit.value) return;
+    if (!b || !c || isFreeChart(c) || !canEdit.value) return false;
     setFlowField(session.doc, b.id, 'sourceChartId', c.id);
+    return true;
   }
   /** bizBindStep. */
   function bindStep(taskId: string, chartId: string, nodeId: string): void {

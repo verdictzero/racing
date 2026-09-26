@@ -53,26 +53,32 @@ const chrome = useFlowChrome();
 const screen = chrome.screen;
 
 // The picker groups flows attached to a chart task apart from standalone tabletop exercises — but
-// only when there are both kinds.
-const attached = computed(() => chrome.flows.value.filter((c) => c.anchor));
-const standalone = computed(() => chrome.flows.value.filter((c) => !c.anchor));
+// only when there are both kinds. An anchor whose row is gone is no anchor: index.html's loader drops
+// it and its row delete clears it, so it never lists a flow as attached to nothing (core's liveAnchor).
+const attached = computed(() => chrome.flows.value.filter((c) => chrome.anchorInfo(c)));
+const standalone = computed(() => chrome.flows.value.filter((c) => !chrome.anchorInfo(c)));
 /** Status leads the label, so the picker reads as signed and unsigned at a glance. */
 function optLabel(c: Flow): string {
   const an = chrome.anchorInfo(c);
-  const tail = an ? ` — ⚓ ${an.node.name || 'untitled task'}` : c.anchor ? ' — ⚓ (missing chart)' : '';
+  const tail = an ? ` — ⚓ ${an.node.name || 'untitled task'}` : '';
   return `[${ART_STATUS_META[c.status === 'final' ? 'final' : 'draft'].short}] ${c.name || 'Untitled'}${tail}`;
 }
 /** Picking from the dropdown is a jump, not a step out of a nested flow, so the Back trail goes. */
 function pick(e: Event): void {
+  const sel = e.target as HTMLSelectElement;
   chrome.closeParty();
-  screen.switchFlow((e.target as HTMLSelectElement).value);
+  screen.switchFlow(sel.value);
+  sel.blur(); // index.html repaints the toolbar here, and the picker goes with the focus it had
 }
 
 // The source chart picker rides alongside only when there is a choice to make and the flow is in
 // the mode that uses it.
 const srcChart = computed(() => chrome.sourceChart(props.flow));
 const srcCharts = computed(() => (chrome.isLinked(props.flow) && chrome.linkable.value.length > 1 ? chrome.linkable.value : null));
-function pickSource(e: Event): void { chrome.setSourceChart((e.target as HTMLSelectElement).value); }
+function pickSource(e: Event): void {
+  const sel = e.target as HTMLSelectElement;
+  if (chrome.setSourceChart(sel.value)) sel.blur(); // repainted there, focus and all
+}
 
 /** ↩ Back appears only once you have descended into a nested flow, so the way out is the way in. */
 const backTo = computed(() => {
