@@ -28,7 +28,13 @@ export type FlowPopover =
   /** openBizEdgePopover: a handoff — its label, condition and deliverables. */
   | { kind: 'edge'; edgeId: string; anchor: FlowAnchor }
   /** openBizBindPopover: a Chart-Linked step's bind bar — which chart row it implements. */
-  | { kind: 'bind'; taskId: string; anchor: FlowAnchor };
+  | { kind: 'bind'; taskId: string; anchor: FlowAnchor }
+  /**
+   * openSubflowPickerPopover: a nested-flow box's "point it at another flow". Opened from the box
+   * and drawn by the canvas itself (components/flow/canvas/Repoint.vue) — one slot with the others,
+   * as index.html has one openPopover.
+   */
+  | { kind: 'repoint'; taskId: string; anchor: FlowAnchor };
 
 /**
  * What the chrome asks of the canvas. The canvas registers it when it mounts; until then (and on
@@ -43,6 +49,8 @@ export interface FlowCanvasBridge {
   fit(): void;
   /** Centre a step in the view and flash it (the jumps from Tasks, the warnings, the table). */
   focusTask(taskId: string): void;
+  /** Centre a step without the flash — bizBindNextUnbound's "centre the next unlinked step". */
+  centreTask(taskId: string): void;
   /** bizGroupSelection: wrap the selected steps in a frame. */
   groupSelection(): void;
 }
@@ -109,9 +117,22 @@ export function useFlowScreen() {
     write(key, cameras.value[key]);
   }
 
+  /**
+   * _bizNavStack — the flows this person descended through to reach the open one (⇱ on a nested
+   * box pushes; the toolbar's ↩ Back pops). Runtime-only, as in index.html: picking a flow from the
+   * dropdown or the gallery is a jump, not a step out, and clears it.
+   */
+  const navStack = useState<string[]>('raci:flow:navStack', () => []);
+  /**
+   * _bizDragCase — the flow a Flow Gallery card is being dragged as, from its dragstart to its
+   * dragend. The canvas reads it to accept the drop and nest that flow where it lands.
+   */
+  const dragFlowId = useState<string | null>('raci:flow:dragFlowId', () => null);
+
   return {
     galleryOpen, setGallery, tableOpen, isTableOpen, setTable,
     selection, selectedGroup, primary, partyTarget, partyDraft, popover, getCamera, putCamera,
+    navStack, dragFlowId,
     /** The canvas's half of the seam (see FlowCanvasBridge). */
     canvas: {
       register(b: FlowCanvasBridge | null): void { bridge.value = b; },
@@ -119,6 +140,7 @@ export function useFlowScreen() {
       embedAtCentre: (flowId: string) => bridge.value?.embedAtCentre(flowId),
       fit: () => bridge.value?.fit(),
       focusTask: (taskId: string) => bridge.value?.focusTask(taskId),
+      centreTask: (taskId: string) => bridge.value?.centreTask(taskId),
       groupSelection: () => bridge.value?.groupSelection(),
     },
   };
