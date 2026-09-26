@@ -1713,11 +1713,37 @@ watch(storedCam, (c) => {
   applyTransform();
 });
 watch(selection, () => drawMinimap());
-onUpdated(layoutAll);
+
+/**
+ * index.html lays the canvas out at the end of every render, and nothing else ever changes a card's
+ * size there. Here things outside this component can: the shell sets body[data-lock] a tick after a
+ * Final flow opens (hiding ⧉ and ×, so a long name stops wrapping), a theme or a web font lands. So
+ * every card is watched, and the frames and noodles follow any change in its size — once a frame.
+ */
+let cardObs: ResizeObserver | null = null;
+const watched = new WeakSet<Element>();
+let relayout = 0;
+function watchCards(): void {
+  const world = worldEl.value;
+  if (!cardObs || !world) return;
+  for (const el of world.querySelectorAll('.bz-node')) {
+    if (watched.has(el)) continue;
+    watched.add(el);
+    cardObs.observe(el);
+  }
+}
+onUpdated(() => { layoutAll(); watchCards(); });
 
 let resizeObs: ResizeObserver | null = null;
 const onResize = () => drawMinimap();
 onMounted(() => {
+  if (window.ResizeObserver) {
+    cardObs = new ResizeObserver(() => {
+      if (relayout) return;
+      relayout = requestAnimationFrame(() => { relayout = 0; layoutAll(); });
+    });
+    watchCards();
+  }
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keydown', onKey);
@@ -1741,6 +1767,8 @@ onBeforeUnmount(() => {
   document.removeEventListener('wheel', onWheel);
   window.removeEventListener('resize', onResize);
   resizeObs?.disconnect();
+  cardObs?.disconnect();
+  if (relayout) cancelAnimationFrame(relayout);
   document.body.classList.remove('bz-connecting', 'bz-routing', 'bz-embedding');
   marquee?.el.remove();
   fs.canvas.register(null);
