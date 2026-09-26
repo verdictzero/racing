@@ -1776,11 +1776,13 @@ watch(() => [partyTarget.value, fs.galleryOpen.value, props.flow ? fs.isTableOpe
  * every card is watched, and the frames and noodles follow any change in its size — once a frame.
  */
 let cardObs: ResizeObserver | null = null;
-const watched = new WeakSet<Element>();
+const watched = new Set<Element>();
 let relayout = 0;
 function watchCards(): void {
   const world = worldEl.value;
   if (!cardObs || !world) return;
+  // A card that has left the canvas is let go, so the observer does not keep it alive.
+  for (const el of watched) if (!el.isConnected) { cardObs.unobserve(el); watched.delete(el); }
   for (const el of world.querySelectorAll('.bz-node')) {
     if (watched.has(el)) continue;
     watched.add(el);
