@@ -171,7 +171,7 @@
     </div>
     <div id="bz-zoom-ctl" class="zoom-ctl">
       <button id="bz-zoom-out" title="Zoom out">−</button>
-      <span id="bz-zoom-level" class="zoom-level" title="Reset to 100%">{{ zoomPct }}%</span>
+      <span id="bz-zoom-level" ref="zoomEl" class="zoom-level" title="Reset to 100%" />
       <button id="bz-zoom-in" title="Zoom in">+</button>
       <button id="bz-zoom-fit" title="Fit all tasks in view">⤢</button>
     </div>
@@ -212,9 +212,9 @@ import {
   COLS,
   createLintContext,
   embedWouldCycle,
-  viewViolations,
-  violationIndex,
+  flowRecords,
   type Flow,
+  type FlowViolationRecord,
 } from '@raci/core';
 import {
   LOCAL_ORIGIN,
@@ -284,15 +284,21 @@ const ws = computed(() => session.workspace.value);
 const ce = computed(() => (props.canEdit ? 'true' : 'false'));
 
 // ---- the cards, frames and pins (renderBizcase's content) -------------------------------------------
+/** One rule pass's view of the document — the chart in front decides every cascade, as ac() does. */
+const lint = computed(() => createLintContext(ws.value, activeChartId.value));
 const ctx = computed(() => {
   const f = props.flow;
-  return f ? flowCtx(ws.value, f, createLintContext(ws.value, activeChartId.value)) : null;
+  return f ? flowCtx(ws.value, f, lint.value) : null;
 });
-/** _violationsByBizTaskId: the open flow linted as index.html lints it in this view. */
+/**
+ * _violationsByBizTaskId: the open flow's records, as index.html's lintFlow makes them for the card
+ * pins. Only the flow: the chart half of the pass is the warnings pill's, which the shell runs.
+ */
 const vioByStep = computed(() => {
   const f = props.flow;
-  if (!f) return new Map();
-  return violationIndex(viewViolations(ws.value, { view: 'bizcase', chartId: activeChartId.value, flowId: f.id })).byStepId;
+  const out = new Map<string, FlowViolationRecord>();
+  if (f) for (const r of flowRecords(lint.value, f)) out.set(r.stepId, r);
+  return out;
 });
 const stepCount = computed(() => (props.flow ? Object.keys(props.flow.steps).length : 0));
 const cards = computed(() => {
@@ -347,6 +353,7 @@ const worldEl = ref<HTMLElement | null>(null);
 const edgesEl = ref<SVGSVGElement | null>(null);
 const redirsEl = ref<SVGSVGElement | null>(null);
 const miniEl = ref<HTMLCanvasElement | null>(null);
+const zoomEl = ref<HTMLElement | null>(null);
 /** An id inside an attribute selector. */
 const q = (id: string) => (typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id);
 const nodeEl = (id: string) => worldEl.value?.querySelector<HTMLElement>(`.bz-node[data-bz-node="${q(id)}"]`) ?? null;
@@ -365,6 +372,8 @@ function commit(write: () => void): boolean {
   if (!f || !props.canEdit) return false;
   if (f.status === 'final') {
     refuseLockedEdit('flow', `“${f.name || 'Untitled'}” is Final — that change was rolled back. Reopen it as a draft to edit it.`);
+    // index.html renders after the rollback all the same.
+    void nextTick(() => { layoutAll(); freshRaster(); });
     return false;
   }
   write();
@@ -385,13 +394,12 @@ function bizSelect(id: string | null, additive = false): void {
 
 // ---- the camera (b.view) -----------------------------------------------------------------------------
 const cam = { panX: 0, panY: 0, zoom: 1 };
-const zoomPct = ref(100);
 function loadCamera(flowId: string): void {
   const c = fs.getCamera(wsId, flowId);
   cam.panX = c && Number.isFinite(c.panX) ? c.panX : 0;
   cam.panY = c && Number.isFinite(c.panY) ? c.panY : 0;
   cam.zoom = c && Number.isFinite(c.zoom) ? Math.min(BZ_ZOOM_MAX, Math.max(BZ_ZOOM_MIN, c.zoom)) : 1;
-  zoomPct.value = Math.round((cam.zoom || 1) * 100);
+  zoomLabel();
 }
 function saveCamera(): void {
   if (props.flow) fs.putCamera(wsId, props.flow.id, cam);
@@ -402,8 +410,11 @@ function applyTransform(): void {
   if (w) w.style.transform = `translate(${cam.panX}px, ${cam.panY}px) scale(${cam.zoom})`;
   drawMinimap();
 }
-/** bizZoomLabel. */
-function zoomLabel(): void { zoomPct.value = Math.round((cam.zoom || 1) * 100); }
+/**
+ * bizZoomLabel: the pill's percentage, written straight into it as the source writes it — a zoom is
+ * not a render, and re-rendering the canvas for one would re-measure every noodle for nothing.
+ */
+function zoomLabel(): void { if (zoomEl.value) zoomEl.value.textContent = Math.round((cam.zoom || 1) * 100) + '%'; }
 /** bizZoomTo: zoom holding (cx, cy) in canvas space fixed — the centre when omitted. */
 function zoomTo(next: number, cx?: number, cy?: number): void {
   const old = cam.zoom || 1;
@@ -781,6 +792,32 @@ function miniNavigate(clientX: number, clientY: number): void {
   applyTransform();
 }
 
+/**
+ * renderBizcase rebuilds #bz-world from scratch, so after every one of its renders the browser
+ * rasterizes the world afresh at the current zoom and pan — and a world only panned or zoomed since
+ * (bizApplyTransform) keeps its old raster, composited at a fractional offset or a stale scale. Here
+ * the element persists, so the same fresh raster is asked for where index.html would have rendered:
+ * lifting will-change for two frames makes Chrome drop the layer and paint a new one.
+ */
+let rasterFrame = 0;
+/** Set just before a write index.html makes without re-rendering (a drop, a bend, a blur commit). */
+let quietWrite = false;
+function freshRaster(): void {
+  const w = worldEl.value;
+  if (!w) return;
+  // The same rebuild throws away any text a shift-click or a drag had selected on the cards —
+  // except under someone's caret: a colleague's edit must never cost this person their typing.
+  const sl = document.getSelection();
+  const typing = document.activeElement as HTMLElement | null;
+  if (sl && sl.rangeCount && !(typing?.isContentEditable && w.contains(typing))
+    && ((sl.anchorNode && w.contains(sl.anchorNode)) || (sl.focusNode && w.contains(sl.focusNode)))) sl.removeAllRanges();
+  w.style.willChange = 'auto';
+  cancelAnimationFrame(rasterFrame);
+  rasterFrame = requestAnimationFrame(() => {
+    rasterFrame = requestAnimationFrame(() => { rasterFrame = 0; w.style.willChange = ''; });
+  });
+}
+
 /** After every render: frames sized from their members, the view, the noodles, the minimap. */
 function layoutAll(): void {
   layoutGroups(bizDrag?.moved && bizDrag.detach ? new Set(bizDrag.items.map((i) => i.id)) : undefined);
@@ -875,7 +912,7 @@ function deleteTask(id: string): void {
 function unbindStep(taskId: string): void {
   const f = props.flow, t = f?.steps[taskId];
   if (!editable() || !f || !t || !t.bind) return;
-  const eff = createLintContext(ws.value, activeChartId.value).stepRaci(f, t);
+  const eff = lint.value.stepRaci(f, t);
   commit(() => doc.transact(() => {
     for (const k of COLS) if (eff[k].from === 'chart') setStepRaci(doc, taskId, k, eff[k].letters);
     setStepField(doc, taskId, 'bind', null);
@@ -887,7 +924,7 @@ function unbindStep(taskId: string): void {
 function commitStepText(id: string, field: 'name' | 'description' | 'entry' | 'exit', value: string): void {
   const t = props.flow?.steps[id];
   if (!t || !editable() || (t[field] || '') === value) return;
-  commit(() => setStepField(doc, id, field, value));
+  commit(() => { quietWrite = field !== 'name'; setStepField(doc, id, field, value); });
 }
 function commitGroupName(gid: string, value: string): void {
   const g = props.flow?.groups[gid];
@@ -946,9 +983,7 @@ function openSubflow(taskId: string): void {
   const ref = refFlow(ws.value, f, t);
   if (!ref) return;
   fs.navStack.value = [...fs.navStack.value, f.id];
-  activeFlowId.value = ref.id;
-  selection.value = [];
-  selectedGroup.value = null;
+  fs.switchFlow(ref.id, true);
 }
 /** bizTogglePort: expose or hide one mating point; a handoff wired to a hidden one goes with it. */
 function togglePort(taskId: string, side: 'in' | 'out', portId: string): void {
@@ -1436,7 +1471,7 @@ function onMouseUp(e: MouseEvent): void {
     viaDrag = null;
     if (d.moved) {
       suppressClick = true; // a bend is not a click on the handoff
-      const ok = commit(() => setEdgeField(doc, d.edgeId, 'via', d.via));
+      const ok = commit(() => { quietWrite = true; setEdgeField(doc, d.edgeId, 'via', d.via); });
       liveVia.delete(d.edgeId);
       if (!ok) drawEdges();
       // Taught once per session, and only when a redirector was actually made.
@@ -1480,6 +1515,7 @@ function onMouseUp(e: MouseEvent): void {
       const gp = liveGroup.get(d.id);
       const moves = d.items.map((it) => ({ id: it.id, ...(live.get(it.id) ?? { x: it.ox, y: it.oy }) }));
       const ok = commit(() => doc.transact(() => {
+        quietWrite = true;
         moveSteps(doc, moves);
         if (gp && f?.groups[d.id]) { setGroupField(doc, d.id, 'x', gp.x); setGroupField(doc, d.id, 'y', gp.y); }
       }, LOCAL_ORIGIN));
@@ -1513,6 +1549,7 @@ function onMouseUp(e: MouseEvent): void {
       dragHintClear();
       const moves = d.items.filter((it) => it.el && live.has(it.id)).map((it) => ({ id: it.id, ...live.get(it.id)! }));
       const ok = commit(() => doc.transact(() => {
+        quietWrite = !regroup.length;
         moveSteps(doc, moves);
         for (const r of regroup) setStepField(doc, r.id, 'groupId', r.groupId);
       }, LOCAL_ORIGIN));
@@ -1561,6 +1598,7 @@ function onMouseUp(e: MouseEvent): void {
       }
     }
     drawEdges();
+    freshRaster();
     return;
   }
   if (bizPan) {
@@ -1571,6 +1609,19 @@ function onMouseUp(e: MouseEvent): void {
 }
 
 // ---- clicks (the bizcase branch of index.html's delegated click handler, in its order) --------------
+/**
+ * The shell drops focus from a clicked button, because index.html's re-render throws the button
+ * away. Where the source does NOT re-render — a zoom pill, ⧉, a "point at…" opener, a delete that
+ * was cancelled — its button keeps focus, and Space or Enter presses it again. Those hand it back,
+ * once the shell's blur has run, unless something else has taken focus meanwhile.
+ */
+function keepFocus(el: Element | null): void {
+  if (!(el instanceof HTMLElement)) return;
+  setTimeout(() => {
+    const a = document.activeElement;
+    if ((!a || a === document.body) && el.isConnected) el.focus({ preventScroll: true });
+  }, 0);
+}
 function onClick(e: MouseEvent): void {
   const t = e.target as Element;
   // A drag just ended — swallow its trailing click if it lands on what was dragged.
@@ -1583,19 +1634,24 @@ function onClick(e: MouseEvent): void {
   const el = (sel: string) => t.closest<HTMLElement>(sel);
   let hit: HTMLElement | null;
   if ((hit = el('[data-bz-open-sub]'))) { openSubflow(hit.dataset.bzOpenSub!); return; }
-  if ((hit = el('[data-bz-repoint]'))) { popover.value = { kind: 'repoint', taskId: hit.dataset.bzRepoint!, anchor: anchorOf(hit) }; return; }
+  if ((hit = el('[data-bz-repoint]'))) {
+    popover.value = { kind: 'repoint', taskId: hit.dataset.bzRepoint!, anchor: anchorOf(hit) };
+    keepFocus(hit);
+    return;
+  }
   if ((hit = el('[data-bz-port]'))) { togglePort(hit.dataset.bzPort!, hit.dataset.side as 'in' | 'out', hit.dataset.portId!); return; }
   if ((hit = el('[data-bz-group-collapse]'))) { toggleCollapse(hit.dataset.bzGroupCollapse!); return; }
   if ((hit = el('[data-bz-group-color]'))) { cycleColor(hit.dataset.bzGroupColor!); return; }
   if ((hit = el('[data-bz-group-ungroup]'))) { ungroup(hit.dataset.bzGroupUngroup!); return; }
-  if ((hit = el('[data-bz-group-del]'))) { deleteFrame(hit.dataset.bzGroupDel!); return; }
-  if (t.closest('#bz-zoom-in')) { zoomBy(1.1); return; }
-  if (t.closest('#bz-zoom-out')) { zoomBy(1 / 1.1); return; }
-  if (t.closest('#bz-zoom-fit')) { fit(); return; }
+  if ((hit = el('[data-bz-group-del]'))) { const gid = hit.dataset.bzGroupDel!; deleteFrame(gid); if (props.flow?.groups[gid]) keepFocus(hit); return; }
+  if ((hit = el('#bz-zoom-in'))) { zoomBy(1.1); keepFocus(hit); return; }
+  if ((hit = el('#bz-zoom-out'))) { zoomBy(1 / 1.1); keepFocus(hit); return; }
+  if ((hit = el('#bz-zoom-fit'))) { fit(); keepFocus(hit); return; }
   if (t.closest('#bz-zoom-level')) { zoomTo(1); return; }
-  if ((hit = el('[data-bz-del-task]'))) { deleteTask(hit.dataset.bzDelTask!); return; }
+  if ((hit = el('[data-bz-del-task]'))) { const id = hit.dataset.bzDelTask!; deleteTask(id); if (props.flow?.steps[id]) keepFocus(hit); return; }
   if ((hit = el('[data-bz-copy-task]'))) {
     if (copyTask(hit.dataset.bzCopyTask!)) toast('Step copied — Ctrl+V to paste', 'suggest');
+    keepFocus(hit);
     return;
   }
   const edge = t.closest<SVGElement>('[data-bz-edge]');
@@ -1683,11 +1739,9 @@ function onDragOver(e: DragEvent): void {
   canvasEl.value?.classList.add('drop-target');
 }
 function onDrop(e: DragEvent): void {
-  let id = fs.dragFlowId.value;
-  if (!id) {
-    const raw = e.dataTransfer?.getData('text/plain') ?? '';
-    if (raw.startsWith('bzcase:')) id = raw.slice('bzcase:'.length);
-  }
+  // Only a drag the gallery started (index.html's _bizDragCase): text dragged in from anywhere else,
+  // whatever it says, nests nothing.
+  const id = fs.dragFlowId.value;
   if (!id) return;
   e.preventDefault();
   const p = screenToWorld(e.clientX, e.clientY);
@@ -1703,7 +1757,7 @@ watch(fs.dragFlowId, (v) => { if (!v) canvasEl.value?.classList.remove('drop-tar
 watch(() => props.flow?.id, (id, was) => {
   if (id) loadCamera(id);
   if (was !== undefined && id !== was) { selection.value = []; selectedGroup.value = null; }
-  void nextTick(() => { layoutAll(); tryJump(); });
+  void nextTick(() => { layoutAll(); freshRaster(); tryJump(); });
 }, { immediate: true });
 // Save and Load carry the camera: one that changes under an open flow is picked up.
 const storedCam = computed(() => (props.flow ? fs.getCamera(wsId, props.flow.id) : null));
@@ -1713,6 +1767,13 @@ watch(storedCam, (c) => {
   applyTransform();
 });
 watch(selection, () => drawMinimap());
+// Where index.html calls renderBizcase: any change to the document (but the quiet ones above), the
+// party panel, the gallery and the table opening or closing.
+watch(() => session.workspace.value, () => {
+  if (quietWrite) { quietWrite = false; return; }
+  freshRaster();
+}, { flush: 'post' });
+watch(() => [partyTarget.value, fs.galleryOpen.value, props.flow ? fs.isTableOpen(props.flow.id) : false], () => freshRaster(), { flush: 'post' });
 
 /**
  * index.html lays the canvas out at the end of every render, and nothing else ever changes a card's
@@ -1721,11 +1782,13 @@ watch(selection, () => drawMinimap());
  * every card is watched, and the frames and noodles follow any change in its size — once a frame.
  */
 let cardObs: ResizeObserver | null = null;
-const watched = new WeakSet<Element>();
+const watched = new Set<Element>();
 let relayout = 0;
 function watchCards(): void {
   const world = worldEl.value;
   if (!cardObs || !world) return;
+  // A card that has left the canvas is let go, so the observer does not keep it alive.
+  for (const el of watched) if (!el.isConnected) { cardObs.unobserve(el); watched.delete(el); }
   for (const el of world.querySelectorAll('.bz-node')) {
     if (watched.has(el)) continue;
     watched.add(el);
@@ -1754,6 +1817,7 @@ onMounted(() => {
     resizeObs = new ResizeObserver(() => drawMinimap());
     resizeObs.observe(canvasEl.value);
   }
+  zoomLabel();
   layoutAll();
   // Card heights are text: lay out again once the fonts they are set in have arrived.
   void document.fonts?.ready.then(() => layoutAll());
@@ -1769,6 +1833,7 @@ onBeforeUnmount(() => {
   resizeObs?.disconnect();
   cardObs?.disconnect();
   if (relayout) cancelAnimationFrame(relayout);
+  cancelAnimationFrame(rasterFrame);
   document.body.classList.remove('bz-connecting', 'bz-routing', 'bz-embedding');
   marquee?.el.remove();
   fs.canvas.register(null);
