@@ -781,6 +781,26 @@ function miniNavigate(clientX: number, clientY: number): void {
   applyTransform();
 }
 
+/**
+ * renderBizcase rebuilds #bz-world from scratch, so after every one of its renders the browser
+ * rasterizes the world afresh at the current zoom and pan — and a world only panned or zoomed since
+ * (bizApplyTransform) keeps its old raster, composited at a fractional offset or a stale scale. Here
+ * the element persists, so the same fresh raster is asked for where index.html would have rendered:
+ * lifting will-change for two frames makes Chrome drop the layer and paint a new one.
+ */
+let rasterFrame = 0;
+/** Set just before a write index.html makes without re-rendering (a drop, a bend, a blur commit). */
+let quietWrite = false;
+function freshRaster(): void {
+  const w = worldEl.value;
+  if (!w) return;
+  w.style.willChange = 'auto';
+  cancelAnimationFrame(rasterFrame);
+  rasterFrame = requestAnimationFrame(() => {
+    rasterFrame = requestAnimationFrame(() => { rasterFrame = 0; w.style.willChange = ''; });
+  });
+}
+
 /** After every render: frames sized from their members, the view, the noodles, the minimap. */
 function layoutAll(): void {
   layoutGroups(bizDrag?.moved && bizDrag.detach ? new Set(bizDrag.items.map((i) => i.id)) : undefined);
@@ -887,7 +907,7 @@ function unbindStep(taskId: string): void {
 function commitStepText(id: string, field: 'name' | 'description' | 'entry' | 'exit', value: string): void {
   const t = props.flow?.steps[id];
   if (!t || !editable() || (t[field] || '') === value) return;
-  commit(() => setStepField(doc, id, field, value));
+  commit(() => { quietWrite = field !== 'name'; setStepField(doc, id, field, value); });
 }
 function commitGroupName(gid: string, value: string): void {
   const g = props.flow?.groups[gid];
@@ -1436,7 +1456,7 @@ function onMouseUp(e: MouseEvent): void {
     viaDrag = null;
     if (d.moved) {
       suppressClick = true; // a bend is not a click on the handoff
-      const ok = commit(() => setEdgeField(doc, d.edgeId, 'via', d.via));
+      const ok = commit(() => { quietWrite = true; setEdgeField(doc, d.edgeId, 'via', d.via); });
       liveVia.delete(d.edgeId);
       if (!ok) drawEdges();
       // Taught once per session, and only when a redirector was actually made.
@@ -1480,6 +1500,7 @@ function onMouseUp(e: MouseEvent): void {
       const gp = liveGroup.get(d.id);
       const moves = d.items.map((it) => ({ id: it.id, ...(live.get(it.id) ?? { x: it.ox, y: it.oy }) }));
       const ok = commit(() => doc.transact(() => {
+        quietWrite = true;
         moveSteps(doc, moves);
         if (gp && f?.groups[d.id]) { setGroupField(doc, d.id, 'x', gp.x); setGroupField(doc, d.id, 'y', gp.y); }
       }, LOCAL_ORIGIN));
@@ -1513,6 +1534,7 @@ function onMouseUp(e: MouseEvent): void {
       dragHintClear();
       const moves = d.items.filter((it) => it.el && live.has(it.id)).map((it) => ({ id: it.id, ...live.get(it.id)! }));
       const ok = commit(() => doc.transact(() => {
+        quietWrite = !regroup.length;
         moveSteps(doc, moves);
         for (const r of regroup) setStepField(doc, r.id, 'groupId', r.groupId);
       }, LOCAL_ORIGIN));
@@ -1561,6 +1583,7 @@ function onMouseUp(e: MouseEvent): void {
       }
     }
     drawEdges();
+    freshRaster();
     return;
   }
   if (bizPan) {
@@ -1703,7 +1726,7 @@ watch(fs.dragFlowId, (v) => { if (!v) canvasEl.value?.classList.remove('drop-tar
 watch(() => props.flow?.id, (id, was) => {
   if (id) loadCamera(id);
   if (was !== undefined && id !== was) { selection.value = []; selectedGroup.value = null; }
-  void nextTick(() => { layoutAll(); tryJump(); });
+  void nextTick(() => { layoutAll(); freshRaster(); tryJump(); });
 }, { immediate: true });
 // Save and Load carry the camera: one that changes under an open flow is picked up.
 const storedCam = computed(() => (props.flow ? fs.getCamera(wsId, props.flow.id) : null));
@@ -1713,6 +1736,13 @@ watch(storedCam, (c) => {
   applyTransform();
 });
 watch(selection, () => drawMinimap());
+// Where index.html calls renderBizcase: any change to the document (but the quiet ones above), the
+// party panel, the gallery and the table opening or closing.
+watch(() => session.workspace.value, () => {
+  if (quietWrite) { quietWrite = false; return; }
+  freshRaster();
+}, { flush: 'post' });
+watch(() => [partyTarget.value, fs.galleryOpen.value, props.flow ? fs.isTableOpen(props.flow.id) : false], () => freshRaster(), { flush: 'post' });
 
 /**
  * index.html lays the canvas out at the end of every render, and nothing else ever changes a card's
@@ -1769,6 +1799,7 @@ onBeforeUnmount(() => {
   resizeObs?.disconnect();
   cardObs?.disconnect();
   if (relayout) cancelAnimationFrame(relayout);
+  cancelAnimationFrame(rasterFrame);
   document.body.classList.remove('bz-connecting', 'bz-routing', 'bz-embedding');
   marquee?.el.remove();
   fs.canvas.register(null);
