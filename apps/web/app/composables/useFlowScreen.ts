@@ -49,6 +49,8 @@ export interface FlowCanvasBridge {
   fit(): void;
   /** Centre a step in the view and flash it (the jumps from Tasks, the warnings, the table). */
   focusTask(taskId: string): void;
+  /** Centre a step without the flash — bizBindNextUnbound's "centre the next unlinked step". */
+  centreTask(taskId: string): void;
   /** bizGroupSelection: wrap the selected steps in a frame. */
   groupSelection(): void;
 }
@@ -138,6 +140,7 @@ export function useFlowScreen() {
       embedAtCentre: (flowId: string) => bridge.value?.embedAtCentre(flowId),
       fit: () => bridge.value?.fit(),
       focusTask: (taskId: string) => bridge.value?.focusTask(taskId),
+      centreTask: (taskId: string) => bridge.value?.centreTask(taskId),
       groupSelection: () => bridge.value?.groupSelection(),
     },
   };
