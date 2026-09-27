@@ -809,8 +809,14 @@ function freshRaster(): void {
   // except under someone's caret: a colleague's edit must never cost this person their typing.
   const sl = document.getSelection();
   const typing = document.activeElement as HTMLElement | null;
-  if (sl && sl.rangeCount && !(typing?.isContentEditable && w.contains(typing))
+  const caret = !!(typing?.isContentEditable && w.contains(typing));
+  if (sl && sl.rangeCount && !caret
     && ((sl.anchorNode && w.contains(sl.anchorNode)) || (sl.focusNode && w.contains(sl.focusNode)))) sl.removeAllRanges();
+  // …and its new #bz-canvas starts unscrolled. The canvas clips (overflow: hidden) but the browser
+  // still scrolls it to bring a focused field or a scrolled-to element into view, and index.html's
+  // next render drops that offset; this element persists, so it drops it here.
+  const cv = canvasEl.value;
+  if (cv && !caret && (cv.scrollLeft || cv.scrollTop)) { cv.scrollLeft = 0; cv.scrollTop = 0; }
   w.style.willChange = 'auto';
   cancelAnimationFrame(rasterFrame);
   rasterFrame = requestAnimationFrame(() => {

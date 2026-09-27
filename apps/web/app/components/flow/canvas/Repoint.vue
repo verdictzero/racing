@@ -86,17 +86,6 @@ function onClick(e: MouseEvent): void {
   }, LOCAL_ORIGIN);
 }
 
-// ---- dismissal: Escape, or a click that lands outside every popover and off the canvas (the canvas
-// closes it itself for the clicks index.html's handler does not take) ----
-function onDocClick(e: MouseEvent): void {
-  if (!target.value) return;
-  const t = e.target as Element | null;
-  if (t?.closest?.('.raci-popover, .org-popover, .bz-edge-popover, #bz-canvas')) return;
-  popover.value = null;
-}
-function onEsc(e: KeyboardEvent): void {
-  if (e.key === 'Escape' && target.value) popover.value = null;
-}
-onMounted(() => { document.addEventListener('click', onDocClick); document.addEventListener('keydown', onEsc); });
-onBeforeUnmount(() => { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onEsc); });
+// Dismissal is the chrome's (components/flow/Popovers.vue): it closes whichever popover holds the one
+// slot — this one included — by index.html's rules for Escape and for the clicks that leave it open.
 </script>
