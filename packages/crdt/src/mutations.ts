@@ -342,14 +342,30 @@ export function addFlow(
   return id;
 }
 
+/**
+ * The key that puts a new step, handoff or frame after every one its flow already has — where
+ * index.html's push puts it (see FlowStep.order). Steps, handoffs and frames each live in one map
+ * across all the flows, so only `flowId`'s count.
+ */
+export function nextFlowItemOrder(container: Y.Map<Y.Map<unknown>>, flowId: string): string {
+  let last: string | null = null;
+  for (const raw of container.values()) {
+    if (raw.get('flowId') !== flowId) continue;
+    const key = raw.get('order');
+    if (typeof key === 'string' && isOrderKey(key) && (last === null || key > last)) last = key;
+  }
+  return keyBetween(last, null);
+}
+
 export function addStep(
   doc: Y.Doc,
   flowId: string,
   fields: Partial<Omit<FlowStep, 'id' | 'flowId'>> = {},
 ): string {
   const id = newId('step');
-  const step = FlowStep.parse({ id, flowId, ...fields });
-  doc.transact(() => maps(doc).steps.set(id, toYMap(step)), LOCAL_ORIGIN);
+  const m = maps(doc);
+  const step = FlowStep.parse({ id, flowId, order: nextFlowItemOrder(m.steps, flowId), ...fields });
+  doc.transact(() => m.steps.set(id, toYMap(step)), LOCAL_ORIGIN);
   return id;
 }
 
@@ -401,8 +417,9 @@ export function addEdge(
   fields: Partial<Omit<FlowEdge, 'id' | 'flowId' | 'from' | 'to'>> = {},
 ): string {
   const id = newId('edge');
-  const edge = FlowEdge.parse({ id, flowId, from, to, ...fields });
-  doc.transact(() => maps(doc).edges.set(id, toYMap(edge)), LOCAL_ORIGIN);
+  const m = maps(doc);
+  const edge = FlowEdge.parse({ id, flowId, from, to, order: nextFlowItemOrder(m.edges, flowId), ...fields });
+  doc.transact(() => m.edges.set(id, toYMap(edge)), LOCAL_ORIGIN);
   return id;
 }
 
@@ -421,9 +438,9 @@ export function deleteEdge(doc: Y.Doc, edgeId: string): void {
 
 export function addGroup(doc: Y.Doc, flowId: string, name = '', memberIds: string[] = []): string {
   const id = newId('group');
-  const group = FlowGroup.parse({ id, flowId, name });
+  const m = maps(doc);
+  const group = FlowGroup.parse({ id, flowId, name, order: nextFlowItemOrder(m.groups, flowId) });
   doc.transact(() => {
-    const m = maps(doc);
     m.groups.set(id, toYMap(group));
     for (const stepId of memberIds) {
       const step = m.steps.get(stepId);

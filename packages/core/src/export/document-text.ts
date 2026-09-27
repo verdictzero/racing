@@ -46,7 +46,7 @@ import {
   subflowRefId,
 } from '../lint-context.js';
 import { normalizeRaci } from '../raci.js';
-import { artifactsInOrder, chartsInTabOrder, flowsInOrder } from '../registry.js';
+import { artifactsInOrder, chartsInTabOrder, edgesInOrder, flowsInOrder, stepsInOrder } from '../registry.js';
 import { ancestorsOf } from '../tree.js';
 import {
   Chart,
@@ -403,7 +403,7 @@ export function inheritedOwner(
 /** A flow's handoffs as the legacy keeps them: no self-loops, no second copy of one connection. */
 export function flowEdges(flow: Flow): FlowEdge[] {
   const seen = new Set<string>();
-  return Object.values(flow.edges).filter((edge) => {
+  return edgesInOrder(flow).filter((edge) => {
     if (edge.from === edge.to || !flow.steps[edge.from] || !flow.steps[edge.to]) return false;
     const key = `${edge.from}:${edge.fromPort ?? ''}>${edge.to}:${edge.toPort ?? ''}`;
     if (seen.has(key)) return false;
@@ -419,7 +419,7 @@ export function flowEdges(flow: Flow): FlowEdge[] {
  * and anything a cycle keeps from ever becoming ready is appended in that same order.
  */
 export function flowStepOrder(flow: Flow): FlowStep[] {
-  const steps = Object.values(flow.steps);
+  const steps = stepsInOrder(flow);
   const edges = flowEdges(flow);
   const indegree = new Map<string, number>(steps.map((s) => [s.id, 0]));
   for (const e of edges) {
@@ -783,7 +783,7 @@ export function entityNamings(
     }
   }
   for (const flow of flowsInOrder(ws)) {
-    for (const step of Object.values(flow.steps)) {
+    for (const step of stepsInOrder(flow)) {
       for (const [column, ref] of Object.entries(step.parties)) {
         if (!(COLS as readonly string[]).includes(column)) continue;
         add(ref, flow.name || 'Untitled flow', step.name || '(untitled step)');

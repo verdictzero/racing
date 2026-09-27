@@ -20,7 +20,7 @@ import type { EmbeddedDocument } from './documents.js';
 import { keysBetween } from './fractional.js';
 import { keepOrMint, newId } from './ids.js';
 import { normalizeRaci } from './raci.js';
-import { artifactsInOrder, entitiesInOrder, flowsInOrder } from './registry.js';
+import { artifactsInOrder, edgesInOrder, entitiesInOrder, flowsInOrder, groupsInOrder, stepsInOrder } from './registry.js';
 import {
   Artifact,
   Chart,
@@ -274,8 +274,22 @@ function importChart(
   });
 }
 
+/**
+ * The records again, each carrying its place in the file's array as an order key (see
+ * FlowStep.order) — by `seq`, the ids in the order they were read, rather than by the object's own
+ * key order, which puts integer-like ids first.
+ */
+function inFileOrder<T extends { id: string }>(recs: Record<string, T>, seq: readonly string[]): Record<string, T> {
+  const ids = [...new Set(seq)].filter((i) => recs[i]);
+  const keys = keysBetween(null, null, ids.length);
+  const out: Record<string, T> = {};
+  ids.forEach((i, n) => { out[i] = { ...recs[i]!, order: keys[n] }; });
+  return out;
+}
+
 function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
   const id = keepOrMint('flow', raw.id);
+  const stepSeq: string[] = [], edgeSeq: string[] = [], groupSeq: string[] = [];
 
   const steps: Record<string, FlowStep> = {};
   for (const t of arr(raw.tasks).map(rec)) {
@@ -325,6 +339,7 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
           ]
         : [];
 
+    stepSeq.push(stepId);
     steps[stepId] = FlowStep.parse({
       id: stepId,
       flowId: id,
@@ -359,6 +374,7 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
       continue;
     }
     const edgeId = keepOrMint('edge', e.id);
+    edgeSeq.push(edgeId);
     edges[edgeId] = FlowEdge.parse({
       id: edgeId,
       flowId: id,
@@ -379,6 +395,7 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
   const groups: Record<string, FlowGroup> = {};
   for (const g of arr(raw.groups).map(rec)) {
     const groupId = keepOrMint('group', g.id);
+    groupSeq.push(groupId);
     groups[groupId] = FlowGroup.parse({
       id: groupId,
       flowId: id,
@@ -404,9 +421,9 @@ function importFlow(raw: Record<string, unknown>, warnings: string[]): Flow {
       typeof anchorIn.chartId === 'string' && typeof anchorIn.nodeId === 'string'
         ? { chartId: anchorIn.chartId, nodeId: anchorIn.nodeId }
         : null,
-    steps,
-    edges,
-    groups,
+    steps: inFileOrder(steps, stepSeq),
+    edges: inFileOrder(edges, edgeSeq),
+    groups: inFileOrder(groups, groupSeq),
   });
 }
 
@@ -724,7 +741,7 @@ export function exportLegacy(
     mode: f.mode,
     sourceChartId: f.sourceChartId,
     anchor: f.anchor ? { ...f.anchor } : null,
-    tasks: Object.values(f.steps).map((s) => {
+    tasks: stepsInOrder(f).map((s) => {
       const sub = s.kind === 'subflow';
       // Every org column, blank ones as '' — the legacy loader fills them in, so it writes them out.
       const raci: Record<string, string> = {};
@@ -751,7 +768,7 @@ export function exportLegacy(
       }
       return out;
     }),
-    edges: Object.values(f.edges).map((e) => ({
+    edges: edgesInOrder(f).map((e) => ({
       id: e.id,
       from: e.from,
       to: e.to,
@@ -761,7 +778,7 @@ export function exportLegacy(
       toPort: e.toPort,
       via: e.via.map((v) => ({ ...v })),
     })),
-    groups: Object.values(f.groups).map((g) => ({
+    groups: groupsInOrder(f).map((g) => ({
       id: g.id,
       name: g.name,
       color: g.color,

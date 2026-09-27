@@ -37,6 +37,7 @@ import {
   stepRolesText,
   type DateStyle,
 } from './document-text.js';
+import { stepsInOrder } from '../registry.js';
 
 /** The banner the legacy signs a flow diagram with — `APP_BANNER`. */
 const APP_BANNER = `${APP_NAME} (ver ${APP_VERSION} ${APP_STAGE})`;
@@ -140,7 +141,7 @@ export function exportFlowMermaid(
 
   const outgoing = new Map<string, number>();
   for (const e of edges) outgoing.set(e.from, (outgoing.get(e.from) ?? 0) + 1);
-  const steps = Object.values(flow.steps);
+  const steps = stepsInOrder(flow);
   const ids = new Map(steps.map((step, i) => [step.id, `s${i}`]));
 
   for (const step of steps) {

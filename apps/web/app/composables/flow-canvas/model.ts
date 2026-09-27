@@ -14,15 +14,18 @@
 
 import {
   ACTOR_LABELS_DEFAULT,
-  COLS,
+  chartTierLabel,
   COL_LABELS_DEFAULT,
   COL_SHORT_DEFAULT,
-  chartTierLabel,
+  COLS,
   columnDirectorate,
+  edgesInOrder,
   framework,
+  groupsInOrder,
   normalizeRaci,
   stepBindOverrides,
   stepLabel,
+  stepsInOrder,
   subflowRefId,
   translateLetters,
   type Actor,
@@ -101,9 +104,9 @@ export function copyName(base: string, taken: readonly string[]): string {
 
 export const isSubflow = (t: FlowStep | null | undefined): t is FlowStep & { kind: 'subflow' } => !!t && t.kind === 'subflow';
 /** b.tasks / b.edges / b.groups — in the order they were made, which is the order they paint in. */
-export const stepsOf = (f: Flow): FlowStep[] => Object.values(f.steps);
-export const edgesOf = (f: Flow): FlowEdge[] => Object.values(f.edges);
-export const groupsOf = (f: Flow): FlowGroup[] => Object.values(f.groups);
+export const stepsOf = (f: Flow): FlowStep[] => stepsInOrder(f);
+export const edgesOf = (f: Flow): FlowEdge[] => edgesInOrder(f);
+export const groupsOf = (f: Flow): FlowGroup[] => groupsInOrder(f);
 export const groupMembers = (f: Flow, gid: string): FlowStep[] => stepsOf(f).filter((t) => t.groupId === gid);
 
 /** bizEdgeKey: two handoffs between one pair of boxes are distinct when their mating points are. */

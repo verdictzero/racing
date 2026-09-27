@@ -5,7 +5,7 @@
  * dropped silently). Call it AFTER the delete, with the count the delete's detach returned.
  */
 import type * as Y from 'yjs';
-import { createLintContext, flowsInOrder } from '@raci/core';
+import { createLintContext, flowsInOrder, stepsInOrder } from '@raci/core';
 import { readWorkspace } from '@raci/crdt';
 import type { ToastType } from '~/composables/useShell';
 
@@ -20,7 +20,7 @@ export function announceDeleteFallout(
   let n = 0;
   const flows = new Set<string>();
   for (const f of flowsInOrder(ws)) {
-    for (const t of Object.values(f.steps)) {
+    for (const t of stepsInOrder(f)) {
       if (t.kind !== 'subflow' && t.bind && !lint.bind(t)) { n++; flows.add(f.name || 'Untitled'); }
     }
   }

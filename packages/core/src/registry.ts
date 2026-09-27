@@ -14,7 +14,7 @@
 import { childIndex, childrenIn, walkInOrder } from './tree.js';
 import { entityKindMeta } from './constants.js';
 import { deriveShort } from './import/xlsx.js';
-import type { Artifact, Chart, ChartNode, Entity, Flow, OrgRef, Workspace } from './schema.js';
+import type { Artifact, Chart, ChartNode, Entity, Flow, FlowEdge, FlowGroup, FlowStep, OrgRef, Workspace } from './schema.js';
 
 /** Where a use was found, in terms a person recognizes. */
 export interface UseSite {
@@ -92,6 +92,21 @@ export function flowsInOrder(ws: Pick<Workspace, 'flows'>): Flow[] {
   return inRegistryOrder(ws.flows);
 }
 
+/** A flow's steps in the order index.html's array holds them (see `FlowStep.order`). */
+export function stepsInOrder(flow: Pick<Flow, 'steps'>): FlowStep[] {
+  return inRegistryOrder(flow.steps);
+}
+
+/** A flow's handoffs in the order index.html's array holds them (see `FlowEdge.order`). */
+export function edgesInOrder(flow: Pick<Flow, 'edges'>): FlowEdge[] {
+  return inRegistryOrder(flow.edges);
+}
+
+/** A flow's frames in the order index.html's array holds them (see `FlowGroup.order`). */
+export function groupsInOrder(flow: Pick<Flow, 'groups'>): FlowGroup[] {
+  return inRegistryOrder(flow.groups);
+}
+
 /** The deliverable registry in registry order (see `Artifact.order`). */
 export function artifactsInOrder(ws: Pick<Workspace, 'artifacts'>): Artifact[] {
   return inRegistryOrder(ws.artifacts);
@@ -141,7 +156,7 @@ export function computeArtifactUses(ws: Workspace): Map<string, ArtifactUses> {
   }
 
   for (const flow of flowsInOrder(ws)) {
-    for (const edge of Object.values(flow.edges)) {
+    for (const edge of edgesInOrder(flow)) {
       if (edge.artifactIds.length === 0) continue;
       const from = flow.steps[edge.from];
       const to = flow.steps[edge.to];
@@ -217,7 +232,7 @@ export function computeEntityUses(ws: Workspace, entityId: string): UseSite[] {
   }
 
   for (const flow of flowsInOrder(ws)) {
-    for (const step of Object.values(flow.steps)) {
+    for (const step of stepsInOrder(flow)) {
       for (const ref of Object.values(step.parties)) {
         if (refersToEntity(ref, entityId)) {
           out.push({

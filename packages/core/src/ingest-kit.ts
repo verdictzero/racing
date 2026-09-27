@@ -35,7 +35,7 @@ import {
   TIER_LABELS,
 } from './constants.js';
 import { rootsOf } from './tree.js';
-import { flowsInOrder } from './registry.js';
+import { flowsInOrder, stepsInOrder } from './registry.js';
 import type { Workspace } from './schema.js';
 import {
   actorLabel,
@@ -739,7 +739,7 @@ export function ingestKitMarkdown(ws: Workspace, opts: IngestKitOptions = {}): s
   const flows = flowsInOrder(ws);
   if (!flows.length) p('- (none)');
   for (const b of flows) {
-    const steps = Object.values(b.steps);
+    const steps = stepsInOrder(b);
     const nSub = steps.filter((t) => t.kind === 'subflow').length;
     const nGrp = Object.keys(b.groups).length;
     const nBound = steps.filter((t) => t.kind !== 'subflow' && t.bind).length;

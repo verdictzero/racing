@@ -4,13 +4,17 @@ import demo from '../../core/src/__fixtures__/demo-workspace.json' with { type: 
 import {
   artifactsInOrder,
   computeArtifactUses,
+  edgesInOrder,
   entitiesInOrder,
   flowsInOrder,
+  groupsInOrder,
   importLegacy,
+  keyBetween,
   objectRegistry,
+  stepsInOrder,
 } from '@raci/core';
 import { docFromWorkspace, readWorkspace } from './doc.js';
-import { addArtifact, addEntity, addFlow, duplicateArtifact, duplicateEntity } from './mutations.js';
+import { addArtifact, addEdge, addEntity, addFlow, addGroup, addStep, duplicateArtifact, duplicateEntity } from './mutations.js';
 
 const { workspace } = importLegacy(demo);
 
@@ -107,5 +111,45 @@ describe('addFlow', () => {
     const id = addFlow(doc, 'Brand new');
     const ordered = flowsInOrder(readWorkspace(doc)).map((f) => f.id);
     expect(ordered[ordered.length - 1]).toBe(id);
+  });
+});
+
+describe('a flow’s steps, handoffs and frames — index.html’s arrays', () => {
+  const sync = (from: Y.Doc, to: Y.Doc) => Y.applyUpdate(to, Y.encodeStateAsUpdate(from, Y.encodeStateVector(to)));
+  const flow = flowsInOrder(workspace)[0]!;
+
+  it('arrive from a file in the file’s order', () => {
+    const file = demo as unknown as { bizCases: Array<{ tasks: Array<{ id: string }>; edges: Array<{ id: string }> }> };
+    expect(stepsInOrder(flow).map((t) => t.id)).toEqual(file.bizCases[0]!.tasks.map((t) => t.id));
+    expect(edgesInOrder(flow).map((e) => e.id)).toEqual(file.bizCases[0]!.edges.map((e) => e.id));
+  });
+
+  it('keep an addition last after a reload, whatever the adding client’s id', () => {
+    for (const offset of [1000, -1000]) {
+      const server = docFromWorkspace(workspace);
+      const peer = new Y.Doc();
+      peer.clientID = Math.max(1, server.clientID + offset);
+      sync(server, peer);
+      const [a, b] = stepsInOrder(flow);
+      const step = addStep(peer, flow.id, { name: 'Added later' });
+      const edge = addEdge(peer, flow.id, a!.id, b!.id);
+      const group = addGroup(peer, flow.id, 'Later frame');
+      const reloaded = new Y.Doc();
+      Y.applyUpdate(reloaded, Y.encodeStateAsUpdate(peer));
+      const f = readWorkspace(reloaded).flows[flow.id]!;
+      expect(stepsInOrder(f).map((t) => t.id)).toEqual([...stepsInOrder(flow).map((t) => t.id), step]);
+      expect(edgesInOrder(f).map((e) => e.id).at(-1)).toBe(edge);
+      expect(groupsInOrder(f).map((g) => g.id).at(-1)).toBe(group);
+    }
+  });
+
+  it('count only their own flow when a new one is keyed', () => {
+    const doc = docFromWorkspace(workspace);
+    const [first, second] = flowsInOrder(workspace);
+    for (let i = 0; i < 3; i++) addStep(doc, first!.id);
+    const added = addStep(doc, second!.id);
+    const f = readWorkspace(doc).flows[second!.id]!;
+    expect(stepsInOrder(f).map((t) => t.id).at(-1)).toBe(added);
+    expect(f.steps[added]!.order).toBe(keyBetween(stepsInOrder(second!).at(-1)!.order!, null));
   });
 });

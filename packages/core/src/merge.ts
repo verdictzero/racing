@@ -42,7 +42,7 @@ import {
   type FlowStep,
 } from './schema.js';
 import { chartsInTabOrder, flowEdges, freeFormShape } from './export/document-text.js';
-import { artifactsInOrder, flowsInOrder } from './registry.js';
+import { artifactsInOrder, flowsInOrder, groupsInOrder, stepsInOrder } from './registry.js';
 
 /** Which sections of a file are merged. A section the file did not carry is never merged. */
 export interface MergeSections {
@@ -271,7 +271,7 @@ export function mergeWorkspace(
     };
 
     const steps: Record<string, FlowStep> = {};
-    for (const step of Object.values(flow.steps)) {
+    for (const step of stepsInOrder(flow)) {
       const stepId = ids.get(step.id)!;
       const sub = step.kind === 'subflow';
       const ref = referencedFlow(step);
@@ -314,7 +314,7 @@ export function mergeWorkspace(
     }
 
     const groups: Record<string, FlowGroup> = {};
-    for (const group of Object.values(flow.groups)) {
+    for (const group of groupsInOrder(flow)) {
       const groupId = groupIds.get(group.id)!;
       groups[groupId] = { ...group, id: groupId, flowId: id };
     }

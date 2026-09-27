@@ -3,6 +3,7 @@ import demo from './__fixtures__/demo-workspace.json' with { type: 'json' };
 import golden from './__fixtures__/legacy-parity.json' with { type: 'json' };
 import { anchoredVariant, freeFormVariant } from './__fixtures__/parity-variants.js';
 import { importLegacy, exportLegacy } from './legacy.js';
+import { stepsInOrder } from './registry.js';
 import { childrenOf, walkInOrder, depthOf, findCycles, findOrphans, rootsOf } from './tree.js';
 
 /**
@@ -522,5 +523,26 @@ describe('the file Save writes', () => {
     };
     expect(out.charts[0]!.activities.map((n) => n.status)).toEqual(['doing', 'todo', 'todo']);
     expect(out.bizCases[0]!.tasks[0]!.status).toBe('done');
+  });
+});
+
+describe('a flow’s arrays keep their order', () => {
+  it('through import and Save, integer-like ids and all', () => {
+    const file = structuredClone(demo) as unknown as {
+      bizCases: Array<{ tasks: Array<{ id: string }>; edges: Array<{ id: string; from: string; to: string }>; groups: Array<{ id: string }> }>;
+    };
+    const b = file.bizCases[0]!;
+    // A plain object lists integer-like keys first, ascending — the file's order must not depend on it.
+    const rename = new Map(b.tasks.map((t, i) => [t.id, String(b.tasks.length - i)]));
+    for (const t of b.tasks) t.id = rename.get(t.id)!;
+    for (const e of b.edges) { e.from = rename.get(e.from) ?? e.from; e.to = rename.get(e.to) ?? e.to; }
+    const ids = b.tasks.map((t) => t.id);
+    const { workspace } = importLegacy(file);
+    const flow = Object.values(workspace.flows).find((f) => f.steps[ids[0]!])!;
+    expect(stepsInOrder(flow).map((t) => t.id)).toEqual(ids);
+    const out = exportLegacy(workspace) as typeof file;
+    expect(out.bizCases.find((x) => x.tasks.some((t) => t.id === ids[0]))!.tasks.map((t) => t.id)).toEqual(ids);
+    expect(out.bizCases[0]!.edges.map((e) => e.id)).toEqual(b.edges.map((e) => e.id));
+    expect(JSON.stringify(out)).not.toContain('"order"');
   });
 });

@@ -12,7 +12,7 @@
 import type * as Y from 'yjs';
 import { FlowGroup, newId } from '@raci/core';
 import { maps, setField, toYMap } from './doc.js';
-import { LOCAL_ORIGIN, MutationError } from './mutations.js';
+import { LOCAL_ORIGIN, MutationError, nextFlowItemOrder } from './mutations.js';
 
 /** One field of a frame: its title, its colour key, whether it is folded shut, where it sits. */
 export function setGroupField(
@@ -54,6 +54,7 @@ export function addGroupFrame(
     collapsed: false,
     x: Math.round(frame.x),
     y: Math.round(frame.y),
+    order: nextFlowItemOrder(m.groups, flowId),
   });
   doc.transact(() => {
     m.groups.set(id, toYMap(group));

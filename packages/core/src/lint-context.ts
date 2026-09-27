@@ -51,7 +51,7 @@ import {
 } from './constants.js';
 import { normalizeRaci } from './raci.js';
 import { childIndex, childrenIn } from './tree.js';
-import { flowsInOrder } from './registry.js';
+import { edgesInOrder, flowsInOrder } from './registry.js';
 import type { Chart, ChartNode, Flow, FlowEdge, FlowStep, Workspace } from './schema.js';
 
 const isOrgColumn = (key: string): key is ColKey => (COLS as readonly string[]).includes(key);
@@ -246,7 +246,7 @@ export function stepLabel(ws: Pick<Workspace, 'flows'>, flow: Flow, step: FlowSt
 export function legacyEdges(flow: Flow): FlowEdge[] {
   const seen = new Set<string>();
   const out: FlowEdge[] = [];
-  for (const edge of Object.values(flow.edges)) {
+  for (const edge of edgesInOrder(flow)) {
     if (!ownEntry(flow.steps, edge.from) || !ownEntry(flow.steps, edge.to)) continue;
     if (edge.from === edge.to) continue;
     const key = `${edge.from}:${edge.fromPort || ''}>${edge.to}:${edge.toPort || ''}`;

@@ -30,7 +30,7 @@
 
 import { ACTOR_LABELS_DEFAULT, ACTORS, COLS, entityKindMeta, framework, type Framework } from './constants.js';
 import { inheritedOwnerColumn, normalizeRaci } from './raci.js';
-import { chartsInTabOrder, computeArtifactUses, entityDisplayName as entityName, flowsInOrder } from './registry.js';
+import { chartsInTabOrder, computeArtifactUses, edgesInOrder, entityDisplayName as entityName, flowsInOrder, stepsInOrder } from './registry.js';
 import { scopeRelation } from './org.js';
 import { ancestorsOf, childIndex, childrenIn } from './tree.js';
 import { tierLabel } from './legacy.js';
@@ -294,8 +294,8 @@ export function collectWork(ws: Workspace, scope: OrgRef | null | undefined): Wo
         ? `${anchorChart.title || 'Untitled chart'} › … › ${anchorNode.name || '(untitled)'}`
         : null;
     const linked = flow.mode === 'linked';
-    const steps = Object.values(flow.steps);
-    const edges = Object.values(flow.edges);
+    const steps = stepsInOrder(flow);
+    const edges = edgesInOrder(flow);
 
     // "Recover" (Division C1, Branch C1.2) — the far end of a handoff, as the card names it: the
     // step, quoted, and the units its own parties name.

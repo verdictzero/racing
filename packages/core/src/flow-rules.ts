@@ -64,6 +64,7 @@ import {
   type ViolationIssue,
 } from './raci.js';
 import type { Flow, FlowEdge, FlowStep, Workspace } from './schema.js';
+import { edgesInOrder, stepsInOrder } from './registry.js';
 
 export interface FlowViolation extends Violation {
   readonly flowId: string;
@@ -80,14 +81,14 @@ export interface FlowViolation extends Violation {
  */
 export function reachableSteps(flow: Flow): Set<string> {
   const hasIncoming = new Set<string>();
-  for (const edge of Object.values(flow.edges)) {
+  for (const edge of edgesInOrder(flow)) {
     if (flow.steps[edge.to]) hasIncoming.add(edge.to);
   }
-  const entries = Object.keys(flow.steps).filter((id) => !hasIncoming.has(id));
-  if (entries.length === 0) return new Set(Object.keys(flow.steps));
+  const entries = stepsInOrder(flow).map((s) => s.id).filter((id) => !hasIncoming.has(id));
+  if (entries.length === 0) return new Set(stepsInOrder(flow).map((s) => s.id));
 
   const out = new Map<string, string[]>();
-  for (const edge of Object.values(flow.edges)) {
+  for (const edge of edgesInOrder(flow)) {
     const list = out.get(edge.from);
     if (list) list.push(edge.to);
     else out.set(edge.from, [edge.to]);
@@ -119,7 +120,7 @@ export function embedWouldCycle(ws: Workspace, hostId: string, refId: string): b
     seen.add(flowId);
     const flow = ownEntry(ws.flows, flowId);
     if (!flow) return false;
-    for (const step of Object.values(flow.steps)) {
+    for (const step of stepsInOrder(flow)) {
       if (step.kind === 'subflow' && step.refId && visit(step.refId)) return true;
     }
     return false;
@@ -137,7 +138,7 @@ function openExitPorts(
   box: FlowStep,
   ref: Flow,
 ): Array<{ readonly id: string; readonly name: string }> {
-  const steps = Object.values(ref.steps);
+  const steps = stepsInOrder(ref);
   const handsOff = new Set(lc.edges(ref).map((e) => e.from));
   const exits = steps.filter((s) => !handsOff.has(s.id));
   const list = exits.length > 0 ? exits : steps;
@@ -187,7 +188,7 @@ export function flowRecords(
     touched.add(e.from);
     touched.add(e.to);
   }
-  const steps = Object.values(flow.steps);
+  const steps = stepsInOrder(flow);
 
   const out: FlowViolationRecord[] = [];
   // Shared tail: every path ends by filing its issues against the step.
@@ -488,7 +489,7 @@ export function flowHealth(
     if (edge.artifactIds.length > 0) passed++;
   }
 
-  for (const step of Object.values(flow.steps)) {
+  for (const step of stepsInOrder(flow)) {
     if (step.kind === 'subflow') continue;
     const eff = lc.stepRaci(flow, step);
     total++;

@@ -10,13 +10,13 @@
  * party panel, the popovers) lives in useFlowScreen, never in the document.
  */
 import {
-  COLS,
-  COL_LABELS_DEFAULT,
-  COL_SHORT_DEFAULT,
   ACTORS,
   artifactsInOrder,
-  chartTierLabel,
   chartsInOrder,
+  chartTierLabel,
+  COL_LABELS_DEFAULT,
+  COL_SHORT_DEFAULT,
+  COLS,
   createLintContext,
   embedWouldCycle,
   flowsInOrder,
@@ -26,6 +26,7 @@ import {
   resolveActiveChart,
   resolveActiveFlow,
   stepLabel,
+  stepsInOrder,
   subflowRefId,
   type BindContext,
   type Chart,
@@ -140,7 +141,7 @@ export function useFlowChrome() {
   }
 
   // ---- the flow graph ----------------------------------------------------------------------------
-  const steps = (f: Flow): FlowStep[] => Object.values(f.steps);
+  const steps = (f: Flow): FlowStep[] => stepsInOrder(f);
   /** b.edges, as index.html's loader keeps them. */
   const edges = (f: Flow): readonly FlowEdge[] => lint.value.edges(f);
   const isSub = (s: FlowStep | null | undefined): boolean => !!s && s.kind === 'subflow';

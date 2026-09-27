@@ -294,6 +294,13 @@ export const FlowStep = z.object({
   ports: z.object({ in: z.array(z.string()), out: z.array(z.string()) }).default({ in: [], out: [] }),
   /** index.html's per-step `status` — see TaskStatus. Absent means 'todo'. */
   taskStatus: TaskStatus.optional(),
+  /**
+   * Place among its flow's steps. index.html keeps a flow's steps in an array, in the order they
+   * were made, and that order is the table's rows, the cards' stacking and every walk over the steps
+   * (the rules, the exports); a map keeps no order two people can agree on, so the key carries it.
+   * See `stepsInOrder`. Absent on steps written before it existed: they come first, in map order.
+   */
+  order: z.string().optional(),
 });
 export type FlowStep = z.infer<typeof FlowStep>;
 
@@ -311,6 +318,8 @@ export const FlowEdge = z.object({
   artifactIds: z.array(z.string()).default([]),
   /** Redirector waypoints — the route a person dragged this line along. */
   via: z.array(Waypoint).max(24).default([]),
+  /** Place among its flow's handoffs, as `FlowStep.order` is among steps. See `edgesInOrder`. */
+  order: z.string().optional(),
 });
 export type FlowEdge = z.infer<typeof FlowEdge>;
 
@@ -322,6 +331,8 @@ export const FlowGroup = z.object({
   collapsed: z.boolean().default(false),
   x: z.number().default(0),
   y: z.number().default(0),
+  /** Place among its flow's frames, as `FlowStep.order` is among steps. See `groupsInOrder`. */
+  order: z.string().optional(),
 });
 export type FlowGroup = z.infer<typeof FlowGroup>;
 
