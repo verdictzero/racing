@@ -73,6 +73,7 @@ import {
   setField,
   toYMap,
 } from '@raci/crdt';
+import * as Y from 'yjs';
 import type { ChartPop } from '~/components/chart/ChartPopover.vue';
 import type { CtxEntry } from '~/composables/useContextMenu';
 import { violationRecords, type ViolationRecord } from '~/composables/useViolationRecords';
@@ -163,18 +164,27 @@ const arranging = ref(false);
  * wrote, one cascade indent wider than the panes it measured. A pane's max-width is a percentage of
  * the cascade, so each of those passes widens the focused pane by 48px until it reaches its natural
  * width. `fresh` says which kind this is; this element persists between renders, so a fresh pass
- * clears what the last one wrote.
+ * clears what the last one wrote. `rebuild` also stands the panes back at the cascade's origin, as
+ * a re-render's new DOM has them (see onTransaction).
  */
-function layoutCascade(fresh: boolean): void {
+function layoutCascade(fresh: boolean, rebuild = false): void {
   const wrap = cascadeEl.value;
   if (!wrap) return;
   const blocks = Array.from(wrap.querySelectorAll<HTMLElement>('.chart-block'));
   if (!blocks.length) return;
-  if (fresh) {
+  if (fresh || rebuild) {
     wrap.style.width = '';
     wrap.style.height = '';
     wrap.style.transform = '';
     if (zoomWrap.value) { zoomWrap.value.style.width = ''; zoomWrap.value.style.height = ''; }
+  }
+  if (rebuild) {
+    // renderChart's brand-new DOM: panes at the cascade's origin, the connector layer and the grip
+    // unsized. The measurement below lays that out, and the browser clamps #ws-main's scroll to it.
+    for (const b of blocks) { b.style.left = ''; b.style.top = ''; b.style.maxHeight = ''; }
+    const s = svg.value;
+    if (s) { s.removeAttribute('width'); s.removeAttribute('height'); s.style.width = ''; s.style.height = ''; }
+    if (grip.value) { grip.value.style.left = ''; grip.value.style.top = ''; grip.value.classList.remove('floated'); }
   }
   const n = blocks.length;
   const pos = cam.value.pos;
@@ -245,22 +255,48 @@ function drawConnectors(): void {
   }
   s.innerHTML = out + dots;
 }
-function relayout(fresh = false): void { layoutCascade(fresh); drawConnectors(); }
+function relayout(fresh = false, rebuild = false): void { layoutCascade(fresh, rebuild); drawConnectors(); }
 /** One pass after Vue has patched the DOM; if a render and a camera move land together, the render's
  *  fresh pass is the one index.html would have run. */
-let layoutQueued = false, queuedFresh = false;
-function queueLayout(fresh: boolean): void {
+let layoutQueued = false, queuedFresh = false, queuedRebuild = false;
+function queueLayout(fresh: boolean, rebuild = false): void {
   queuedFresh ||= fresh;
+  queuedRebuild ||= rebuild;
   if (layoutQueued) return;
   layoutQueued = true;
   nextTick(() => {
-    const f = queuedFresh;
-    layoutQueued = false; queuedFresh = false;
-    relayout(f);
+    const f = queuedFresh, r = queuedRebuild;
+    layoutQueued = false; queuedFresh = false; queuedRebuild = false;
+    relayout(f, r);
   });
 }
+/**
+ * index.html's renderChart() rebuilds #ws-main from scratch, and for one layout the chart is smaller
+ * than it was — every pane at the cascade's origin, nothing sized — so the browser clamps #ws-main's
+ * scroll to that box: delete a row from the far right and the view slips left by the 44px margin.
+ * This page keeps its DOM, so the pass that stands in for a re-render (`rebuild`) first puts the
+ * pieces back where a fresh render has them. It stands in for one after this person's own edit —
+ * not a rename, a definition or a document, which index.html patches in place without a re-render,
+ * and not someone else's, which it never sees — after an undo or a redo (its applySnapshot renders
+ * everything), and after a drill or a tab switch.
+ */
+const IN_PLACE = new Set<string | null>(['name', 'description', 'documents', 'title']);
+let localRender = false;
+function onTransaction(tr: Y.Transaction): void {
+  if (tr.origin instanceof Y.UndoManager) { localRender = true; return; }
+  if (tr.origin !== LOCAL_ORIGIN) return;
+  for (const keys of tr.changed.values()) for (const k of keys) if (!IN_PLACE.has(k)) { localRender = true; return; }
+}
+onMounted(() => session.doc.on('afterTransaction', onTransaction));
+onBeforeUnmount(() => session.doc.off('afterTransaction', onTransaction));
 // What index.html re-renders for: the document, the drill, the tab. Camera moves queue their own pass.
-watch([() => session.workspace.value, () => cam.value.drillPath, chartIdRef], () => { queueLayout(true); syncFab(); }, { flush: 'post' });
+watch(() => session.workspace.value, () => {
+  const r = localRender;
+  localRender = false;
+  queueLayout(true, r);
+  syncFab();
+}, { flush: 'post' });
+watch([() => cam.value.drillPath, chartIdRef], () => { queueLayout(true, true); syncFab(); }, { flush: 'post' });
 const onWindowResize = () => relayout(false);
 onMounted(() => { queueLayout(true); syncFab(); window.addEventListener('resize', onWindowResize); });
 onBeforeUnmount(() => window.removeEventListener('resize', onWindowResize));
