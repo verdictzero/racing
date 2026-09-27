@@ -59,6 +59,7 @@ I/O.** If something needs a browser, a server or a database, it does not belong 
 | `chart-rules.ts`, `flow-rules.ts`, `violations.ts` | The rule engine: index.html's `recomputeViolations` and `lintFlow`, ported rule for rule and message for message, and run — scoped and counted — the way the legacy app runs them. Pinned to index.html's own output by `violations.test.ts`. |
 | `lint-context.ts` | The document as those rules read it: the legacy app's reading helpers, and the repairs its loader makes before any rule runs. |
 | `legacy.ts` | v0.39 JSON ↔ the flat model, both directions. The contract the whole migration rests on. |
+| `registry.ts` | Everything index.html keeps in an array, in that array's order — the chart tabs, the flows, the deliverable and entity registries, and a flow's steps, handoffs and frames — by order keys, because a keyed map keeps no order two clients agree on. Walk them with the `*InOrder` helpers, never `Object.values`. |
 
 **The invariant:** anything a reviewer would call "a rule about RACI" lives here, so there is exactly
 one implementation of it and the app cannot drift from the exporter.
@@ -69,7 +70,9 @@ Wraps Yjs so nothing else touches a `Y.Map`.
 
 - `doc.ts` — the document layout, and why each collection is shaped the way it is.
 - `mutations.ts` — **every legal write.** One transaction each, one origin tag each. This is the list
-  a permission check and an audit trail can both be written against.
+  a permission check and an audit trail can both be written against. The flow screen's own writes
+  (frames, multi-box moves, duplicating a flow, a bound step's overrides) are beside it in
+  `flow-canvas.ts` and `flow-chrome.ts`; Load, Demo and Clear are `replace.ts`.
 - `repair.ts` — restores the tree invariants a merge can break.
 - `undo.ts` — undo scoped to one person's edits.
 
@@ -188,6 +191,7 @@ exactly what to port, and both apps keep reading and writing the same v0.39 JSON
 | `core/violations.test.ts` | index.html's rule engine — its `_violations` and warnings pill — read out of the real file for the demo and for a workspace built to make every rule fire. The port must say what the source says. |
 | `core/fractional.test.ts` | You can always insert again — 500 successive bisections at one point. |
 | `crdt/convergence.test.ts` | A two-client harness with the wire under the test's control, so "concurrent" means both sides really did apply before either saw the other. |
+| `crdt/registry.test.ts` | An addition stays last after a reload whatever the adding client's id, and two additions minted at the same instant settle the same way on every client — for the registries and for a flow's steps, handoffs and frames. |
 | `crdt/roster.test.ts` | The nested roster survives a flatten/nest round trip byte for byte against the real 694-unit demo, and two people editing one directorate no longer clobber each other. |
 | `db/doc-store.test.ts` | Real Postgres in process (PGlite/WASM) — the actual migration, the actual SQL. Exercises bytea round-tripping, composite-key upserts and tenant isolation. |
 | `auth/verify.test.ts` | Mints real tokens with real keys, then attacks them: `alg:none`, HMAC confusion, wrong key, wrong audience, replayed nonce, tampered payload. |

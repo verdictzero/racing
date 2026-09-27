@@ -62,7 +62,12 @@ re-renders the cascade for an edit or a drill but only re-lays it out for a zoom
 back or a window resize, and those passes measure against the width the last one wrote — so each
 widens the focused pane by one cascade indent until it reaches its natural width. The chart runs
 the two kinds of pass where the source does (`layoutCascade(fresh)`), because that is what the
-source looks like after you zoom.
+source looks like after you zoom. **So is a second one:** a re-render's brand-new DOM lays out for a
+moment with every pane at the cascade's origin, and the browser clamps `#ws-main`'s scroll to that
+smaller box — delete a row from the far right and the view slips left by the 44px margin. After
+this person's own edit (not a rename, a definition or a document, which the source patches in
+place), an undo, a drill or a tab switch, the chart first stands its pieces back where a fresh
+render has them (`layoutCascade(fresh, rebuild)`).
 
 **Note for whoever tests this:** all 810 rows of the demo state an owner of their own, so **nothing
 in the demo ever exercises the inherited-owner path.** It has to be constructed; `cascade.test.ts`
@@ -96,29 +101,45 @@ model as `nodes`. `flattenRoster` / `nestRoster` convert at the boundary, so `Wo
 the Tasks screen default to *your* unit — needs a person's `externalId` compared against the OIDC
 subject at sign-in. Everything it needs now exists; nothing does it yet.
 
-### 3 · The flow canvas — `renderBizcase` (index.html:11948)
+### 3 · ~~The flow screen~~ — `renderBizcase` (index.html:11948)
 
-**Part (a) and (b) done.** `apps/web/app/pages/w/[id]/flow.vue`, on
-`packages/core/src/flow-geometry.ts` (29 tests).
+**Done.** `apps/web/app/pages/w/[id]/flow.vue` is renderBizcase's frame; the canvas (everything in
+`#bz-canvas`) is `components/flow/canvas/Surface.vue` on `composables/flow-canvas/model.ts`, and the
+chrome around it — toolbar, status and mode strips, charter, Flow Gallery, table pane, party panel
+and the three popovers — is `components/flow/*.vue` on `composables/useFlowChrome.ts`. The two
+halves share one person's view state through `composables/useFlowScreen.ts`: the gallery and table
+toggles, the selection, the open popover (one slot, as index.html has one `openPopover`), the party
+target, the Back trail out of nested flows, the gallery drag, each flow's camera, and the calls the
+chrome makes into the canvas (add a step at the centre, nest a flow, fit, centre on a step). Their
+writes are `@raci/crdt`'s `flow-canvas.ts` and `flow-chrome.ts`.
 
 The arithmetic is all in core: `socketPoint`, `edgePath`, `edgePathVia`, `viaInsertIndex`,
-`endpointBox`, `edgeGeometry`, `flowBounds`. In `index.html` every one of those answers comes out of
-the DOM — `getBoundingClientRect`, CSS selectors, live measurement — so none of it could be tested
-without a browser, which is how a real bug in the curve arithmetic survived (see below).
-
-**One measurement is injected and only one:** a card's height, which is content-driven and genuinely
-only the renderer knows. Width is fixed at `STEP_WIDTH`. The component measures, core computes.
+`endpointBox`, `edgeGeometry`, `flowBounds` (`flow-geometry.ts`, 29 tests). In `index.html` every
+one of those answers comes out of the DOM, so none of it could be tested without a browser, which is
+how a real bug in the curve arithmetic survived. **One measurement is injected and only one:** a
+card's height, which is content-driven and genuinely only the renderer knows.
 
 - **Step positions ARE document data** — where a box sits is something a person decided and
-  everyone should see. The camera (pan, zoom) is per-person and stays in the component. That split
-  is the exact opposite of the chart screen's, and it is deliberate in both directions.
+  everyone should see. The camera (pan, zoom) is per person, in localStorage under
+  `raci-flow-camera-v1:<workspace>:<flow>`; Save writes it as the flow's `view` and Load reads it
+  back. That split is the exact opposite of the chart screen's, and it is deliberate both ways.
 - `moveStep` writes `x` and `y` as separate fields on purpose, so two people dragging different
   steps never fight over a coordinate pair. Keep it that way.
+- **A flow's steps, handoffs and frames carry order keys** (`FlowStep.order` and its siblings), as
+  the flows and the registries do. index.html keeps them in arrays, and that order is the table's
+  rows, the cards' stacking, the rules' messages and every export; a keyed map keeps no order two
+  clients agree on. Walk them with `stepsInOrder` / `edgesInOrder` / `groupsInOrder`, never
+  `Object.values`.
+- **Where index.html re-renders, the canvas stands in for it** (`freshRaster`): a fresh raster of
+  the world, a dropped text selection, and an unscrolled `#bz-canvas` (it clips, but the browser
+  still scrolls it to show a focused field) — each skipped under someone's caret, so a colleague's
+  edit never costs this person their typing.
+- Where index.html writes to a Final flow and then rolls the write back (its `enforceLocks`), the
+  rebuild refuses the write and says the same two things, in the same order.
 
-**Still to do — part (c) and the rest:** dragging a socket to draw a new handoff, creating
-redirector waypoints (the geometry renders and inserts them; no gesture makes one yet), group
-frames and collapsing (`endpointBox` already handles a collapsed frame's mating points), nested
-subflow per-port sockets, the minimap, and marquee selection.
+Deleting a chart row or closing a chart detaches the flows anchored under it and warns about
+Chart-Linked steps left bound to nothing, in index.html's words (`announceDeleteFallout`); the binds
+themselves are kept, as the source never drops one silently.
 
 ### 4 · ~~Object Gallery~~ — `renderObjects` (index.html:10427)
 
@@ -256,7 +277,9 @@ different product. The fix was a change of method, not more styling:
 source over `file://` with the demo in its localStorage, the rebuild against a copy of the demo —
 and screenshotted after every step; a pixel diff flags any region that differs. Every screen, the
 panels, the overlays, the menus, the Final lock, zoom and pane dragging, print layout, and the five
-themes at 1600 and 1000 px wide were compared this way. Where the output is a file rather than a
+themes at 1600 and 1000 px wide were compared this way — the flow screen in each of its states too:
+selections, the three popovers, the party panel, the table, the gallery, nested flows and Back, a
+Final flow, a Chart-Linked flow and its row picker, every right-click menu. Where the output is a file rather than a
 screen, the file is compared: Save, the Ingest Kit, PowerPoint, Mermaid and the Excel template are
 byte-identical to index.html's, and `scripts/capture-legacy-parity.mjs` pins them in the tests.
 
@@ -270,6 +293,10 @@ byte-identical to index.html's, and `scripts/capture-legacy-parity.mjs` pins the
 | Load, Demo and Clear replace the document for everyone in the workspace | The source replaced one browser's state. They keep its prompts word for word (Demo and Clear ask, Load does not) and are one undoable step for the person who did it. |
 | Clear keeps the workspace's own flows and deliverables | The source's comment says Clear keeps the flows; its code rebuilds from `defaultState()`, which swaps them for the demo's. |
 | The Details panel's storage note | The source's says documents live in this browser's IndexedDB. |
+| The flow table pane and the Flow Gallery list keep their scroll position through an edit | The source rebuilds the whole screen on every edit, so both jump back to the top — assigning a cell far down the table would lose your place each time. |
+| A flow popover closes when you leave the flow screen | The source's stays floating over whichever screen you went to. |
+| "Details…" in the Flow Gallery's menu opens the Details overlay and leaves it open | The source's opens it and the same click, falling through to the overlay's backdrop, closes it at once. |
+| A refused nest into a Final flow leaves the selection as it was | The source writes the nested box, selects it, then rolls the write back — and its toolbar goes on counting the vanished box ("⊟ Group (1)"). |
 | Attachments are stored on the server | See `packages/db/src/documents.ts`. Save embeds their bytes, as the source's does. |
 
 ## Not a slice: things that should NOT come across
