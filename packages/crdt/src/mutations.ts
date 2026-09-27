@@ -280,7 +280,14 @@ export function setChartField(
 }
 
 /** Delete a chart, its rows, and any flow anchor that pointed into it. */
-export function deleteChart(doc: Y.Doc, chartId: string): void {
+/**
+ * Close a chart: it and its rows go. Flows anchored to it become standalone (see
+ * detachStrandedAnchors); how many is returned, for index.html's toast. Chart-Linked steps bound to
+ * its rows KEEP their binds — as in index.html, a bind is never silently dropped: the step shows
+ * as stranded until someone re-points or unlinks it.
+ */
+export function deleteChart(doc: Y.Doc, chartId: string): number {
+  let detached = 0;
   doc.transact(() => {
     const m = maps(doc);
     m.charts.delete(chartId);
@@ -288,17 +295,33 @@ export function deleteChart(doc: Y.Doc, chartId: string): void {
     for (const [id, raw] of [...m.nodes.entries()]) {
       if (raw.get('chartId') === chartId) m.nodes.delete(id);
     }
-    // A flow whose anchor row is gone becomes standalone rather than being deleted with the
-    // chart — the flow is a document in its own right and outlives what it hung under.
+    detached = detachStrandedAnchors(doc, chartId);
+  }, LOCAL_ORIGIN);
+  return detached;
+}
+
+/**
+ * index.html's detachFlowsFrom, as its row and chart deletes call it: every flow anchored to
+ * `chartId` whose row is no longer in that chart becomes standalone — its anchor nulled, the flow
+ * itself kept (a flow is a document in its own right and outlives what it hung under). Returns how
+ * many flows were detached. Call it in the same transaction as the delete, so one undo brings both
+ * back.
+ */
+export function detachStrandedAnchors(doc: Y.Doc, chartId: string): number {
+  let detached = 0;
+  doc.transact(() => {
+    const m = maps(doc);
+    const chartLives = m.charts.has(chartId);
     for (const [, raw] of m.flows.entries()) {
-      const anchor = raw.get('anchor') as { chartId?: string } | null;
-      if (anchor && anchor.chartId === chartId) raw.set('anchor', null);
-    }
-    for (const [, raw] of m.steps.entries()) {
-      const bind = raw.get('bind') as { chartId?: string } | null;
-      if (bind && bind.chartId === chartId) raw.set('bind', null);
+      const anchor = raw.get('anchor') as { chartId?: string; nodeId?: string } | null;
+      if (!anchor || anchor.chartId !== chartId) continue;
+      const row = chartLives && anchor.nodeId ? m.nodes.get(anchor.nodeId) : undefined;
+      if (row && row.get('chartId') === chartId) continue;
+      raw.set('anchor', null);
+      detached += 1;
     }
   }, LOCAL_ORIGIN);
+  return detached;
 }
 
 // ---- flows --------------------------------------------------------------------------------------

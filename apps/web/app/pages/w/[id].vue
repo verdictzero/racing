@@ -391,7 +391,7 @@ function closeChart(id: string): void {
     if (activeChartId.value === id) activeChartId.value = chartTabs.value[idx + 1]?.id ?? null;
     activeNodeId.value = null;
   }
-  deleteChart(session.doc, id);
+  announceDeleteFallout(session.doc, deleteChart(session.doc, id), toast);
 }
 function setFramework(key: string): void {
   const c = activeChart.value;

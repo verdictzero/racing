@@ -50,7 +50,6 @@ import {
   setStepParty,
   setStepRaci,
 } from '@raci/crdt';
-import type { ToastType } from '~/composables/useShell';
 import { legacyOrgLabel } from '~/composables/useOrgLabel';
 
 /** index.html's BIZ_MODES / BIZ_MODE_META — the mode picker's options, icons and explanations. */
@@ -69,13 +68,6 @@ export const ART_STATUS_META = {
 
 /** index.html's BZ_NODE_W: a step card's fixed width, which the gallery sketch scales from. */
 export const BZ_NODE_W = 220;
-
-/**
- * index.html's showToast(msg, 'ok'): a plain toast, neither the error's red nor the suggestion's
- * amber. The shell's toast binds its type as the class, as the source's does, so 'ok' draws the
- * source's unstyled toast — the shell's type just does not list it yet.
- */
-export const TOAST_OK = 'ok' as unknown as ToastType;
 
 /** bizBindCtx: what a bound step reads off its chart row, with the parts the chrome prints. */
 export interface BindInfo {
@@ -373,7 +365,7 @@ export function useFlowChrome() {
     const M = BIZ_MODE_META[mode as BizMode];
     shell.toast(unbound
       ? `Chart-Linked — ${unbound} step${unbound === 1 ? '' : 's'} still need${unbound === 1 ? 's' : ''} a chart row. Click ⛓ on a card to pick one.`
-      : `${M.name} — ${M.blurb}`, unbound ? 'suggest' : TOAST_OK);
+      : `${M.name} — ${M.blurb}`, unbound ? 'suggest' : 'ok');
     return true;
   }
   /** bizSetSourceChart. True when it was set (index.html then repaints). */

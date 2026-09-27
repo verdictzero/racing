@@ -64,6 +64,7 @@ import {
   addNode,
   addStep,
   deleteNode as deleteNodeTree,
+  detachStrandedAnchors,
   duplicateNode,
   insertChart,
   maps,
@@ -383,8 +384,14 @@ function deleteRow(id: string): void {
   if (!confirm(`Delete "${label}"${kids ? ` and its ${kids} sub-item${kids === 1 ? '' : 's'}` : ''}?`)) return;
   const at = cam.value.drillPath.indexOf(id);
   if (at >= 0) update({ drillPath: cam.value.drillPath.slice(0, at) });
-  deleteNodeTree(session.doc, c.id, id);
+  // One step for undo: the rows, and the anchors of the flows that hung under them.
+  let detached = 0;
+  session.doc.transact(() => {
+    deleteNodeTree(session.doc, c.id, id);
+    detached = detachStrandedAnchors(session.doc, c.id);
+  }, LOCAL_ORIGIN);
   if (activeNodeId.value === id) selectNode(null);
+  announceDeleteFallout(session.doc, detached, shell.toast);
 }
 function setChartStatus(next: 'draft' | 'final'): void {
   const c = chart.value;

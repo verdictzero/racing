@@ -9,7 +9,7 @@
 
 export const SHELL_KEY = 'raci:shell';
 
-export type ToastType = 'suggest' | 'error';
+export type ToastType = 'suggest' | 'error' | 'ok';
 
 export interface ShellBridge {
   /**
@@ -20,6 +20,8 @@ export interface ShellBridge {
   /**
    * index.html's `showToast`. 'suggest' (💡, the default) stays up 5.2s; 'error' (⛔) 3.2s — an
    * error is a refusal the person already caused, a suggestion is something they may not have seen.
+   * 'ok' is the source's plain toast (💡, 5.2s, no colour of its own): the stylesheet has no rule
+   * for `.toast.ok`, so it draws as a bare `.toast`.
    */
   toast(message: string, type?: ToastType): void;
 }
